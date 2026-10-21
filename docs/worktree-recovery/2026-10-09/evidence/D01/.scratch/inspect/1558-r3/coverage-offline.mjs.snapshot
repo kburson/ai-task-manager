@@ -1,0 +1,128 @@
+// Offline execution of r3's embedded coverage command with the live-API calls
+// replaced by fixtures built from the 26 offline-rendered bodies.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { extractPlanTasks, linkedPlanReference, selectDecompositionPlanSection } from '../../../scripts/task-tracker/lib/decomposition-policy.mjs';
+import { reconcileWbsCoverage } from '../../../scripts/task-tracker/lib/decomposition-wbs-coverage.mjs';
+import { parseVerificationCommands } from '../../../scripts/task-tracker/lib/verification-commands.mjs';
+import { parseProofMarker } from '../../../scripts/task-tracker/lib/proof-marker.mjs';
+import { resolveVcListStrict } from '../../../scripts/task-tracker/lib/vc-ref.mjs';
+import { parseAcceptanceCriteria } from '../../../scripts/task-tracker/lib/acceptance-criteria.mjs';
+
+const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md';
+const commit = '55dedc066701a9fce1066ac4ebebce58ed147638';
+const MUT = process.env.MUT || 'none';
+const readPlanAtCommit = ({ planCommit, planPath: p }) => {
+  if (planCommit !== commit || p !== planPath) throw new Error('unreadable pinned plan');
+  return fs.readFileSync('.scratch/inspect/1558-r3/wbs-r3.md', 'utf8');
+};
+const planText = readPlanAtCommit({ planCommit: commit, planPath });
+const tasks = extractPlanTasks(planText);
+assert.equal(tasks.length, 26);
+
+// --- fixtures: 26 children built from the offline renders ---
+const children = tasks.map((task) => {
+  let body = fs.readFileSync(`.scratch/inspect/1558-r3/frag/${task.number}/rendered.md`, 'utf8');
+  if (MUT === 'competing-plan' && task.number === 5) {
+    body = body.replace('## Plan Metadata\n', '## Plan Metadata\n\n- **Implementation-plan:** docs/superpowers/plans/other.md\n');
+  }
+  if (MUT === 'dangling-citation' && task.number === 3) {
+    body = body.replace('vc-list="vc:1"', 'vc-list="vc:9"');
+  }
+  if (MUT === 'misdirected-go' && task.number === 8) {
+    body = body.replace('<!-- aitm-verified vc-list="vc:3" -->', '<!-- aitm-verified vc-list="vc:1" -->');
+  }
+  if (MUT === 'changed-command' && task.number === 1) {
+    body = body.replace('`node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs` <!-- id=1 -->', '`node --test scripts/tests/unit/task-tracker/lib/something-else.test.mjs` <!-- id=1 -->');
+  }
+  if (MUT === 'command-display-prose' && task.number === 1) {
+    body = body.replace('`node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs` <!-- id=1 -->', '`Run: node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs` <!-- id=1 -->');
+  }
+  if (MUT === 'reordered-vc' && task.number === 8) {
+    body = body
+      .replace('`node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs` <!-- id=1 -->', 'ZZZ1')
+      .replace('`node scripts/maintenance/measure-guidance-candidate.mjs --all --json` <!-- id=2 -->', '`node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs` <!-- id=2 -->')
+      .replace('ZZZ1', '`node scripts/maintenance/measure-guidance-candidate.mjs --all --json` <!-- id=1 -->');
+  }
+  if (MUT === 'extra-child') {
+    // handled below
+  }
+  if (MUT === 'dropped-ac' && task.number === 9) {
+    body = body.split('\n').filter((l) => !l.includes('regardless of issue closure state')).join('\n');
+  }
+  return { number: 2000 + task.number, title: task.title, body, state: 'open', assignees: [] };
+});
+const pages = [children];
+
+assert.ok(Array.isArray(pages) && pages.every(Array.isArray));
+const flat = pages.flat();
+for (const child of flat) {
+  assert.ok(child && Number.isSafeInteger(child.number) && child.number > 0);
+  assert.equal(typeof child.body, 'string');
+  assert.equal(typeof child.title, 'string');
+  assert.equal(typeof child.state, 'string');
+  assert.ok(Array.isArray(child.assignees));
+}
+assert.equal(new Set(flat.map((c) => c.number)).size, 26);
+assert.equal(flat.length, 26);
+
+const coverage = await reconcileWbsCoverage({ tasks, acceptedPlanPath: planPath, acceptedPlanText: planText, children: flat, readPlanAtCommit });
+assert.equal(coverage.ok, true, JSON.stringify(coverage.blockers));
+assert.equal(coverage.expectedCount, 26);
+assert.equal(coverage.coveredCount, 26);
+
+const priority = 'p1';
+const byRank = new Map(coverage.matched.map(({ task, child }) => [task.number, child.number]));
+const expected = new Map();
+const table = planText.split('## Hydration map\n')[1].split('## Child contracts\n')[0];
+for (const line of table.split('\n')) {
+  const cells = line.split('|').map((c) => c.trim());
+  if (!/^\d+$/.test(cells[1] || '')) continue;
+  expected.set(Number(cells[1]), cells[3] === 'None' ? [] : cells[3].split(',').map(Number));
+}
+assert.equal(expected.size, 26);
+
+const fieldsFor = (n) => ({ hydrationStatus: 'Backlog', rank: n - 2000, priority: 'p1', size: null, estimate: null });
+const nativeFor = (n) => ({ blockedBy: (expected.get(n - 2000) || []).map((r) => byRank.get(r)).sort((a, b) => a - b) });
+
+for (const { task, child: claim } of coverage.matched) {
+  assert.equal(claim.sourcePlanCommit, commit);
+  const child = flat.find((c) => c.number === claim.number);
+  assert.equal(child.state, 'open');
+  const activePlan = linkedPlanReference(child.body);
+  assert.equal(activePlan?.key, 'Source-plan');
+  assert.equal(activePlan.path, planPath);
+  const selection = selectDecompositionPlanSection({ body: child.body, planText, activePlanKey: activePlan.key });
+  assert.equal(selection.ok && selection.applied, true);
+  const commands = parseVerificationCommands(child.body);
+  for (const [index, command] of task.commands.entries()) {
+    assert.equal(commands.find((e) => e.id === index + 1)?.command, command);
+  }
+  const plannedACs = [...task.body.matchAll(/^- \[ \] (.+<!-- aitm-verified vc-list="[^"]+" -->)\s*$/gm)];
+  const actualACs = parseAcceptanceCriteria(child.body);
+  assert.ok(plannedACs.length > 0 && Array.isArray(actualACs));
+  assert.equal(actualACs.length, plannedACs.length);
+  for (const [index, ac] of actualACs.entries()) {
+    const planned = parseProofMarker(plannedACs[index][1]);
+    const actual = parseProofMarker(ac.label);
+    assert.equal(actual?.['vc-list'], planned['vc-list']);
+    const intended = planned['vc-list'].split(/\s+/).map((ref) => {
+      const ordinal = Number(ref.slice(3));
+      assert.ok(ordinal >= 1 && ordinal <= task.commands.length);
+      return task.commands[ordinal - 1];
+    });
+    assert.deepEqual(resolveVcListStrict(actual['vc-list'], commands), intended);
+  }
+  const ranks = expected.get(task.number);
+  assert.ok(ranks.every((r) => r < task.number));
+  const native = nativeFor(child.number);
+  assert.deepEqual(native.blockedBy, ranks.map((r) => byRank.get(r)).sort((a, b) => a - b));
+  const fields = fieldsFor(child.number);
+  assert.equal(String(fields.hydrationStatus || '').toLowerCase(), 'backlog');
+  assert.equal(fields.rank, task.number);
+  assert.equal(String(fields.priority || '').toLowerCase(), priority);
+  assert.ok(fields.size == null || fields.size === '');
+  assert.ok(fields.estimate == null || fields.estimate === '');
+  assert.deepEqual(child.assignees, []);
+}
+console.log(JSON.stringify({ ok: true, mutation: MUT, expectedCount: 26, coveredCount: 26, fieldsAndEdges: 'verified', citations: 'verified', parent: 1558, planCommit: commit }));

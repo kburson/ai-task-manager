@@ -1,0 +1,17 @@
+✔ manual XPR registers without asking a recovery-only broker worker to launch (569.917375ms)
+✔ manual declared join ignores an inherited official resume command (752.240666ms)
+✔ CLI captures stream evidence before join (malformed=false) (1155.409833ms)
+✔ CLI captures stream evidence before join (malformed=true) (530.869959ms)
+✔ CLI effective manual startup ignores inherited resume (configured=false) (899.784875ms)
+✔ CLI effective manual startup ignores inherited resume (configured=true) (746.140833ms)
+✔ active join waits for a delayed genuine observation (61.393333ms)
+✔ missing active-join observation still refuses at the bounded deadline (32.36825ms)
+✔ an existing observation for another session is never retried (16.375042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4755.330833

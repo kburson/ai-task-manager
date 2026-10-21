@@ -1,0 +1,38 @@
+import fs from 'node:fs';
+const map = { 9:2, 10:3, 11:4, 12:5, 13:6, 14:7, 15:8, 16:9, 19:11, 22:13, 23:14, 24:15, 25:16, 26:17 };
+function split(src, re) {
+  const parts = src.split(re); const out = new Map();
+  for (let i=1;i<parts.length;i+=3) out.set(Number(parts[i]), { title: parts[i+1].trim(), body: parts[i+2] });
+  return out;
+}
+const r3 = split(fs.readFileSync('.scratch/inspect/1558-r3/wbs-r3.md','utf8'), /^### Task (\d+): (.+)$/m);
+const base = split(fs.readFileSync('.scratch/inspect/1558-r3/baseline.md','utf8'), /^### Task (\d+): (.+)$/m);
+// normalize: drop story block, AC citation markers, verification representation, r3-only provenance lines
+function norm(txt) {
+  return txt
+    .replace(/\*\*User story:\*\*[\s\S]*?\n\n(?=\*\*|- |\w)/, '')
+    .replace(/\*\*Baseline-plan-section:\*\*.*\n/g, '')
+    .replace(/\*\*Estimate and units:\*\*.*\n/g, '')
+    .replace(/\*\*Handoff and verification behavior:\*\*.*\n/g, '')
+    .replace(/\s*<!-- aitm-verified vc-list="[^"]+" -->/g, '')
+    .replace(/\*\*Verification Commands:\*\*[\s\S]*$/, '')
+    .replace(/\*\*Verification:\*\*[\s\S]*$/, '')
+    .replace(/\*\*Acceptance criteria:\*\*/gi, 'AC:')
+    .replace(/\*\*Additional foundation entry acceptance criterion:\*\*[\s\S]*$/, '')
+    .replace(/All Task references in the copied body below retain baseline numbering\./g, '')
+    .replace(/\s+/g, ' ').trim();
+}
+let diffs = 0;
+for (const [w, b] of Object.entries(map)) {
+  const a = norm(r3.get(Number(w)).body), c = norm(base.get(b).body);
+  const sameTitle = r3.get(Number(w)).title === base.get(b).title;
+  if (a === c) { console.log(`WBS ${w} <- baseline Task ${b}: BODY IDENTICAL (title ${sameTitle ? 'same' : 'DIFF'})`); continue; }
+  diffs++;
+  console.log(`WBS ${w} <- baseline Task ${b}: DIFFERS (title ${sameTitle ? 'same' : 'DIFF'}) len ${a.length} vs ${c.length}`);
+  // find first divergence
+  let i=0; while (i<a.length && i<c.length && a[i]===c[i]) i++;
+  console.log('  first divergence @', i);
+  console.log('  r3  :', JSON.stringify(a.slice(Math.max(0,i-60), i+160)));
+  console.log('  base:', JSON.stringify(c.slice(Math.max(0,i-60), i+160)));
+}
+console.log('retained bodies differing after normalization:', diffs, '/ 14');

@@ -1,0 +1,3 @@
+Use one event/timestamp-based interval derivation for visible Active/Idle cells. Track engagement/interruption state and matching actor history; shared lifecycle boundaries divide elapsed intervals without resetting or double-crediting engagement. Missing transcript estimates must not suppress a duration recoverable from timing history.
+
+Reconcile row numeric metadata, readers, rollups, replay identity and display consistently. Retain separately identified transcript estimates and genuine unknown timing history without fabricating observations. Implement the requested Timing Log format with legacy parsing. Cover flush, resume, lifecycle, approval and close producers. Provide guarded dry-run recalculation/reformat with backups, idempotency and conflict refusal.

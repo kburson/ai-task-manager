@@ -1,0 +1,9 @@
+{
+  "New sessions default the plan, PR-code, and final-task review controls to Full-Auto without emitting the legacy first-bind mode prompt.": ["npm test"],
+  "A user request for \"manual plan review\" enables only the Plan-to-Develop human approval gate unless other manual gates were also explicitly requested.": ["npm test"],
+  "A user request for \"manual code review\" waits until required CI is green, requests an eligible configured or authenticated user on the PR when needed, and requires a human approval tied to the exact accepted PR head before merge authority; reviewer assignment alone and spawned-agent review are insufficient.": ["npm test"],
+  "A user request for \"manual task review\" enables only the final Review-to-Done human approval gate unless other manual gates were also explicitly requested.": ["npm test"],
+  "Manual review controls are independent, additive, session-scoped, auditable, and governed by session-over-project-over-default precedence; reset restores Full-Auto defaults.": ["npm test"],
+  "CLI help, agent workflow instructions, and user documentation name the three natural-language requests and explain reviewer eligibility, approval freshness, combinations, and reset behavior.": ["npm test"],
+  "Existing exact-SHA evidence, required-CI, delivery receipt, ownership, worktree, provider-action, and close protections remain enforced, with focused regression coverage for legacy two-gate session files and explicit project configuration.": ["npm test"]
+}

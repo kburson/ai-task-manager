@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-peer-review@0.3.0 npx
+npm notice run 'aitm' deliver 106
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+task-tracker error: delivery-preflight:required-check-not-green predicate=required-hosted-check-green recovery="rerun the required hosted check on the accepted head and retry delivery"

@@ -1,0 +1,5 @@
+- **kind**: code
+- **discovered-during**: post-delivery audit of epic #1531 and package-boundary story #1546
+- **related**: #1531, #1546, #1549, #1591
+- **depends-on**: #1591 must reconcile the authoritative active legacy index before deletion begins
+- **motivation**: Task 15 delivered the package dependency and fail-closed guard but closed without performing its planned duplicate-runtime removal

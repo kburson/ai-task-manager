@@ -1,0 +1,72 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "reconciliation-record",
+      "description": "New delivery-method-reconciliation record module: schema constant, builder, and strict validator covering configured method, observed method, reason, PR number, merge SHA, and accepted SHA.",
+      "baseHumanHours": 1.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/delivery-method-reconciliation.mjs",
+          "scripts/task-tracker/lib/delivery-records.mjs"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "deliver-lane",
+      "description": "Add the reconcile-merge-method argument pair to the deliver verb, gate it to the already-merged external recovery path, and route the reconciled method into the external intent input.",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/verbs/deliver.mjs",
+          "scripts/task-tracker/lib/delivery-verification.mjs"
+        ],
+        "dependencies": ["reconciliation-record"]
+      }
+    },
+    {
+      "id": "declared-versus-observed-guard",
+      "description": "Refuse the lane when the declared method does not equal the observed topology, when the reason is empty, when the pull request is unmerged, or when the head does not match the accepted SHA.",
+      "baseHumanHours": 1.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/task-tracker/verbs/deliver.mjs"],
+        "dependencies": ["deliver-lane"]
+      }
+    },
+    {
+      "id": "close-refusal-message",
+      "description": "Reword the close verb delivery-gate refusal so it names the reconciliation lane rather than leaving force as the only discoverable escape.",
+      "baseHumanHours": 0.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/task-tracker/verbs/close.mjs"],
+        "dependencies": ["deliver-lane"]
+      }
+    },
+    {
+      "id": "regression-coverage",
+      "description": "Regression test proving the verifier still refuses a receipt naming a merge method that was not observed, so the fix provably does not weaken the existing check.",
+      "baseHumanHours": 0.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": ["scripts/task-tracker/lib/delivery-verification.mjs"],
+        "dependencies": ["declared-versus-observed-guard"]
+      }
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration"],
+    "isolation": "pure-core builders and validators unit-tested with injected dependencies; CLI argument surface and close refusal covered in the integration lane",
+    "expectedMinutes": 6
+  },
+  "risks": [
+    "Touches the delivery-authorization path, where a regression would let an untruthful receipt through.",
+    "The operator-declared method must be verified against observation rather than trusted, or the lane becomes a way to launder a false receipt.",
+    "Strict hasExactKeys validation across the delivery record layer means a careless field addition breaks existing record parsing."
+  ],
+  "comparableIssueIds": [1490, 1554, 680]
+}

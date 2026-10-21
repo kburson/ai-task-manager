@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expectedVersion": 1,
+  "expected": "### What happened?\n\nAfter a fresh install the project board had an invalid Priority field.  It was the default github project field for priority.  It did not have any of the AITM prority values. I had to delete the field and re-run `npx ai-task-manager init` to re-configure the task-tracker config file binding the project to that board with that field.\n\nInstead of causing the user pain we should have the initialization run an aitm doctor on the project board to verify that all fields are defined as expected. Either that or have the init script verfiy this better.\n\n### Steps to reproduce\n\n1.\n2.\n3.\n\n",
+  "replacement": "### What I want\n\nWhen `npx ai-task-manager init` binds a GitHub Project board, verify that its fields and option values match AITM's requirements, including the Priority field. If the board is incompatible, identify what needs repair before completing the binding. This could use an AITM doctor check or validation within init.\n\n### Why it matters\n\nA fresh install can bind to GitHub's default Priority field, which lacks AITM's priority values. The resulting board configuration does not work correctly and requires manual recovery.\n\n### Notes\n\nI encountered this after a fresh install. I deleted the incompatible Priority field and reran `npx ai-task-manager init` to reconfigure the task-tracker binding.\n\n"
+}

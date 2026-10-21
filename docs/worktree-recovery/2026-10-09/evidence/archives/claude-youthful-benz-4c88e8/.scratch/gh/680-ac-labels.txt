@@ -1,0 +1,9 @@
+Document the current closed-chain architecture as the baseline: frozen `states/index.mjs`, `guard-registry.mjs` registration, `state-bootstrap.mjs` walk, `dispatchOnEnterActions` timing, and the `installed-guard-path.mjs` (#659) edit interlock.
+Define the proposed five-phase per-state lifecycle (entryGuard → onEnter → Action → onExit → exitGuard) and reconcile it with today's transition-paired guard model (a move A→B runs A.exit + B.entry together in one `runGuards` call, not two isolated per-state checks).
+Decide whether `Action` (the deep work of a state) becomes a first-class data-structure hook or remains verb-session inhabitants; today `onEnter` is explicitly NOT the work of the state.
+Specify the `onExit` phase, which does not exist today, and its ordering relative to the exit guard and the Status write.
+Design the config artifact: shape, location under `.ai-task-manager/`, install-copy + upgrade/merge story, and package-template-override precedence.
+Catalog the shippable guard/action library and the label→object binding mechanism in the config state map.
+Resolve the safety model: preserve additive-only (stricter-never-looser) vs. a deliberate, audited override surface; account for consumer hooks living OUTSIDE the #659 interlock.
+Enumerate migration/back-compat risks: the many callers that assume the literal 8 state slugs (matrix, FORWARD/BACKWARD chains, board columns, timing rollups, heal scripts) and how an N-state model avoids breaking them.
+Produce a recommendation (proceed / defer / reshape) with a follow-on epic outline if proceeding.

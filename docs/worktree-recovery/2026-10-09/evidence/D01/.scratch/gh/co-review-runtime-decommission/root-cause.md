@@ -1,0 +1,1 @@
+The Task 15 removal step was conditional. Its guard was strengthened to refuse while active legacy rows or production consumers remained, but the story and epic were allowed to close on the retained-compatibility branch without a mandatory follow-up. The package migration therefore became operational while the ratified no-duplicate-runtime acceptance endpoint remained unmet.

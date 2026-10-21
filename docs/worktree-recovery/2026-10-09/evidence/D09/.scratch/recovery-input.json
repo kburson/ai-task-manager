@@ -1,0 +1,325 @@
+{
+  "cwd": "/Users/kpburson/.codex/worktrees/b957/ai-task-manager",
+  "main": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+  "groups": [
+    {
+      "path": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+      "head": "aaeaedfc11246a25828ffe0cf506ff35fdca8486",
+      "branch": "refs/heads/codex/1857-continuation",
+      "prunable": null,
+      "id": "P01",
+      "dirty": " M .ai-peer-review.json\n M .claude/config.json\n M .claude/settings.json\n M .claude/skills/peer-review/SKILL.md\n M .codex/config.json\n M .codex/hooks.json\n M .codex/skills/peer-review/SKILL.md\n M README.md\n M bin/aitm.mjs\n M cspell-dictionary.txt\n M docs/reviews/1857-remaining-work/2026-10-03-1861-delivery-snapshot.md\n M docs/superpowers/specs/2026-10-02-1861-runtime-kernel-design.md\n M guidance/admission.mjs\n M guidance/documentation.mjs\n M instructions/aitm-guidance.release.json\n M instructions/aitm-guidance.yml\n M package.json\n M scripts/gh/move-state.mjs\n M scripts/maintenance/capture-guidance-lifecycle.mjs\n M scripts/providers/claude.mjs\n M scripts/providers/codex.mjs\n M scripts/providers/grok.mjs\n M scripts/task-tracker/action-capture-bin/gh\n M scripts/task-tracker/activity-guard.mjs\n M scripts/task-tracker/agent-guard.mjs\n M scripts/task-tracker/commit-trail-handler.mjs\n M scripts/task-tracker/draft-branch.mjs\n M scripts/task-tracker/fleet-registry.mjs\n M scripts/task-tracker/hooks/on-ask.mjs\n M scripts/task-tracker/issue-mutator-lock.mjs\n M scripts/task-tracker/lib/action-capture.mjs\n M scripts/task-tracker/lib/action-decision/legacy-refusals.json\n M scripts/task-tracker/lib/actor-flush-journal.mjs\n M scripts/task-tracker/lib/actor-timing-state.mjs\n M scripts/task-tracker/lib/artifact-write-policy.mjs\n M scripts/task-tracker/lib/command-surface/catalog.mjs\n M scripts/task-tracker/lib/evidence-runner.mjs\n M scripts/task-tracker/lib/evidence-v2/runtime-adapter.mjs\n M scripts/task-tracker/lib/hook-idempotency.mjs\n M scripts/task-tracker/lib/occupancy.mjs\n M scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs\n M scripts/task-tracker/lib/ready-for-plan-migration.mjs\n M scripts/task-tracker/lib/runtime-batch.mjs\n M scripts/task-tracker/lib/runtime-initialize.mjs\n M scripts/task-tracker/lib/runtime-migration-apply.mjs\n M scripts/task-tracker/lib/runtime-migration-plan.mjs\n M scripts/task-tracker/lib/runtime-migration-timing.mjs\n M scripts/task-tracker/lib/runtime-process-census.mjs\n M scripts/task-tracker/lib/runtime-record-catalog.mjs\n M scripts/task-tracker/lib/runtime-writer-census.mjs\n M scripts/task-tracker/lib/scratch-dir.mjs\n M scripts/task-tracker/lib/session-store.mjs\n M scripts/task-tracker/lib/test-sandbox-reaper.mjs\n M scripts/task-tracker/lib/verifier-cache.mjs\n M scripts/task-tracker/lib/worktree-binding-lifecycle.mjs\n M scripts/task-tracker/locks.mjs\n M scripts/task-tracker/orchestrator-lock.mjs\n M scripts/task-tracker/paths.mjs\n M scripts/task-tracker/queue.mjs\n M scripts/task-tracker/session-state.mjs\n M scripts/task-tracker/source-edit-gate.mjs\n M scripts/task-tracker/state.mjs\n M scripts/task-tracker/task-tracker.mjs\n M scripts/task-tracker/verbs/help-data.mjs\n M scripts/task-tracker/verbs/migrate-runtime.mjs\n M scripts/task-tracker/verbs/test.mjs\n M scripts/task-tracker/word-counter.mjs\n M scripts/tests/fixtures/1558/admission-surface.json\n M scripts/tests/fixtures/1558/rule-guidance-map.json\n M scripts/tests/fixtures/chore-mode/chore-mode-fixture.mjs\n M scripts/tests/helpers/action-authority-cost.mjs\n M scripts/tests/helpers/action-early-promote-cases.mjs\n M scripts/tests/helpers/action-explanation-authority-cost.mjs\n M scripts/tests/helpers/action-navigation-cases.mjs\n M scripts/tests/helpers/action-session-executor-fixture.mjs\n M scripts/tests/helpers/activity-guard-fixture.mjs\n M scripts/tests/helpers/capture-guidance-release.mjs\n M scripts/tests/helpers/captured-commit-bytes.mjs\n M scripts/tests/helpers/chore-mode-state.cases.mjs\n M scripts/tests/helpers/close-convergence-wiring-helpers.mjs\n M scripts/tests/helpers/close-state-fixture.mjs\n M scripts/tests/helpers/evidence-v2/process-bootstrap.mjs\n M scripts/tests/helpers/evidence-v2/sandbox.mjs\n M scripts/tests/helpers/fleet-registry-concurrent-helper.mjs\n M scripts/tests/helpers/guidance-capture-provenance.mjs\n M scripts/tests/helpers/guidance-paired-context.mjs\n M scripts/tests/helpers/runtime-root-fixture.mjs\n M scripts/tests/helpers/worker.mjs\n M scripts/tests/integration/meta/package-test-corpus.test.mjs\n M scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs\n M scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-capture.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-parity.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-review.test.mjs\n M scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs\n M scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs\nRM scripts/tests/unit/task-tracker/lib/actor-flush-journal.test.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-journal.test.mjs\n M scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs\n M scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs\n M scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs\n M scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs\n M scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs\n M scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs\n M scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs\n M scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs\n M scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs\n M scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs\n M scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs\n M scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs\n M scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs\n M scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs\n M scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs\n M scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs\n M scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs\n M scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs\n M scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs\n M scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs\n M scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs\n M scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs\n M scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs\n M scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs\n M scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs\n M scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs\n M scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs\n M scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs\n M scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs\n M scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs\n M scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs\n M scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs\n M scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs\n M scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs\n M scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs\n M scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs\n M scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs\n M scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs\n M scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs\n M scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs\n M scripts/tests/integration/task-tracker/lib/source-edit-gate-workflow-policy.test.mjs\n M scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs\n M scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs\n M scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs\n M scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs\n M scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs\n M scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs\n M scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs\n M scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs\n M scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs\n M scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs\n M scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs\n M scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs\n M scripts/tests/integration/task-tracker/verbs/bind.test.mjs\n M scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs\n M scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs\n M scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs\n M scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs\n M scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs\n M scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs\n M scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs\n M scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs\n M scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs\n M scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs\n M scripts/tests/slow/task-tracker/lib/cli.test.mjs\n M scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs\n M scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs\n M scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs\n M scripts/tests/slow/task-tracker/lib/create-issue.test.mjs\n M scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs\n M scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs\n M scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs\n M scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs\n M scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs\n M scripts/tests/slow/task-tracker/lib/gates.test.mjs\n M scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs\n M scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs\n M scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs\n M scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs\n M scripts/tests/slow/task-tracker/lib/move-state.test.mjs\n M scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs\n M scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs\n M scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs\n M scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs\n M scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs\n M scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs\n M scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs\n M scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs\n M scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs\n M scripts/tests/unit/providers/parity.test.mjs\n M scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs\n M scripts/tests/unit/task-tracker/core/actor-word-cursor.test.mjs\n M scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs\n M scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs\n M scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs\n M scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs\n M scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs\n M scripts/tests/unit/task-tracker/core/package-boundary.test.mjs\n M scripts/tests/unit/task-tracker/core/state-project-dir.test.mjs\n M scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs\n M scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs\n M scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs\n M scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs\n M scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs\n M scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs\n M scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs\n M scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs\n M scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs\n M scripts/tests/unit/task-tracker/lib/bind-context.test.mjs\n M scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs\n M scripts/tests/unit/task-tracker/lib/bound-state-session-authoritative.test.mjs\n M scripts/tests/unit/task-tracker/lib/bound-worktree-project-dir.test.mjs\n M scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs\n M scripts/tests/unit/task-tracker/lib/close-drain.test.mjs\n M scripts/tests/unit/task-tracker/lib/close-repair.test.mjs\n M scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs\n M scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs\n M scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs\n M scripts/tests/unit/task-tracker/lib/flock-contention.test.mjs\n M scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs\n M scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs\n M scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs\n M scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs\n M scripts/tests/unit/task-tracker/lib/locks.test.mjs\n M scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs\n M scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs\n M scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs\n M scripts/tests/unit/task-tracker/lib/occupancy.test.mjs\n M scripts/tests/unit/task-tracker/lib/on-ask.test.mjs\n M scripts/tests/unit/task-tracker/lib/on-stop.test.mjs\n M scripts/tests/unit/task-tracker/lib/paths.test.mjs\n M scripts/tests/unit/task-tracker/lib/queue.test.mjs\n M scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs\n M scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs\n M scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs\n M scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs\n M scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs\n M scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs\n M scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs\n M scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs\n M scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs\n M scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs\n M scripts/tests/unit/task-tracker/lib/save-plan.test.mjs\n M scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs\n M scripts/tests/unit/task-tracker/lib/seed-kanban-cache.test.mjs\n M scripts/tests/unit/task-tracker/lib/session-state.test.mjs\n M scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs\n M scripts/tests/unit/task-tracker/lib/state.test.mjs\n M scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs\n M scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs\n M scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs\n M scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs\n M scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs\n M scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs\n M scripts/tests/unit/task-tracker/lib/verifier-cache.test.mjs\n M scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs\n M scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs\n M scripts/tests/unit/task-tracker/lib/word-counter.test.mjs\n M scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs\n M scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs\n M scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs\n M scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs\n M scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs\n M scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs\n M scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs\n M scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs\n M scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs\n M scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs\n M scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs\n M scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs\n M scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs\n M scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs\n M scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs\n M scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs\n M scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs\n M scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs\n M scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs\n M scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs\n M scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs\n M scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs\n M scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs\n M scripts/tests/unit/task-tracker/verbs/reject.test.mjs\n M skill/SKILL.md\n M skill/shared/references/state-walk-detail.md\n M skill/shared/router.md\n M skill/shared/rules/deliver.md\n M skill/shared/rules/plan-mode-backlog.md\n M templates/worker-report.md\n?? .ai-peer-review.json.bak\n?? .ai-task-manager/runtime/store/locks/issue-1261.lock/holder.json\n?? .ai-task-manager/runtime/store/locks/issue-6561169.lock/holder.json\n?? .ai-task-manager/runtime/store/sessions/caller-sid/pending-pause.json\n?? .ai-task-manager/runtime/store/sessions/corrupt/pending-pause.json\n?? .ai-task-manager/runtime/store/sessions/fresh/pending-pause.json\n?? .ai-task-manager/runtime/store/sessions/mine/pending-pause.json\n?? .claude/config.json.bak\n?? .claude/settings.json.bak\n?? .claude/skills/peer-review/SKILL.md.bak\n?? .codex/config.json.bak\n?? .codex/hooks.json.bak\n?? .codex/skills/peer-review/SKILL.md.bak\n?? =\n?? docs/reviews/1857-remaining-work/1861-kernel-verification.md\n?? docs/reviews/1857-remaining-work/1861-plan-review.md\n?? docs/reviews/1857-remaining-work/2026-10-04-1861-post1872-rebase-preflight.md\n?? docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-author-startup.md\n?? docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-reviewer-invitation.md\n?? scripts/tests/integration/task-tracker/lib/runtime-actor-writer.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-capture-writer.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-evidence-authority.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-hook-stamp.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-operation-lock.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-orchestrator-writer.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-question-writer.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-queue-writer.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-ready-journal.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-terminal-ledger.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-test-worktree.test.mjs\n?? scripts/tests/integration/task-tracker/lib/runtime-transcript-provenance.test.mjs\n?? scripts/tests/integration/task-tracker/lib/verifier-cache-durable-head.test.mjs\n",
+      "dirtyExit": 0,
+      "logs": "aaeaedfc [#1861] Fence stale migrated roots and unfinished v1 recovery\nbdb21d38 [#1861] Establish distinct replacement inode in crash fixture\n1007a928 [#1861] Correct review report links and retain lint findings\n7beeb4d3 [#1861] Repair interrupted recovery and capture bundle validation\nec1298af [#1861] Include observed Node 24 main-thread writers\nd8f88559 [#1861] Observe Node 26 main-thread process writers\n",
+      "prs": [
+        {
+          "baseRefName": "feature/epic/1857/parent",
+          "headRefOid": "aaeaedfc11246a25828ffe0cf506ff35fdca8486",
+          "mergeCommit": null,
+          "mergedAt": null,
+          "number": 1871,
+          "state": "OPEN",
+          "title": "[#1861] Crash-safe runtime kernel and registered recovery",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1871"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/97f0/ai-task-manager",
+      "head": "890f01719707ee206863097df9c52e9cbdbb4e97",
+      "branch": "refs/heads/feature/epic/1918/parent",
+      "prunable": null,
+      "id": "P02",
+      "dirty": " M scripts/task-tracker/lib/criteria-revision/policy.mjs\n M scripts/task-tracker/lib/move-state/move-state-core.mjs\n M scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs\n?? scripts/tests/integration/task-tracker/lib/criteria-revision-known-prefix-entry.test.mjs\n",
+      "dirtyExit": 0,
+      "logs": "890f0171 docs: record original-entry admission plan [#1918]\ndc8709d6 [#1918] Record reviewed recovery input delta and remaining reentry\nc2448bca [#1918] [#1915] Refuse malformed known-prefix inputs without authority\nb892ab4a [#1918] [#1915] Recognize exact completed early-prefix input data\n906c958f [#1918] Plan independent known-prefix recovery inputs\nbf37623b [#1918] Record reviewed partial reporting source qualification\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager",
+      "head": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a",
+      "branch": "refs/heads/codex/aitm-mcp-adapter-architecture",
+      "prunable": null,
+      "id": "D08",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "6e0c46619 docs: preserve archived reverse-review experiment and research\n94c32e12d Merge PR #1724: MCP adapter architecture and review experiment evidence\n21874bc6f chore: satisfy review collateral quality checks\n68746678a docs: normalize archived launcher recovery diff\nfc29146e9 docs: preserve XPR consensus and experiment evidence\n54d6daa33 chore: finalize peer review review-cf0c320256eb77ed12fe9e531ed9744f\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "6e0c466193e19b25d4dd8e2e196d13cd922aca2a",
+          "mergeCommit": {
+            "oid": "d45d36ee6d161603d3c330d6eea2e9bc8086298e"
+          },
+          "mergedAt": "2026-09-21T04:32:55Z",
+          "number": 1726,
+          "state": "MERGED",
+          "title": "docs: preserve review-order experiment evidence and whitepaper",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1726"
+        },
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "21874bc6f8241c3b15451b952268d4b952b49ecf",
+          "mergeCommit": {
+            "oid": "94c32e12d845b621311a4597ac1dbaf3715c9d67"
+          },
+          "mergedAt": "2026-09-20T21:40:12Z",
+          "number": 1724,
+          "state": "MERGED",
+          "title": "docs: define MCP adapter architecture and preserve SAR/SPR/XPR evidence",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1724"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/b957/ai-task-manager",
+      "head": "43e8d35d53952ef2a23615d98cf901fa4c74121b",
+      "prunable": null,
+      "id": "D09",
+      "dirty": " M .claude/settings.json\n M .codex/hooks.json\n?? .codex/config.toml\n",
+      "dirtyExit": 0,
+      "logs": "43e8d35d [#1926] Governed PR delivery\ne49543f2 [#1904] Governed PR delivery\ne802e425 [#1902] Governed PR delivery\ndab9548a [#1897] Governed PR delivery\ncf62c492 [#1899] Governed PR delivery\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-14154c2e-87607-167a1806",
+      "head": "14154c2e264b5cdb7d4f8145baead7fd5b4f715e",
+      "prunable": "prunable gitdir file points to non-existent location",
+      "id": "P04",
+      "dirty": " M .claude/settings.json\n M .codex/hooks.json\n?? .codex/config.toml\n",
+      "dirtyExit": 0,
+      "logs": "14154c2e docs: retain CI replay review and lane correction evidence [#1859]\n454d648c test: place archived Git replay regression in integration [#1859]\ndfed5558 fix: retain exact historical replay bytes for CI [#1859]\nd3a92172 [#1859] Merge trunk configuration and resolve hook conflict\neacbd20e [#1859] Repair current and archived integration evidence references\n41caaccf [#1859] Include the reviewed Scope guide in relocated catalog fixtures\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/defect-1859-spec/ai-task-manager/.scratch/.task-test-1859-dfed5558-61350-1dfda4ca",
+      "head": "dfed55581366ce3c03b83f78d09b8f0243689b50",
+      "prunable": "prunable gitdir file points to non-existent location",
+      "id": "P05",
+      "dirty": " M .claude/settings.json\n M .codex/hooks.json\n?? .codex/config.toml\n",
+      "dirtyExit": 0,
+      "logs": "dfed5558 fix: retain exact historical replay bytes for CI [#1859]\nd3a92172 [#1859] Merge trunk configuration and resolve hook conflict\neacbd20e [#1859] Repair current and archived integration evidence references\n41caaccf [#1859] Include the reviewed Scope guide in relocated catalog fixtures\ne19b7f6b [#1859] Keep narrative marker names and commented fence examples eligible\n487b810c [#1859] Preserve opaque workflow record identifiers outside spell checking\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/.codex/worktrees/planning/ai-task-manager",
+      "head": "46952470a4f89a61bf7f689ea7937397ed8314d2",
+      "branch": "refs/heads/codex/aitm-mcp-adapter-xpr-first",
+      "prunable": null,
+      "id": "P06",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "46952470a docs: exclude interrupted XPR-first setup pending fresh author\ne03773d98 docs: freeze original spec for XPR-first experiment\nc2e33f4d0 docs: design MCP adapter architecture\n45b2f21b7 [#1720] Governed PR delivery\n72123cd9e [#1703] Governed PR delivery\n7f441b753 [#1716] Governed PR delivery\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.claude/worktrees/articles-book-publication-6a7dfe",
+      "head": "e5b3060cb27caf92239f05ca5552f364d500eec7",
+      "branch": "refs/heads/claude/1485-1220-epic-delivery-6616c5",
+      "prunable": null,
+      "id": "P07",
+      "dirty": "?? .aitm/pool-bench.json\n?? .aitm/test-timing.json\n",
+      "dirtyExit": 0,
+      "logs": "e5b3060cb [#1483] Governed PR delivery\n345e62aed [#1481] Governed PR delivery\n651d2af1d [#1218] Governed PR delivery\n709129d51 [#1250] Governed PR delivery\na22c4d21f [#1178] Split runtime and disposable scratch\n68a269a8e [#937] Governed PR delivery\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1207-assignee-state",
+      "head": "c0697158c880be8ca60b46839a38aa82d6886cbb",
+      "branch": "refs/heads/codex/issue-1207-assignee-state",
+      "prunable": null,
+      "id": "P08",
+      "dirty": " M scripts/gh/lib/github-projects.mjs\n M scripts/gh/lib/project-tether.mjs\n M scripts/gh/migrate-project.mjs\n M scripts/maintenance/bind-issues-to-new-project.mjs\n M scripts/task-tracker/tests/slow/lib/create-issue.test.mjs\n M scripts/task-tracker/tests/slow/lib/ensure-wave-parent.test.mjs\n M scripts/task-tracker/tests/unit/gh/lib/project-tether.test.mjs\n M scripts/task-tracker/tests/unit/gh/lib/tether-rank-write.test.mjs\n M scripts/task-tracker/tests/unit/gh/project-tether-assigned-invariant.test.mjs\n M scripts/task-tracker/tests/unit/lib/set-rank.test.mjs\n M scripts/task-tracker/tests/unit/verbs/reconcile-assigned-invariant.test.mjs\n M scripts/task-tracker/verbs/reconcile.mjs\n?? scripts/task-tracker/tests/unit/gh/maintenance-project-bind-assigned.test.mjs\n?? scripts/task-tracker/tests/unit/gh/project-tether-library-guard.test.mjs\n?? scripts/task-tracker/tests/unit/gh/project-tether-resolver.test.mjs\n",
+      "dirtyExit": 0,
+      "logs": "c0697158c [#1207] Harden assignment races and project lookup\n8a85e8ce3 [#1207] Close assignment verification races\n88b86f51c [#1207] Harden Assigned invariant recovery paths\na969bd003 [#1207] fix: harden assigned invariant review paths\n3f6bab0c5 [#1207] docs: reconcile implementation plan evidence\nac2c47539 [#1207] fix: harden assigned invariant coupling\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1558-ask-the-script-review-r1",
+      "head": "a650be5a090f28325e03f47a22b7495674cf5011",
+      "branch": "refs/heads/codex/1558-ask-the-script-review-r1",
+      "prunable": null,
+      "id": "P09",
+      "dirty": "?? docs/superpowers/reviews/1558/spec/manual-astra-opus/round-1-opus-invitation.md\n",
+      "dirtyExit": 0,
+      "logs": "a650be5a0 ignore my local vscode preferences (#1645)\nb3f3671ef [#1558] Publish Ask-the-Script guidance design (#1644)\n60f43d809 [#1624] Governed PR delivery\n75da4b72f [#1624] Governed PR delivery\n9b5618295 [#1624] Governed PR delivery\n8661b2dd8 [#1635] Governed PR delivery\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1728-authority-observations",
+      "head": "309f6fe5ea3206a6159893e76b8c4be01f8433f7",
+      "branch": "refs/heads/feature/child/1728",
+      "prunable": null,
+      "id": "P10",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "309f6fe5e [#1728] test: cover complete no-effect surfaces and identity\n22b6b1241 [#1728] test: enforce observation boundary and package surface\n0d89d887c Merge branch 'feature/epic/1663' into feature/child/1728\n77bf6c9f4 [#1663] docs: clarify mandatory attribution review finding\ne301af302 [#1728] feat: collect immutable authority observations\n8a24aa38d [#1663] docs: record parent story review closure\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+      "head": "d6c9091e1a568a6b5316e7975c1ff070bcdcbfd1",
+      "branch": "refs/heads/codex/1926-timing-continuity",
+      "prunable": null,
+      "id": "P11",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "d6c9091e [#1926] Register the actual continuity helper in admission inventory\n7ade965a [#1926] Refuse empty continuity recovery requests\n16e8a1a2 [#1926] Recheck timing source after transcript observation\nd448f3d2 [#1926] Account for the shipped continuity recovery module\nd843b191 [#1926] Recover transcript-backed neutral timing checkpoints\ne49543f2 [#1904] Governed PR delivery\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "d6c9091e1a568a6b5316e7975c1ff070bcdcbfd1",
+          "mergeCommit": {
+            "oid": "43e8d35d53952ef2a23615d98cf901fa4c74121b"
+          },
+          "mergedAt": "2026-10-09T01:11:29Z",
+          "number": 1927,
+          "state": "MERGED",
+          "title": "[#1926] Recover continuous-session timing checkpoints",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1927"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1889-binding-generation",
+      "head": "9bb4a2806b47ef53d30c15cc1f0dc4e05d9efc30",
+      "branch": "refs/heads/codex/1889-binding-generation",
+      "prunable": null,
+      "id": "P12",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "9bb4a280 [#1889] Clear inherited cross-issue generation and isolate Git regressions\n9d129f9a [#1889] Persist claimed native binding generation in session state\nbe814034 [#1887] Governed PR delivery\n12ecd7df [#1882] Governed PR delivery\n24f8b2ab [#1873] Governed PR delivery\n70543534 [#1873] Governed PR delivery\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "9bb4a2806b47ef53d30c15cc1f0dc4e05d9efc30",
+          "mergeCommit": {
+            "oid": "c04d230e30947d76cb3778e4f88a754c3afd2245"
+          },
+          "mergedAt": "2026-10-05T05:27:00Z",
+          "number": 1890,
+          "state": "MERGED",
+          "title": "[#1889] Preserve native occupancy generation in task bindings",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1890"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "head": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+      "branch": "refs/heads/codex/1897-canonical-ac",
+      "prunable": null,
+      "id": "P13",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "344a6abb [#1897] Recognize alternate HTML comment endings in AC lookup\nb0911ff3 [#1897] Preserve live AC selection around literal heading examples\nf194cede [#1897] Select canonical acceptance criteria before embedded source headings\ncf62c492 [#1899] Governed PR delivery\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n1a57c3eb [#1894] Governed PR delivery\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+          "mergeCommit": {
+            "oid": "dab9548a5836f958b7abcf623f8c7447e2eaabca"
+          },
+          "mergedAt": "2026-10-06T00:05:08Z",
+          "number": 1898,
+          "state": "MERGED",
+          "title": "[#1897] Prefer canonical acceptance criteria over embedded headings",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1898"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.scratch/1897/interrupted-native-test-sandbox-a7ad2b45",
+      "head": "a7ad2b4583deda01a4fcc8dd8b4e65d13957779a",
+      "prunable": null,
+      "id": "P14",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "a7ad2b45 [#1897] Preserve live AC selection around literal heading examples\n0f92be93 [#1897] Select canonical acceptance criteria before embedded source headings\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n1a57c3eb [#1894] Governed PR delivery\n22fdb016 [#1892] Governed PR delivery\n35efd816 [#1818] Governed PR delivery\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage",
+      "head": "c254618a6e756697f395c42bf40a60583e7276bc",
+      "branch": "refs/heads/codex/1899-cloud-coverage",
+      "prunable": null,
+      "id": "P15",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "c254618a [#1899] Preserve configured prerequisite identities in targeted checks\necc0e1df [#1899] Derive declared suite results from explicit project CI coverage\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n1a57c3eb [#1894] Governed PR delivery\n22fdb016 [#1892] Governed PR delivery\n35efd816 [#1818] Governed PR delivery\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "c254618a6e756697f395c42bf40a60583e7276bc",
+          "mergeCommit": {
+            "oid": "cf62c49258ad0a377549273576db96acea5dc417"
+          },
+          "mergedAt": "2026-10-05T23:17:53Z",
+          "number": 1900,
+          "state": "MERGED",
+          "title": "[#1899] Explicit CI coverage for project-provider declared suites",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1900"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "head": "2d36e1a6c9c57039299c332ef208e09e34d1e003",
+      "branch": "refs/heads/codex/1902-preserve-merge-history",
+      "prunable": null,
+      "id": "P16",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "2d36e1a6 [#1902] Preserve reviewed child history when parent is already contained\ndab9548a [#1897] Governed PR delivery\ncf62c492 [#1899] Governed PR delivery\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n1a57c3eb [#1894] Governed PR delivery\n22fdb016 [#1892] Governed PR delivery\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "2d36e1a6c9c57039299c332ef208e09e34d1e003",
+          "mergeCommit": {
+            "oid": "e802e425d1d4efbc058c154d0f09b7b90116446c"
+          },
+          "mergedAt": "2026-10-06T13:25:08Z",
+          "number": 1903,
+          "state": "MERGED",
+          "title": "[#1902] Preserve reviewed child history when parent is already contained",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1903"
+        }
+      ]
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/chore-hybrid-insights-specs",
+      "head": "4f70500b60c78a090aefd9eea052122c04467480",
+      "branch": "refs/heads/codex/chore-hybrid-insights-specs",
+      "prunable": null,
+      "id": "P17",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "4f70500b6 chore: add hybrid ledger and insights program plans\nded53e96f [#1027] fix(state-engine): derive status config projections\n01b360a5c [#1023] fix(cli): make help contracts canonical and context-safe\n30ea02a80 [#1011] refactor(cli): enforce agentic help completeness\n83a3bd81b [#1010] fix(review): enforce timing emission policy\ndbe63e2ce [#1010] refactor(timing): centralize event vocabulary\n",
+      "prs": []
+    },
+    {
+      "path": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+      "head": "d0bbf8c62c5c34b86158054b4c80d3548f8d13b1",
+      "branch": "refs/heads/codex/root-ac-derivation",
+      "prunable": null,
+      "id": "P18",
+      "dirty": "",
+      "dirtyExit": 0,
+      "logs": "d0bbf8c6 [#1904] Account for the single shipped root AC locator\nf09688fe [#1904] Select formal root ACs for completion and body guards\ne802e425 [#1902] Governed PR delivery\ndab9548a [#1897] Governed PR delivery\ncf62c492 [#1899] Governed PR delivery\n15faa18e [#1847] Preserve reviewed criteria-revision specification and plan\n",
+      "prs": [
+        {
+          "baseRefName": "trunk",
+          "headRefOid": "d0bbf8c62c5c34b86158054b4c80d3548f8d13b1",
+          "mergeCommit": {
+            "oid": "e49543f2e93c6d5ce768322b8cb36bad8639bc61"
+          },
+          "mergedAt": "2026-10-06T16:09:16Z",
+          "number": 1905,
+          "state": "MERGED",
+          "title": "[#1904] Select formal root ACs for completion and body guards",
+          "url": "https://github.com/kburson/ai-task-manager/pull/1905"
+        }
+      ]
+    }
+  ]
+}

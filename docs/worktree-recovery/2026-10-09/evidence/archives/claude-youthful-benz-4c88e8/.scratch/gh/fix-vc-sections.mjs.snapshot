@@ -1,0 +1,55 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+// Well-formed replacement VC lists, keyed by issue.
+const EPIC_VC = [
+  '- [ ] `npm run lint` <!-- id=1 -->',
+  '- [ ] `npm run format:check` <!-- id=2 -->',
+  '- [ ] `npm run test:unit` <!-- id=3 -->',
+  '- [ ] `npm run test:integration` <!-- id=4 -->',
+];
+
+const DEFECT_VC = [
+  '- [ ] `npm run lint` <!-- id=1 -->',
+  '- [ ] `npm run format:check` <!-- id=2 -->',
+  '- [ ] `node --test scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs` <!-- id=3 -->',
+  '- [ ] `node --test scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation-regression.test.mjs` <!-- id=4 -->',
+  '- [ ] `node --test scripts/tests/unit/task-tracker/lib/delivery-observe-merge-method.test.mjs` <!-- id=5 -->',
+  '- [ ] `node --test scripts/tests/unit/task-tracker/verbs/deliver-reconcile-args.test.mjs` <!-- id=6 -->',
+  '- [ ] `npm run test:unit` <!-- id=7 -->',
+];
+
+const TARGETS = [
+  { issue: 1558, vc: EPIC_VC },
+  { issue: 1559, vc: EPIC_VC },
+  { issue: 1560, vc: EPIC_VC },
+  { issue: 1561, vc: EPIC_VC },
+  { issue: 1562, vc: DEFECT_VC },
+];
+
+const HEAD = new RegExp('^## ');
+
+function replaceSection(body, heading, lines) {
+  const src = body.split('\n');
+  const start = src.findIndex((l) => l.trim() === heading);
+  if (start === -1) throw new Error(`${heading} not found`);
+  let end = src.length;
+  for (let i = start + 1; i < src.length; i += 1) {
+    if (HEAD.test(src[i])) {
+      end = i;
+      break;
+    }
+  }
+  return [...src.slice(0, start), heading, '', ...lines, '', ...src.slice(end)].join('\n');
+}
+
+for (const { issue, vc } of TARGETS) {
+  const res = await mutateIssueBody({
+    issueNumber: issue,
+    repo: cfg.repo,
+    mutate: (body) => replaceSection(body, '## Verification Commands', vc),
+  });
+  console.log(`#${issue}:`, JSON.stringify(res?.status ?? res));
+}

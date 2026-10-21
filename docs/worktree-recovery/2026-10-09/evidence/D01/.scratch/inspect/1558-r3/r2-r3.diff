@@ -1,0 +1,864 @@
+--- wbs-r2.md	2026-09-16 09:30:51
++++ wbs-r3.md	2026-09-16 09:30:51
+@@ -1,6 +1,6 @@
+-# #1558 Ask-the-Script Guidance Hydration WBS — Revision 2
++# #1558 Ask-the-Script Guidance Hydration WBS — Revision 3
+ 
+-> **Status:** Proposed response to manual WBS round 1. Not accepted; do not hydrate or implement from this revision until the human accepts the reviewed commit and digest. Codex handles revisions; Sol5.6 drafted revision 1. No runtime or workflow changes are made by this document.
++> **Status:** Proposed response to manual WBS round 2. Not accepted; do not hydrate or implement from this revision until the human accepts the reviewed commit and digest. Codex handles revisions; Sol5.6 drafted revision 1. No runtime or workflow changes are made by this document.
+ 
+ ## Authority and scope
+ 
+@@ -9,6 +9,8 @@
+ - Ratified spec: `docs/superpowers/specs/2026-09-15-1558-ask-the-script-guidance-design.md`, SHA-256 `2e121b01863952df69ac13bb373bf9c2d671e1e04027b047289f96647d9eea78` at the same commit.
+ - Superseded hydration proposal: `2026-09-16-1558-ask-the-script-guidance-hydration-wbs.md`, round-1 input SHA-256 `0d86d3af4be89c21a599520ed767a10f19be673f79ade851b2ff33e4de063422`. Its historical proposal is not hydration authority.
+ 
++Revision 2 remains preserved at commit `f4970b17a8296d789f220fb020aa59ff101cc54a`, SHA-256 `bc58ab2116b1f0f86acbf3b37e5052dca5c65686670b41088c319bd1b3a09f82`; this revision supersedes it only after acceptance.
++
+ This revision is the proposed **expanded source plan for hydration**, with 26 unique numeric task headings. On acceptance, parent and child `Source-plan` fields select this file and its accepted commit. The original replacement plan remains the pinned technical baseline, recorded separately as `Baseline-plan`, `Baseline-plan-commit`, and `Baseline-plan-section`. Do not point child `Source-plan-section` back at duplicate original headings. The shipped checker ignores Source-WBS fields and cannot extract the original 1a/1b headings: this revision resolves that upstream representation defect without editing the agreed plan, adding a checker feature, or granting a waiver.
+ 
+ In this file, **WBS N** means its numeric heading. **Baseline Task N** means the original plan identity. Copied technical task bodies retain their original Task references; those references always mean baseline tasks, resolved through the mapping below. Original global constraints, interfaces, steps, parent traceability and release gates remain normative; splitting reallocates ownership only. Where this revision makes hydration/closure requirements stricter, they apply in addition.
+@@ -32,7 +34,7 @@
+ 
+ Review at **16 hours OR 3 units**; mandatory split at **24 hours OR 4 units**, including either half and combined characterization scope. Six parent-level Step headings do not imply six independent capabilities: RED/GREEN/commit phases are attached to the capabilities they prove. Task 10 has four substantive capabilities even after that distinction and is split. Task 12 has six because it has six distinct behavior/certification boundaries, not because it has six Step headings. Task 4's promote/derived-result migration must remain atomic with removal of the existing mutation channel; Task 8's direct/delegated parity cannot certify an incomplete Review preflight.
+ 
+-Every child with 16+ hours or 3+ units receives this explicit retention decision: **retain only the stated bounded capability set, all below both mandatory split thresholds**. This applies to WBS 2, 3, 5, 6, 11, 15, 17, 18, 20 and 21. WBS 20/21 are 22-hour high-uncertainty estimates with only 2 hours below the mandatory threshold; their route/layout assumptions require early confirmation. At Refine and before starting any expanded scope, re-estimate hours and count units. An estimate reaching 24 hours, a fourth unit, an unresolved estimate, or a changed boundary stops execution and requires a reviewed split/revision before continuing. The same rule applies to retained WBS 11/15 and every other child; neither this document nor a successful review is a permanent size waiver.
++The ten estimated children at or above the review threshold receive this explicit retention decision: **retain their stated bounded capability sets; these ten estimates are below both mandatory split thresholds**. They are WBS 2, 3, 5, 6, 11, 15, 17, 18, 20 and 21. The twelve retained children without pre-hydration estimates — WBS 9, 10, 12, 13, 14, 16, 19, 22, 23, 24, 25 and 26 — are sized at Refine under the same stop conditions; no below-threshold claim is made for them. Mandatory pre-hydration sizing applies to the baseline scopes named in the table; this does not introduce a new pre-hydration estimate requirement for all other scopes. WBS 20/21 are 22-hour high-uncertainty estimates with only 2 hours below the mandatory threshold; their route/layout assumptions require early confirmation. At Refine and before starting any expanded scope, re-estimate hours and count units. An estimate reaching 24 hours, a fourth unit, an unresolved estimate, or a changed boundary stops execution and requires a reviewed split/revision before continuing. The same rule applies to retained WBS 11/15 and every other child; neither this document nor a successful review is a permanent size waiver.
+ 
+ ## AC allocation and aggregate ownership
+ 
+@@ -53,8 +55,35 @@
+ | 12 AC2             | WBS 21: serialized one-time annotation and audit failure                                                                                          | WBS 21 / VC12         |
+ | 12 AC3             | WBS 20: identity/assets and B2-absent release refusal; WBS 21: actual package/install/init, per-command cold baseline and aggregate release proof | WBS 21 / VC12         |
+ 
+-The other fourteen task bodies below are copied from the baseline without changing their stories, ACs, steps or exact verifiers. All original VC1–VC18 identities survive; stage verifiers VC19–VC26 and the existing foundation command labeled VC27 supplement them. New test files are future implementation deliverables, not claims of current passing runtime tests. Aggregate suites must execute their component assertions, not merely check that their files exist.
++Of the fourteen retained baseline contracts, thirteen preserve the original substantive body and WBS 9 preserves that body plus its disclosed additional foundation-entry AC. Their literal component commands and arguments are preserved; forbidden shell chains are expanded into separate required entries as described below. Revision 3 normalizes story fragments to the renderer’s required three-line syntax and remaps AC citation metadata to issue-local IDs; no baseline requirement or implementation step is removed. These bodies are therefore not claimed byte-identical to the baseline. All original VC1–VC18 identities survive; stage verifiers VC19–VC26 and the existing foundation command labeled VC27 supplement them. New test files are future implementation deliverables, not claims of current passing runtime tests. Aggregate suites must execute their component assertions, not merely check that their files exist.
+ 
++## Verifier names and issue-local citation IDs
++
++`VC1`–`VC27` in narrative and the hydration map are cross-document **plan names**, not issue IDs. Each child supplies its commands in the displayed `Run:` order. New issue IDs start at 1. The renderer rejects `&&` command chains, so this revision expands each baseline chain into its individual literal commands, preserving their order and arguments and requiring every component to pass. No command is removed or replaced by a wrapper. An AC that formerly cited a compound verifier now cites **all** of its component IDs; one passing component cannot satisfy the conjunction.
++
++| WBS ranks       | Plan name to issue-local ID mapping    |
++| --------------- | -------------------------------------- |
++| 8               | VC18 → `vc:1 vc:2`; VC27 → `vc:3`      |
++| 9               | VC2 → `vc:1 vc:2`; VC27 → `vc:3`       |
++| 24              | VC15 → `vc:1 vc:2`                     |
++| 25              | VC16 → `vc:1 vc:2`                     |
++| 26              | VC17 → `vc:1 vc:2 vc:3 vc:4 vc:5 vc:6` |
++| All other ranks | Their one plan verifier → `vc:1`       |
++
++WBS 8’s GO closure and WBS 9’s GO entry cite `vc:3`, the foundation assertion. The renderer may append ordinary DoD commands after the supplied commands; these do not change the supplied IDs. Every child AC marker below already uses the issue-local ID(s). Preserve those markers when creating a fresh child. Stable IDs are not renumbered later: when resuming an already-created issue, inspect its actual IDs by exact command text and preserve their identity. An existing body with a different allocation is a stop condition for this revision's strict fresh-body check; review a revised mapping before proceeding rather than rewriting its stable IDs to make the check pass.
++
++`--verification-commands-file` contains bare executable command strings, one command per line. Strip display labels (`Plan verifier name`, `Run:`), Markdown backticks, checkbox wrappers and heading/ID comments. Copy the already expanded `Run:` lines exactly; do not recombine them with `&&`. For WBS 8 the entire fragment is:
++
++```text
++node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs
++node scripts/maintenance/measure-guidance-candidate.mjs --all --json
++node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json
++```
++
++WBS 9 likewise has three lines; WBS 24/25 have two and WBS 26 has six. Every other child has one. `--ac-file` contains the child's existing `- [ ]` lines, including local `vc-list` markers, without a heading or additional wrapper; the renderer preserves checkbox lines. `--user-story-file` contains exactly the three displayed heading-free lines beginning `As a/an`, `I want to`, and `So that`. No instruction or example prose belongs in these fragments.
++
++After the offline render and again after creation, parse the root Verification Commands with `parseVerificationCommands`, parse every AC marker with `parseProofMarker`, and pass its `vc-list` to `resolveVcListStrict`. Require the resolved literal command(s) to equal that AC’s complete intended command set, not merely to exist. WBS 8 closure and WBS 9 entry must resolve to the third command, the GO assertion. Never stamp evidence to compensate for an unresolved or misdirected citation. The post-hydration command below performs these checks too. Running each component separately changes command packaging, not acceptance: all original components must pass before the child can advance.
++
+ ## Hydration map
+ 
+ Sequence is the required rank. Map each WBS sequence to its newly created issue number before writing dependencies; sequence numbers are not GitHub issue numbers. Every runtime child also directly depends on WBS 8, so an unresolved or reopened feasibility decision is visible to every runtime child rather than only transitively through WBS 9.
+@@ -94,8 +123,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1a: Inventory source/effects/flags and freeze the legacy workflow baseline`. Former WBS identity: `1a-i`.
+ 
+-**User story:** As a characterization maintainer, I want fingerprinted authority and flag inventories, so that no unclassified path or bypass can distort measurement.
++**User story:**
+ 
++As a characterization maintainer,
++I want to have fingerprinted authority and flag inventories,
++So that no unclassified path or bypass can distort measurement.
++
+ **Estimate and units:** 12 hours; Source/effect and authority inventory (6 h); behavioral-flag classification and disposition (6 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `scripts/tests/fixtures/1558/action-observation-inventory.json`, `behavioral-flags.json`, and `authority-baseline.json`; create `guidance-legacy-inventory.test.mjs` in the unit test directory above. Apply baseline Task 1a Step 1 in full, including transitive, indexed, aliased and destructured environment reads. No process harness, fixture execution or runtime edits.
+@@ -104,12 +137,12 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] All seven paths enumerate predicates, resource subjects, conditional authority, known refusals, warnings, human obligations, locks and first effects with source symbols/fingerprints. <!-- aitm-verified vc-list="vc:19" -->
+-- [ ] Every reachable production behavioral environment read has default/nondefault behavior, predicate/effect classification, baseline policy, disposition, rationale, owner and verifier. Removing a read/flag row or changing a fingerprint fails; legitimate operator controls are not blanket-retired. <!-- aitm-verified vc-list="vc:19" -->
++- [ ] All seven paths enumerate predicates, resource subjects, conditional authority, known refusals, warnings, human obligations, locks and first effects with source symbols/fingerprints. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Every reachable production behavioral environment read has default/nondefault behavior, predicate/effect classification, baseline policy, disposition, rationale, owner and verifier. Removing a read/flag row or changing a fingerprint fails; legitimate operator controls are not blanket-retired. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC19.
++Plan verifier name: VC19; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-inventory.test.mjs`
+ 
+@@ -117,8 +150,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1a: Inventory source/effects/flags and freeze the legacy workflow baseline`. Former WBS identity: `1a-ii-a`.
+ 
+-**User story:** As a harness maintainer, I want all physical transport intercepted before production imports, so that the unchanged CLI can be exercised without external effects.
++**User story:**
+ 
++As a harness maintainer,
++I want to have all physical transport intercepted before production imports,
++So that the unchanged CLI can be exercised without external effects.
++
+ **Estimate and units:** 16 hours; Launcher and sanitized environment (4 h); low-level interception, custom-promise shapes and nested/direct-network coverage (8 h); positive transport ledger and package exclusion (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own initial `scripts/tests/helpers/guidance-legacy-cli.mjs`, `guidance-legacy-preload.mjs`, and `guidance-legacy-transport.mjs`; own `guidance-legacy-transport.test.mjs`. The CLI module owns `captureLegacyWorkflow({ sourceCommit, adapter, scenario, authorityFixture, scratchRoot })`; transport owns callback/custom-promise dispatch and the physical ledger; preload alone patches process/network ports and synchronizes ESM exports. No lifecycle authority scenarios or frozen baseline.
+@@ -127,13 +164,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] The launcher sanitizes inherited bypass/fake/fault flags, installs preload before imports, and confines local Git/filesystem/session/lock effects to isolated repositories. Unknown subprocess/network attempts fail in an outer ledger even if production catches the exception; production gains no bypass switch. <!-- aitm-verified vc-list="vc:20" -->
+-- [ ] Callback execFile, exec, custom-promisify, aliased nodePexec/defaultExecFile, synchronous/spawn forms, nested children and direct HTTP have inventoried handling. Custom replacements preserve stdout/stderr, error code/streams and promise.child; restoring a native custom symbol fails positive ledger evidence with local canaries. <!-- aitm-verified vc-list="vc:20" -->
+-- [ ] Positive local transport fixtures reconcile every declared request to physical ledger rows on Node 24 and development Node 26; empty ledger is rejected. Package tests exclude all harness code. Lifecycle-specific fixture expectations are reserved to WBS 3. <!-- aitm-verified vc-list="vc:20" -->
++- [ ] The launcher sanitizes inherited bypass/fake/fault flags, installs preload before imports, and confines local Git/filesystem/session/lock effects to isolated repositories. Unknown subprocess/network attempts fail in an outer ledger even if production catches the exception; production gains no bypass switch. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Callback execFile, exec, custom-promisify, aliased nodePexec/defaultExecFile, synchronous/spawn forms, nested children and direct HTTP have inventoried handling. Custom replacements preserve stdout/stderr, error code/streams and promise.child; restoring a native custom symbol fails positive ledger evidence with local canaries. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Positive local transport fixtures reconcile every declared request to physical ledger rows on Node 24 and development Node 26; empty ledger is rejected. Package tests exclude all harness code. Lifecycle-specific fixture expectations are reserved to WBS 3. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC20.
++Plan verifier name: VC20; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-transport.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
+ 
+@@ -141,8 +178,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1a: Inventory source/effects/flags and freeze the legacy workflow baseline`. Former WBS identity: `1a-ii-b`.
+ 
+-**User story:** As a baseline maintainer, I want coherent lifecycle authority fixtures, so that intercepted transport exercises actual production readiness rather than mocked successful results.
++**User story:**
+ 
++As a baseline maintainer,
++I want to have coherent lifecycle authority fixtures,
++So that intercepted transport exercises actual production readiness rather than mocked successful results.
++
+ **Estimate and units:** 16 hours; Isolated repository and deterministic authority store (6 h); ordered success/refusal scenarios (6 h); expected-request and effect reconciliation (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Create `scripts/tests/helpers/guidance-legacy-authority.mjs` and `guidance-legacy-authority.test.mjs`; own deterministic store/scenario builders under `scripts/tests/fixtures/1558/legacy-workflow/`. Extend the existing captureLegacyWorkflow launcher to use these fixtures. Consume, do not redefine, WBS 2 transport/preload functions. No frozen loaded text or candidate model.
+@@ -151,13 +192,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] The store supplies deterministic issue/board/approval/PR/provider authority and advances simulated remote state only when an actual unchanged CLI command reaches its intercepted mutation transport. <!-- aitm-verified vc-list="vc:21" -->
+-- [ ] All seven success/refusal lanes preserve real production predicates/formatting; approved and missing-approval counterparts differ by authority alone. Declared conditional reads, pages and retries reconcile expected identities to actual transport and store accesses; missing/extra observations fail. <!-- aitm-verified vc-list="vc:21" -->
+-- [ ] No validator, readiness result, guard, routing or complete successful verb result is mocked. A refused action leaves the store unchanged and full streams/effects remain available to the capture runner. <!-- aitm-verified vc-list="vc:21" -->
++- [ ] The store supplies deterministic issue/board/approval/PR/provider authority and advances simulated remote state only when an actual unchanged CLI command reaches its intercepted mutation transport. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] All seven success/refusal lanes preserve real production predicates/formatting; approved and missing-approval counterparts differ by authority alone. Declared conditional reads, pages and retries reconcile expected identities to actual transport and store accesses; missing/extra observations fail. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] No validator, readiness result, guard, routing or complete successful verb result is mocked. A refused action leaves the store unchanged and full streams/effects remain available to the capture runner. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC21.
++Plan verifier name: VC21; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-authority.test.mjs`
+ 
+@@ -165,8 +206,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1a: Inventory source/effects/flags and freeze the legacy workflow baseline`. Former WBS identity: `1a-ii-c`.
+ 
+-**User story:** As a measurement maintainer, I want complete frozen legacy adapter traces, so that candidate comparisons use identical governed work.
++**User story:**
+ 
++As a measurement maintainer,
++I want to have complete frozen legacy adapter traces,
++So that candidate comparisons use identical governed work.
++
+ **Estimate and units:** 12 hours; Capture and fingerprint both ordered adapter workflows (8 h); independent completeness review and controlled timing record (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `guidance-legacy-baseline.test.mjs`, `scripts/tests/fixtures/1558/legacy-baseline.json`, and frozen loaded-text/authority/transcript artifacts under `legacy-workflow/`. The aggregate baseline suite executes the inventory, transport and authority assertions from WBS 1–3. No candidate or production changes.
+@@ -181,7 +226,7 @@
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC1.
++Plan verifier name: VC1; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-legacy-baseline.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
+ 
+@@ -189,8 +234,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1b: Certify candidate semantics and measure the single feasibility decision`. Former WBS identity: `1b-i`.
+ 
+-**User story:** As a semantic reviewer, I want a spec-derived clause index independent of serializer fields, so that an incomplete oracle cannot certify itself.
++**User story:**
+ 
++As a semantic reviewer,
++I want to have a spec-derived clause index independent of serializer fields,
++So that an incomplete oracle cannot certify itself.
++
+ **Estimate and units:** 16 hours; Verify frozen baseline inputs (4 h); independently transcribe normative clause index (8 h); implement assertion registry and traceability integrity checks (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `scripts/tests/fixtures/1558/spec-clause-index.json`, initial `oracle-traceability.json`, `scripts/tests/helpers/guidance-clause-index.mjs`, and `guidance-clause-index.test.mjs`. No full candidate serializer, costs or final feasibility decision.
+@@ -199,13 +248,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] WBS 4 baseline inputs and inventory/source/runner digests verify; bypass-derived success, missing transport evidence, stale sources or uncaptured outputs refuse candidate certification. <!-- aitm-verified vc-list="vc:22" -->
+-- [ ] Every individually testable normative clause in baseline Task 1b Step 2 is independently transcribed from the pinned spec and mapped to positive/adversarial fixture and executable assertion identities. A reviewer checks the index against the actual spec. <!-- aitm-verified vc-list="vc:22" -->
+-- [ ] Traceability integrity checks reject missing/duplicate clauses, stale digests and unknown or unexecuted assertion/fixture identities. Small probe assertions demonstrate missing generation and validation failures; the complete seven-action semantic executions remain WBS 6’s responsibility. <!-- aitm-verified vc-list="vc:22" -->
++- [ ] WBS 4 baseline inputs and inventory/source/runner digests verify; bypass-derived success, missing transport evidence, stale sources or uncaptured outputs refuse candidate certification. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Every individually testable normative clause in baseline Task 1b Step 2 is independently transcribed from the pinned spec and mapped to positive/adversarial fixture and executable assertion identities. A reviewer checks the index against the actual spec. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Traceability integrity checks reject missing/duplicate clauses, stale digests and unknown or unexecuted assertion/fixture identities. Small probe assertions demonstrate missing generation and validation failures; the complete seven-action semantic executions remain WBS 6’s responsibility. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC22.
++Plan verifier name: VC22; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-clause-index.test.mjs`
+ 
+@@ -213,8 +262,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1b: Certify candidate semantics and measure the single feasibility decision`. Former WBS identity: `1b-ii`.
+ 
+-**User story:** As a candidate maintainer, I want clause-complete decision and presentation fixtures, so that size measurements never reward missing instructions or obligations.
++**User story:**
+ 
++As a candidate maintainer,
++I want to have clause-complete decision and presentation fixtures,
++So that size measurements never reward missing instructions or obligations.
++
+ **Estimate and units:** 16 hours; Complete decision and strict semantic oracle (6 h); routine/diagnostic serializer with policy-enriched seven-action fixtures (6 h); clause execution and generation/validation mutation proofs (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Create candidate semantics in `scripts/tests/helpers/guidance-characterization.mjs`, `guidance-candidate-oracle.test.mjs`, and `scripts/tests/fixtures/1558/action-decision-fixtures/{bind,resume,promote,test,review,deliver,close}.json`. Complete WBS 5’s traceability outcome mappings. No production schemas/evaluators, cost comparison or gate writer.
+@@ -223,13 +276,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] All seven actions have reachable ready/blocked/indeterminate, warning, normalization and effective-policy human-request cases. Strict routine/diagnostic candidates preserve every normative operational field and full required digest with no valid-empty substitution. <!-- aitm-verified vc-list="vc:23" -->
+-- [ ] Every indexed clause executes positive and adversarial assertions; deleting required generated human requests or their validator requirements fails before any feasibility decision. Unknown/missing members, arrays/nulls, subjects, modes, dispositions and producer arguments are rejected. <!-- aitm-verified vc-list="vc:23" -->
+-- [ ] Increasing evidence-only cardinality leaves routine bytes identical; genuine operational blockers, warnings and subjects remain complete. Candidates are explicitly labeled test models, never production evaluator results. <!-- aitm-verified vc-list="vc:23" -->
++- [ ] All seven actions have reachable ready/blocked/indeterminate, warning, normalization and effective-policy human-request cases. Strict routine/diagnostic candidates preserve every normative operational field and full required digest with no valid-empty substitution. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Every indexed clause executes positive and adversarial assertions; deleting required generated human requests or their validator requirements fails before any feasibility decision. Unknown/missing members, arrays/nulls, subjects, modes, dispositions and producer arguments are rejected. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Increasing evidence-only cardinality leaves routine bytes identical; genuine operational blockers, warnings and subjects remain complete. Candidates are explicitly labeled test models, never production evaluator results. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC23.
++Plan verifier name: VC23; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-candidate-oracle.test.mjs`
+ 
+@@ -237,8 +290,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1b: Certify candidate semantics and measure the single feasibility decision`. Former WBS identity: `1b-iii`.
+ 
+-**User story:** As a feasibility analyst, I want complete paired costs and sensitivity evidence, so that a smaller selected fragment cannot masquerade as a smaller workflow.
++**User story:**
+ 
++As a feasibility analyst,
++I want to have complete paired costs and sensitivity evidence,
++So that a smaller selected fragment cannot masquerade as a smaller workflow.
++
+ **Estimate and units:** 12 hours; Complete candidate workflow capture and paired cost categories (8 h); cardinality, sensitivity and reachable heavy-case accounting (4 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Extend comparison functions in `guidance-characterization.mjs`; own `guidance-candidate-measurement.test.mjs`, `action-cardinality.json`, `serialization-sensitivity.json`, `context-comparison.json` and ordered `candidate-workflow/` artifacts. No authoritative verdict or production changes.
+@@ -247,13 +304,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Both adapters compare complete loaded proposed text and serialized command/receipt/stdout/stderr traffic to WBS 4’s equivalent frozen work, including repeat/change/stale receipt/compaction/remediation and required diagnostic requests. <!-- aitm-verified vc-list="vc:24" -->
+-- [ ] Observed per-fixture cardinality, simultaneous reachability, fan-out, finite heavy inputs and unbounded dimensions are explicit; sensitivity uses actual serialized bytes/characters/proxy rather than average multiplication or shortened fingerprints. <!-- aitm-verified vc-list="vc:24" -->
+-- [ ] Paired reports link exact source/scenario/fixture/tool identities and disclose the provisional static obligation assumption and remaining margins. Removing an output/category, guessing reads or treating fixture latency as service timing fails. <!-- aitm-verified vc-list="vc:24" -->
++- [ ] Both adapters compare complete loaded proposed text and serialized command/receipt/stdout/stderr traffic to WBS 4’s equivalent frozen work, including repeat/change/stale receipt/compaction/remediation and required diagnostic requests. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Observed per-fixture cardinality, simultaneous reachability, fan-out, finite heavy inputs and unbounded dimensions are explicit; sensitivity uses actual serialized bytes/characters/proxy rather than average multiplication or shortened fingerprints. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Paired reports link exact source/scenario/fixture/tool identities and disclose the provisional static obligation assumption and remaining margins. Removing an output/category, guessing reads or treating fixture latency as service timing fails. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC24.
++Plan verifier name: VC24; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs`
+ 
+@@ -261,8 +318,12 @@
+ 
+ **Baseline-plan-section:** `### Task 1b: Certify candidate semantics and measure the single feasibility decision`. Former WBS identity: `1b-iv`.
+ 
+-**User story:** As a maintainer funding runtime extraction, I want a reproducible feasibility verdict with an enforced GO prerequisite, so that an honest negative result cannot release runtime work.
++**User story:**
+ 
++As a maintainer funding runtime extraction,
++I want to have a reproducible feasibility verdict with an enforced GO prerequisite,
++So that an honest negative result cannot release runtime work.
++
+ **Estimate and units:** 8 hours; Validate all pinned inputs and publish the single decision plus foundation assertion (8 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `scripts/maintenance/measure-guidance-candidate.mjs`, aggregate `guidance-characterization.test.mjs`, and `scripts/tests/fixtures/1558/feasibility-decision.json`. Aggregate tests execute WBS 5–7 checks. No budget changes, runtime extraction or competing gate.
+@@ -271,18 +332,20 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] The versioned decision pins every source, baseline, runner, clause/fixture/oracle, serializer, proposed static text and measurement input; all completeness/fidelity and fixed ceiling/headroom/reduction verdicts reproduce for both adapters. <!-- aitm-verified vc-list="vc:18" -->
+-- [ ] VC18 accepts honest NO-GO accounting while VC27 exits nonzero for it; missing or stale inputs cannot pass either completeness or GO. WBS 8 remains the sole writer/owner of the decision and foundation assertion. <!-- aitm-verified vc-list="vc:18" -->
+-- [ ] Closure requires VC27 exit 0 for the recorded accepted input generation. NO-GO commits measured evidence but leaves this issue OPEN in Develop; all runtime native dependencies on it remain unresolved. <!-- aitm-verified vc-list="vc:27" -->
++- [ ] The versioned decision pins every source, baseline, runner, clause/fixture/oracle, serializer, proposed static text and measurement input; all completeness/fidelity and fixed ceiling/headroom/reduction verdicts reproduce for both adapters. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] VC18 accepts honest NO-GO accounting while VC27 exits nonzero for it; missing or stale inputs cannot pass either completeness or GO. WBS 8 remains the sole writer/owner of the decision and foundation assertion. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] Closure requires VC27 exit 0 for the recorded accepted input generation. NO-GO commits measured evidence but leaves this issue OPEN in Develop; all runtime native dependencies on it remain unresolved. <!-- aitm-verified vc-list="vc:3" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC18.
++Plan verifier name: VC18; issue-local IDs: `vc:1`, `vc:2`.
+ 
+-Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs && node scripts/maintenance/measure-guidance-candidate.mjs --all --json`
++Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs`
+ 
+-Root verifier identity: VC27.
++Run: `node scripts/maintenance/measure-guidance-candidate.mjs --all --json`
+ 
++Plan verifier name: VC27; issue-local ID: `vc:3`.
++
+ Run: `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json`
+ 
+ ### Task 9: Establish the complete shared decision and typed vocabulary contract
+@@ -347,22 +410,24 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] All seven v1 actions use one bare-ID registry and one versioned decision contract; #1561 has a documented consumption boundary. <!-- aitm-verified vc-list="vc:2" -->
+-- [ ] Every inventoried refusal is coded or explicitly manual, and new/changed unclassified sites fail CI. <!-- aitm-verified vc-list="vc:2" -->
+-- [ ] The closed blocker/warning/request schemas enforce producer, args, status, scope and policy invariants while preserving complete internal evidence; Task 1 GO is a checked prerequisite. <!-- aitm-verified vc-list="vc:2" -->
++- [ ] All seven v1 actions use one bare-ID registry and one versioned decision contract; #1561 has a documented consumption boundary. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] Every inventoried refusal is coded or explicitly manual, and new/changed unclassified sites fail CI. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] The closed blocker/warning/request schemas enforce producer, args, status, scope and policy invariants while preserving complete internal evidence; Task 1 GO is a checked prerequisite. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+ 
+ **Additional foundation entry acceptance criterion:**
+ 
+-- [ ] Before runtime work, the recorded decision and input digests match current accepted artifacts and VC27 exits 0; stale/missing/NO-GO evidence blocks entry regardless of issue closure state. <!-- aitm-verified vc-list="vc:27" -->
++- [ ] Before runtime work, the recorded decision and input digests match current accepted artifacts and VC27 exits 0; stale/missing/NO-GO evidence blocks entry regardless of issue closure state. <!-- aitm-verified vc-list="vc:3" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC2.
++Plan verifier name: VC2; issue-local IDs: `vc:1`, `vc:2`.
+ 
+-Run: `node --test scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs && node scripts/maintenance/lint-action-refusals.mjs`
++Run: `node --test scripts/tests/unit/task-tracker/lib/action-decision-contract.test.mjs`
+ 
+-Root verifier identity: VC27 (entry prerequisite).
++Run: `node scripts/maintenance/lint-action-refusals.mjs`
+ 
++Plan verifier name: VC27 (entry prerequisite); issue-local ID: `vc:3`.
++
+ Run: `node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json`
+ 
+ ### Task 10: Validate and project the compact operational result
+@@ -372,7 +437,7 @@
+ **User story:**
+ 
+ As an agent choosing a lifecycle action,
+-I want all operationally necessary information without repeated evidence metadata,
++I want to have all operationally necessary information without repeated evidence metadata,
+ So that routine guidance remains small while explicit investigation can inspect complete evidence.
+ 
+ **Scope/files:** Create `scripts/task-tracker/lib/action-decision/presentation.mjs` and `scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs`; extend Task 2 contract definitions and Task 1 conformance fixtures. Keep catalog lookup and CLI orchestration in Task 14. This module accepts validated values and performs no I/O, evaluation, logging, mutation, or authority collection.
+@@ -412,13 +477,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Strict shared validation and allowlist projection preserve every operational field while removing only specified diagnostic provenance; no valid-empty substitution hides content. <!-- aitm-verified vc-list="vc:3" -->
+-- [ ] Typed failures, ordered warnings, effective-policy human requests, cross-issue subject mapping, and deterministic nonrecursive failure output match the amended spec. <!-- aitm-verified vc-list="vc:3" -->
+-- [ ] Routine/diagnostic modes are closed, evidence growth alone does not grow routine output, and complete diagnostic data remains available without becoming execution input. <!-- aitm-verified vc-list="vc:3" -->
++- [ ] Strict shared validation and allowlist projection preserve every operational field while removing only specified diagnostic provenance; no valid-empty substitution hides content. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Typed failures, ordered warnings, effective-policy human requests, cross-issue subject mapping, and deterministic nonrecursive failure output match the amended spec. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Routine/diagnostic modes are closed, evidence growth alone does not grow routine output, and complete diagnostic data remains available without becoming execution input. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC3.
++Plan verifier name: VC3; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs`
+ 
+@@ -482,13 +547,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Complete guards, conditional policy enrichment, provenance, and contiguity refresh share one read-only evaluation path with mutation. <!-- aitm-verified vc-list="vc:4" -->
+-- [ ] Required-read failures, incompatible evidence, malformed results, and pending adapters never become ready; explanation performs no effects. <!-- aitm-verified vc-list="vc:4" -->
+-- [ ] Read reuse is bounded to one attempt and does not remove execution refreshes. <!-- aitm-verified vc-list="vc:4" -->
++- [ ] Complete guards, conditional policy enrichment, provenance, and contiguity refresh share one read-only evaluation path with mutation. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Required-read failures, incompatible evidence, malformed results, and pending adapters never become ready; explanation performs no effects. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Read reuse is bounded to one attempt and does not remove execution refreshes. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC4.
++Plan verifier name: VC4; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/action-observations.test.mjs scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs`
+ 
+@@ -531,13 +596,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Explanation uses the same pure ordered projection as execution and discloses pending writes without performing them. <!-- aitm-verified vc-list="vc:5" -->
+-- [ ] Concurrent edits trigger complete recomputation; failed writes/readbacks stop all subsequent effects. <!-- aitm-verified vc-list="vc:5" -->
+-- [ ] Decision identity excludes timestamps/marker bytes, while execution readback checks actual provenance and idempotence. <!-- aitm-verified vc-list="vc:5" -->
++- [ ] Explanation uses the same pure ordered projection as execution and discloses pending writes without performing them. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Concurrent edits trigger complete recomputation; failed writes/readbacks stop all subsequent effects. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Decision identity excludes timestamps/marker bytes, while execution readback checks actual provenance and idempotence. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC5.
++Plan verifier name: VC5; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/functional-dod-project.test.mjs scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs`
+ 
+@@ -578,13 +643,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Bind/resume and early forward edges expose all required session, verb, and mutator checks with stable dispositions. <!-- aitm-verified vc-list="vc:6" -->
+-- [ ] Shared navigation preserves lifecycle policy, terminal Done, and indeterminate unknown state without a second state walk. <!-- aitm-verified vc-list="vc:6" -->
+-- [ ] Changed authority after explanation is refused by fresh execution checks. <!-- aitm-verified vc-list="vc:6" -->
++- [ ] Bind/resume and early forward edges expose all required session, verb, and mutator checks with stable dispositions. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Shared navigation preserves lifecycle policy, terminal Done, and indeterminate unknown state without a second state walk. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Changed authority after explanation is refused by fresh execution checks. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC6.
++Plan verifier name: VC6; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs scripts/tests/unit/task-tracker/lib/lifecycle-policy.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-early-stages.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-plan-develop.test.mjs`
+ 
+@@ -619,12 +684,12 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Test and its promote delegate agree on all knowable readiness checks; explanation runs no test/sandbox/provider effect. <!-- aitm-verified vc-list="vc:7" -->
+-- [ ] Execution refreshes authority and reports post-ready test outcomes truthfully. <!-- aitm-verified vc-list="vc:7" -->
++- [ ] Test and its promote delegate agree on all knowable readiness checks; explanation runs no test/sandbox/provider effect. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Execution refreshes authority and reports post-ready test outcomes truthfully. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC7.
++Plan verifier name: VC7; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-test.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-mid-stages.test.mjs scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs`
+ 
+@@ -659,12 +724,12 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Direct/delegated Review and explanation share complete evidence, projection, policy, and transition checks. <!-- aitm-verified vc-list="vc:8" -->
+-- [ ] Incomplete Review is navigated consistently; explanation never performs reviewer, probe, approval, or evidence effects. <!-- aitm-verified vc-list="vc:8" -->
++- [ ] Direct/delegated Review and explanation share complete evidence, projection, policy, and transition checks. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Incomplete Review is navigated consistently; explanation never performs reviewer, probe, approval, or evidence effects. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC8.
++Plan verifier name: VC8; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-review.test.mjs scripts/tests/unit/task-tracker/lib/review-preflight.test.mjs scripts/tests/unit/task-tracker/lib/review-preflight-epic-aware.test.mjs scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs`
+ 
+@@ -699,12 +764,12 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Delivery explanation covers full current authorization across supported lanes without invoking a provider or writing records. <!-- aitm-verified vc-list="vc:9" -->
+-- [ ] Execution still binds current exact-HEAD authority and refuses changes after explanation. <!-- aitm-verified vc-list="vc:9" -->
++- [ ] Delivery explanation covers full current authorization across supported lanes without invoking a provider or writing records. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Execution still binds current exact-HEAD authority and refuses changes after explanation. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC9.
++Plan verifier name: VC9; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs scripts/tests/unit/task-tracker/lib/delivery-provider-action.test.mjs scripts/tests/unit/task-tracker/lib/delivery-real-pr-evidence.test.mjs scripts/tests/unit/task-tracker/lib/manual-code-review-delivery.test.mjs`
+ 
+@@ -712,8 +777,12 @@
+ 
+ **Baseline-plan-section:** `### Task 10: Share close readiness and complete lifecycle parity`. Former WBS identity: `10a`.
+ 
+-**User story:** As an agent finishing an issue, I want complete close readiness and fresh guarded execution, so that explaining close cannot bypass delivery or approval.
++**User story:**
+ 
++As an agent finishing an issue,
++I want to have complete close readiness and fresh guarded execution,
++So that explaining close cannot bypass delivery or approval.
++
+ **Estimate and units:** 16 hours; Close readiness, read-only attribution and object-completeness extraction (10 h); close navigation and close-specific execution parity (6 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own baseline Task 10 production file changes and `action-close.test.mjs`; preserve existing guard-parity-review-done and close-gate-order suites. No aggregate seven-action certification or A2 completion declaration.
+@@ -722,13 +791,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Close readiness collects all ordinary/epic/alternate-lane authority, including read-only remote-tip/object completeness; preserves approval/delivery/DoD/child protections, projection/readback, changed-authority checks and no-effect explanation. <!-- aitm-verified vc-list="vc:25" -->
+-- [ ] Close navigation respects current Review selection, delivery remediation and terminal Done. Parent/close results retain typed child/promote requests for multiple children and reject inferred mismatched targets. Force/supersede/recovery mutations are never selected. <!-- aitm-verified vc-list="vc:25" -->
+-- [ ] Close-specific ready/blocked/indeterminate and post-ready failures are truthful; timing flush, finalization, cascades, board writes and GitHub close remain execution-only. A2 and full registry certification remain pending WBS 18. <!-- aitm-verified vc-list="vc:25" -->
++- [ ] Close readiness collects all ordinary/epic/alternate-lane authority, including read-only remote-tip/object completeness; preserves approval/delivery/DoD/child protections, projection/readback, changed-authority checks and no-effect explanation. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Close navigation respects current Review selection, delivery remediation and terminal Done. Parent/close results retain typed child/promote requests for multiple children and reject inferred mismatched targets. Force/supersede/recovery mutations are never selected. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Close-specific ready/blocked/indeterminate and post-ready failures are truthful; timing flush, finalization, cascades, board writes and GitHub close remain execution-only. A2 and full registry certification remain pending WBS 18. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC25.
++Plan verifier name: VC25; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-close.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-review-done.test.mjs scripts/tests/unit/task-tracker/lib/close-gate-order.test.mjs`
+ 
+@@ -736,8 +805,12 @@
+ 
+ **Baseline-plan-section:** `### Task 10: Share close readiness and complete lifecycle parity`. Former WBS identity: `10b`.
+ 
+-**User story:** As a lifecycle maintainer, I want all seven extracted actions certified together, so that local close success is not mistaken for complete A2 parity.
++**User story:**
+ 
++As a lifecycle maintainer,
++I want to have all seven extracted actions certified together,
++So that local close success is not mistaken for complete A2 parity.
++
+ **Estimate and units:** 16 hours; Aggregate seven-action conformance and complete registry (8 h); authority-cost ceilings and residual legacy disposition certification (8 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `scripts/tests/integration/task-tracker/lib/action-parity.test.mjs`, authority-count/timing evidence and residual legacy review record under `scripts/tests/fixtures/1558/`; complete conformance registry metadata after all action suites pass. Consume WBS 17 close implementation.
+@@ -746,13 +819,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] All seven actions pass ready/blocked/indeterminate, changed-authority and named post-ready failure parity with stable typed or explicitly inventoried manual dispositions and no explanation effects. VC10 runs close regressions as well as the aggregate table. <!-- aitm-verified vc-list="vc:10" -->
+-- [ ] Deterministic authority counts and separate controlled service median/p95 evidence compare to WBS 4; CI regression ceilings retain at least 20% unused headroom and are asserted by action-parity.test.mjs. <!-- aitm-verified vc-list="vc:10" -->
+-- [ ] Residual legacy manual work is explicitly reviewed; unknown migrated refusals/warnings fail conformance. Complete the v1 registry and A2 only after this aggregate certification, never at WBS 17 closure. <!-- aitm-verified vc-list="vc:10" -->
++- [ ] All seven actions pass ready/blocked/indeterminate, changed-authority and named post-ready failure parity with stable typed or explicitly inventoried manual dispositions and no explanation effects. VC10 runs close regressions as well as the aggregate table. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Deterministic authority counts and separate controlled service median/p95 evidence compare to WBS 4; CI regression ceilings retain at least 20% unused headroom and are asserted by action-parity.test.mjs. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Residual legacy manual work is explicitly reviewed; unknown migrated refusals/warnings fail conformance. Complete the v1 registry and A2 only after this aggregate certification, never at WBS 17 closure. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC10.
++Plan verifier name: VC10; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/action-close.test.mjs scripts/tests/integration/task-tracker/lib/action-parity.test.mjs scripts/tests/unit/task-tracker/lib/guard-parity-review-done.test.mjs scripts/tests/unit/task-tracker/lib/close-gate-order.test.mjs`
+ 
+@@ -793,13 +866,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] One parser/validator rejects forbidden syntax and unknown grammar with deterministic complete diagnostics and correct normalized UTF-16 positions. <!-- aitm-verified vc-list="vc:11" -->
+-- [ ] Vocabulary, completeness, documentation anchors, fingerprints, field limits, and catalog budgets are enforced offline. <!-- aitm-verified vc-list="vc:11" -->
+-- [ ] The selected parser is available in production dependencies, with contract-selection evidence. <!-- aitm-verified vc-list="vc:11" -->
++- [ ] One parser/validator rejects forbidden syntax and unknown grammar with deterministic complete diagnostics and correct normalized UTF-16 positions. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Vocabulary, completeness, documentation anchors, fingerprints, field limits, and catalog budgets are enforced offline. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] The selected parser is available in production dependencies, with contract-selection evidence. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC11.
++Plan verifier name: VC11; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs`
+ 
+@@ -807,7 +880,11 @@
+ 
+ **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12a`.
+ 
+-**User story:** As a maintainer adopting guidance, I want explicit source trust and usable recovery with a joint-release guard, so that invalid sources cannot be silently replaced or shipped alone.
++**User story:**
++
++As a maintainer adopting guidance,
++I want to have explicit source trust and usable recovery with a joint-release guard,
++So that invalid sources cannot be silently replaced or shipped alone.
+ 
+ **Estimate and units:** 22 hours; Source/layout/trust selection and validation API (10 h); recovery allowlist and CLI (6 h); release identity, packaging and B2-absent refusal (6 h). Owner: this child.
+ 
+@@ -817,13 +894,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] All baseline Task 12 Step 1 source/layout cases enforce module-relative selection, tracking, whole-catalog shadowing and trust; invalid or unsupported resolution fails by name rather than falling back. The admission API refuses before effects, including with network-skip flags. <!-- aitm-verified vc-list="vc:26" -->
+-- [ ] One exported recovery classification covers validate/source, top-level and command help, and version. Recovery does not build operational context or call GitHub; human explain is not an exception. WBS 21 consumes this classification unchanged. <!-- aitm-verified vc-list="vc:26" -->
+-- [ ] The manifest generator pins raw catalog identity and parser metadata; CI rejects restamping/disagreement and package assets/parser/docs are verified. Install a release assertion now that refuses an operational-loader consumer release without B2 certification; its negative-path suite passes by proving refusal. No bypass or premature B1-only release exists. <!-- aitm-verified vc-list="vc:26" -->
++- [ ] All baseline Task 12 Step 1 source/layout cases enforce module-relative selection, tracking, whole-catalog shadowing and trust; invalid or unsupported resolution fails by name rather than falling back. The admission API refuses before effects, including with network-skip flags. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] One exported recovery classification covers validate/source, top-level and command help, and version. Recovery does not build operational context or call GitHub; human explain is not an exception. WBS 21 consumes this classification unchanged. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] The manifest generator pins raw catalog identity and parser metadata; CI rejects restamping/disagreement and package assets/parser/docs are verified. Install a release assertion now that refuses an operational-loader consumer release without B2 certification; its negative-path suite passes by proving refusal. No bypass or premature B1-only release exists. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC26.
++Plan verifier name: VC26; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`
+ 
+@@ -831,8 +908,12 @@
+ 
+ **Baseline-plan-section:** `### Task 12: Enforce guidance source trust and operational admission`. Former WBS identity: `12b`.
+ 
+-**User story:** As an operational CLI user, I want every route admitted before effects and divergence audited once, so that aliases or startup imports cannot evade source trust.
++**User story:**
+ 
++As an operational CLI user,
++I want to have every route admitted before effects and divergence audited once,
++So that aliases or startup imports cannot evade source trust.
++
+ **Estimate and units:** 22 hours; Complete route/import/effect inventory and dispatcher integration (10 h); serialized paginated annotation audit (6 h); full package, cold timing and aggregate admission certification (6 h). Owner: this child.
+ 
+ **Scope/files and boundary:** Own `scripts/tests/fixtures/1558/admission-surface.json`, command/alias/direct-entrypoint wiring, `guidance/annotation.mjs`, aggregate `guidance-admission.test.mjs`, downstream package tests and CI integration. Consume WBS 20’s source/trust API and recovery allowlist; no cache internals.
+@@ -841,14 +922,14 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] The complete inventory records every canonical route/subcommand, alias, direct supported entrypoint, pre-admission import, first effect, gate call, exception classification and fixture. Each route/alias reaches admission before any effect, even with inventoried skip flags; a newly exposed unclassified route fails CI. <!-- aitm-verified vc-list="vc:12" -->
+-- [ ] All operational dispatcher/startup/installer paths consume WBS 20’s single recovery classification. No half-inventory or separate allowlist is introduced. Aggregate admission tests include source/trust/recovery and full-surface invalid-catalog regressions. <!-- aitm-verified vc-list="vc:12" -->
+-- [ ] Successful lifecycle mutations perform at most one serialized paginated divergence annotation; edits/retries/concurrency cannot duplicate it. Failed/read-only operations never annotate and post-success audit failure is visible without rollback. <!-- aitm-verified vc-list="vc:12" -->
+-- [ ] Production-only installation validates, init leaves overrides absent, required assets/docs/parser and exact packed delta pass, and cold per-command timings are recorded. B2-absent release refusal remains enforced; this child’s tests prove rejection until WBS 22 supplies certification. <!-- aitm-verified vc-list="vc:12" -->
++- [ ] The complete inventory records every canonical route/subcommand, alias, direct supported entrypoint, pre-admission import, first effect, gate call, exception classification and fixture. Each route/alias reaches admission before any effect, even with inventoried skip flags; a newly exposed unclassified route fails CI. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] All operational dispatcher/startup/installer paths consume WBS 20’s single recovery classification. No half-inventory or separate allowlist is introduced. Aggregate admission tests include source/trust/recovery and full-surface invalid-catalog regressions. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Successful lifecycle mutations perform at most one serialized paginated divergence annotation; edits/retries/concurrency cannot duplicate it. Failed/read-only operations never annotate and post-success audit failure is visible without rollback. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Production-only installation validates, init leaves overrides absent, required assets/docs/parser and exact packed delta pass, and cold per-command timings are recorded. B2-absent release refusal remains enforced; this child’s tests prove rejection until WBS 22 supplies certification. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC12.
++Plan verifier name: VC12; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs`
+ 
+@@ -885,13 +966,13 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Valid/invalid catalogs compile deterministically into split artifacts; concurrent writers and corrupt/stale cache files recover safely. <!-- aitm-verified vc-list="vc:13" -->
+-- [ ] Unchanged cross-process warm calls are silent and skip YAML parsing/semantic validation with worktree-aware tracking identity. <!-- aitm-verified vc-list="vc:13" -->
+-- [ ] Runtime benchmarks and production-package cache certification satisfy the B1+B2 consumer-release requirement. <!-- aitm-verified vc-list="vc:13" -->
++- [ ] Valid/invalid catalogs compile deterministically into split artifacts; concurrent writers and corrupt/stale cache files recover safely. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Unchanged cross-process warm calls are silent and skip YAML parsing/semantic validation with worktree-aware tracking identity. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Runtime benchmarks and production-package cache certification satisfy the B1+B2 consumer-release requirement. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC13.
++Plan verifier name: VC13; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs`
+ 
+@@ -902,7 +983,7 @@
+ **User story:**
+ 
+ As an agent choosing the next action,
+-I want compact fresh operational guidance and explicit access to evidence when investigation needs it,
++I want to have compact fresh operational guidance and explicit access to evidence when investigation needs it,
+ So that repeated instructions and unused provenance do not inflate routine context.
+ 
+ **Scope/files:** Create `verbs/explain.mjs`, `guidance/protocol.mjs`, `scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs`, and `scripts/tests/unit/task-tracker/lib/guidance-receipts.test.mjs`. Modify guidance CLI, dispatcher/command-surface routing, `verbs/{promote,review,close,help,help-data}.mjs`, and command self-doc data. Consume Task 3 projection/envelope validation and Task 13 static cache. Add real CLI captures to Task 1's preserved scenario artifacts without overwriting the legacy baseline.
+@@ -941,14 +1022,14 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Generic/targeted/alias CLI modes use fresh shared readiness with no effects; routine result preserves operations and omits evidence-only material throughout visible output. <!-- aitm-verified vc-list="vc:14" -->
+-- [ ] Explicit diagnostics expose complete same-invocation evidence/messages without extra reads; later diagnostics are fresh, never implicit retrieval or fallback. <!-- aitm-verified vc-list="vc:14" -->
+-- [ ] Receipt/source suppression and compaction invalidation follow the spec; explicit human help/recovery remain separate and invalid receipts never weaken execution. <!-- aitm-verified vc-list="vc:14" -->
+-- [ ] Actual traffic replaces candidate serialization before content migration, with honest current versus modeled-static totals and enforced intermediate feasibility. <!-- aitm-verified vc-list="vc:14" -->
++- [ ] Generic/targeted/alias CLI modes use fresh shared readiness with no effects; routine result preserves operations and omits evidence-only material throughout visible output. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Explicit diagnostics expose complete same-invocation evidence/messages without extra reads; later diagnostics are fresh, never implicit retrieval or fallback. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Receipt/source suppression and compaction invalidation follow the spec; explicit human help/recovery remain separate and invalid receipts never weaken execution. <!-- aitm-verified vc-list="vc:1" -->
++- [ ] Actual traffic replaces candidate serialization before content migration, with honest current versus modeled-static totals and enforced intermediate feasibility. <!-- aitm-verified vc-list="vc:1" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC14.
++Plan verifier name: VC14; issue-local ID: `vc:1`.
+ 
+ Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs scripts/tests/unit/task-tracker/lib/guidance-receipts.test.mjs`
+ 
+@@ -985,15 +1066,17 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Every migrating lifecycle obligation maps to enforcement/protocol and complete validated catalog content, with human documentation preserved. <!-- aitm-verified vc-list="vc:15" -->
+-- [ ] Adoption, trust, recovery, attestation limitations, and scoped historical supersession are documented accurately. <!-- aitm-verified vc-list="vc:15" -->
++- [ ] Every migrating lifecycle obligation maps to enforcement/protocol and complete validated catalog content, with human documentation preserved. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] Adoption, trust, recovery, attestation limitations, and scoped historical supersession are documented accurately. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC15.
++Plan verifier name: VC15; issue-local IDs: `vc:1`, `vc:2`.
+ 
+-Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs && node scripts/task-tracker/guidance.mjs validate --published --refresh --json`
++Run: `node --test scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs`
+ 
++Run: `node scripts/task-tracker/guidance.mjs validate --published --refresh --json`
++
+ ### Task 25: Capture paired CLI transcripts, tokenizer calibration, and authority costs
+ 
+ **Baseline-plan-section:** `### Task 16: Capture paired CLI transcripts, tokenizer calibration, and authority costs`. All Task references in the copied body below retain baseline numbering.
+@@ -1001,7 +1084,7 @@
+ **User story:**
+ 
+ As a release reviewer,
+-I want an equivalent complete before/after context comparison and separately measured authority cost,
++I want to have an equivalent complete before/after context comparison and separately measured authority cost,
+ So that claimed reduction cannot hide command traffic, required investigation, or additional reads.
+ 
+ **Scope/files:** Create `scripts/task-tracker/measure-guidance-context.mjs`, `scripts/task-tracker/lib/context-budgets.mjs`, and `scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`. Extend Task 1's preserved runner and fixtures; add `scripts/tests/fixtures/1558/{lifecycle-transcript,context-budgets,tokenizer-calibration,authority-after}.json` and update the distinct `context-comparison.json` with actual CLI capture identities. Pin an appropriate real tokenizer development dependency/lock version; no runtime dependency is needed for calibration. Make existing `measure-context.mjs` and the new tool import the same scoped constants.
+@@ -1030,16 +1113,18 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Reproducible paired reports count complete equivalent workflows for both adapters and preserve the original baseline; actual versus modeled evidence is explicit. <!-- aitm-verified vc-list="vc:16" -->
+-- [ ] Real-tokenizer calibration and complete diagnostic/heavy-case costs are recorded without truncation, hidden traffic, or universal-bound claims. <!-- aitm-verified vc-list="vc:16" -->
+-- [ ] Authority request/refresh/diagnostic invariants and separately identified timing budgets pass; final context/reduction acceptance stays gated on Task 17. <!-- aitm-verified vc-list="vc:16" -->
++- [ ] Reproducible paired reports count complete equivalent workflows for both adapters and preserve the original baseline; actual versus modeled evidence is explicit. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] Real-tokenizer calibration and complete diagnostic/heavy-case costs are recorded without truncation, hidden traffic, or universal-bound claims. <!-- aitm-verified vc-list="vc:1 vc:2" -->
++- [ ] Authority request/refresh/diagnostic invariants and separately identified timing budgets pass; final context/reduction acceptance stays gated on Task 17. <!-- aitm-verified vc-list="vc:1 vc:2" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC16.
++Plan verifier name: VC16; issue-local IDs: `vc:1`, `vc:2`.
+ 
+-Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs && node scripts/task-tracker/measure-guidance-context.mjs --all --json`
++Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs`
+ 
++Run: `node scripts/task-tracker/measure-guidance-context.mjs --all --json`
++
+ ### Task 26: Slim both adapter protocols and certify the consumer release
+ 
+ **Baseline-plan-section:** `### Task 17: Slim both adapter protocols and certify the consumer release`. All Task references in the copied body below retain baseline numbering.
+@@ -1077,16 +1162,26 @@
+ 
+ **Acceptance criteria:**
+ 
+-- [ ] Both adapter/router/pickup and full captured lifecycle fixtures meet fixed ceilings with >=20% unused headroom, including repeat/change/compaction and required diagnostics, and demonstrate lower complete total cost than the equivalent preserved Markdown baseline. <!-- aitm-verified vc-list="vc:17" -->
+-- [ ] Minimal protocol preserves hard boundary protections, query schedule, receipt invalidation, and distinct workflow-preflight semantics. <!-- aitm-verified vc-list="vc:17" -->
+-- [ ] Production package, invalid admission, full lifecycle parity, cache certification, and context/authority regression gates pass together before consumer release. <!-- aitm-verified vc-list="vc:17" -->
++- [ ] Both adapter/router/pickup and full captured lifecycle fixtures meet fixed ceilings with >=20% unused headroom, including repeat/change/compaction and required diagnostics, and demonstrate lower complete total cost than the equivalent preserved Markdown baseline. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->
++- [ ] Minimal protocol preserves hard boundary protections, query schedule, receipt invalidation, and distinct workflow-preflight semantics. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->
++- [ ] Production package, invalid admission, full lifecycle parity, cache certification, and context/authority regression gates pass together before consumer release. <!-- aitm-verified vc-list="vc:1 vc:2 vc:3 vc:4 vc:5 vc:6" -->
+ 
+ **Verification Commands:**
+ 
+-Root verifier identity: VC17.
++Plan verifier name: VC17; issue-local IDs: `vc:1`, `vc:2`, `vc:3`, `vc:4`, `vc:5`, `vc:6`.
+ 
+-Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs scripts/tests/unit/task-tracker/core/measure-context.test.mjs scripts/tests/unit/task-tracker/core/session-boot.test.mjs scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs && node scripts/task-tracker/measure-context.mjs --all --adapter codex && node scripts/task-tracker/measure-context.mjs --all --adapter claude && node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets --json && npm run test:unit && npm run test:integration`
++Run: `node --test scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs scripts/tests/unit/task-tracker/core/measure-context.test.mjs scripts/tests/unit/task-tracker/core/session-boot.test.mjs scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs`
+ 
++Run: `node scripts/task-tracker/measure-context.mjs --all --adapter codex`
++
++Run: `node scripts/task-tracker/measure-context.mjs --all --adapter claude`
++
++Run: `node scripts/task-tracker/measure-guidance-context.mjs --all --assert-budgets --json`
++
++Run: `npm run test:unit`
++
++Run: `npm run test:integration`
++
+ ## NO-GO containment and execution entry
+ 
+ WBS 8 owns both the decision and its gate. The ordinary command records honest accounting; the distinct foundation command requires GO:
+@@ -1107,9 +1202,9 @@
+ 1. Record the reviewed file digest and the commit containing these exact bytes in the review closure. That commit is the immutable `WBS_COMMIT` below. Do not use the mutable branch name, current HEAD by assumption, or a hash computed before formatting. Verify the baseline plan/spec digests above too.
+ 2. Update #1558's obsolete Epic A framing with the accepted goal, fixed constraints, 26-child map and single GO gate. Its active `Source-plan` is this revision. Remove stale competing active `Implementation-plan`/`Plan` fields that would select the historical plan; retain prior provenance under explicitly historical names. This document does not authorize a state advance.
+ 3. Read current parent priority. Require a supported `p0`, `p1` or `p2`; an unset/unsupported value requires resolution, not invented inheritance. Pass that exact value explicitly for every child. Expected assignee is **unset**. Omit Size and Estimate; all 26 remain Backlog. Rank equals the numeric WBS sequence, 1–26.
+-4. Prepare repository-local fragment files for each task. Copy its user story, bounded scope, ACs and exact verifiers; retained bodies preserve their original technical contract. Split bodies use their child ACs above, not whole-parent criteria. Each original baseline step remains assigned according to the scope and AC map. Add the global constraints and applicable handoffs/entry conditions to the scope fragment. `--scope-file`, `--ac-file`, and story inputs contain bare section content, not pre-rendered section headings or an outer checkbox list; use the existing renderer's expected AC line form and read the rendered body back to verify stable IDs/citations.
+-5. Under each child's root `## Plan Metadata`, set `Source-plan` to this revision's repository-relative path, `Source-plan-commit` to the accepted full commit, and `Source-plan-section` to the exact unique numeric heading. Child title is exactly the text after that heading's colon, including baseline Task 17's **consumer release** wording. Add `Baseline-plan`, `Baseline-plan-commit`, and `Baseline-plan-section` as historical technical provenance. `Source-WBS`/`Source-WBS-commit`, if retained, equal Source-plan values and are documentary only; they do not disambiguate sections in the checker.
+-6. Create each child using the supported invocation below, mapping WBS rank to the returned issue number. First render with `--dry-run`; inspect the body, AC citations and root Verification Commands. A duplicate-child refusal requires inspecting the existing sibling's title/provenance/scope: reuse only a matching already-created child, or revise a real overlap through review. Do not reflexively add `--allow-duplicate-child`.
++4. Prepare repository-local fragment files for each task. Copy its user story, bounded scope, ACs and exact verifiers; retained bodies preserve their original technical contract. Split bodies use their child ACs above, not whole-parent criteria. Each original baseline step remains assigned according to the scope and AC map. Add the global constraints and applicable handoffs/entry conditions to the scope fragment. Use the exact fragment shapes in “Verifier names and issue-local citation IDs”: heading-free scope and three-line story, existing AC checkbox lines with local citation markers, and bare verification commands one per line in displayed order. Do not add an outer wrapper. Read back both the offline-rendered body and the created body; every AC citation must resolve to its intended literal command through `resolveVcListStrict`.
++5. Under each child's root `## Plan Metadata`, set `Source-plan` to this revision's repository-relative path, `Source-plan-commit` to the accepted full commit, and `Source-plan-section` to the exact unique numeric heading. Child title is exactly the text after that heading's colon, including baseline Task 17's **consumer release** wording. Add `Baseline-plan`, `Baseline-plan-commit`, and `Baseline-plan-section` as historical technical provenance. `Source-WBS`/`Source-WBS-commit`, if retained, equal Source-plan values and are documentary only; they do not disambiguate sections in the checker. As with the parent, remove competing active `Implementation-plan`/`Plan` fields from each child; preserve historical references under historical names. Assert that `linkedPlanReference(child.body)` actually selects this Source-plan, not an assumed key.
++6. Create each child using the supported invocation below, mapping WBS rank to the returned issue number. First render with `--dry-run`; inspect the body and strictly resolve every AC citation against its root Verification Commands, including exact intended-command equality. A duplicate-child refusal requires inspecting the existing sibling's title/provenance/scope: reuse only a matching already-created child, or revise a real overlap through review. Do not reflexively add `--allow-duplicate-child`.
+ 7. After mapping issue numbers, call `npx aitm block <child-issue> --by <comma-separated-prerequisite-issue-numbers>` for each nonempty prerequisite set. The verb writes native dependencies and reconciles their project/body projections; do not write a legacy Blocked By text field as a substitute. The WBS 8 dependency applies to every runtime child. No creation flag supplies these edges automatically.
+ 8. Read all created issue bodies and live project/native dependency data back. Run the coverage command below. Keep its JSON and the rank-to-issue map as hydration evidence. Verify 26/26 and all stated fields/edges; an exception or unreadable field fails the check. No progress/dispatch follows a partial result. Hydration coverage does not establish delivery readiness: refinement, branch authority and normal lifecycle gates remain future requirements. In particular, do not manufacture current refinement evidence for Backlog children merely to satisfy `evaluateMaterializedWbsReadiness`.
+ 
+@@ -1131,7 +1226,7 @@
+ 
+ ## Exact post-hydration coverage command
+ 
+-Run from the repository root with `WBS_COMMIT` exported as the accepted full commit. This is an executable read-only command using the shipped section extractor and reconciler, not a proposed new production checker or a waived check. It reads the plan from Git, fetches the parent's complete native child list, reads native dependencies, compares exact title/provenance, and verifies live Backlog/rank/priority/unset fields. It does not promote issues. Before hydration, an offline fixture can verify the same section/claim mechanics, but cannot claim live 26/26 hydration.
++Run from the repository root with `WBS_COMMIT` exported as the accepted full commit. This is an executable read-only command using the shipped section extractor and reconciler, not a proposed new production checker or a waived check. It reads the plan from Git, fetches the parent's complete native child list, reads native dependencies, compares exact title/provenance, and verifies live Backlog/rank/priority/unset fields. It does not promote issues. Before hydration, an offline fixture can verify the same section/claim mechanics, but cannot claim live 26/26 hydration. Before the first create operation, run a read-only live API shape probe of `gh api --paginate --slurp "repos/kburson/ai-task-manager/issues/1558/sub_issues?per_page=100"`: require page arrays and validate every returned row’s number/body/title/assignees/state types. An empty parent response proves only pagination shape, not row shape; the first created-child readback must prove row shape before creating more children. Missing fields, unexpected pagination or API incompatibility stops hydration for reviewed correction; do not patch the check mid-run or manufacture defaults. The final 26/26 command is a read-only verification, never a dry-run creation operation.
+ 
+ ```bash
+ node --input-type=module <<'NODE'
+@@ -1141,9 +1236,13 @@
+ import { loadProjectFieldDefs } from './scripts/task-tracker/project-fields.mjs';
+ import { projectValuesForIssue } from './scripts/gh/lib/github-projects.mjs';
+ import { readNativeDependencies } from './scripts/task-tracker/lib/native-dependencies.mjs';
+-import { extractPlanTasks, selectDecompositionPlanSection } from './scripts/task-tracker/lib/decomposition-policy.mjs';
++import { extractPlanTasks, linkedPlanReference, selectDecompositionPlanSection } from './scripts/task-tracker/lib/decomposition-policy.mjs';
+ import { reconcileWbsCoverage } from './scripts/task-tracker/lib/decomposition-wbs-coverage.mjs';
+-const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r2.md';
++import { parseVerificationCommands } from './scripts/task-tracker/lib/verification-commands.mjs';
++import { parseProofMarker } from './scripts/task-tracker/lib/proof-marker.mjs';
++import { resolveVcListStrict } from './scripts/task-tracker/lib/vc-ref.mjs';
++import { parseAcceptanceCriteria } from './scripts/task-tracker/lib/acceptance-criteria.mjs';
++const planPath = 'docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-hydration-wbs-r3.md';
+ const commit = process.env.WBS_COMMIT;
+ assert.match(commit || '', /^[a-f0-9]{40}$/);
+ const readPlanAtCommit = ({ planCommit, planPath }) =>
+@@ -1158,6 +1257,13 @@
+   { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
+ assert.ok(Array.isArray(pages) && pages.every(Array.isArray));
+ const children = pages.flat();
++for (const child of children) {
++  assert.ok(child && Number.isSafeInteger(child.number) && child.number > 0);
++  assert.equal(typeof child.body, 'string');
++  assert.equal(typeof child.title, 'string');
++  assert.equal(typeof child.state, 'string');
++  assert.ok(Array.isArray(child.assignees));
++}
+ assert.equal(new Set(children.map((child) => child.number)).size, 26);
+ assert.equal(children.length, 26);
+ const coverage = await reconcileWbsCoverage({
+@@ -1185,10 +1291,32 @@
+   assert.equal(claim.sourcePlanCommit, commit);
+   const child = children.find((candidate) => candidate.number === claim.number);
+   assert.equal(child.state, 'open');
++  const activePlan = linkedPlanReference(child.body);
++  assert.equal(activePlan?.key, 'Source-plan');
++  assert.equal(activePlan.path, planPath);
+   const selection = selectDecompositionPlanSection({
+-    body: child.body, planText, activePlanKey: 'Source-plan',
++    body: child.body, planText, activePlanKey: activePlan.key,
+   });
+   assert.equal(selection.ok && selection.applied, true);
++  const commands = parseVerificationCommands(child.body);
++  for (const [index, command] of task.commands.entries()) {
++    assert.equal(commands.find((entry) => entry.id === index + 1)?.command, command);
++  }
++  const plannedACs = [...task.body.matchAll(/^- \[ \] (.+<!-- aitm-verified vc-list="[^"]+" -->)\s*$/gm)];
++  const actualACs = parseAcceptanceCriteria(child.body);
++  assert.ok(plannedACs.length > 0 && Array.isArray(actualACs));
++  assert.equal(actualACs.length, plannedACs.length);
++  for (const [index, ac] of actualACs.entries()) {
++    const planned = parseProofMarker(plannedACs[index][1]);
++    const actual = parseProofMarker(ac.label);
++    assert.equal(actual?.['vc-list'], planned['vc-list']);
++    const intended = planned['vc-list'].split(/\s+/).map((ref) => {
++      const ordinal = Number(ref.slice(3));
++      assert.ok(ordinal >= 1 && ordinal <= task.commands.length);
++      return task.commands[ordinal - 1];
++    });
++    assert.deepEqual(resolveVcListStrict(actual['vc-list'], commands), intended);
++  }
+   const ranks = expected.get(task.number);
+   assert.ok(ranks.every((rank) => rank < task.number));
+   const native = await readNativeDependencies({ issueNumber: child.number, repo: cfg.repo });
+@@ -1203,12 +1331,12 @@
+   assert.deepEqual(child.assignees, []);
+ }
+ console.log(JSON.stringify({ ok: true, expectedCount: 26, coveredCount: 26,
+-  fieldsAndEdges: 'verified', parent: 1558, planCommit: commit }));
++  fieldsAndEdges: 'verified', citations: 'verified', parent: 1558, planCommit: commit }));
+ NODE
+ ```
+ 
+-Expected result: exit 0 and JSON with `ok: true`, `expectedCount: 26`, `coveredCount: 26`, and `fieldsAndEdges: "verified"`. A Backlog child needs no current refinement snapshot for this coverage-only check. Later Plan-exit delivery readiness still uses the unmodified repository gate with its refinement/branch requirements.
++Expected result: exit 0 and JSON with `ok: true`, `expectedCount: 26`, `coveredCount: 26`, and `fieldsAndEdges: "verified"`, `citations: "verified"`. A Backlog child needs no current refinement snapshot for this coverage-only check. Later Plan-exit delivery readiness still uses the unmodified repository gate with its refinement/branch requirements.
+ 
+ ## Review and acceptance
+ 
+-Review this revision against the unchanged technical baseline and spec, including the new numeric authority mapping and Task 10 split. Agreement must identify the exact formatted/linted file digest and its containing commit. No current claim of acceptance, feasibility, hydration, or runtime completion is made. The human relays reviewer/author filepaths; do not invoke the automated peer-review skill. Format and lint new review bytes directly before hashing or committing. The next author response must account for every outstanding finding.
++Review this revision against round 2, the unchanged technical baseline and spec, focusing on issue-local citation rendering, active-plan selection and safe live readback. The numeric authority mapping, 26-child graph, Task 10 split and fixed budgets remain unchanged. Agreement must identify the exact formatted/linted file digest and its containing commit. No current claim of acceptance, feasibility, hydration, or runtime completion is made. The human relays reviewer/author filepaths; do not invoke the automated peer-review skill. Format and lint new review bytes directly before hashing or committing. The next author response must account for every outstanding finding.

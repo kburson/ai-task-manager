@@ -1,0 +1,5 @@
+
+⛔ Refusing to promote #1562 to review: test-to-review-incomplete: - [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" --> (the close gate enforces the same set)
+   BLOCKED: test-to-review-incomplete: - [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" --> (the close gate enforces the same set)
+   BLOCKED: test-to-review-incomplete: - [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes --> (the close gate enforces the same set)
+

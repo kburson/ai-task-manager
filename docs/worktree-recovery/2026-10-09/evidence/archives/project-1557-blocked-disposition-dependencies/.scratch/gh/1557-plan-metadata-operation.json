@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive — MANDATORY, DO NOT SKIP",
+  "replacement": "## Plan Metadata\n\n- **Specification**: docs/superpowers/specs/2026-09-08-1557-blocked-disposition-native-dependencies-design.md\n- **Planning status**: Conceptual design approved; implementation plan follows written-spec review.\n\n## Pickup Directive — MANDATORY, DO NOT SKIP"
+}

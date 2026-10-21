@@ -1,0 +1,3 @@
+As a lifecycle executor,
+I want to evaluate derived DoD without writing and persist only a ready result,
+So that explanation remains read-only and failed persistence cannot authorize progression.

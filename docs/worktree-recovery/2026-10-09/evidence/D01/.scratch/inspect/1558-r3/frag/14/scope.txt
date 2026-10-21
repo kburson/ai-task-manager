@@ -1,0 +1,1 @@
+Create `action-decision/test.mjs`. Modify `verbs/test.mjs`, `lib/resident-actions/develop-verification.mjs`, `lib/resident-actions/test-quick-ci.mjs`, and the Develop-exit/Test-entry guard producers named by Task 1. Create `scripts/tests/integration/task-tracker/lib/action-test.test.mjs`.

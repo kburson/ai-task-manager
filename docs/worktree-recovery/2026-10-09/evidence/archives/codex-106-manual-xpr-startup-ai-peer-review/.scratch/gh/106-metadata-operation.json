@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n",
+  "replacement": "## Plan Metadata\n\n- **Delivery-boundary**: Manual Claude XPR startup, exact-session stream capture, and transport-consistent join.\n- **Plan-source**: Current Deep-Dive Analysis on this issue.\n- **Verification**: Targeted production-path regressions, full deterministic suites, and a real manual reviewer submission.\n"
+}

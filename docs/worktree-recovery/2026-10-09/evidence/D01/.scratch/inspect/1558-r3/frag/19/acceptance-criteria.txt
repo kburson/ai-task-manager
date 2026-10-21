@@ -1,0 +1,3 @@
+- [ ] One parser/validator rejects forbidden syntax and unknown grammar with deterministic complete diagnostics and correct normalized UTF-16 positions. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Vocabulary, completeness, documentation anchors, fingerprints, field limits, and catalog budgets are enforced offline. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] The selected parser is available in production dependencies, with contract-selection evidence. <!-- aitm-verified vc-list="vc:1" -->

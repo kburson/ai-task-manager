@@ -1,0 +1,21 @@
+// Read-only probe of the exact live values `validateLive` checks.
+import { execFileSync } from 'node:child_process';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+import { normalizeIssueCloseSnapshot } from '../../scripts/task-tracker/lib/closed-issue-convergence.mjs';
+import { readTerminalDisposition } from '../../scripts/task-tracker/lib/terminal-disposition.mjs';
+
+const cfg = loadConfig();
+const raw = execFileSync(
+  'gh',
+  ['issue', 'view', '1490', '-R', cfg.repo, '--json', 'state,stateReason'],
+  { encoding: 'utf8' }
+);
+console.log('raw gh:', raw.trim());
+console.log('normalized:', JSON.stringify(normalizeIssueCloseSnapshot(JSON.parse(raw))));
+
+try {
+  const disposition = await readTerminalDisposition({ cfg, issueNumber: 1490 });
+  console.log('terminalDisposition:', JSON.stringify(disposition));
+} catch (error) {
+  console.log('terminalDisposition ERROR:', error.message);
+}

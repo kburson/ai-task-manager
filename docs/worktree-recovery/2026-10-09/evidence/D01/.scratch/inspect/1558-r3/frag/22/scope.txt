@@ -1,0 +1,1 @@
+Create `guidance/{compile,cache-identity,cache}.mjs`; modify guidance admission and CLI to use them. Create `scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs`, `scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs`, and `scripts/tests/fixtures/1558/cache-budgets.json`. Extend the Task 12 release/package gate.

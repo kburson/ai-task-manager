@@ -1,0 +1,3 @@
+As a baseline maintainer,
+I want to have coherent lifecycle authority fixtures,
+So that intercepted transport exercises actual production readiness rather than mocked successful results.

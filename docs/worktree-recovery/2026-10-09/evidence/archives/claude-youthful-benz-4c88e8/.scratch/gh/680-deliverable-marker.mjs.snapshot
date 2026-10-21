@@ -1,0 +1,15 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { setDeliverablePosted } from '../../scripts/task-tracker/lib/issue-kind.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+// The spike deliverable is the `spike-deliverable` marker-owned comment on #680.
+const url = 'https://github.com/kburson/ai-task-manager/issues/680#issuecomment-5593701237';
+
+const res = await mutateIssueBody({
+  issueNumber: 680,
+  repo: cfg.repo,
+  mutate: (body) => setDeliverablePosted(body, { url }),
+});
+console.log('deliverable-posted:', JSON.stringify(res?.status ?? res));

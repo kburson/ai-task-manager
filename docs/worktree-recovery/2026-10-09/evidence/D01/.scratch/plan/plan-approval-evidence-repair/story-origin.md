@@ -1,0 +1,4 @@
+- **kind**: code
+- **source**: user-directed defect discovered while completing `kburson/ai-peer-review#61`
+- **evidence**: GitHub edit history proves the approval marker never existed; the workflow-exception record proves `approval.plan` was waived and later revoked; current issue records contain Plan, verification, CI, and review evidence
+- **intent**: reconstruct automated approval from durable evidence without human rubber stamps, waivers, or fabricated historical markers

@@ -1,0 +1,1 @@
+Own `guidance-legacy-baseline.test.mjs`, `scripts/tests/fixtures/1558/legacy-baseline.json`, and frozen loaded-text/authority/transcript artifacts under `legacy-workflow/`. The aggregate baseline suite executes the inventory, transport and authority assertions from WBS 1–3. No candidate or production changes.

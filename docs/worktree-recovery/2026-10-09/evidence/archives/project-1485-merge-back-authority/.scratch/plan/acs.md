@@ -1,0 +1,4 @@
+- [ ] A merged pull request whose head advanced past the accepted SHA after approval is distinguished from a pull request whose head was never verified. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] The advanced-head-after-approval case has a governed path to a delivery receipt that does not require the code-rework demote flag. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] A pull request head that is not a descendant of the accepted SHA, or whose accepted-SHA content is not provably included, still refuses. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] The existing exact-head current-head and historical-recovery paths keep their present behavior for every case that already resolves today. <!-- aitm-verified vc-list="vc:1" -->

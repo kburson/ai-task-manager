@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Verification Commands\n\n- [ ] `node --test scripts/tests/integration/review/co-review-wake.test.mjs` <!-- id=1 -->\n- [ ] `npm test` <!-- id=2 -->\n- [ ] `npm run test:slow` <!-- id=3 -->\n- [ ] `npm run lint` <!-- id=4 -->\n- [ ] `npm run format:check` <!-- id=5 -->\n- [ ] `git log --oneline -1` <!-- id=6 -->",
+  "replacement": "## Verification Commands\n\n- [ ] `node --test test/integration/coordinator-wake.test.mjs` <!-- id=1 -->\n- [ ] `npm test` <!-- id=2 -->\n- [ ] `npm run test:integration` <!-- id=3 -->\n- [ ] `npm run test:mcp` <!-- id=4 -->\n- [ ] `npm run test:packaging` <!-- id=5 -->\n- [ ] `npm run test:smoke` <!-- id=6 -->\n- [ ] `npm run lint` <!-- id=7 -->\n- [ ] `npm run format:check` <!-- id=8 -->\n- [ ] `npm pack --dry-run` <!-- id=9 -->\n- [ ] `git diff --check` <!-- id=10 -->\n- [ ] `git log --oneline -1` <!-- id=11 -->",
+  "expectedVersion": 4
+}

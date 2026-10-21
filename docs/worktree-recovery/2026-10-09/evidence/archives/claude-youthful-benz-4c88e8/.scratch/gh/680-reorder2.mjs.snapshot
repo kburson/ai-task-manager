@@ -1,0 +1,51 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+// Canonical top-level section order (#810). Any section not listed keeps its
+// relative position at the end, so unknown sections are never dropped.
+const ORDER = [
+  '## User Story',
+  '## Scope',
+  '## Story Origin',
+  '## Plan Metadata',
+  '## Pickup Directive',
+  '## Deep-Dive Analysis',
+  '## Acceptance Criteria',
+  '## Verification Commands',
+  '## Definition of Done',
+  '## AITM Progress Markers',
+];
+
+function splitSections(body) {
+  const lines = body.split('\n');
+  const marks = [];
+  lines.forEach((l, i) => {
+    if (l.startsWith('## ')) marks.push(i);
+  });
+  const preamble = lines.slice(0, marks[0]).join('\n');
+  const sections = marks.map((start, n) => {
+    const end = n + 1 < marks.length ? marks[n + 1] : lines.length;
+    return { heading: lines[start], text: lines.slice(start, end).join('\n').trimEnd() };
+  });
+  return { preamble, sections };
+}
+
+function rank(heading) {
+  const i = ORDER.findIndex((prefix) => heading.startsWith(prefix));
+  return i === -1 ? ORDER.length : i;
+}
+
+const res = await mutateIssueBody({
+  issueNumber: 680,
+  repo: cfg.repo,
+  mutate: (body) => {
+    const { preamble, sections } = splitSections(body);
+    const ordered = sections
+      .map((s, i) => ({ ...s, i }))
+      .sort((a, b) => rank(a.heading) - rank(b.heading) || a.i - b.i);
+    return [preamble.trimEnd(), ...ordered.map((s) => s.text)].join('\n\n') + '\n';
+  },
+});
+console.log('reorder2:', JSON.stringify(res?.status ?? res));

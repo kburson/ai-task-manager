@@ -1,0 +1,2 @@
+- [ ] All seven paths enumerate predicates, resource subjects, conditional authority, known refusals, warnings, human obligations, locks and first effects with source symbols/fingerprints. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Every reachable production behavioral environment read has default/nondefault behavior, predicate/effect classification, baseline policy, disposition, rationale, owner and verifier. Removing a read/flag row or changing a fingerprint fails; legitimate operator controls are not blanket-retired. <!-- aitm-verified vc-list="vc:1" -->

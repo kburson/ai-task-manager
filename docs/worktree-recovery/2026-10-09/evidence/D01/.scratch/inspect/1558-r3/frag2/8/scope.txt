@@ -1,0 +1,3 @@
+**Scope/files and boundary:** Own `scripts/maintenance/measure-guidance-candidate.mjs`, aggregate `guidance-characterization.test.mjs`, and `scripts/tests/fixtures/1558/feasibility-decision.json`. Aggregate tests execute WBS 5–7 checks. No budget changes, runtime extraction or competing gate.
+
+**Handoff and verification behavior:** Additional required verifier: VC27. The NO-GO procedure below is part of this child’s acceptance criteria; green accounting alone never satisfies closure. Revisions within the existing spec/budgets repeat the same measurement; contract changes return to manual review.

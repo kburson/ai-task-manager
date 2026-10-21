@@ -1,0 +1,1 @@
+Do not weaken Test evidence, exact-SHA binding, human or Full-Auto completion approval, hosted CI, pull-request, merge, attribution, or delivery-receipt requirements. Do not treat Full-Auto itself as a waiver. Do not launch a provider when `provider.managed-execution: deny` is active. Do not convert `waived` into `passed` or fabricate review evidence.
