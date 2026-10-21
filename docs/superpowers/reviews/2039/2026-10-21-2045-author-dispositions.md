@@ -1,0 +1,26 @@
+# #2045 author review dispositions
+
+## Independent round 1
+
+Reviewer: fresh GPT-6.1 Sol / medium, read-only and offline. Reviewed head `6e69eabb475e3aaa0d3eee2db9e47aec5eda788b`. The complete unedited report is retained in `2026-10-21-2045-reviewer-r1-review.md`. Its 108 independently executed passing tests are reviewer evidence, separate from author suite results.
+
+1. **P2 interrupted initialization — accepted and repaired.** The namespace-exists flag prevented all subsequent missing-directory creation after a partial first open. Ten real filesystem injections cover before/after namespace and each required child directory creation. The new regression run was RED: six passed and eight failed at missing-directory reopening. Recovery now validates the existing private namespace before adding missing directories, and permits recovery only when every existing entry is a known private directory with no retained bytes. Unknown entries, aliases, unsafe permissions and any nonempty child refuse without changing the namespace. All fourteen recovery/damage cases then passed. This does not repair missing established evidence, recreate runtime controls, remove artifacts or use process age as authority.
+2. **P2 validation/read size mismatch — accepted and repaired.** The original pure validator accepted oversized plan bytes and canonical manifests while the store refused them after publication. Four over-limit unit/import assertions failed as expected; four exact-limit cases already passed. Pure validation now checks canonical manifest bytes and plan bytes against the same existing 4 MiB limit used by durable reads, before any payload or manifest persistence. The read cap remains unchanged. All eight boundary cases passed, including exact-limit round trips and one-byte-over refusal with all four durable child directories still empty.
+
+## Explicit rulings for every declined boundary
+
+1. **Mode resolution and disabled/unavailable CLI behavior:** remains assigned to later slices. These unexposed evidence APIs neither select a mode nor route public commands.
+2. **Model calculations, comparable sufficiency, calibration, rubric derivation and forecast grids:** remain later calculation responsibilities. Structural validity and an empty evidence set do not claim model sufficiency or an estimate.
+3. **Forecast v3, publication, downstream approval and exit consumers:** remain later slices; this store confers no lifecycle or publication capability.
+4. **Current-cloud freshness and observation authenticity:** not established by offline validation. Declared observed comment identities undergo native structural parsing only; no external attestation is claimed.
+5. **Current selected plan, Refine, configuration and calculation-model comparison:** later callers must independently supply and compare their current request. Retained values and timestamps do not establish current authority.
+6. **Recorded Git commit and plan-byte existence at that commit:** recorded identity is preserved and supplied bytes are checked against the declared digest. No Git/cloud discovery or historical estimation lookup is introduced by this transport.
+7. **Refine source-body reconstruction:** the pinned manifest retains its source kind, identity and digest reference. Duplicating a mutable story body is outside this slice and is not invented as proof.
+8. **Additional forecast and landscape child-outcome ancestry:** native semantic validators retain their existing payload contracts. This slice additionally requires complete predecessor/supersession and rubric cohort lineage; it does not fabricate a new universal graph contract.
+9. **Live linked-worktree/root-switch experiment:** no live checkout or app binding was changed by the reviewer. Native runtime root resolution and activated filesystem fixture tests exercise the owned path contract; live linked-worktree migration is not claimed tested here.
+10. **Hostile simultaneous same-owner replacement:** path, inode, permission and exact-byte checks remain, but no universal adversarial scheduling guarantee is claimed. Ordinary scope/root drift and unsafe aliases refuse.
+11. **Exhaustive concurrency across processes and actual power loss:** selected filesystem fault boundaries and exact retries are tested. The tests do not establish exhaustive scheduling or hardware power-loss durability.
+12. **Universal filesystem/platform guarantees:** hard-link, no-follow and directory-fsync behavior was exercised in this environment only. Unsupported or failed operations refuse; no cross-platform certification is claimed.
+13. **Full fast suite, lint/format, CI and native lifecycle/verifier-operation authority:** these are author and native responsibilities, not independent reviewer claims. Author reruns and the final exact-head CI/native receipts remain required before Test/Review/Close. The governed operation retains the exact added integration verifier and its original AC citation.
+
+The imported-envelope renderer ruling remains deliberate: it invokes full native validation while preserving exact envelope bytes and avoiding a fabricated source-comment identity. No native parser requirement was loosened. All recommendations are covered by the two repairs and their regressions. No finding is waived or silently deferred.

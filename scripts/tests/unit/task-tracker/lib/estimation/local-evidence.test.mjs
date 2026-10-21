@@ -8,6 +8,7 @@ import {
 } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
 import {
   bundle,
+  sizedBundle,
   derived,
   envelope,
   rubric,
@@ -257,3 +258,17 @@ test('an incomplete native ancestor stays intact after a complete superseding ou
     [id(11)]
   );
 });
+
+for (const kind of ['plan', 'manifest']) {
+  test(`${kind} at the bounded read limit validates`, () => {
+    const b = sizedBundle(kind, 4194304);
+    assert.equal(kind === 'plan' ? b.planBytes.length : bytes(b.manifest).length, 4194304);
+    const result = validateLocalEvidence(b);
+    assert.deepEqual(result.manifest, b.manifest);
+  });
+  test(`${kind} one byte beyond the bounded read limit refuses validation`, () => {
+    const b = sizedBundle(kind, 4194305);
+    assert.equal(kind === 'plan' ? b.planBytes.length : bytes(b.manifest).length, 4194305);
+    refuses(() => validateLocalEvidence(b));
+  });
+}

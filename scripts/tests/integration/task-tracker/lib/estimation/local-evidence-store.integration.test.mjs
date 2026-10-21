@@ -4,7 +4,12 @@ import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRuntimeRootFixture } from '../../../../helpers/runtime-root-fixture.mjs';
-import { bundle, derived, rubric } from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import {
+  bundle,
+  derived,
+  rubric,
+  sizedBundle,
+} from '../../../../helpers/local-estimation-evidence-fixture.mjs';
 import {
   planRuntimeMigration,
   applyRuntimeMigration,
@@ -14,7 +19,7 @@ import {
   importLocalEvidence,
   validateLocalEvidence,
 } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
-async function fixture(t, io = fs) {
+async function fixture(t, io = fs, { open = true } = {}) {
   const root = fs.realpathSync(createRuntimeRootFixture('local-evidence-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const legacy = path.join(root, '.tmp', 'aitm');
@@ -65,12 +70,14 @@ async function fixture(t, io = fs) {
   assert.deepEqual(plan.blockers, []);
   const result = await applyRuntimeMigration({ plan, approvedPlanDigest: plan.digest, adapters });
   assert.equal(result.status, 'complete');
-  const store = openLocalEvidenceStore({
-    projectRoot: root,
-    host: 'github.com',
-    repository: 'owner/repo',
-    fs: io,
-  });
+  const store =
+    open &&
+    openLocalEvidenceStore({
+      projectRoot: root,
+      host: 'github.com',
+      repository: 'owner/repo',
+      fs: io,
+    });
   return { root, store };
 }
 const unavailable = (fn) => assert.throws(fn, { code: 'LOCAL_EVIDENCE_STORE_UNAVAILABLE' });
@@ -279,3 +286,93 @@ test('an owned-looking alias with an additional unknown link is never removed', 
   assert.equal(fs.existsSync(file + '.unknown'), true);
   assert.equal(fs.statSync(file).nlink, 3);
 });
+
+for (const name of ['namespace', 'payloads', 'plans', 'records', 'manifests'])
+  for (const phase of ['before', 'after'])
+    test(`${phase} ${name} initialization interruption can reopen an empty private namespace`, async (t) => {
+      const f = await fixture(t, fs, { open: false });
+      let armed = true;
+      const io = new Proxy(fs, {
+        get(target, key) {
+          if (key !== 'mkdirSync') return target[key];
+          return (file, ...args) => {
+            const matches =
+              armed &&
+              (name === 'namespace'
+                ? path.basename(path.dirname(file)) === 'estimation-evidence'
+                : path.basename(file) === name &&
+                  path.dirname(file).includes('estimation-evidence'));
+            if (matches && phase === 'before') {
+              armed = false;
+              throw Object.assign(new Error('initialization interrupted'), { code: 'EIO' });
+            }
+            const result = fs.mkdirSync(file, ...args);
+            if (matches && phase === 'after') {
+              armed = false;
+              throw Object.assign(new Error('initialization interrupted'), { code: 'EIO' });
+            }
+            return result;
+          };
+        },
+      });
+      unavailable(() =>
+        openLocalEvidenceStore({
+          projectRoot: f.root,
+          host: 'github.com',
+          repository: 'owner/repo',
+          fs: io,
+        })
+      );
+      const reopened = openLocalEvidenceStore({
+        projectRoot: f.root,
+        host: 'github.com',
+        repository: 'owner/repo',
+      });
+      const b = bundle();
+      const accepted = await importLocalEvidence({ evidenceStore: reopened, bundle: b });
+      assert.deepEqual(reopened.read(accepted.manifestDigest).manifest, b.manifest);
+    });
+for (const damage of ['nonempty', 'alias', 'permissions', 'unknown'])
+  test(`incomplete namespace with ${damage} damage is preserved and refused`, async (t) => {
+    const f = await fixture(t);
+    fs.rmdirSync(path.join(f.store.path, 'plans'));
+    const payloads = path.join(f.store.path, 'payloads');
+    if (damage === 'nonempty')
+      fs.writeFileSync(path.join(payloads, 'retained'), 'retained', { mode: 0o600 });
+    if (damage === 'alias') {
+      fs.renameSync(payloads, payloads + '.saved');
+      fs.symlinkSync(payloads + '.saved', payloads);
+    }
+    if (damage === 'permissions') fs.chmodSync(payloads, 0o755);
+    if (damage === 'unknown') fs.writeFileSync(path.join(f.store.path, 'unknown'), 'retained');
+    unavailable(() =>
+      openLocalEvidenceStore({ projectRoot: f.root, host: 'github.com', repository: 'owner/repo' })
+    );
+    assert.equal(fs.existsSync(path.join(f.store.path, 'plans')), false);
+    if (damage === 'nonempty')
+      assert.equal(fs.readFileSync(path.join(payloads, 'retained'), 'utf8'), 'retained');
+    if (damage === 'alias') assert.equal(fs.lstatSync(payloads).isSymbolicLink(), true);
+    if (damage === 'permissions') assert.equal(fs.statSync(payloads).mode & 0o777, 0o755);
+    if (damage === 'unknown')
+      assert.equal(fs.readFileSync(path.join(f.store.path, 'unknown'), 'utf8'), 'retained');
+  });
+
+for (const kind of ['plan', 'manifest']) {
+  test(`${kind} at the bounded read limit round trips through the durable store`, async (t) => {
+    const f = await fixture(t);
+    const b = sizedBundle(kind, 4194304);
+    const accepted = await importLocalEvidence({ evidenceStore: f.store, bundle: b });
+    const read = f.store.read(accepted.manifestDigest);
+    assert.deepEqual(read.manifest, b.manifest);
+    assert.deepEqual(read.planBytes, b.planBytes);
+  });
+  test(`${kind} one byte beyond the bounded read limit refuses before any persistence`, async (t) => {
+    const f = await fixture(t);
+    await assert.rejects(
+      importLocalEvidence({ evidenceStore: f.store, bundle: sizedBundle(kind, 4194305) }),
+      { code: 'LOCAL_EVIDENCE_UNAVAILABLE' }
+    );
+    for (const name of ['payloads', 'plans', 'records', 'manifests'])
+      assert.deepEqual(fs.readdirSync(path.join(f.store.path, name)), []);
+  });
+}

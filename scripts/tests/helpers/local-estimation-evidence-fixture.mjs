@@ -194,3 +194,17 @@ export async function incompleteOutcome(issue = 1002) {
     review: { fixCycles: 0 },
   });
 }
+
+// Exact byte boundary fixtures; independent of production validation/read limits.
+export function sizedBundle(kind, size) {
+  const b = bundle();
+  if (kind === 'plan') {
+    b.planBytes = Buffer.alloc(size, 97);
+    b.manifest.plan.digest = hash(b.planBytes);
+  } else {
+    b.manifest.plan.section = '';
+    const overhead = bytes(b.manifest).length;
+    b.manifest.plan.section = 'a'.repeat(size - overhead);
+  }
+  return b;
+}
