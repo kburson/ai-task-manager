@@ -63,6 +63,14 @@
         "cspell.json"
       ],
       "ignoreWords": ["multiprocess"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/reviews/2039/2026-10-21-2057-reviewer-r1-review.md",
+        "docs/superpowers/reviews/2039/2026-10-21-2057-r1-author-disposition.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["dafb", "nlink", "nonmatching", "hardlinks", "unacquired"]
     }
   ],
   "ignorePaths": [

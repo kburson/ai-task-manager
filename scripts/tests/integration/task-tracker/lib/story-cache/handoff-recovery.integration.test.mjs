@@ -276,3 +276,57 @@ for (const point of ['source-export', 'receiver-ack'])
     assert.equal((await transfer(f)).status, 'transferred');
     assert.deepEqual(await f.targetStore.readGeneration(), f.before);
   });
+
+test('a lost response after receiver acknowledgment publication reconciles its exact owned stage alias', async (t) => {
+  let armed = false;
+  const targetIo = new Proxy(fs, {
+    get(target, key) {
+      if (key !== 'linkSync') return target[key];
+      return (...args) => {
+        const result = fs.linkSync(...args);
+        const file = String(args[1]);
+        if (
+          armed &&
+          file.includes(path.sep + 'received' + path.sep) &&
+          /received.[^/]+\.json$/.test(file)
+        ) {
+          armed = false;
+          throw Object.assign(new Error('ack response lost'), { code: 'EIO' });
+        }
+        return result;
+      };
+    },
+  });
+  const f = await fixture(t, { targetIo });
+  armed = true;
+  await assert.rejects(transfer(f));
+  assert.equal(armed, false);
+  assert.deepEqual(owner(f), f.claim);
+  assert.equal((await transfer(f)).status, 'transferred');
+  assert.deepEqual(await f.targetStore.readGeneration(), f.before);
+});
+
+test('an unknown acknowledgment hardlink is retained and cannot be reconciled as an owned stage', async (t) => {
+  const f = await fixture(t);
+  const good = f.target.acknowledge;
+  let alias, ackFile;
+  f.target.acknowledge = async (request) => {
+    const proof = await good(request);
+    ackFile = path.join(
+      f.targetStore.cachePath,
+      '.writer-handoff',
+      'received',
+      request.transferId + '.json'
+    );
+    alias = path.join(f.targetStore.cachePath, 'unknown-ack-alias');
+    fs.linkSync(ackFile, alias);
+    return proof;
+  };
+  await assert.rejects(transfer(f));
+  assert.deepEqual(owner(f), f.claim);
+  f.target.acknowledge = good;
+  await assert.rejects(transfer(f));
+  assert.deepEqual(owner(f), f.claim);
+  assert.equal(fs.existsSync(alias), true);
+  assert.equal(fs.statSync(ackFile).nlink, 2);
+});

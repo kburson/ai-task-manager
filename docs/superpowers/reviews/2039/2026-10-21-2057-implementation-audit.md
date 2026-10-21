@@ -100,3 +100,22 @@ version 36. The retained operation will accompany the final audit collateral.
 Independent review, committed author dispositions, final exact-head cloud CI,
 native Test and orchestrator acceptance remain required. This checkpoint is
 not CODE_COMPLETE, native Done or aggregate delivery.
+
+## Retained non-overlapping traffic window
+
+A canonical read-only collector scan measured this worktree's observations in
+`(2026-10-21T21:34:58.808Z, 2026-10-21T23:25:02.768Z]`: 1975 opaque CLI
+observations, 1801 known points across 1066 known-cost observations, and 909
+unknown-cost observations. All 1975 have incomplete cost coverage. One failure
+was observed; the report classified zero retries, without establishing complete
+physical retry coverage. Five invalid inherited context diagnostics were retained.
+This window begins after the prior committed cutoff; do not add overlapping views.
+
+All six storage-integrity counters were zero. The global scan opened 137567
+files in 38077.766 milliseconds and found 438 active-or-unclean writer records;
+that global count is not this chat's active writer count. Frozen baseline and raw
+observations remain preserved. Wire sizes and complete physical HTTP coverage
+remain unmeasured. Unknown costs are not zero, and these unequal workload
+windows cannot establish savings. The original #2055 standalone healer capture
+gap remains unverified; later correctly wrapped reads do not repair that gap.
+No capture cap increase, disabling, purge or credential rotation occurred.
