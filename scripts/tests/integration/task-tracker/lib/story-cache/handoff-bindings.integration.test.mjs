@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { acknowledgeStoryWriterTransfer } from '../../../../../task-tracker/lib/story-cache/writer-handoff.mjs';
+import { createRuntimeRootFixture } from '../../../../helpers/runtime-root-fixture.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fixture, transfer, context } from '../../../../helpers/story-handoff-runtime-fixture.mjs';
@@ -234,4 +235,19 @@ test('same-cache handoff settles the former session while keeping current recipi
   assert.equal(old, 1);
   await assert.rejects(release(f, f.root, 'author-B', () => current++));
   assert.equal(current, 0);
+});
+
+test('a legacy Git worktree with no native cache authority can release without a repository config', async (t) => {
+  const root = fs.realpathSync(createRuntimeRootFixture('legacy-handoff-binding-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, '.ai-task-manager'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.ai-task-manager', 'task-tracker.json'), '{}\n');
+  let marked = 0;
+  await release({ root }, root, 'author-A', () => marked++);
+  assert.equal(marked, 1);
+  assert.equal(
+    fs.existsSync(path.join(root, '.git', 'aitm', 'story-writers.identity.json')),
+    false
+  );
+  assert.equal(fs.existsSync(path.join(root, '.tmp', 'gh')), false);
 });

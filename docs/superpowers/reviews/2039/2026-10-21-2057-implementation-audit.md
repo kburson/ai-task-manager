@@ -141,3 +141,22 @@ A fresh GPT-6.1 Sol / medium reviewer independently accepted the exact R1
 repair checkpoint, with 98 repository tests and eight additional interaction
 probes passing and no actionable findings. Both full reports and every author
 disposition are retained. Native Test and later orchestrator gates remain pending.
+
+## Post-review legacy compatibility repair
+
+After R2, an additional author test exercised an ordinary legacy Git worktree
+with an empty repository configuration and no cache or shared writer authority.
+It observed RED: the new binding guard refused `binding-repository` despite the
+explicit legacy/no-cache compatibility requirement. The read-only guard now
+checks whether any retained local cache or shared writer authority exists before
+requiring a repository scope. No-evidence legacy releases retain their original
+behavior and create no registry or cache; missing configuration still refuses
+when retained authority exists. A new compatibility regression proves the
+successful release and absence of initialized authority.
+
+Full CI run 39694347033 passed at published head
+`178bdff4d9f9fe8391c904f9866f0b84ef180b3d`, including every unit/integration,
+slow, packaging and runtime-budget gate. That result is retained historical
+proof; it cannot accept the subsequent legacy guard change. No native Test
+ran at that head. The compatibility repair requires its own independent review,
+committed disposition and new full exact-head CI before native Test.
