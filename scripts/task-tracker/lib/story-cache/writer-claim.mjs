@@ -1,0 +1,364 @@
+// @story #2042
+// Local validation is separate from current assignment and registry authority.
+import path from 'node:path';
+import fs from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { resolveRuntimeRoot } from '../runtime-storage.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { storyIdentityKey } from './manifest.mjs';
+import { openStoryStore, storyCachePath } from './store.mjs';
+import { withIssueLock, currentIssueLockOwner, THIS_HOST } from '../../issue-mutator-lock.mjs';
+import { cacheWriterOwnershipDecision } from '../ownership-policy.mjs';
+const token = (v) => typeof v === 'string' && v.length > 0 && !/[\s\p{Cc}]/u.test(v);
+const absolute = (v) => typeof v === 'string' && path.isAbsolute(v) && path.resolve(v) === v;
+function fail(code, reason) {
+  throw Object.assign(new Error(`Story writer refused: ${reason}`), { code, reason });
+}
+function validateClaim(claim, context = {}) {
+  if (
+    !claim ||
+    claim.schema !== 'aitm.story-writer-claim/v1' ||
+    !token(claim.claimId) ||
+    !/^[a-f0-9]{64}$/.test(claim.identityKey ?? '') ||
+    !token(claim.human) ||
+    !/^[a-z0-9](?:[a-z0-9-]{0,38})$/.test(claim.human) ||
+    Object.keys(claim).some(
+      (key) =>
+        ![
+          'schema',
+          'claimId',
+          'identityKey',
+          'human',
+          'sessionId',
+          'worktree',
+          'cachePath',
+          'status',
+          'transfer',
+          'registryKey',
+        ].includes(key)
+    ) ||
+    (Object.hasOwn(claim, 'registryKey') && !/^[a-f0-9]{64}$/.test(claim.registryKey)) ||
+    !token(claim.sessionId) ||
+    !absolute(claim.worktree) ||
+    !absolute(claim.cachePath) ||
+    !claim.cachePath.startsWith(path.join(claim.worktree, '.tmp', 'gh') + path.sep) ||
+    claim.status !== 'owned' ||
+    claim.transfer !== null
+  )
+    fail('STORY_WRITER_UNAVAILABLE', 'claim');
+  if (context.sessionId !== claim.sessionId || context.worktree !== claim.worktree)
+    fail('STORY_WRITER_OWNED', 'local-owner');
+  if (
+    Object.hasOwn(context, 'assignment') &&
+    !cacheWriterOwnershipDecision({ assignees: context.assignment, currentUser: claim.human }).ok
+  )
+    fail('STORY_WRITER_ASSIGNMENT', 'live-assignment');
+}
+/** The original pure seed validates a tuple; acquired claims also re-read their native registry. */
+export function assertStoryWriter(claim, context = {}) {
+  validateClaim(claim, context);
+  if (Object.hasOwn(context, 'registry') || Object.hasOwn(claim, 'registryKey')) {
+    try {
+      const registry = Object.hasOwn(context, 'registry')
+        ? context.registry
+        : openStoryWriterRegistry({ projectRoot: context.worktree });
+      const { io, registryId } = registryContext(registry, context.worktree);
+      if (!claim.registryKey) fail('STORY_WRITER_UNAVAILABLE', 'registry-key');
+      const current = readClaim(
+        io,
+        path.join(registry.path, claim.registryKey + '.json'),
+        registryId
+      );
+      if (!current) fail('STORY_WRITER_UNAVAILABLE', 'missing-claim');
+      if (!same(current.claim, claim)) fail('STORY_WRITER_OWNED', 'registry-owner');
+    } catch (cause) {
+      if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
+      fail('STORY_WRITER_UNAVAILABLE', 'registry-check');
+    }
+  }
+}
+
+const registries = new WeakMap();
+const uid = process.getuid?.();
+const same = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
+function safeDirectory(io, target, { create = false, privateMode = false } = {}) {
+  if (create)
+    try {
+      io.mkdirSync(target, { mode: 0o700 });
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+  const stat = io.lstatSync(target);
+  if (
+    !stat.isDirectory() ||
+    stat.isSymbolicLink() ||
+    io.realpathSync(target) !== target ||
+    (uid !== undefined && stat.uid !== uid) ||
+    (stat.mode & 0o022) !== 0 ||
+    (privateMode && (stat.mode & 0o777) !== 0o700)
+  )
+    fail('STORY_WRITER_UNAVAILABLE', 'registry-directory');
+}
+function syncDirectory(io, target) {
+  const fd = io.openSync(
+    target,
+    fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW
+  );
+  try {
+    io.fsyncSync(fd);
+  } finally {
+    io.closeSync(fd);
+  }
+}
+/** Repository-shared ownership pointers only; no story content is stored here. */
+export function openStoryWriterRegistry({ projectRoot, fs: io = fs } = {}) {
+  try {
+    const root = resolveRuntimeRoot({ cwd: projectRoot, env: {} });
+    if (root.projectRoot !== projectRoot || !absolute(projectRoot))
+      fail('STORY_WRITER_UNAVAILABLE', 'project-root');
+    const common = root.worktreeIdentity.commonDir;
+    safeDirectory(io, common);
+    const parent = path.join(common, 'aitm');
+    safeDirectory(io, parent, { create: true });
+    syncDirectory(io, common);
+    const location = path.join(parent, 'story-writers');
+    const identityPath = path.join(parent, 'story-writers.identity.json');
+    let identity = readPrivateJson(io, identityPath);
+    if (identity) {
+      // A previously initialized but missing namespace is lost evidence, not a new registry.
+      safeDirectory(io, location, { privateMode: true });
+    } else {
+      if (io.existsSync(location) && io.readdirSync(location).length !== 0)
+        fail('STORY_WRITER_UNAVAILABLE', 'registry-identity-missing');
+      safeDirectory(io, location, { create: true, privateMode: true });
+      const candidate = {
+        schema: 'aitm.story-writer-registry-identity/v1',
+        registryId: randomUUID(),
+        commonDir: common,
+        host: THIS_HOST,
+      };
+      try {
+        persistClaim(io, identityPath, candidate);
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+      identity = readPrivateJson(io, identityPath);
+    }
+    if (
+      !identity ||
+      identity.schema !== 'aitm.story-writer-registry-identity/v1' ||
+      !token(identity.registryId) ||
+      identity.host !== THIS_HOST ||
+      identity.commonDir !== common ||
+      Object.keys(identity).sort().join(',') !== 'commonDir,host,registryId,schema'
+    )
+      fail('STORY_WRITER_UNAVAILABLE', 'registry-identity');
+    syncDirectory(io, parent);
+    const registry = Object.freeze({ path: location, identityPath });
+    registries.set(registry, { root, io, parent, registryId: identity.registryId });
+    return registry;
+  } catch (cause) {
+    if (cause.code?.startsWith('STORY_WRITER_')) throw cause;
+    fail('STORY_WRITER_UNAVAILABLE', 'registry-open');
+  }
+}
+function registryContext(registry, worktree) {
+  const record = registries.get(registry);
+  if (!record || record.root.projectRoot !== worktree)
+    fail('STORY_WRITER_UNAVAILABLE', 'shared-registry');
+  const root = resolveRuntimeRoot({ cwd: worktree, env: {} });
+  if (
+    root.mainRoot !== record.root.mainRoot ||
+    root.projectRoot !== worktree ||
+    root.worktreeIdentity.commonDir !== record.root.worktreeIdentity.commonDir
+  )
+    fail('STORY_WRITER_UNAVAILABLE', 'root-drift');
+  safeDirectory(record.io, record.root.worktreeIdentity.commonDir);
+  safeDirectory(record.io, record.parent);
+  safeDirectory(record.io, registry.path, { privateMode: true });
+  const identity = readPrivateJson(record.io, registry.identityPath);
+  if (
+    !identity ||
+    identity.registryId !== record.registryId ||
+    identity.host !== THIS_HOST ||
+    identity.commonDir !== root.worktreeIdentity.commonDir ||
+    identity.schema !== 'aitm.story-writer-registry-identity/v1'
+  )
+    fail('STORY_WRITER_UNAVAILABLE', 'registry-identity-drift');
+  return record;
+}
+function claimFile(registry, identity) {
+  const scope = canonicalRecordJson([
+    identity.host.toLowerCase(),
+    identity.repository.toLowerCase(),
+    identity.issueNumber,
+  ]);
+  return path.join(registry.path, createHash('sha256').update(scope).digest('hex') + '.json');
+}
+function readPrivateJson(io, file) {
+  let stat;
+  try {
+    stat = io.lstatSync(file);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+  const safe = (s) =>
+    s.isFile() &&
+    s.nlink === 1 &&
+    (s.mode & 0o777) === 0o600 &&
+    (uid === undefined || s.uid === uid) &&
+    s.size <= 65536;
+  if (!safe(stat)) fail('STORY_WRITER_UNAVAILABLE', 'registry-file');
+  const fd = io.openSync(
+    file,
+    fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK
+  );
+  try {
+    if (!safe(io.fstatSync(fd))) fail('STORY_WRITER_UNAVAILABLE', 'registry-file');
+    const body = io.readFileSync(fd);
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body));
+  } finally {
+    io.closeSync(fd);
+  }
+}
+function readClaim(io, file, registryId) {
+  const record = readPrivateJson(io, file);
+  if (record === null) return null;
+  if (
+    !record ||
+    record.schema !== 'aitm.story-writer-registry/v1' ||
+    record.host !== THIS_HOST ||
+    record.registryId !== registryId ||
+    !record.identity ||
+    !record.claim ||
+    Object.keys(record).sort().join(',') !== 'claim,host,identity,registryId,schema'
+  )
+    fail('STORY_WRITER_UNAVAILABLE', 'registry-record');
+  const key = storyIdentityKey(record.identity);
+  validateClaim(record.claim, {
+    sessionId: record.claim.sessionId,
+    worktree: record.claim.worktree,
+  });
+  if (record.claim.registryKey !== path.basename(file, '.json'))
+    fail('STORY_WRITER_UNAVAILABLE', 'registry-key');
+  if (record.claim.identityKey !== key) fail('STORY_WRITER_UNAVAILABLE', 'registry-identity');
+  return record;
+}
+function persistClaim(io, file, record) {
+  const temp = file + '.' + randomUUID() + '.tmp';
+  let fd;
+  let failure;
+  try {
+    fd = io.openSync(
+      temp,
+      fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW,
+      0o600
+    );
+    io.writeFileSync(fd, canonicalRecordJson(record) + '\n');
+    io.fsyncSync(fd);
+    io.closeSync(fd);
+    fd = undefined;
+    // Publish a complete immutable pointer without ever replacing another claim.
+    io.linkSync(temp, file);
+    io.unlinkSync(temp);
+    syncDirectory(io, path.dirname(file));
+  } catch (error) {
+    failure = error;
+  } finally {
+    if (fd !== undefined)
+      try {
+        io.closeSync(fd);
+      } catch (error) {
+        failure ??= error;
+      }
+    try {
+      io.unlinkSync(temp);
+    } catch (error) {
+      if (error.code !== 'ENOENT') failure ??= error;
+    }
+  }
+  if (failure) throw failure;
+}
+/** Assignment is supplied by the caller's fresh bounded native observation. */
+export async function acquireStoryWriter({
+  identity,
+  human,
+  sessionId,
+  worktree,
+  cachePath,
+  assignment,
+  registry,
+} = {}) {
+  try {
+    const decision = cacheWriterOwnershipDecision({ assignees: assignment, currentUser: human });
+    if (!decision.ok) fail('STORY_WRITER_ASSIGNMENT', decision.kind);
+    const key = storyIdentityKey(identity);
+    if (
+      !token(sessionId) ||
+      !absolute(worktree) ||
+      cachePath !== storyCachePath({ projectRoot: worktree, identity })
+    )
+      fail('STORY_WRITER_UNAVAILABLE', 'local-identity');
+    const { root, io, registryId } = registryContext(registry, worktree);
+    return await withIssueLock(
+      { issue: identity.issueNumber, projDir: worktree, sessionId, retries: 0 },
+      async () => {
+        const owner = currentIssueLockOwner(identity.issueNumber);
+        if (!owner || owner.projDir !== root.mainRoot || owner.sessionId !== sessionId)
+          fail('STORY_WRITER_UNAVAILABLE', 'native-lock-owner');
+        registryContext(registry, worktree);
+        const file = claimFile(registry, identity);
+        const existing = readClaim(io, file, registryId);
+        if (existing) {
+          if (existing.claim.identityKey !== key)
+            fail('STORY_WRITER_UNAVAILABLE', 'identity-drift');
+          if (
+            existing.claim.human !== decision.currentUser ||
+            existing.claim.sessionId !== sessionId ||
+            existing.claim.worktree !== worktree ||
+            existing.claim.cachePath !== cachePath
+          )
+            fail('STORY_WRITER_OWNED', 'persistent-owner');
+          if (!io.existsSync(cachePath)) fail('STORY_WRITER_UNAVAILABLE', 'missing-owned-cache');
+          const store = await openStoryStore({ projectRoot: worktree, identity });
+          const current = await store.readGeneration();
+          if (current && current.manifest.claimId !== existing.claim.claimId)
+            fail('STORY_WRITER_UNAVAILABLE', 'cache-claim');
+          return Object.freeze({ ...existing.claim });
+        }
+        if (io.existsSync(cachePath)) fail('STORY_WRITER_UNAVAILABLE', 'unclaimed-cache');
+        await openStoryStore({ projectRoot: worktree, identity });
+        const claim = {
+          schema: 'aitm.story-writer-claim/v1',
+          claimId: randomUUID(),
+          identityKey: key,
+          human: decision.currentUser,
+          sessionId,
+          worktree,
+          cachePath,
+          status: 'owned',
+          transfer: null,
+          registryKey: path.basename(file, '.json'),
+        };
+        persistClaim(io, file, {
+          schema: 'aitm.story-writer-registry/v1',
+          host: THIS_HOST,
+          registryId,
+          identity: {
+            ...identity,
+            host: identity.host.toLowerCase(),
+            repository: identity.repository.toLowerCase(),
+          },
+          claim,
+        });
+        if (!same(readClaim(io, file, registryId)?.claim, claim))
+          fail('STORY_WRITER_UNAVAILABLE', 'registry-readback');
+        return Object.freeze(claim);
+      }
+    );
+  } catch (cause) {
+    if (cause.code?.startsWith('STORY_WRITER_') || cause.code === 'EISSUELOCKED') throw cause;
+    fail('STORY_WRITER_UNAVAILABLE', 'acquisition');
+  }
+}

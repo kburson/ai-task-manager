@@ -365,7 +365,7 @@ export async function withIssueLock(opts, fn) {
     const owners = new Map(ownerContext.getStore() ?? []);
     owners.set(
       token,
-      Object.freeze({ issue: token, projDir, token: randomBytes(16).toString('hex') })
+      Object.freeze({ issue: token, projDir, sessionId, token: randomBytes(16).toString('hex') })
     );
     return await ownerContext.run(owners, () => heldContext.run(nextHeld, fn));
   } finally {
