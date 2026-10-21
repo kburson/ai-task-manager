@@ -1,0 +1,13 @@
+ai-peer-review
+Copyright 2025-2026 Kendrick Burson
+
+The standalone repository beginning with bootstrap commit
+fd2e636356b6b8049930d5dc6bddf383c6d56c8d after filtered history tip
+bfc6f9ffabd8281a815c7bd0e0824f3bacb84d9d is licensed under the Apache
+License, Version 2.0. The signed relicensing declaration covers code extracted
+from ai-task-manager source commit
+4b3bcd43cba141a611da4a2b861433b915462806.
+
+Ancestors through the filtered history tip retain the AGPL-3.0-or-later and
+commercial terms that applied in the ai-task-manager source repository at those
+commits.

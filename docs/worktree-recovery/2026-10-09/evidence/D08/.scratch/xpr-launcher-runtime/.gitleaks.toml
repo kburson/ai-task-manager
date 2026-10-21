@@ -1,0 +1,4 @@
+title = "ai-peer-review"
+
+[extend]
+useDefault = true

@@ -1,0 +1,7 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint:md
+npm notice run markdownlint-cli2 "**/*.md"
+markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)
+Finding: **/*.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/**
+Linting: 550 files
+Summary: 1 issue in 1 file
+docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/experiment-evidence.md:29:1 error MD034/no-bare-urls Bare URL used [Context: "https://github.com/kburson/ai-..."]
