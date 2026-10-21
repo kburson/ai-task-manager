@@ -493,7 +493,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2053: exactly one complete snapshot vector comparator.
     1 + // #2054: exactly one crash-safe immutable generation store.
     1 + // #2044: exactly one pure timing-event merge module.
-    1; // #2055: exactly one pure unpublished-cache retention policy.
+    1 + // #2055: exactly one pure unpublished-cache retention policy.
+    1; // #2042: exactly one persistent singleton story-writer claim module.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -501,6 +502,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/store.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-events.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/retention.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-claim.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
