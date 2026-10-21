@@ -77,7 +77,7 @@ function configuration(fields) {
       seen.add(f.fieldId);
       return { fieldId: f.fieldId, type: f.type };
     })
-    .sort((a, b) => a.fieldId.localeCompare(b.fieldId));
+    .sort((a, b) => (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0));
 }
 function target(issue, item, identity) {
   if (
@@ -147,7 +147,12 @@ function ingest(state, connection, key) {
     state.cursors.add(endCursor);
     state.after = endCursor;
   } else {
-    if (endCursor !== null && !id(endCursor)) fail(`terminal-cursor-${key}`);
+    if (
+      (endCursor !== null && !id(endCursor)) ||
+      state.cursors.has(endCursor) ||
+      (connection.nodes.length > 0 && !id(endCursor))
+    )
+      fail(`terminal-cursor-${key}`);
     if (state.nodes.length !== state.total) fail(`incomplete-${key}`);
     state.done = true;
   }
@@ -169,7 +174,11 @@ function fieldValues(nodes, configured, identity) {
       !id(n.field?.dataType)
     )
       fail('field-identity');
-    if (n.id !== undefined && (!id(n.id) || valueIds.has(n.id))) fail('field-value-identity');
+    const commonValue = Object.values(types).some(
+      (t) => n.__typename === `ProjectV2ItemField${t}Value`
+    );
+    if ((commonValue && !id(n.id)) || (n.id !== undefined && (!id(n.id) || valueIds.has(n.id))))
+      fail('field-value-identity');
     if (n.id !== undefined) valueIds.add(n.id);
     byField.set(n.field.id, n);
   }
@@ -210,6 +219,14 @@ function fieldValues(nodes, configured, identity) {
     return { itemId: identity.projectItemId, fieldId, type, value };
   });
 }
+function requireHistoryPage(node) {
+  if (
+    !object(node?.userContentEdits?.pageInfo) ||
+    typeof node.userContentEdits.pageInfo.hasNextPage !== 'boolean'
+  )
+    fail('revision-pagination');
+}
+
 /** Complete bounded current census, never an atomic provider transaction or write capability. */
 export async function readStorySnapshot({ identity, transport, budget } = {}) {
   const state = budgets.get(budget);
@@ -275,6 +292,7 @@ export async function readStorySnapshot({ identity, transport, budget } = {}) {
         fail('partial-response');
       const { issue, item } = result.data;
       target(issue, item, subject);
+      requireHistoryPage(issue);
       const observation = observeContent({ identity: subject, node: issue, body: issue.body });
       const fingerprint = canonicalRecordJson({
         title: issue.title,
@@ -306,6 +324,7 @@ export async function readStorySnapshot({ identity, transport, budget } = {}) {
           )
       )
         fail('comment-source');
+      requireHistoryPage(n);
       const observed = observeContent({ identity: subject, node: n, body: n.body });
       resources[observed.key] = {
         ...observed,

@@ -464,3 +464,54 @@ for (const response of ['{', '{}', '{"data":null}', '[]'])
     f.transport.query = async () => response;
     await refuses(read(f));
   });
+
+test('configured inventory uses locale-independent code-unit order', async () => {
+  const f = createStoryFixture();
+  f.transport.fields = [
+    { fieldId: 'F_a', type: 'TEXT' },
+    { fieldId: 'F_B', type: 'TEXT' },
+  ];
+  const s = await read(f);
+  assert.deepEqual(
+    s.fields.map((row) => row.fieldId),
+    ['F_B', 'F_a']
+  );
+});
+
+for (const kind of ['issue', 'comment'])
+  test(`requested current ${kind} history pagination cannot be omitted`, async () => {
+    const f = createStoryFixture({ comments: [{}] });
+    const node = kind === 'issue' ? f.data.issue : f.data.issue.comments.nodes[0];
+    delete node.userContentEdits.pageInfo;
+    await refuses(read(f));
+  });
+
+test('common field-value identity cannot be omitted from a complete response', async () => {
+  const f = createStoryFixture({
+    fields: [
+      {
+        __typename: 'ProjectV2ItemFieldNumberValue',
+        number: 1,
+        field: { id: 'F_A', dataType: 'NUMBER', project: { id: 'P_test' } },
+      },
+    ],
+  });
+  f.transport.fields = [{ fieldId: 'F_A', type: 'NUMBER' }];
+  await refuses(read(f));
+});
+
+test('terminal page cannot reuse a previous cursor even with distinct IDs and matching counts', async () => {
+  const f = createStoryFixture();
+  let calls = 0;
+  f.transport.query = async () => {
+    calls++;
+    const data = structuredClone(f.data);
+    data.issue.comments = {
+      totalCount: 2,
+      nodes: [f.content({ id: calls === 1 ? 'IC_A' : 'IC_B' }, calls)],
+      pageInfo: { hasNextPage: calls === 1, endCursor: 'same-cursor' },
+    };
+    return JSON.stringify({ data });
+  };
+  await refuses(read(f));
+});

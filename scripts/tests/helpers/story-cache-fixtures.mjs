@@ -29,7 +29,7 @@ export function createStoryFixture({ comments = [], assignees = [], fields = [] 
   const connection = (nodes) => ({
     totalCount: nodes.length,
     nodes,
-    pageInfo: { hasNextPage: false, endCursor: null },
+    pageInfo: { hasNextPage: false, endCursor: nodes.length ? 'end-current' : null },
   });
   const data = {
     issue: {
