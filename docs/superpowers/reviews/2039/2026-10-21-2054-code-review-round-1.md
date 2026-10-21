@@ -32,11 +32,13 @@ None found.
 - The store creates the final immutable filename before writing its contents. A partial write followed by an I/O error leaves truncated bytes at that filename. Subsequent attempts to store the same intended bytes encounter `EEXIST`, read the truncated file, and fail with `immutable-collision`.
 - **Independent reproduction:** Commit generation 1. Inject a `writeFile` wrapper for generation 2’s new baseline payload that writes its first three bytes, then throws. Reopen with normal filesystem operations and retry the identical generation 2.
 - **Observed output:**
+
   ```text
   partial-payload first STORY_STORE_UNAVAILABLE simulated partial write
   partial-payload restart-generation 1
   partial-payload retry STORY_STORE_UNAVAILABLE immutable-collision
   ```
+
 - The prior generation remains readable, but a transient persistence failure prevents future storage of those exact bytes without manual filesystem intervention. Changing unrelated generation metadata cannot avoid the poisoned payload hash.
 - **Recommendation:** Write and sync bytes under a unique temporary name, then publish the complete file atomically with no-replace semantics. Preserve collision refusal for existing different bytes. Add a partial-write/restart/retry test; current before/after injection does not simulate truncated writes.
 
@@ -46,9 +48,11 @@ None found.
 - `read()` opens paths with blocking `O_RDONLY` before checking `handle.stat()`. Opening a FIFO with no writer blocks indefinitely, so `regular()` never executes.
 - **Independent reproduction:** Commit a valid generation, replace a referenced baseline payload with `mkfifo -m 600 <payload-path>`, and reopen the store in a child process.
 - **Observed output after a 2,000 ms subprocess timeout:**
+
   ```text
   fifo result ETIMEDOUT signal SIGTERM stderr
   ```
+
 - An unsafe nonregular file should produce the promised typed refusal; instead it hangs startup/read operations. The same path also handles the manifest pointer.
 - **Recommendation:** Open read handles with `O_NONBLOCK`, then retain the descriptor-based regular-file check before reading. An additional preliminary `lstat` can improve rejection but should not replace `fstat`. Add FIFO refusal tests for both a referenced payload and `manifest.json`.
 
@@ -67,11 +71,13 @@ None.
   - Actual package inventory exercised.
 - Additional isolated probes confirmed both findings above.
 - A separate first-publication probe injected failure immediately before pointer rename:
+
   ```text
   initial-before-rename commit STORY_STORE_UNAVAILABLE
   initial-before-rename retained 1
   initial-before-rename restart STORY_STORE_UNAVAILABLE read
   ```
+
   This preserves evidence and refuses hydration, but requires later recovery intervention despite no successful initial publication.
 
 ### Recommendations
