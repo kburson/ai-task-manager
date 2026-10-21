@@ -1,0 +1,35 @@
+{
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs"
+  ],
+  "lanes": [],
+  "reasons": [
+    {
+      "changedPath": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "signal": "manifest",
+      "reason": "current test tree authority change"
+    },
+    {
+      "changedPath": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "signal": "changed-test",
+      "reason": "changed or newly discovered test"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "signal": "manifest",
+      "reason": "current test tree authority change"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "test": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "signal": "changed-test",
+      "reason": "changed or newly discovered test"
+    }
+  ],
+  "escalated": false
+}

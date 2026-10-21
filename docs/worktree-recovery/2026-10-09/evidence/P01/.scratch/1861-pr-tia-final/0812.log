@@ -1,0 +1,10 @@
+✔ fresh terminal guard evaluation sees current body and head (1.129958ms)
+✔ fresh terminal guard refusal and missing evaluator cannot grant a close (0.346125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.269084

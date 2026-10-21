@@ -1,0 +1,23 @@
+✔ migration bootstrap admits exact registered forms without reading corrupt runtime (120.725542ms)
+✔ bootstrap rejects wrong executable, wrappers, extra tokens and ambiguous arguments (0.378042ms)
+✔ bootstrap accepts exact-hash legacy trust planning and never requires volatile input on resume (26.931125ms)
+✔ bootstrap rejects artifact-root identity even when it contains a real Git repository (39.936541ms)
+✔ bootstrap compares executable physical identity and rejects copied package entrypoints (48.120541ms)
+✔ writer leases are durable, scoped and removed after successful or failed operations (283.9305ms)
+✔ fencing drains existing leases and prevents new writers without accepting unknown older writers (378.12775ms)
+✔ known cooperative in-flight writers drain under a fence while unknown older processes refuse (283.285042ms)
+✔ nested synchronous and asynchronous writers share the outer lease through publication (224.893291ms)
+✔ corrupt and aliased fence records cannot be treated as an absent fence (133.367625ms)
+✔ unknown coordinator ownership is retained rather than reclaimed by age (67.435958ms)
+✔ coordinator release preserves replaced ownership instead of unlinking another owner (74.27275ms)
+✔ malformed owners and foreign-root lease records fail closed before fencing (86.089667ms)
+✔ a separate live process lease drains before migration can become quiescent (315.303334ms)
+✔ synchronous writers retain a lease through byte publication and return synchronously (163.230333ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2283.906541

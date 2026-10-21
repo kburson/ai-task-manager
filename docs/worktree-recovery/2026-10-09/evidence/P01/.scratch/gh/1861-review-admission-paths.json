@@ -1,0 +1,10 @@
+[
+  "scripts/task-tracker/lib/runtime-initialize.mjs",
+  "scripts/task-tracker/lib/runtime-migration-apply.mjs",
+  "scripts/task-tracker/lib/runtime-migration-plan.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+  "docs/superpowers/specs/2026-10-02-1861-runtime-kernel-design.md"
+]

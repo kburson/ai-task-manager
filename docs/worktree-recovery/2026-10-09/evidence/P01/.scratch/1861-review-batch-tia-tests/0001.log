@@ -1,0 +1,30 @@
+✔ a supported batch publishes a complete durable receipt and preserves synchronous return (1315.863ms)
+✔ the complete validation set and expected-before assertion refuse before any member changes (1136.656875ms)
+✔ batch deletion refuses mandatory state/task-tracker-state.json before changing any records (1073.106792ms)
+✔ batch deletion refuses mandatory state/task-tracker-queue.json before changing any records (1002.554208ms)
+✔ batch deletion refuses mandatory fleet/task-fleet.json before changing any records (987.393625ms)
+✔ batch deletion refuses mandatory fleet/occupancy.json before changing any records (1001.50725ms)
+✔ deletion remains journaled and completed retry cannot restore an older outcome over later writes (1693.825125ms)
+✔ unfinished batch fences even its lease holder and exact resume completes the original outcome (1395.480458ms)
+✔ SIGKILL at after-batch-journal preserves read refusal and exact confirmed-death replay (3107.021416ms)
+✔ SIGKILL at after-batch-member-0 preserves read refusal and exact confirmed-death replay (3790.978584ms)
+✔ SIGKILL at after-batch-member-1 preserves read refusal and exact confirmed-death replay (2678.304833ms)
+✔ SIGKILL at after-batch-member-stage-0 preserves read refusal and exact confirmed-death replay (2647.403958ms)
+✔ SIGKILL at after-batch-journal-stage-publishing preserves read refusal and exact confirmed-death replay (2696.48625ms)
+✔ SIGKILL at after-batch-journal-stage-prepared preserves read refusal and exact confirmed-death replay (2688.971084ms)
+✔ SIGKILL at after-batch-journal-stage-complete preserves read refusal and exact confirmed-death replay (2735.064083ms)
+✔ unsupported caller identities and nonabsolute targets refuse without creating an unreadable journal (689.907833ms)
+✔ a live publisher cannot be taken over and a changed journal observation preserves every member (1007.507ms)
+✔ binary capture validates proposed metadata and deletes the complete recorded bundle (2022.836917ms)
+✔ a killed resumer retains its genuine owner and excludes a competing recovery until confirmed death (1971.803333ms)
+✔ ordinary reading rechecks batch admission for record after its initial check (1485.101458ms)
+✔ ordinary reading rechecks batch admission for optional-absence after its initial check (1094.929541ms)
+✔ one batch joins main global state with linked binding and actor timing authority (2312.699875ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 40540.948167

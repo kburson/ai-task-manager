@@ -1,0 +1,11 @@
+✔ Test owns the resumable PR and exact-head quick-CI action (0.699625ms)
+✔ Test verification fails closed when both receipt and HEAD are absent (0.289833ms)
+✔ Test action keeps infrastructure waiting and classifies source failure for demotion (0.171917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.433084

@@ -1,0 +1,32 @@
+✔ builds one deterministic child proposal per numbered task (4.376125ms)
+✔ bounds Scope and provenance to the exact source task section (0.708625ms)
+✔ records a root source as both parent and nested epic (0.634542ms)
+✔ refuses duplicate numbers, empty titles, and missing verifiers (0.267417ms)
+✔ writes canonical deterministic fragments for sanctioned creation (4.163625ms)
+✔ sanctioned dry-run body preserves exact task verifiers behind AC citations (736.686125ms)
+✔ sanctioned creator still refuses explicitly supplied administrative prose (1083.8765ms)
+✔ historical tasks remain readable but cannot produce split proposals (1.270167ms)
+✔ aggregates rendered quality and malformed intent across all tasks (0.558042ms)
+✔ bad final task causes zero fragment, preflight, and create calls (49.464333ms)
+✔ production scripts contain no generic split-story renderer phrases (316.047917ms)
+✔ accepted plan previews six distinct stories with exact normalized selectors (877.313709ms)
+✔ dry-run preflights every child and performs no live create (149.6915ms)
+✔ reads proposal text from the pinned HEAD commit rather than the working tree (5.677375ms)
+✔ default plan reader ignores uncommitted working-tree plan changes (138.842709ms)
+✔ human dry-run output exposes complete proposals and future creator argv (4.0985ms)
+✔ hidden and placeholder Governing-spec metadata fall back to the sanctioned default (7.979417ms)
+✔ rejects a missing --plan value instead of consuming the next option (0.306583ms)
+✔ confirm validates all drafts before the first live creation (2.982334ms)
+✔ confirm performs no live creation when any draft preflight fails (5.632208ms)
+✔ refuses unresolved parent provenance before any creator call (0.454792ms)
+✔ refuses malformed resolved parent provenance (0.266583ms)
+✔ confirm stops on partial live failure and retains created issue numbers (3.061417ms)
+✔ new split children explicitly adopt reviewed Scope evidence policy (0.275417ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3401.610334

@@ -1,0 +1,11 @@
+✔ runPromote redirects to /task review, not /task close, when aitm-review-failed is present (20.187667ms)
+✔ runPromote redirects to /task review when no Agent Review evidence has ever been recorded (15.237084ms)
+✔ runPromote still delegates review → close when Agent Review genuinely passed (unchanged) (134.863959ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 180.722916

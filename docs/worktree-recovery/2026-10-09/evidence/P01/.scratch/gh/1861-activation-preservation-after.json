@@ -1,0 +1,23 @@
+{
+  "head": "09755817baad2fd141114e64d4fab125c28f8588",
+  "preexistingPaths": 349,
+  "indexPreserved": true,
+  "refsPreserved": true,
+  "backups": [
+    {
+      "file": "scripts/task-tracker/lib/runtime-initialize.mjs",
+      "save": ".scratch/gh/1861-activation-native-before/scripts/task-tracker/lib/runtime-initialize.mjs",
+      "mode": 33188
+    },
+    {
+      "file": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+      "save": ".scratch/gh/1861-activation-native-before/docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+      "mode": 33188
+    },
+    {
+      "file": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+      "save": ".scratch/gh/1861-activation-native-before/docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+      "mode": 33188
+    }
+  ]
+}

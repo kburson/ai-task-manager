@@ -1,0 +1,7 @@
+[
+  "scripts/tests/helpers/guidance-capture-provenance.mjs",
+  "docs/reviews/1857-remaining-work/2026-10-03-1861-delivery-snapshot.md",
+  "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+  "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+  "scripts/tests/helpers/evidence-v2/sandbox.mjs"
+]

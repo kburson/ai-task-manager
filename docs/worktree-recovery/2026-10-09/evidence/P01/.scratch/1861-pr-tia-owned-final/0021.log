@@ -1,0 +1,22 @@
+✔ kernel operation critical section retains its writer lease through awaited work (1117.530208ms)
+✖ kernel operation locks preserve unknown old ownership rather than treating age as recovery authority (771.011375ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1891.510125
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs:32:1
+✖ kernel operation locks preserve unknown old ownership rather than treating age as recovery authority (771.011375ms)
+  RuntimeRootError: Existing legacy operation lock requires explicit recovery
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-writer.mjs:183:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs:39:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_LOCK_RECOVERY_REQUIRED'
+  }

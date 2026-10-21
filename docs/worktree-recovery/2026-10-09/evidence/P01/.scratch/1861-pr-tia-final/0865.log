@@ -1,0 +1,23 @@
+✔ extractKind pulls the --kind value and leaves title tokens intact (1.365917ms)
+✔ extractKind returns null kind and unchanged rest when --kind absent (AC3) (0.092459ms)
+✔ extractKind consumes only the first --kind occurrence (0.072792ms)
+✔ extractKind drops a trailing --kind with no value (0.062458ms)
+✔ extractKind tolerates a non-array (0.101583ms)
+✔ createNewIssue appends --kind to the spawned argv when kind is set (0.264917ms)
+✔ createNewIssue omits --kind from argv when kind is null (AC3) (0.124083ms)
+✔ createNewIssue omits --kind from argv when kind is an empty string (0.072541ms)
+✔ createNewIssue no-kind argv is byte-identical to the default-arg call (AC3) (0.20675ms)
+✔ createNewIssue never forwards cfg.defaultLabels into the argv (#748 Defect A) (0.140625ms)
+✔ findUnknownFlags reports every unrecognized flag token (#748 Defect B) (0.161583ms)
+✔ findUnknownFlags returns [] for a plain title (#748 Defect B) (0.075792ms)
+✔ findUnknownFlags returns [] for kind-stripped title tokens (#748 Defect B) (0.0545ms)
+✔ findUnknownFlags flags a short -x option token (#748 Defect B) (0.045625ms)
+✔ findUnknownFlags tolerates a non-array (0.050166ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.101917

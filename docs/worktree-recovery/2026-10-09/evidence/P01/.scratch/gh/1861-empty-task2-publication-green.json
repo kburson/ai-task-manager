@@ -1,0 +1,192 @@
+{
+  "base": "914ae88921ee28a662a7d6fadcdbe047b2b1233c",
+  "changedPaths": [
+    "scripts/task-tracker/lib/runtime-empty-record.mjs",
+    "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+    "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+    "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  },
+  "status": 0,
+  "signal": null,
+  "stdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (308.999167ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (317.195041ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (405.51425ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (462.417667ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (9.807333ms)\n✔ current test-tree baseline is well formed (2.510208ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.395833ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.321833ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (9.208375ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (15.975042ms)\n✔ SIGKILL after control activation at root 0 refuses partial authority and resumes exactly (4232.026333ms)\n✔ SIGKILL after control activation at root 1 refuses partial authority and resumes exactly (3678.730375ms)\n✔ a supported batch publishes a complete durable receipt and preserves synchronous return (2621.411458ms)\n✔ the complete validation set and expected-before assertion refuse before any member changes (2298.321584ms)\n✔ batch deletion refuses mandatory state/task-tracker-state.json before changing any records (2156.111959ms)\n✔ batch deletion refuses mandatory state/task-tracker-queue.json before changing any records (1369.129167ms)\n✔ batch deletion refuses mandatory fleet/task-fleet.json before changing any records (1308.933167ms)\n✔ batch deletion refuses mandatory fleet/occupancy.json before changing any records (1133.013083ms)\n✔ deletion remains journaled and completed retry cannot restore an older outcome over later writes (2114.724084ms)\n✔ unfinished batch fences even its lease holder and exact resume completes the original outcome (1992.658833ms)\n✔ SIGKILL at after-batch-journal preserves read refusal and exact confirmed-death replay (3156.813042ms)\n✔ SIGKILL at after-batch-member-0 preserves read refusal and exact confirmed-death replay (5625.936084ms)\n✔ SIGKILL at after-batch-member-1 preserves read refusal and exact confirmed-death replay (2931.446833ms)\n✔ SIGKILL at after-batch-member-stage-0 preserves read refusal and exact confirmed-death replay (2598.527ms)\n✔ SIGKILL at after-batch-journal-stage-publishing preserves read refusal and exact confirmed-death replay (2556.216875ms)\n✔ SIGKILL at after-batch-journal-stage-prepared preserves read refusal and exact confirmed-death replay (3884.486583ms)\n✔ SIGKILL at after-batch-journal-stage-complete preserves read refusal and exact confirmed-death replay (4566.580834ms)\n✔ unsupported caller identities and nonabsolute targets refuse without creating an unreadable journal (859.578542ms)\n✔ a live publisher cannot be taken over and a changed journal observation preserves every member (1858.264959ms)\n✔ binary capture validates proposed metadata and deletes the complete recorded bundle (2052.71225ms)\n✔ a killed resumer retains its genuine owner and excludes a competing recovery until confirmed death (2236.294209ms)\n✔ ordinary reading rechecks batch admission for record after its initial check (1098.54675ms)\n✔ ordinary reading rechecks batch admission for optional-absence after its initial check (1119.515958ms)\n✔ one batch joins main global state with linked binding and actor timing authority (2337.889542ms)\n✔ a killed whole-operation writer needs exact confirmed-death lease recovery before fencing (705.835208ms)\n✔ malformed owner host and null writer leases produce typed refusals without erasing evidence (271.235083ms)\n✔ a genuinely SIGKILLed coordinator is observable and recoverable only from exact dead-owner evidence (1123.885125ms)\n✔ foreign host and replacement coordinator evidence cannot authorize recovery (89.844667ms)\n✔ wrong empty approval is a byte-preserving refusal (202.151417ms)\n✔ late legacy authority invalidates empty apply without writes (380.65625ms)\n✔ explicit approved main publication completes its journal before active control (1822.194625ms)\n✔ pristine main planning seals exactly four no-grant records without changing any byte (208.06425ms)\n✔ existing authority prefix refuses empty plan: .ai-task-manager/runtime (144.382209ms)\n✔ existing authority prefix refuses empty plan: .ai-task-manager/runtime/future-namespace (229.681791ms)\n✔ existing authority prefix refuses empty plan: .tmp/aitm (360.600792ms)\n✔ existing authority prefix refuses empty plan: .db/aitm (390.776916ms)\n✔ existing authority prefix refuses empty plan: .ai-task-manager/state (295.617875ms)\n✔ existing authority prefix refuses empty plan: .claude/sessions (404.756333ms)\n✔ authority aliases and malformed legacy records refuse without modifying their targets (315.607667ms)\n✔ incomplete or foreign writer/claim census cannot approve empty authority (360.337458ms)\n✔ incomplete or foreign writer/claim census cannot approve empty authority (285.646584ms)\n✔ incomplete or foreign writer/claim census cannot approve empty authority (400.833958ms)\n✔ fresh and genuinely activated then totally erased fixture use the same absence policy (1801.093333ms)\n✔ main plans include registered linked absence and refuse unavailable roots (1247.549084ms)\n✔ stable absence projection excludes only the authenticated current invoker across processes (458.017458ms)\n✔ SIGKILL before initialization publication and during resumer claim preserves exclusive recoverable ownership (4316.74475ms)\n✔ real SIGKILL at after-initialization-stage preserves empty local bytes and original activation (3403.734625ms)\n✔ real SIGKILL at after-initialization-publish preserves empty local bytes and original activation (2179.463375ms)\n✔ real SIGKILL at after-initialization-journal preserves empty local bytes and original activation (2024.807291ms)\n✔ a fresh registered worktree initializes empty local authority without changing the original migration or inheriting volatile bytes (5622.002708ms)\n✔ empty linked initialization refuses existing durable evidence at .db/aitm/ready-for-plan-migration.json (1440.632875ms)\n✔ empty linked initialization refuses existing durable evidence at .claude/task-tracker-state.json (1188.640084ms)\n✔ empty linked initialization refuses existing durable evidence at .ai-task-manager/task-tracker-state.json (905.879458ms)\n✔ empty linked initialization rechecks durable absence before applying an approved plan (1361.918333ms)\n✔ kernel operation critical section retains its writer lease through awaited work (2079.264791ms)\n✔ kernel operation locks preserve unknown old ownership rather than treating age as recovery authority (1869.842375ms)\n✔ one plan observes each physical root independently of file count and rechecks its final census (466.042125ms)\n✔ supported legacy roots have an explicit byte-preserving route and duplicates refuse (617.940084ms)\n✔ empty legacy lock directories remain active-source blockers, never invisible empty inventory (213.4055ms)\n✔ capture catalog accepts actual producer records and validates each stored payload (1910.635ms)\n✔ default migration catalog validates supported state and actor formats without caller-supplied classification (664.072542ms)\n✔ migration classifiers receive exact binary capture bytes without text decoding (377.2375ms)\n✔ an artifact-contained registered root is a typed census blocker, not a thrown planner failure (607.410375ms)\n✔ exact observed plan trust cannot bless changed sources, hard blockers, or mutated plan bytes (1760.029625ms)\n✔ registered bootstrap observes and recovers an exact SIGKILLed operation without age or manual lock edits (5526.94575ms)\n✔ a promise returned through the synchronous record wrapper retains real lease and coordinator evidence (2525.789959ms)\n✔ writer release waits for transient coordinator contention without replaying its operation (2629.338625ms)\nℹ tests 77\nℹ suites 0\nℹ pass 77\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 52104.088125\n",
+  "stderr": ""
+}

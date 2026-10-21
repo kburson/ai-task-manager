@@ -1,0 +1,291 @@
+﻿2026-10-04T02:47:52.3531990Z Current runner version: '2.337.0'
+2026-10-04T02:47:52.3548955Z ##[group]Runner Image Provisioner
+2026-10-04T02:47:52.3549644Z Hosted Compute Agent
+2026-10-04T02:47:52.3550060Z Version: 20260901.588
+2026-10-04T02:47:52.3550522Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-04T02:47:52.3551049Z Build Date: 2026-09-01T19:56:44Z
+2026-10-04T02:47:52.3551511Z Worker ID: {d1ac4dd0-8347-401d-befc-62537cbda84b}
+2026-10-04T02:47:52.3551990Z Azure Region: centralus
+2026-10-04T02:47:52.3552617Z ##[endgroup]
+2026-10-04T02:47:52.3553917Z ##[group]Operating System
+2026-10-04T02:47:52.3554367Z Ubuntu
+2026-10-04T02:47:52.3554725Z 24.04.5
+2026-10-04T02:47:52.3555056Z LTS
+2026-10-04T02:47:52.3555448Z ##[endgroup]
+2026-10-04T02:47:52.3555819Z ##[group]Runner Image
+2026-10-04T02:47:52.3556301Z Image: ubuntu-24.04
+2026-10-04T02:47:52.3556743Z Version: 20260927.320.1
+2026-10-04T02:47:52.3557629Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-04T02:47:52.3558682Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-04T02:47:52.3559329Z ##[endgroup]
+2026-10-04T02:47:52.3560103Z ##[group]GITHUB_TOKEN Permissions
+2026-10-04T02:47:52.3561668Z Contents: read
+2026-10-04T02:47:52.3562292Z Metadata: read
+2026-10-04T02:47:52.3562720Z ##[endgroup]
+2026-10-04T02:47:52.3564164Z Secret source: Actions
+2026-10-04T02:47:52.3564771Z Cache mode: write
+2026-10-04T02:47:52.3565263Z Prepare workflow directory
+2026-10-04T02:47:52.3851763Z Prepare all required actions
+2026-10-04T02:47:52.3892982Z Getting action download info
+2026-10-04T02:47:52.6032410Z Download action repository 'actions/checkout@v5' (SHA:fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+2026-10-04T02:47:52.7019203Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-10-04T02:47:52.9102875Z Complete job name: Slow lane (slow tests only)
+2026-10-04T02:47:52.9644684Z ##[group]Run actions/checkout@v5
+2026-10-04T02:47:52.9645342Z with:
+2026-10-04T02:47:52.9645719Z   repository: kburson/ai-task-manager
+2026-10-04T02:47:52.9648611Z   token: ***
+2026-10-04T02:47:52.9648997Z   ssh-strict: true
+2026-10-04T02:47:52.9649362Z   ssh-user: git
+2026-10-04T02:47:52.9649775Z   persist-credentials: true
+2026-10-04T02:47:52.9650162Z   clean: true
+2026-10-04T02:47:52.9650522Z   sparse-checkout-cone-mode: true
+2026-10-04T02:47:52.9650955Z   fetch-depth: 1
+2026-10-04T02:47:52.9651308Z   fetch-tags: false
+2026-10-04T02:47:52.9651677Z   show-progress: true
+2026-10-04T02:47:52.9652033Z   lfs: false
+2026-10-04T02:47:52.9652727Z   submodules: false
+2026-10-04T02:47:52.9653153Z   set-safe-directory: true
+2026-10-04T02:47:52.9653562Z   allow-unsafe-pr-checkout: false
+2026-10-04T02:47:52.9654186Z env:
+2026-10-04T02:47:52.9654535Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T02:47:52.9654952Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T02:47:52.9655497Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T02:47:52.9655920Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T02:47:52.9656377Z ##[endgroup]
+2026-10-04T02:47:53.0390220Z Syncing repository: kburson/ai-task-manager
+2026-10-04T02:47:53.0391865Z ##[group]Getting Git version info
+2026-10-04T02:47:53.0392697Z Working directory is '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-04T02:47:53.0393620Z [command]/usr/bin/git version
+2026-10-04T02:47:53.0433102Z git version 2.55.0
+2026-10-04T02:47:53.0461174Z ##[endgroup]
+2026-10-04T02:47:53.0466955Z Temporarily overriding HOME='/home/runner/work/_temp/68f43ecb-6b48-4c64-b6ad-3dbc1243e540' before making global git config changes
+2026-10-04T02:47:53.0468582Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T02:47:53.0470204Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T02:47:53.0507161Z Deleting the contents of '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-04T02:47:53.0511296Z ##[group]Initializing the repository
+2026-10-04T02:47:53.0514672Z [command]/usr/bin/git init /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T02:47:53.0602973Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-04T02:47:53.0603855Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-04T02:47:53.0605079Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-04T02:47:53.0606139Z hint: call:
+2026-10-04T02:47:53.0606716Z hint:
+2026-10-04T02:47:53.0607425Z hint: 	git config --global init.defaultBranch <name>
+2026-10-04T02:47:53.0608251Z hint:
+2026-10-04T02:47:53.0609026Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-04T02:47:53.0610192Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-04T02:47:53.0611055Z hint:
+2026-10-04T02:47:53.0611673Z hint: 	git branch -m <name>
+2026-10-04T02:47:53.0612731Z hint:
+2026-10-04T02:47:53.0613508Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-04T02:47:53.0614882Z Initialized empty Git repository in /home/runner/work/ai-task-manager/ai-task-manager/.git/
+2026-10-04T02:47:53.0616948Z [command]/usr/bin/git remote add origin https://github.com/kburson/ai-task-manager
+2026-10-04T02:47:53.0657598Z ##[endgroup]
+2026-10-04T02:47:53.0658392Z ##[group]Disabling automatic garbage collection
+2026-10-04T02:47:53.0659132Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-04T02:47:53.0686580Z ##[endgroup]
+2026-10-04T02:47:53.0687838Z ##[group]Setting up auth
+2026-10-04T02:47:53.0690704Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T02:47:53.0714585Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T02:47:53.0993747Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T02:47:53.1011714Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T02:47:53.1154352Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T02:47:53.1176626Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T02:47:53.1317276Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-04T02:47:53.1355320Z ##[endgroup]
+2026-10-04T02:47:53.1356260Z ##[group]Fetching the repository
+2026-10-04T02:47:53.1363220Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +2a957cbcd7c56884b2f4906732ae86d474a8550b:refs/remotes/pull/1871/merge
+2026-10-04T02:47:54.9684922Z From https://github.com/kburson/ai-task-manager
+2026-10-04T02:47:54.9687426Z  * [new ref]         2a957cbcd7c56884b2f4906732ae86d474a8550b -> pull/1871/merge
+2026-10-04T02:47:54.9698053Z ##[endgroup]
+2026-10-04T02:47:54.9699998Z ##[group]Determining the checkout info
+2026-10-04T02:47:54.9701984Z ##[endgroup]
+2026-10-04T02:47:54.9703550Z [command]/usr/bin/git sparse-checkout disable
+2026-10-04T02:47:54.9749262Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-04T02:47:54.9788675Z ##[group]Checking out the ref
+2026-10-04T02:47:54.9790389Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1871/merge
+2026-10-04T02:47:55.1825993Z Note: switching to 'refs/remotes/pull/1871/merge'.
+2026-10-04T02:47:55.1826358Z 
+2026-10-04T02:47:55.1826633Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-04T02:47:55.1827144Z changes and commit them, and you can discard any commits you make in this
+2026-10-04T02:47:55.1827805Z state without impacting any branches by switching back to a branch.
+2026-10-04T02:47:55.1828645Z 
+2026-10-04T02:47:55.1828917Z If you want to create a new branch to retain commits you create, you may
+2026-10-04T02:47:55.1829433Z do so (now or later) by using -c with the switch command. Example:
+2026-10-04T02:47:55.1829687Z 
+2026-10-04T02:47:55.1829853Z   git switch -c <new-branch-name>
+2026-10-04T02:47:55.1830051Z 
+2026-10-04T02:47:55.1830408Z Or undo this operation with:
+2026-10-04T02:47:55.1830798Z 
+2026-10-04T02:47:55.1831197Z   git switch -
+2026-10-04T02:47:55.1831579Z 
+2026-10-04T02:47:55.1831927Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-04T02:47:55.1832460Z 
+2026-10-04T02:47:55.1832885Z HEAD is now at 2a957cb Merge ec1298af3571ce98b2d82100d22e20f393b2b2eb into 171c7d93866f67b58effa635be5ae737f54ef9eb
+2026-10-04T02:47:55.1838585Z ##[endgroup]
+2026-10-04T02:47:55.1878067Z [command]/usr/bin/git log -1 --format=%H
+2026-10-04T02:47:55.1897645Z 2a957cbcd7c56884b2f4906732ae86d474a8550b
+2026-10-04T02:47:55.2091453Z ##[group]Run git fetch --no-tags origin trunk:trunk
+2026-10-04T02:47:55.2092001Z [36;1mgit fetch --no-tags origin trunk:trunk[0m
+2026-10-04T02:47:55.2251004Z shell: /usr/bin/bash -e {0}
+2026-10-04T02:47:55.2251366Z env:
+2026-10-04T02:47:55.2251745Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T02:47:55.2252347Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T02:47:55.2252704Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T02:47:55.2253090Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T02:47:55.2253383Z ##[endgroup]
+2026-10-04T02:47:58.3534375Z From https://github.com/kburson/ai-task-manager
+2026-10-04T02:47:58.3535321Z  * [new branch]        trunk      -> trunk
+2026-10-04T02:47:58.3535685Z  * [new branch]        trunk      -> origin/trunk
+2026-10-04T02:47:58.3624356Z ##[group]Run actions/setup-node@v5
+2026-10-04T02:47:58.3624654Z with:
+2026-10-04T02:47:58.3624954Z   node-version: 24
+2026-10-04T02:47:58.3625215Z   cache: npm
+2026-10-04T02:47:58.3625482Z   always-auth: false
+2026-10-04T02:47:58.3625782Z   check-latest: false
+2026-10-04T02:47:58.3627796Z   token: ***
+2026-10-04T02:47:58.3628110Z   package-manager-cache: true
+2026-10-04T02:47:58.3628394Z env:
+2026-10-04T02:47:58.3628654Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T02:47:58.3628958Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T02:47:58.3629291Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T02:47:58.3629642Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T02:47:58.3629929Z ##[endgroup]
+2026-10-04T02:47:58.4728259Z Found in cache @ /opt/hostedtoolcache/node/24.21.0/x64
+2026-10-04T02:47:58.4732606Z (node:2099) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-04T02:47:58.4733805Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-04T02:47:58.4734841Z ##[group]Environment details
+2026-10-04T02:47:58.7913811Z node: v24.21.0
+2026-10-04T02:47:58.7914197Z npm: 11.19.0
+2026-10-04T02:47:58.7914688Z yarn: 1.22.22
+2026-10-04T02:47:58.7915510Z ##[endgroup]
+2026-10-04T02:47:58.7939506Z [command]/opt/hostedtoolcache/node/24.21.0/x64/bin/npm config get cache
+2026-10-04T02:47:58.9300247Z /home/runner/.npm
+2026-10-04T02:47:59.0827714Z Cache hit for: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-04T02:47:59.0895788Z (node:2099) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-04T02:48:00.2343562Z Received 28999427 of 33193731 (87.4%), 27.7 MBs/sec
+2026-10-04T02:48:01.2347989Z Received 28999427 of 33193731 (87.4%), 13.8 MBs/sec
+2026-10-04T02:48:02.1429927Z Received 33193731 of 33193731 (100.0%), 10.9 MBs/sec
+2026-10-04T02:48:02.1430437Z Cache Size: ~32 MB (33193731 B)
+2026-10-04T02:48:02.1535433Z [command]/usr/bin/tar -xf /home/runner/work/_temp/747f010c-309f-4eee-b833-26c4299ecbf1/cache.tzst -P -C /home/runner/work/ai-task-manager/ai-task-manager --use-compress-program unzstd
+2026-10-04T02:48:02.2168067Z Cache restored successfully
+2026-10-04T02:48:02.2180965Z Cache restored from key: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-04T02:48:02.2280999Z ##[group]Run npm ci
+2026-10-04T02:48:02.2281304Z [36;1mnpm ci[0m
+2026-10-04T02:48:02.2324176Z shell: /usr/bin/bash -e {0}
+2026-10-04T02:48:02.2324459Z env:
+2026-10-04T02:48:02.2324700Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T02:48:02.2325026Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T02:48:02.2325279Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T02:48:02.2325561Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T02:48:02.2325799Z ##[endgroup]
+2026-10-04T02:48:09.0519725Z 
+2026-10-04T02:48:09.0526987Z added 318 packages, and audited 319 packages in 7s
+2026-10-04T02:48:09.0527339Z 
+2026-10-04T02:48:09.0527534Z 101 packages are looking for funding
+2026-10-04T02:48:09.0527812Z   run `npm fund` for details
+2026-10-04T02:48:09.0546338Z 
+2026-10-04T02:48:09.0546835Z 8 vulnerabilities (2 moderate, 6 high)
+2026-10-04T02:48:09.0547027Z 
+2026-10-04T02:48:09.0547189Z To address all issues, run:
+2026-10-04T02:48:09.0547496Z   npm audit fix
+2026-10-04T02:48:09.0547647Z 
+2026-10-04T02:48:09.0547872Z Run `npm audit` for details.
+2026-10-04T02:48:09.0553457Z npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+2026-10-04T02:48:09.0554124Z npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+2026-10-04T02:48:09.0554524Z npm warn install-scripts
+2026-10-04T02:48:09.0555031Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+2026-10-04T02:48:09.0816813Z ##[group]Run npm run test:slow
+2026-10-04T02:48:09.0817107Z [36;1mnpm run test:slow[0m
+2026-10-04T02:48:09.0852468Z shell: /usr/bin/bash -e {0}
+2026-10-04T02:48:09.0852805Z env:
+2026-10-04T02:48:09.0853134Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T02:48:09.0853414Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T02:48:09.0853728Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T02:48:09.0853989Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T02:48:09.0854275Z ##[endgroup]
+2026-10-04T02:48:09.1714574Z 
+2026-10-04T02:48:09.1715072Z > @kburson/ai-task-manager@0.1.0 test:slow
+2026-10-04T02:48:09.1715692Z > node scripts/run-tests.mjs --lane slow
+2026-10-04T02:48:09.1715951Z 
+2026-10-04T02:48:09.2379183Z ▶ lane=slow (55 files)
+2026-10-04T02:48:09.2379473Z 
+2026-10-04T02:51:56.8348885Z ▶ scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs ... ok (41ms)
+2026-10-04T02:51:56.8349860Z ▶ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs ... ok (5.0s)
+2026-10-04T02:51:56.8350960Z ▶ scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs ... ok (65ms)
+2026-10-04T02:51:56.8351801Z ▶ scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs ... ok (2.4s)
+2026-10-04T02:51:56.8352715Z ▶ scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs ... ok (4.9s)
+2026-10-04T02:51:56.8353485Z ▶ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs ... ok (2.1s)
+2026-10-04T02:51:56.8354217Z ▶ scripts/tests/slow/task-tracker/core/verify-develop.test.mjs ... ok (734ms)
+2026-10-04T02:51:56.8354902Z ▶ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs ... ok (682ms)
+2026-10-04T02:51:56.8355587Z ▶ scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs ... ok (872ms)
+2026-10-04T02:51:56.8356289Z ▶ scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ... ok (12.9s)
+2026-10-04T02:51:56.8356916Z ▶ scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs ... ok (667ms)
+2026-10-04T02:51:56.8357653Z ▶ scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ... ok (111.7s)
+2026-10-04T02:51:56.8358383Z ▶ scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs ... ok (4.9s)
+2026-10-04T02:51:56.8359006Z ▶ scripts/tests/slow/task-tracker/lib/body-write-roundtrip.test.mjs ... ok (35ms)
+2026-10-04T02:51:56.8360023Z ▶ scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs ... ok (369ms)
+2026-10-04T02:51:56.8360655Z ▶ scripts/tests/slow/task-tracker/lib/cli.test.mjs ... ok (8.3s)
+2026-10-04T02:51:56.8361266Z ▶ scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs ... ok (1.1s)
+2026-10-04T02:51:56.8362011Z ▶ scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs ... ok (200ms)
+2026-10-04T02:51:56.8363504Z ▶ scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs ... ok (1.6s)
+2026-10-04T02:51:56.8364194Z ▶ scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ... ok (3.1s)
+2026-10-04T02:51:56.8364996Z ▶ scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs ... ok (671ms)
+2026-10-04T02:51:56.8365664Z ▶ scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ... ok (2.0s)
+2026-10-04T02:51:56.8367972Z ▶ scripts/tests/slow/task-tracker/lib/demonstrable-ac-gate.test.mjs ... ok (68ms)
+2026-10-04T02:51:56.8368767Z ▶ scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs ... ok (651ms)
+2026-10-04T02:51:56.8369348Z ▶ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs ... ok (3.3s)
+2026-10-04T02:51:56.8369891Z ▶ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ... ok (213ms)
+2026-10-04T02:51:56.8370398Z ▶ scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs ... ok (237ms)
+2026-10-04T02:51:56.8370889Z ▶ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs ... ok (3.0s)
+2026-10-04T02:51:56.8371468Z ▶ scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs ... ok (162ms)
+2026-10-04T02:51:56.8372509Z ▶ scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs ... ok (554ms)
+2026-10-04T02:51:56.8373126Z ▶ scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ... ok (3.9s)
+2026-10-04T02:51:56.8373757Z ▶ scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs ... ok (141ms)
+2026-10-04T02:51:56.8374252Z ▶ scripts/tests/slow/task-tracker/lib/gates.test.mjs ... ok (2.9s)
+2026-10-04T02:51:56.8374739Z ▶ scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs ... ok (3.6s)
+2026-10-04T02:51:56.8375275Z ▶ scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs ... ok (1.7s)
+2026-10-04T02:51:56.8375740Z ▶ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs ... ok (2.5s)
+2026-10-04T02:51:56.8376235Z ▶ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ... ok (1.1s)
+2026-10-04T02:51:56.8376764Z ▶ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ... ok (4.9s)
+2026-10-04T02:51:56.8377314Z ▶ scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ... ok (3.7s)
+2026-10-04T02:51:56.8377778Z ▶ scripts/tests/slow/task-tracker/lib/move-state.test.mjs ... ok (2.5s)
+2026-10-04T02:51:56.8378505Z ▶ scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs ... ok (2.9s)
+2026-10-04T02:51:56.8379488Z ▶ scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs ... ok (424ms)
+2026-10-04T02:51:56.8380243Z ▶ scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs ... ok (395ms)
+2026-10-04T02:51:56.8381071Z ▶ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ... ok (13.8s)
+2026-10-04T02:51:56.8381743Z ▶ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs ... ok (2.7s)
+2026-10-04T02:51:56.8382596Z ▶ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ... ok (2.8s)
+2026-10-04T02:51:56.8383326Z ▶ scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs ... ok (586ms)
+2026-10-04T02:51:56.8384126Z ▶ scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs ... ok (144ms)
+2026-10-04T02:51:56.8384876Z ▶ scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ... ok (2.6s)
+2026-10-04T02:51:56.8385580Z ▶ scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs ... ok (191ms)
+2026-10-04T02:51:56.8386323Z ▶ scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ... ok (680ms)
+2026-10-04T02:51:56.8387305Z ▶ scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ... ok (281ms)
+2026-10-04T02:51:56.8388178Z ▶ scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs ... ok (210ms)
+2026-10-04T02:51:56.8388953Z ▶ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs ... ok (175ms)
+2026-10-04T02:51:56.8389907Z ▶ scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs ... ok (77ms)
+2026-10-04T02:51:56.8390292Z 
+2026-10-04T02:51:56.8391378Z ▶ scheduling: 0 pure unit file(s) at pool concurrency 3 (peak 0); 0 direct-subprocess file(s) at pool concurrency 2 (peak 0); 1 explicit-safe slow file(s) at pool concurrency 2 (peak 1); 54 explicit-unsafe/integration/unmarked-slow file(s) serial
+2026-10-04T02:51:56.8456405Z 
+2026-10-04T02:51:56.8457566Z run-tests: lane 'slow' bounded sections: slow-parallel=111.7s/600s (1 files); serial=115.8s/600s (54 files); aggregate=227.5s
+2026-10-04T02:51:56.8458097Z 
+2026-10-04T02:51:56.8458238Z All 55 test files passed.
+2026-10-04T02:51:56.8628532Z Post job cleanup.
+2026-10-04T02:51:56.9512567Z (node:28501) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-04T02:51:56.9513457Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-04T02:51:56.9515448Z Cache hit occurred on the primary key node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f, not saving cache.
+2026-10-04T02:51:56.9616349Z Post job cleanup.
+2026-10-04T02:51:57.0217638Z [command]/usr/bin/git version
+2026-10-04T02:51:57.0249962Z git version 2.55.0
+2026-10-04T02:51:57.0279947Z Temporarily overriding HOME='/home/runner/work/_temp/144ce3d1-6a09-47f1-a750-bd8db2839a38' before making global git config changes
+2026-10-04T02:51:57.0280672Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T02:51:57.0285320Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T02:51:57.0311275Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T02:51:57.0335065Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T02:51:57.0497503Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T02:51:57.0513981Z http.https://github.com/.extraheader
+2026-10-04T02:51:57.0522015Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-04T02:51:57.0547308Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T02:51:57.0721014Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T02:51:57.0744047Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T02:51:57.1008422Z Cleaning up orphan processes

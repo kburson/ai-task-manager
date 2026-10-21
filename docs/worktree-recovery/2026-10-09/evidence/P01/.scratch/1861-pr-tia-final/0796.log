@@ -1,0 +1,11 @@
+✔ shared close cleanup sweeps bindings before fleet deregistration and occupancy release (1.396959ms)
+✔ binding cleanup is mandatory and prevents false close success (0.449959ms)
+✔ Done, disposition, and convergence close lanes retain the shared cleanup boundary (1.536167ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.958208

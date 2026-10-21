@@ -1,0 +1,12 @@
+✔ a live scope-bound exception waives only its named requirement (4.947167ms)
+✔ revocation and material scope change invalidate a prior waiver (2.350583ms)
+✔ live loader reads records on every boundary and fails closed on read ambiguity (0.651083ms)
+✔ every waivable Plan-exit guard maps to its finite requirement IDs (0.431166ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.533

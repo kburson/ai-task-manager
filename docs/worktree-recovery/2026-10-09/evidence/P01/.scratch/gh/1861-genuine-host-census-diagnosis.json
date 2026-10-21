@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "{\"complete\":false,\"writers\":[],\"claims\":[],\"unknown\":[{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]}\n",
+    ""
+  ],
+  "pid": 1716,
+  "stdout": "{\"complete\":false,\"writers\":[],\"claims\":[],\"unknown\":[{\"reason\":\"process-observation-incomplete\"},{\"reason\":\"process-census-unavailable\"}]}\n",
+  "stderr": ""
+}

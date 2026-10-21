@@ -1,0 +1,54 @@
+✔ layout audit rejects a discovered test outside the canonical lane tree (213.307041ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (119.626791ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (116.2525ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (192.25725ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (1.705959ms)
+✔ current test-tree baseline is well formed (1.247083ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.33675ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.268709ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.831708ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (10.176875ms)
+✔ empty activation requires explicit linked initialization for roots registered before (1961.451958ms)
+✔ empty activation requires explicit linked initialization for roots registered after (1666.614208ms)
+✔ missing linked control with prepared-v1 is protected loss rather than fresh admission (1114.092291ms)
+✔ missing linked control with complete-v1 is protected loss rather than fresh admission (1209.085833ms)
+✔ missing linked control with prepared-v2 is protected loss rather than fresh admission (1149.085791ms)
+✔ missing linked control with complete-v2 is protected loss rather than fresh admission (1100.816458ms)
+✔ missing linked control with malformed is protected loss rather than fresh admission (1182.269166ms)
+✔ missing linked control with local-residue is protected loss rather than fresh admission (1118.652125ms)
+✔ main observation preserves pristine absence and completed-proof loss distinctions (1055.302667ms)
+✔ migration original root with missing control cannot reinitialize from census membership (1441.546417ms)
+✔ activation admission retains typed refusal for aliased-history (1044.120792ms)
+✖ activation admission retains typed refusal for unreadable-history (1187.6495ms)
+✔ activation admission retains typed refusal for activation-mismatch (1893.055791ms)
+✔ activation admission retains typed refusal for main-prepared (1000.903291ms)
+✔ activation admission retains typed refusal for main-malformed-proof (1133.072625ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19344.648875
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs:203:3
+✖ activation admission retains typed refusal for unreadable-history (1187.6495ms)
+  Error: EACCES: permission denied, open '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/activation-union-uXvej2/.ai-task-manager/runtime/initializations/41064722d63c85ba68ce6b9adb40b431c56dd0981bb7fd72dd77c27a6d021372.json'
+      at Object.openSync (node:fs:779:18)
+      at readFileSync (node:fs:625:35)
+      at walk (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:19:45)
+      at walk (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:14:54)
+      at walk (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:14:54)
+      at walk (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:14:54)
+      at walk (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:14:54)
+      at snapshotTree (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/helpers/runtime-empty-contract-fixture.mjs:23:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs:242:20)
+      at async Test.run (node:internal/test_runner/test:1409:7) {
+    errno: -13,
+    code: 'EACCES',
+    syscall: 'open',
+    path: '/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/activation-union-uXvej2/.ai-task-manager/runtime/initializations/41064722d63c85ba68ce6b9adb40b431c56dd0981bb7fd72dd77c27a6d021372.json'
+  }

@@ -1,0 +1,14 @@
+✔ #864: RUN_LANES exposes unit and integration as selectable lanes (0.958375ms)
+✔ #864: laneFiles("unit") resolves to only the unit section (100.098875ms)
+✔ #864: laneFiles("integration") resolves to only the integration section (23.325333ms)
+✔ #1413: fast is unit-only while integration stays directly selectable (21.296959ms)
+✔ #864: the internal all-lane union survives (backs divergence + coverage) (23.264542ms)
+✔ #864: an unknown lane fails loud (40.7725ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.06025

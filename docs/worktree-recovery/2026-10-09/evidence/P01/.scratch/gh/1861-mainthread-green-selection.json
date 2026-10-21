@@ -1,0 +1,119 @@
+{
+  "base": "d8f885592c6dc24a3418861802768fc2efbf742b",
+  "changedPaths": [
+    "scripts/task-tracker/lib/runtime-process-census.mjs",
+    "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-bootstrap.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-compatibility.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-process-census.mjs",
+        "test": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "signal": "basename",
+        "reason": "conventional basename compatibility mapping"
+      },
+      {
+        "changedPath": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "test": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  }
+}

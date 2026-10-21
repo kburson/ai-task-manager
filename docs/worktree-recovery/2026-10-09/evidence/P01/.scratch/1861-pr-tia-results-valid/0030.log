@@ -1,0 +1,12 @@
+✔ audit reports each executable edge to a discovered entrypoint with stable diagnostics (122.193208ms)
+✔ audit ignores source-like strings and comments and permits non-discovered helpers (25.484334ms)
+✔ audit resolves relative specifiers with Node ESM file-URL semantics (24.181708ms)
+✔ audit CLI fails with stable importer, target, and source-line diagnostics (77.756792ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.100834

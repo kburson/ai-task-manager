@@ -1,0 +1,6 @@
+{
+  "status": 71,
+  "signal": null,
+  "stderr": "sandbox-exec: execvp() of '/bin/ps' failed: Operation not permitted\n",
+  "outputLineCount": 1
+}

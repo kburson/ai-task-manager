@@ -1,0 +1,13 @@
+✔ capture metadata refuses invalid UTF-8 and unsupported operation classes (1.157542ms)
+✔ capture producer padding is a minimum width, not a maximum record count (0.405833ms)
+✔ capture payload migration verifies exact binary length/hash against its stored intent (0.173583ms)
+✔ capture metadata preserves pending outcome absence but refuses malformed identity and unknown schema (0.125667ms)
+✔ capture counters and enablement use closed typed shapes, never arbitrary file bytes (1.078959ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.879208

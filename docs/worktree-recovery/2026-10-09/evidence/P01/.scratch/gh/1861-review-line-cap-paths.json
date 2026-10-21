@@ -1,0 +1,4 @@
+[
+  "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-migration-admission.test.mjs"
+]
