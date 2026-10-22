@@ -21,7 +21,7 @@ Disabled mode returns no estimate and does not inspect evidence. Invalid mode, m
 - Five real native evidence-store integration tests passed: durable derivation and calculation, reopen/revalidation and unforgeable receipt, partial write recovery with the identical candidate, failed final read-back after a landed manifest, and changed-byte/manifest rejection. They exercise real runtime migration/storage and private immutable files; no fake successful store is substituted.
 - The existing estimation unit family plus old/new evidence-store integration passed 235 tests before the last two provenance/reason repairs. This is retained regression evidence, not a claim about a later final head.
 - Package test observed RED at 963 actual entries against the prior exact 962 allowance, then GREEN 9/9 after adding exactly one maintained runtime module and its presence assertion. No exclusion or spare headroom was added.
-- Full lint passed after correcting a Markdown heading ambiguity in the planning artifact. The native mirrored narrative remains semantically identical. Full fast-suite verification is running; final exact-head CI and native Test are pending.
+- Full lint passed after correcting a Markdown heading ambiguity in the planning artifact. The native mirrored narrative remains semantically identical. Full fast-suite verification passed all 988 files (949 pure unit and 39 direct-subprocess files); the expanded named verifier passed all 63 tests. Final exact-head CI and native Test remain pending.
 
 Raw logs remain under `.superpowers/sdd/2026-10-20-2039-active-child-execution-plan/task-17-*.log`. An independently hand-calculated fixture correction preceded implementation: human total 44h; AI stages 2/22.5/4/3.5h, P50 32h, P80 47h. These synthetic fixture results are test expectations, not this story's local engineering estimate or live timing evidence.
 
@@ -33,7 +33,7 @@ node --test scripts/tests/unit/task-tracker/lib/estimation/local-runtime.test.mj
 
 ## Review and native acceptance
 
-Independent GPT-6.1 Sol / medium review, raw reports and all author dispositions will be retained before final-head CI. Native Test, agent CODE_COMPLETE, same-target orchestrator Review, approval and Close are pending. Root #2039 remains Develop and PR #2081 remains the aggregate delivery route; no child is separately delivered.
+Independent GPT-6.1 Sol / medium round 1 found one Important typed-error defect. Nine additional tests observed RED, then the actual-store targeted verifier passed 72 after shared defensive error normalization. The complete raw round and all ten boundary rulings are retained; independent repair verification remains pending before final-head CI. Native Test, agent CODE_COMPLETE, same-target orchestrator Review, approval and Close are pending. Root #2039 remains Develop and PR #2081 remains the aggregate delivery route; no child is separately delivered.
 
 ## Authority, timing and capture
 

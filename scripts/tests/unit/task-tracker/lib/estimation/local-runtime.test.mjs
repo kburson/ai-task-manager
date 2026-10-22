@@ -325,3 +325,29 @@ test('malformed unavailable reason is normalized to a concrete string', () => {
   });
   noEstimate(result);
 });
+
+for (const [name, thrown] of [
+  ['null', null],
+  ['undefined', undefined],
+  ['object reason', { reason: { invalid: 'object' } }],
+  ['number message', { message: 17 }],
+  [
+    'throwing reason getter',
+    {
+      get reason() {
+        throw null;
+      },
+    },
+  ],
+]) {
+  test('injected model throwing ' + name + ' returns typed unavailable', () => {
+    const args = fixture();
+    args.model = {
+      ...LOCAL_ESTIMATION_MODEL,
+      calculate() {
+        throw thrown;
+      },
+    };
+    noEstimate(calculateLocalEstimate(args));
+  });
+}

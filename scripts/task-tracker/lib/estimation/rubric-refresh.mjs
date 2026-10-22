@@ -5,6 +5,7 @@ import {
   validateLocalSelection,
   localEstimationMode,
   retainLocalEstimateInputs,
+  localFailureReason,
 } from './local-runtime.mjs';
 import { createLocalDerivedRecord, validateLocalEvidence } from './local-evidence.mjs';
 import { createBootstrapRubric, updateEstimationRubric } from './rubric-model.mjs';
@@ -244,7 +245,7 @@ export function deriveLocalRubric(args = {}) {
   } catch (error) {
     return {
       status: 'unavailable',
-      reason: error.reason || error.message || 'local-rubric-invalid',
+      reason: localFailureReason(error, 'local-rubric-invalid'),
     };
   }
 }
@@ -278,7 +279,7 @@ export async function refreshLocalRubric(args = {}) {
   } catch (error) {
     return {
       status: 'unavailable',
-      reason: error.reason || error.message || 'local-rubric-persistence',
+      reason: localFailureReason(error, 'local-rubric-persistence'),
     };
   }
 }
