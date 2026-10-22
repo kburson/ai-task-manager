@@ -133,3 +133,11 @@ Exact covering and outer-root commands are reproduced in the exhaustive disposit
 A documentation write was initially refused because the hook interpreted the already verified outer-primary path inside prose as an out-of-scope file read; no write occurred. The same ordinary document operation instead references the existing native identity artifact, with no filesystem/policy/identity override.
 
 Earlier full fast/slow results remain historical to their recorded source. No full-suite repeat was made solely for this fixture repair. Full applicable settled-source CI remains required before Test. Native commit traces and the clean candidate identity are preserved separately. The worker stays active for fresh scoped R2; no Stop/Test/Review/Close/PR/delivery action or self-review occurred.
+
+## Scoped R2 acceptance and final stopped handoff
+
+The complete fresh scoped R2 artifact was read and copied byte-identically to `2026-10-22-2065-review-r2.raw.txt`, SHA-256 `e8e68aef6c268f8d16c78d5561acef5d2ece262253bbbd0d471c90a24e40670b`. Exhaustive author rulings in `2026-10-22-2065-review-r2-author-dispositions.md` cover every verdict, positive, recommendation and limitation, including artifact-write refusals and the eventual ordinary explicit-target write without overrides.
+
+R2 accepts R1-I1 as ADDRESSED and finds no new Critical/Important/Minor fix-induced issue. It closes the scoped Important only; R1-M1 stays deferred for final whole-branch disposition, and exact settled-source aggregate CI/native Test, lifecycle and whole-branch gates remain pending. No product, test, package or inventory bytes change in this documentation-only handoff; no suite or full native quality chain is repeated solely for the evidence update.
+
+After the attributed documentation commit and native trace, the controller directed exactly one genuine native Stop for the resumed session. Its complete output and native binding/actor/occupancy/timing-queue read-back are retained in distinct `r2-final-stop` scratch artifacts and reported separately with the final clean HEAD. They are not the previous handoff Stop, are not fabricated review/lifecycle proof, and do not authorize Test/Review/Close/delivery. Unknown timing is preserved as observed; no duration or queue record is replayed or repaired.
