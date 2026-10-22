@@ -1,3 +1,4 @@
+// @story #2058 #2060 #2064
 // @story #2062
 // @story #2040
 // @story #1986
@@ -480,7 +481,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     5 + // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
     1 + // #2062: exactly one local calculation and retained-input receipt module.
     1 + // #2043: exactly one local issue-body/title staging adapter.
-    1; // #2046: exactly one strict forecast v3 provenance validator.
+    1 + // #2046: exactly one strict forecast v3 provenance validator.
+    1 + // #2058: exactly one local owned-comment staging adapter.
+    1 + // #2060: exactly one durable local timing-ingestion adapter.
+    2; // #2064: exactly two retained forecast evidence/lineage readers; measured total 969.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -503,6 +507,13 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/forecast-v3.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence-store.mjs'));
+  for (const entry of [
+    'scripts/task-tracker/lib/story-cache/stage-comment.mjs',
+    'scripts/task-tracker/lib/story-cache/timing-stage.mjs',
+    'scripts/task-tracker/lib/estimation/forecast-reader.mjs',
+    'scripts/task-tracker/lib/estimation/forecast-lineage.mjs',
+  ])
+    assert.ok(files.includes(entry), 'required reviewed wave 9 runtime entry missing: ' + entry);
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));
