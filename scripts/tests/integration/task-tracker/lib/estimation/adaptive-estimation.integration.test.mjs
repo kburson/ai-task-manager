@@ -1,3 +1,5 @@
+// @story #2063
+import { retainedPlanCalculation } from '../../../../helpers/task-2063-retained-plan-fixture.mjs';
 // @story #1091
 // @story #1160
 import assert from 'node:assert/strict';
@@ -19,7 +21,7 @@ import { writeEstimationRecord } from '../../../../../task-tracker/lib/estimatio
 import { createBootstrapRubric } from '../../../../../task-tracker/lib/estimation/rubric-model.mjs';
 import { loadOrRefreshRubric } from '../../../../../task-tracker/lib/estimation/rubric-refresh.mjs';
 import {
-  createAdaptivePlanRuntime,
+  createPlanPublicationRuntime,
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
@@ -449,7 +451,7 @@ test('default close runtime emits a child-referencing epic outcome without using
   ]);
 });
 
-test('production Plan runtime converges board, body, history, forecast, and ready marker with fake GitHub', async () => {
+test('retained local calculation converges board, body, history, forecast and ready marker through publication authority', async () => {
   const cfg = {
     repo: repository,
     projectId: 'PVT_adaptive',
@@ -477,13 +479,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
   const graphql = async ({ query }) => {
     if (query.includes('AitmEstimationCorpus')) {
       corpusReadLocations.push(insideRecordClaim);
-      return {
-        data: {
-          node: {
-            items: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
-          },
-        },
-      };
+      throw new Error('historical corpus transport is prohibited');
     }
     if (query.includes('AitmEstimationProjection')) {
       return {
@@ -551,7 +547,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
       return record;
     },
   };
-  const runtime = createAdaptivePlanRuntime({
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
       ...estimationPublicationFixture({
@@ -591,11 +587,34 @@ test('production Plan runtime converges board, body, history, forecast, and read
     },
   });
 
+  // #2063: preparation consumes retained bytes, never the fake cloud corpus/rubric.
+  const localRubric = envelope({
+    recordType: 'estimation-rubric',
+    issue: rubricIssue,
+    payload: createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' }),
+    actor: 'fixture',
+  });
+  const input = { ...planInput(), comparableIssueIds: [] };
+  const calculated = retainedPlanCalculation({
+    repository,
+    issue: firstIssue,
+    rubricIssue,
+    rubric: localRubric,
+    refine: { size: 'M', humanHours: 8 },
+    input,
+  });
+  assert.equal(calculated.status, 'estimated', calculated.reason);
   const result = await executeAdaptivePlanEstimate({
     issueNumber: firstIssue,
-    planInput: planInput(),
+    planInput: input,
     cfg,
-    deps: runtime,
+    deps: {
+      ...runtime,
+      readRefineEstimate: async () => calculated.forecast.refine,
+      loadRubric: async () => ({ recordId: localRubric.recordId, payload: localRubric.payload }),
+      listComparableOutcomes: async () => [],
+      buildForecast: () => calculated.forecast,
+    },
   });
 
   assert.equal(result.status, 'converged');
@@ -609,21 +628,21 @@ test('production Plan runtime converges board, body, history, forecast, and read
   assertPublishedForecastOnHalfHourGrid(forecastRecord.envelope.payload);
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,
-    1
+    0
   );
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-forecast').length,
     1
   );
-  assert.deepEqual(corpusReadLocations, [true]);
-  assert.deepEqual(rubricReadLocations, [true]);
+  assert.deepEqual(corpusReadLocations, []);
+  assert.deepEqual(rubricReadLocations, []);
 });
 
 test('production Plan projection paginates raw comments so an older Refine baseline remains readable', async () => {
   const cfg = {
     repo: repository,
     projectId: 'PVT_pagination',
-    estimationRubricIssue: rubricIssue,
+    estimationRubricIssue: 0,
     kanbanFieldId: 'FIELD_status',
     fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
   };
@@ -697,7 +716,7 @@ test('production Plan projection paginates raw comments so an older Refine basel
     }
     throw new Error(`unexpected query: ${query}`);
   };
-  const runtime = createAdaptivePlanRuntime({
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
       graphql,
@@ -770,7 +789,7 @@ test('a new Plan process reuses an equivalent active forecast left before the re
       },
     };
   };
-  const runtime = createAdaptivePlanRuntime({
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
       graphql,
