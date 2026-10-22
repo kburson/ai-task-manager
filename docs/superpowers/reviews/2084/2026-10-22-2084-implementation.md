@@ -1,6 +1,6 @@
 # #2084 bootstrap receipt
 
-<!-- cspell:ignore AHOABCEY Xillzh -->
+<!-- cspell:ignore AHOABCEY Xillzh hostedtoolcache syscall -->
 
 Native agent admission reached Develop; implementation awaits controller GO.
 
@@ -45,3 +45,15 @@ Diagnostic tooling check: initial full lint stopped on three bare GitHub links i
 Second lint run reached spelling and reported compressed prose and opaque item-ID tokens in this report. Prose was expanded and only the opaque item-ID fragments are locally declared. Raw diagnostic-lint-fixed.log retained.
 
 Diagnostic checkpoint validation: focused tests passed 7/7 on Node 26.8.1; full lint and format checks exited 0. This validates the instrumentation locally and does not prove the Node 24 repair. Full raw logs remain in the evidence scratch directory for later compressed archival.
+
+## Second diagnostic CI checkpoint
+
+First diagnostic CI run 39811322712 at exact 4e3190bf910733a852a02e5a9ac459da1819600f reproduced the same status and retained matrix failures on actual Node v24.22.1, executable /opt/hostedtoolcache/node/24.22.1/x64/bin/node. The complete integration job log was retrieved via the GitHub connector: <https://github.com/kburson/ai-task-manager/actions/runs/39811322712/job/119938039675>. The catalog is published with matching source and released digest sha256:9eb5c55c7c52dab8106e89e16a367dbf8b819eb742dc72fa3fe340878cb890a5. Validation reports 25 documentation-path-missing errors across 23 entries, involving workflow.md, ask-the-script.md, guard-architecture.md and reviewed-scope-evidence.md. No source-identity or catalog-digest mismatch is established. Sparse checkout was explicitly disabled.
+
+Source tracing identifies a catch around two realpathSync calls in guidance/documentation.mjs: package root, then allowed document path. Those errors do not distinguish the failing call or permission denial from absence. Controller authorized only an additional failure-path filesystem diagnostic in the same sandbox probe: observe root realpath, document realpath and document read, preserve error code/message/syscall/path/resource/permission, and inspect process.permission.has. No permission or production behavior changes.
+
+A local Node26 probe showed root read permission false and document permission true; root and document realpath and document read succeeded, while direct root lstat was denied ERR_ACCESS_DENIED. This explains why local success cannot distinguish the Node24 path behavior. Raw diagnostic-paths-node26.log is retained. No root cause has yet been asserted and no production fix is selected.
+
+Pre-execution tooling refusal: the filesystem hook reported "Access to path outside allowed scope" when it interpreted an absolute-looking documentation suffix in the proposed source replacement as a filesystem-root path. No edit or check in that call executed. The full refusal and command remain verbatim in the tool record. Controller ruled to use transparent path.join(root, 'docs', 'guides', 'workflow.md') to express the intended authorized toolRoot child, without encoding, alternate writer, permission change or access to an outside path. This was a tooling refusal, not product RED evidence. The timer was genuinely paused and resumed around the ruling.
+
+Second diagnostic validation: focused tests passed 7/7 on verified local Node 26.8.1. Changed-file JavaScript and Markdown lint passed. Spelling first reported the exact CI executable directory and error-property identifiers; these opaque evidence tokens are now locally declared. No functional behavior or permission grant changed.

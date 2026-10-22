@@ -164,9 +164,28 @@ test('real dispatcher runs in a fresh recorded context and refuses production is
             status,
             guidance: sandbox.probe(`
               import { loadGuidance } from ${JSON.stringify(new URL('../../../../../../guidance/cache.mjs', import.meta.url).href)};
+              import { realpathSync, readFileSync } from 'node:fs';
+              import path from 'node:path';
+              const root = ${JSON.stringify(toolRoot)};
+              const document = path.join(root, 'docs', 'guides', 'workflow.md');
+              const observe = (fn) => {
+                try { return { ok: true, value: fn() }; }
+                catch (error) {
+                  return { ok: false, code: error.code, message: error.message,
+                    syscall: error.syscall, path: error.path,
+                    resource: error.resource, permission: error.permission };
+                }
+              };
               console.log(JSON.stringify({
                 runtime: { version: process.version, execPath: process.execPath },
                 guidance: loadGuidance({ publishedOnly: true, need: 'diagnostics' }),
+                filesystem: {
+                  permission: { root: process.permission.has('fs.read', root),
+                    document: process.permission.has('fs.read', document) },
+                  rootRealpath: observe(() => realpathSync(root)),
+                  documentRealpath: observe(() => realpathSync(document)),
+                  documentRead: observe(() => readFileSync(document, 'utf8').length),
+                },
               }));
             `),
           });
