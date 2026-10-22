@@ -402,14 +402,28 @@ function lineHasProof(line) {
   return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(s) || parseAcEvidence(s) != null;
 }
 
-export function findCheckboxesTickedWithoutProof(before, after) {
+export function findCheckboxesTickedWithoutProof(before, after, { includeNew = false } = {}) {
   const beforeLines = String(before || '').split('\n');
   const afterLines = String(after || '').split('\n');
-  const limit = Math.min(beforeLines.length, afterLines.length);
+  const unchecked = new Set(
+    beforeLines
+      .filter((line) => UNCHECKED_LINE_RE.test(line))
+      .map((line) => line.replace(UNCHECKED_LINE_RE, '').trim())
+  );
+  const existingChecked = new Map();
+  for (const line of beforeLines.filter((entry) => CHECKED_LINE_RE.test(entry))) {
+    existingChecked.set(line, (existingChecked.get(line) || 0) + 1);
+  }
   const offenders = [];
-  for (let i = 0; i < limit; i += 1) {
-    if (!UNCHECKED_LINE_RE.test(beforeLines[i])) continue;
+  for (let i = 0; i < afterLines.length; i += 1) {
     if (!CHECKED_LINE_RE.test(afterLines[i])) continue;
+    const existing = existingChecked.get(afterLines[i]) || 0;
+    if (existing) {
+      existingChecked.set(afterLines[i], existing - 1);
+      continue;
+    }
+    const moved = unchecked.has(afterLines[i].replace(CHECKED_LINE_RE, '').trim());
+    if (!includeNew && !UNCHECKED_LINE_RE.test(beforeLines[i] || '') && !moved) continue;
     if (lineHasProof(afterLines[i])) continue;
     offenders.push({ lineIndex: i, text: afterLines[i] });
   }
@@ -474,6 +488,33 @@ function collectProofMarkers(body) {
     }
   }
   return markers;
+}
+
+// @story #2059 — proof stays bound to its original section and promise.
+export function findLostOrMovedExecutionProof(before, after) {
+  const entries = (body) => {
+    const lines = String(body || '').split('\n');
+    return collectProofMarkers(body).map((entry) => {
+      const section =
+        lines
+          .slice(0, entry.lineIndex + 1)
+          .filter((line) => /^## /.test(line))
+          .at(-1) || '';
+      const carrier = entry.text
+        .replace(/^\s*- \[[ x]\]/, '')
+        .replace(entry.marker, '')
+        .trim();
+      return { ...entry, key: JSON.stringify([section, carrier, entry.marker]) };
+    });
+  };
+  const remaining = new Map();
+  for (const entry of entries(after)) remaining.set(entry.key, (remaining.get(entry.key) || 0) + 1);
+  return entries(before).filter((entry) => {
+    const count = remaining.get(entry.key) || 0;
+    if (!count) return true;
+    remaining.set(entry.key, count - 1);
+    return false;
+  });
 }
 
 export function findNewlyIntroducedExecutionProof(before, after) {
