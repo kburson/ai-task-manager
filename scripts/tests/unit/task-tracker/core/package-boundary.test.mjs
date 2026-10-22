@@ -479,7 +479,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2045: exactly two durable local estimation evidence modules.
     5 + // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
     1 + // #2062: exactly one local calculation and retained-input receipt module.
-    1; // #2043: exactly one local issue-body/title staging adapter.
+    1 + // #2043: exactly one local issue-body/title staging adapter.
+    1; // #2046: exactly one strict forecast v3 provenance validator.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -499,6 +500,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   ])
     assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-runtime.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/forecast-v3.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence-store.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));

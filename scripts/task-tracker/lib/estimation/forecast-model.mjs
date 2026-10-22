@@ -1,7 +1,11 @@
+// @story #2039 #2046
+import { FORECAST_V3_SCHEMA, validateForecastProvenance } from './forecast-v3.mjs';
 import { FORECAST_SCHEMA, validateEstimationForecast } from './forecast-record.mjs';
 import { ceilEstimateHours } from './estimate-granularity.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
+import { validateLocalEvidence } from './local-evidence.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 
 const SIZE_ORDER = Object.freeze(['XS', 'S', 'M', 'L', 'XL']);
 const DEFAULT_PLANNING = Object.freeze({
@@ -56,10 +60,41 @@ export function buildEstimationForecast({
   planInput,
   rubric,
   comparableOutcomes = [],
+  localEvidence,
+  evidence,
+  repository,
 } = {}) {
+  if (localEvidence !== undefined) {
+    // Capture the complete data domain before validation; never reread caller wrappers.
+    // Canonical serialization rejects executable properties, including payload getters.
+    ({ issue, refine, planInput, rubric, comparableOutcomes, localEvidence } = JSON.parse(
+      canonicalRecordJson({ issue, refine, planInput, rubric, comparableOutcomes, localEvidence })
+    ));
+  }
   if (!Number.isInteger(issue) || issue <= 0 || !refine || !rubric?.recordId)
     throw new TypeError('estimation-forecast:input');
   const input = parsePlanEstimationInput(planInput);
+  if (localEvidence !== undefined) {
+    if (evidence === undefined) throw new TypeError('estimation-forecast:retained-input-required');
+    const retained = validateLocalEvidence(evidence);
+    const samePayload = (left, right) => canonicalRecordJson(left) === canonicalRecordJson(right);
+    if (
+      !retained.activeRubric ||
+      retained.activeRubric.record.recordId !== rubric.recordId ||
+      !samePayload(retained.activeRubric.record.payload, rubric.payload)
+    )
+      throw new TypeError('estimation-forecast:retained-input-rubric');
+    const allowed = new Set(input.comparableIssueIds);
+    const outcomes = new Map(
+      retained.activeOutcomes.map(({ record }) => [record.recordId, record])
+    );
+    for (const entry of comparableOutcomes) {
+      if (allowed.size !== 0 && !allowed.has(entry.payload.issue)) continue;
+      const record = outcomes.get(entry.recordId);
+      if (!record || !samePayload(record.payload, entry.payload))
+        throw new TypeError('estimation-forecast:retained-input-outcome');
+    }
+  }
   validateEstimationRubric(rubric.payload);
   const humanCoefficients = rubric.payload.human.coefficients;
   const aiCoefficients = rubric.payload.ai.coefficients;
@@ -222,5 +257,14 @@ export function buildEstimationForecast({
     supersedesForecastRecordId: null,
   };
   validateEstimationForecast(forecast, { expectedIssue: issue });
+  if (localEvidence !== undefined) {
+    const current = {
+      ...forecast,
+      schema: FORECAST_V3_SCHEMA,
+      localEvidence: structuredClone(localEvidence),
+    };
+    validateForecastProvenance(current, { expectedIssue: issue, repository, evidence });
+    return current;
+  }
   return forecast;
 }
