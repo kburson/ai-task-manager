@@ -169,6 +169,13 @@ const fixtureActor = {
   AI_TASK_MANAGER_APP_NAME: 'claude',
   AI_TASK_MANAGER_SESSION_ID: 'fixture-2063-estimation-dispatch',
 };
+function fixtureEnvironment(overrides = {}) {
+  const env = { ...process.env, ...fixtureActor, ...overrides };
+  // Each disposable Git fixture owns its root through cwd. Inherited native
+  // Test sandbox selectors belong to the outer runner, never this child.
+  for (const alias of PROJECT_ROOT_ALIASES) delete env[alias];
+  return env;
+}
 test('hook estimator requests stop before decomposition, but quoted mentions are ordinary commands', async () => {
   const dir = mkdtempProjectIsolated('local-dispatch-');
   try {
@@ -187,7 +194,7 @@ test('hook estimator requests stop before decomposition, but quoted mentions are
           cwd: dir,
           input: JSON.stringify(payload),
           encoding: 'utf8',
-          env: { ...process.env, ...fixtureActor },
+          env: fixtureEnvironment(),
         })
       );
       assert.equal(activity.code, 'estimation-dispatch-stopped');
@@ -209,6 +216,36 @@ test('hook estimator requests stop before decomposition, but quoted mentions are
 // #2063: both real public routing paths must stop before reading evidence or gh.
 import { spawnSync } from 'node:child_process';
 import { existsSync, chmodSync } from 'node:fs';
+import { PROJECT_ROOT_ALIASES } from '../../../../../task-tracker/lib/runtime-storage.mjs';
+test('disposable estimation fixtures isolate every ambient project-root selector', () => {
+  const controlledRoots = Object.fromEntries(
+    PROJECT_ROOT_ALIASES.map((key) => [key, process.cwd()])
+  );
+  const before = PROJECT_ROOT_ALIASES.map((key) => process.env[key]);
+  const env = { ...process.env, ...fixtureActor, ...controlledRoots };
+  // Nested node --test needs its own runner rather than the outer IPC protocol.
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--test',
+      '--test-name-pattern=^(hook estimator|direct and packaged CLI|physical config provenance:)',
+      import.meta.filename,
+    ],
+    { env, encoding: 'utf8' }
+  );
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  for (const exercised of [
+    /hook estimator requests stop/,
+    /direct and packaged CLI report typed estimation stops/,
+    /physical config provenance: valid user and malformed project/,
+  ])
+    assert.match(result.stdout, exercised);
+  assert.deepEqual(
+    PROJECT_ROOT_ALIASES.map((key) => process.env[key]),
+    before
+  );
+});
 test('direct and packaged CLI report typed estimation stops while preserving the target lifecycle read', () => {
   const dir = mkdtempProjectIsolated('local-dispatch-cli-');
   try {
@@ -241,12 +278,10 @@ test('direct and packaged CLI report typed estimation stops while preserving the
           {
             cwd: dir,
             encoding: 'utf8',
-            env: {
-              ...process.env,
-              ...fixtureActor,
+            env: fixtureEnvironment({
               PATH: bin + path.delimiter + process.env.PATH,
               AITM_CAPTURE_REAL_GH: gh,
-            },
+            }),
           }
         );
         assert.notEqual(result.status, 0);
@@ -332,13 +367,11 @@ for (const scenario of [
           ', JSON.stringify(a));process.exit(91);\n'
       );
       chmodSync(gh, 0o700);
-      const env = {
-        ...process.env,
-        ...fixtureActor,
+      const env = fixtureEnvironment({
         HOME: home,
         PATH: bin + path.delimiter + process.env.PATH,
         AITM_CAPTURE_REAL_GH: gh,
-      };
+      });
       const payload = {
         tool_name: 'Bash',
         cwd: dir,
