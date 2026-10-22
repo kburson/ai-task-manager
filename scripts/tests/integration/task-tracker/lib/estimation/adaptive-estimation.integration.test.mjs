@@ -1,5 +1,5 @@
 // @story #2063
-import { bundle } from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { retainedPlanCalculation } from '../../../../helpers/task-2063-retained-plan-fixture.mjs';
 // @story #1091
 // @story #1160
 import assert from 'node:assert/strict';
@@ -22,7 +22,6 @@ import { createBootstrapRubric } from '../../../../../task-tracker/lib/estimatio
 import { loadOrRefreshRubric } from '../../../../../task-tracker/lib/estimation/rubric-refresh.mjs';
 import {
   createPlanPublicationRuntime,
-  calculateLocalEstimate,
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
@@ -595,31 +594,14 @@ test('retained local calculation converges board, body, history, forecast and re
     payload: createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' }),
     actor: 'fixture',
   });
-  const evidence = bundle([{ record: localRubric, provenance: 'imported-local' }], {
+  const input = { ...planInput(), comparableIssueIds: [] };
+  const calculated = retainedPlanCalculation({
     repository,
     issue: firstIssue,
-    configuration: { estimationRubricIssue: rubricIssue },
-    refine: {
-      size: 'M',
-      humanHours: 8,
-      source: { kind: 'imported-local', id: 'refine-fixture', digest: 'b'.repeat(64) },
-    },
-    modelPolicy: {
-      modelVersion: 'aitm.forecast-model/v2',
-      policyVersion: 'aitm.local-estimation/v1',
-    },
-  });
-  const {
-    schema: _schema,
-    canonicalizationVersion: _canonical,
-    inputs: _inputs,
-    ...selection
-  } = evidence.manifest;
-  const input = { ...planInput(), comparableIssueIds: [] };
-  const calculated = calculateLocalEstimate({
-    mode: { mode: 'local' },
-    evidence,
-    planInput: { selection, input },
+    rubricIssue,
+    rubric: localRubric,
+    refine: { size: 'M', humanHours: 8 },
+    input,
   });
   assert.equal(calculated.status, 'estimated', calculated.reason);
   const result = await executeAdaptivePlanEstimate({

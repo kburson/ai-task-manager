@@ -469,10 +469,7 @@ async function runHookUnchecked(payload, deps = {}) {
         try {
           const invocation = resolveInvocationDirectory(payload);
           const root = readWorktreeIdentity({ projectDir: invocation }).worktreePath;
-          cfg = loadConfig({
-            projectPath: configPath(root),
-            userPath: path.join(root, '.ai-task-manager', '.cache', 'no-user-config.json'),
-          });
+          cfg = loadConfig({ projectDir: root });
         } catch {
           cfg = null;
         }

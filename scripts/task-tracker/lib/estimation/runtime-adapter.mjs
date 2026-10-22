@@ -1655,6 +1655,8 @@ export { calculateLocalEstimate } from './local-runtime.mjs';
 
 /** Resolve before creating clients, loading corpus, or consulting lifecycle authority. */
 export function resolveEstimationMode(cfg = {}) {
+  if (configurationReadProvenance(cfg)?.valid === false)
+    return { mode: 'unavailable', reason: 'config-invalid' };
   if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg))
     return { mode: 'unavailable', reason: 'config-invalid' };
   const rubric = cfg.estimationRubricIssue === undefined ? 0 : cfg.estimationRubricIssue;
@@ -1768,3 +1770,5 @@ function refuseCloudEstimation(cfg) {
     reason: resolved.mode === 'local' ? 'retained-local-input-required' : resolved.reason,
   });
 }
+
+import { configurationReadProvenance } from '../../config.mjs';

@@ -178,8 +178,7 @@ export const TYPES = {
   verificationProvider: 'object',
 };
 
-function defaultPaths() {
-  const projectDir = getProjectDir();
+function defaultPaths(projectDir = getProjectDir()) {
   return {
     projectPath: path.join(projectDir, SHARED_DIR, 'task-tracker.json'),
     legacyProjectPath: path.join(projectDir, LEGACY_CLAUDE_DIR, 'task-tracker.json'),
@@ -290,21 +289,23 @@ export function getPreferences(paths = {}) {
 }
 
 export function loadConfig(paths = {}) {
-  const defaults = defaultPaths();
+  const defaults = defaultPaths(paths.projectDir);
+  const observations = [];
+  const read = (file, layer) => readConfigLayer(file, layer, observations);
   const projectPath = paths.projectPath ?? defaults.projectPath;
   const legacyProjectPath =
     paths.legacyProjectPath ?? (paths.projectPath ? null : defaults.legacyProjectPath);
   const userPath = paths.userPath ?? defaults.userPath;
   const legacyUserPath = paths.legacyUserPath ?? (paths.userPath ? null : defaults.legacyUserPath);
   const user = existsSync(userPath)
-    ? withLegacyAssignedFallback(readJson(userPath), 'user')
+    ? withLegacyAssignedFallback(read(userPath, 'user'), 'user')
     : legacyUserPath
-      ? withLegacyAssignedFallback(readJson(legacyUserPath), 'legacy user')
+      ? withLegacyAssignedFallback(read(legacyUserPath, 'legacy-user'), 'legacy user')
       : {};
   const project = existsSync(projectPath)
-    ? withLegacyAssignedFallback(readJson(projectPath), 'project')
+    ? withLegacyAssignedFallback(read(projectPath, 'project'), 'project')
     : legacyProjectPath
-      ? withLegacyAssignedFallback(readJson(legacyProjectPath), 'legacy project')
+      ? withLegacyAssignedFallback(read(legacyProjectPath, 'legacy-project'), 'legacy project')
       : {};
   const merged = { ...DEFAULTS };
   const sources = {};
@@ -339,6 +340,13 @@ export function loadConfig(paths = {}) {
   }
   merged.preferences = mergePreferences(project.preferences);
   merged._sources = sources;
+  configurationProvenance.set(
+    merged,
+    Object.freeze({
+      valid: observations.every((item) => item.status !== 'invalid'),
+      sources: Object.freeze(observations),
+    })
+  );
   return merged;
 }
 
@@ -479,4 +487,24 @@ export function formatConfig(cfg) {
     '\nInternal  (managed by: npx ai-task-manager init)',
     ...INTERNAL_KEYS.map((k) => formatInternalRow(cfg, k)),
   ].join('\n');
+}
+
+// @story #2063 — retain invalid-layer evidence without changing enumerable config/defaults.
+const configurationProvenance = new WeakMap();
+export function configurationReadProvenance(cfg) {
+  return configurationProvenance.get(cfg) ?? null;
+}
+function readConfigLayer(file, layer, observations) {
+  try {
+    const value = JSON.parse(readFileSync(file, 'utf8'));
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      throw new Error('configuration-object-required');
+    observations.push(Object.freeze({ layer, path: file, status: 'valid' }));
+    return value;
+  } catch (error) {
+    observations.push(
+      Object.freeze({ layer, path: file, status: error.code === 'ENOENT' ? 'missing' : 'invalid' })
+    );
+    return {};
+  }
 }
