@@ -4,11 +4,16 @@ import { test } from 'node:test';
 import fs from 'node:fs';
 import { resolveLocalForecast } from '../../../../../task-tracker/lib/estimation/forecast-lineage.mjs';
 import { readLocalForecastEvidence } from '../../../../../task-tracker/lib/estimation/forecast-reader.mjs';
-import { calculateLocalEstimate } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
+import {
+  calculateLocalEstimate,
+  localCalculationProvenance,
+} from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
+import { validateForecastProvenance } from '../../../../../task-tracker/lib/estimation/forecast-v3.mjs';
 import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
 import {
   bundle,
   envelope,
+  derived,
   outcome,
   id,
   rubric,
@@ -392,4 +397,79 @@ test('refuses a retained ancestry cycle rather than selecting by input order', (
   const result = withBundle(fixture(), imported([envelope(), first, next]));
   assert.equal(result.status, 'unavailable');
   assert.equal(result.reason, 'cycle');
+});
+
+function derivedFixture({ recordId, field } = {}) {
+  const f = fixture();
+  const records = [
+    derived(),
+    derived({
+      recordId: id(2),
+      payload: rubric({ version: 2, predecessor: id(1) }),
+      predecessor: id(1),
+      supersedes: id(1),
+    }),
+    derived({ recordId: id(10), payload: outcome(1068), issue: 1068 }),
+    derived({ recordId: id(11), payload: outcome(1068), issue: 1068, supersedes: id(10) }),
+  ];
+  for (const record of records)
+    record.modelPolicy = structuredClone(f.evidence.manifest.modelPolicy);
+  if (recordId)
+    records.find((record) => record.recordId === recordId).modelPolicy[field] =
+      field === 'modelVersion' ? 'fixture-model/v1' : 'fixture-policy/v1';
+  const evidence = bundle(
+    records.map((record) => ({ record, provenance: 'derived-local' })),
+    { modelPolicy: f.evidence.manifest.modelPolicy }
+  );
+  const retained = validateLocalEvidence(evidence);
+  f.forecast.localEvidence = localCalculationProvenance(retained);
+  f.forecast.rubric.recordId = id(2);
+  f.forecast.rubric.version = 2;
+  f.forecast.comparableIssues[0].outcomeRecordId = id(11);
+  // Establish valid raw hashes and exact snapshot correlation before exercising reader policy.
+  assert.equal(
+    validateForecastProvenance(f.forecast, {
+      expectedIssue: identity.issue,
+      repository: identity.repository,
+      evidence,
+    }),
+    f.forecast
+  );
+  return { f, evidence };
+}
+
+for (const [name, recordId] of [
+  ['active rubric', id(2)],
+  ['active outcome', id(11)],
+  ['inactive rubric ancestor', id(1)],
+  ['inactive outcome ancestor', id(10)],
+]) {
+  for (const field of ['modelVersion', 'policyVersion']) {
+    test(
+      'refuses mismatched derived-local ' +
+        name +
+        ' ' +
+        field +
+        ' despite valid hashes and references',
+      () => {
+        const { f, evidence } = derivedFixture({ recordId, field });
+        assert.deepEqual(withBundle(f, evidence), {
+          status: 'unavailable',
+          reason: 'derived-model-policy',
+        });
+      }
+    );
+  }
+}
+
+test('resolves matching derived-local policies across every retained active and inactive record', () => {
+  const { f, evidence } = derivedFixture();
+  const result = withBundle(f, evidence);
+  assert.equal(result.status, 'resolved');
+  assert.equal(result.evidence.records.length, 4);
+  assert.equal(result.evidence.activeRubric.record.recordId, id(2));
+  assert.deepEqual(
+    result.evidence.activeOutcomes.map(({ record }) => record.recordId),
+    [id(11)]
+  );
 });

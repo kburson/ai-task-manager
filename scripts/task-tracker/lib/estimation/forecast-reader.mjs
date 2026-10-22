@@ -24,5 +24,12 @@ export function readLocalForecastEvidence({ evidenceStore, manifestDigest, ident
   for (const field of ['host', 'repository', 'issue'])
     if (retained.manifest[field] !== requested[field])
       throw new TypeError('forecast-lineage:identity-' + field);
+  const policy = canonicalRecordJson(retained.manifest.modelPolicy);
+  for (const { descriptor, record } of retained.records)
+    if (
+      descriptor.provenance === 'derived-local' &&
+      canonicalRecordJson(record.modelPolicy) !== policy
+    )
+      throw Object.assign(new Error('derived-model-policy'), { reason: 'derived-model-policy' });
   return retained;
 }

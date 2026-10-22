@@ -1,0 +1,73 @@
+### Strengths
+
+- The exact four-file delta uses the accepted synchronous `evidenceStore.read(manifestDigest)` API and reconstructs `{manifest, planBytes, payloads}` before validation.
+- Every retained payload is replayed; caller-supplied active projections cannot substitute for bytes.
+- Host/repository/issue and manifest-digest correlation are explicit. Missing evidence remains unavailable without network fallback.
+- Tests cover missing ancestors, forks, cycles, inactive references, corruption, Unknown timing, and actual native-store reopening.
+
+### Issues
+
+#### Critical
+
+None found.
+
+#### Important
+
+1. **Derived-record model/policy disagreement is accepted during forecast resolution.**
+
+   **Location:** `scripts/task-tracker/lib/estimation/forecast-reader.mjs:17–27`, before returning `retained`.
+
+   `validateLocalEvidence` validates each derived wrapper’s `modelPolicy` shape but does not correlate it with the manifest. The forecast validator correlates the forecast snapshot with the manifest, leaving the wrapper’s conflicting provenance unchecked. The accepted calculation path explicitly refuses this condition with `derived-model-policy` in `local-runtime.mjs:99–104`.
+
+   I reproduced this at the exact reviewed HEAD using the accepted fixtures and actual validation/provenance APIs. A retained derived rubric declared:
+
+   ```json
+   {"modelVersion":"fixture-model/v1","policyVersion":"fixture-policy/v1"}
+   ```
+
+   Its manifest and forecast declared:
+
+   ```json
+   {"modelVersion":"aitm.forecast-model/v2","policyVersion":"aitm.local-estimation/v1"}
+   ```
+
+   All retained hashes and forecast references matched their actual bytes. `resolveLocalForecast` returned `resolved`.
+
+   **Why it matters:** the resolver accepts provenance that the calculation path expressly considers invalid, contrary to Task 20’s mismatched-provenance refusal requirement. Existing tests use imported envelopes and miss this derived-local case.
+
+   **Fix:** before returning the retained projection, enforce the accepted derived-record policy correlation for all retained derived-local records. Add negative cases covering a derived rubric, outcome, and retained ancestor, plus a positive matching-policy case.
+
+2. **The package inventory gate remains an unresolved integration blocker.**
+
+   **Location:** `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:522`.
+
+   The retained full-fast receipt reports packed count **967 > 965**. The two new production modules increase the packed surface without corresponding reviewed inventory registration. The later physical-test relocation does not address this failure.
+
+   **Fix:** complete the coordinator’s serialized, exact module registration and measured inventory adjustment, then run the required combined-head gates. This is a known shared integration responsibility; it is not waived by the targeted passing receipts.
+
+#### Minor
+
+None identified.
+
+### Recommendations
+
+Repair the provenance gap in the owned reader and add derived-local regression coverage. Preserve the shared package blocker until the coordinator’s exact registration and aggregate verification pass.
+
+### Considered and declined
+
+- Legacy v1/v2 reads and current-schema activation: explicitly assigned to Task 21/#2065.
+- Current selected-plan/configuration freshness: this interface resolves retained forecast evidence; current-selection admission belongs to the calculation/publication boundaries.
+- External truth, cloud grants, and lifecycle approval: structural local resolution does not claim these authorities.
+- Asynchronous evidence stores: the actual accepted store API is synchronous.
+- Frozen returned forecast objects: the contract requires a detached snapshot; the implementation provides one without modifying caller data.
+- A forecast selecting only some active outcomes: the accepted calculator supports a comparable subset, so exact equality with every active outcome would be incorrect.
+- Byte-identical duplicate descriptors: accepted upstream validation deduplicates these; conflicting duplicates are refused.
+- Repeating broad suites: unchanged-head receipts were available, and the assignment limited execution to concrete offline investigations.
+
+### Assessment
+
+**Ready to merge? No.**
+
+The derived-local provenance refusal needs repair, and the shared package gate remains unresolved.
+
+**Verification limits:** reviewed exact range `47dc94bdcd84072ba2889d22716c69b051f99dd7..a36599affe973749b6728aba1942b6d8dcabf512`; independently confirmed unchanged HEAD, clean Git status, and clean diff whitespace. Executed the focused in-memory provenance reproduction only. Inspected author receipts for **35/35** final verifier, **9/9** purity, **160/160** compatibility, final lint/format, commit trace, Stop, and released binding/occupancy. The retained full-fast run failed **2/992** files and predates the physical-test split. No fresh whole-suite, combined-head CI, network, native lifecycle, or native acceptance verification was performed.
