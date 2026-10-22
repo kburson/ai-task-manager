@@ -1,7 +1,7 @@
-// @story #1091
+// @story #1091 #2039 #2065
 import { strict as assert } from 'node:assert';
 import test, { after } from 'node:test';
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
 import { fixture, observed, freshUnitDir } from '../decomposition-authority-fixtures.mjs';
 import {
   formatIssueFieldDb,
@@ -17,14 +17,14 @@ import {
   readForecastReadyRecordId,
   upsertForecastReadyMarker,
 } from '../../../../../task-tracker/lib/estimation/plan-estimate-authority.mjs';
-import {
-  FORECAST_SCHEMA,
-  LEGACY_FORECAST_SCHEMA,
-} from '../../../../../task-tracker/lib/estimation/forecast-record.mjs';
+import { LEGACY_FORECAST_SCHEMA } from '../../../../../task-tracker/lib/estimation/forecast-record.mjs';
+import { bundle, envelope } from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
+import { localCalculationProvenance } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
 import { hashRecordPayload } from '../../../../../task-tracker/lib/github-records/record-envelope.mjs';
 
 const forecast = {
-  schema: FORECAST_SCHEMA,
+  schema: 'aitm.estimation-forecast/v3',
   issue: 1091,
   lifecycleState: 'plan',
   refine: { size: 'L', humanHours: 20 },
@@ -48,6 +48,30 @@ const forecast = {
   risks: [],
   recommendation: { action: 'proceed', reason: 'Reviewable.' },
   supersedesForecastRecordId: null,
+};
+const evidence = bundle(
+  [{ record: envelope({ recordId: forecast.rubric.recordId }), provenance: 'imported-local' }],
+  {
+    issue: 1091,
+    refine: {
+      ...forecast.refine,
+      source: { kind: 'imported-local', id: 'refine-authority', digest: 'b'.repeat(64) },
+    },
+  }
+);
+forecast.localEvidence = structuredClone(
+  localCalculationProvenance(validateLocalEvidence(evidence))
+);
+const {
+  inputs: _inputs,
+  schema: _schema,
+  canonicalizationVersion: _canonical,
+  ...selection
+} = evidence.manifest;
+const localForecast = {
+  identity: { host: 'github.com', repository: 'owner/repo', issue: 1091 },
+  evidenceStore: { read: () => validateLocalEvidence(evidence) },
+  selection,
 };
 const forecastEnvelope = {
   recordId: '01J00000000000000000000601',
@@ -120,7 +144,8 @@ function harness({ failAfter } = {}) {
     state,
     writes: () => writes,
     deps: {
-      cfg: { repo: 'o/r', projectId: 'PVT_a' },
+      cfg: { repo: 'owner/repo', projectId: 'PVT_a' },
+      localForecast,
       projectDir: dir,
       decomposition,
       projectItemForIssue: async () => ({ itemId: 'PVTI_a' }),
@@ -220,7 +245,7 @@ test('Plan authority rejects a legacy v1 forecast before its first write', async
       forecastEnvelope: legacyEnvelope,
       deps: h.deps,
     }),
-    /estimation-record:forecast-schema/
+    /forecast-current:schema/
   );
   assert.equal(h.writes(), 0);
 });
@@ -374,16 +399,31 @@ test('audited Plan re-entry may supersede exactly one prior active forecast', as
   assert.equal(h.state.readyForecastRecordId, forecastEnvelope.recordId);
 });
 
-test('adaptive execution refreshes rubric, builds forecast, creates an envelope, and converges authority', async () => {
+test('local execution replays retained inputs, builds forecast, creates an envelope, and converges authority', async () => {
   const calls = [];
   const result = await executeAdaptivePlanEstimate({
     issueNumber: 1091,
-    planInput: { schema: 'aitm.plan-estimation-input/v1' },
-    cfg: { repo: 'o/r', estimationRubricIssue: 1091 },
+    planInput: {
+      ...JSON.parse(
+        readFileSync(new URL('../../../../fixtures/estimation/plan-input.json', import.meta.url))
+      ),
+      comparableIssueIds: [],
+    },
+    cfg: { repo: 'owner/repo', estimationRubricIssue: 1001 },
     deps: {
-      readRefineEstimate: async () => ({ size: 'L', humanHours: 20 }),
-      loadRubric: async () => ({ recordId: forecast.rubric.recordId, payload: { version: 1 } }),
-      listComparableOutcomes: async () => [],
+      localForecast: {
+        ...localForecast,
+        manifestDigest: validateLocalEvidence(evidence).manifestDigest,
+      },
+      readRefineEstimate: async () => {
+        throw new Error('cloud Refine loader reached');
+      },
+      loadRubric: async () => {
+        throw new Error('cloud rubric loader reached');
+      },
+      listComparableOutcomes: async () => {
+        throw new Error('cloud comparables loader reached');
+      },
       buildForecast: (input) => {
         calls.push(['build', input]);
         return forecast;
@@ -449,9 +489,32 @@ test('legacy baseline adoption refuses mismatches, existing evidence, or non-Dev
       adoptLegacyPlanForecast({
         issueNumber: 1091,
         forecastEnvelope,
-        deps: { readProjection: async () => structuredClone(state) },
+        deps: { localForecast, readProjection: async () => structuredClone(state) },
       }),
       /plan-estimate-authority:legacy-adoption/
     );
   }
+});
+
+test('current authority publishes the validated snapshot despite caller mutation during projection read', async () => {
+  const h = harness();
+  const supplied = structuredClone(forecastEnvelope);
+  const readProjection = h.deps.readProjection;
+  let first = true;
+  h.deps.readProjection = async () => {
+    if (first) {
+      first = false;
+      supplied.payload.plan.humanHours = 999;
+    }
+    return readProjection();
+  };
+  const result = await applyPlanEstimateAuthority({
+    issueNumber: 1091,
+    refine: forecast.refine,
+    forecastEnvelope: supplied,
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'converged');
+  assert.equal(h.state.forecasts[0].payload.plan.humanHours, 40);
+  assert.equal(h.state.board.estimate, 40);
 });

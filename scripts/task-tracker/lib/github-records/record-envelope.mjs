@@ -1,3 +1,4 @@
+// @story #2039 #2065
 // cspell:ignore HJKMNP ically ization ment noncanonical pousr tion
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
 // cspell:ignore priorauthorization sessioncookiepolicy tokencount
@@ -15,6 +16,7 @@ import {
   FORECAST_RECORD_TYPE,
   validateEstimationForecast,
 } from '../estimation/forecast-record.mjs';
+import { FORECAST_V3_SCHEMA, validateForecastProvenance } from '../estimation/forecast-v3.mjs';
 import { OUTCOME_RECORD_TYPE, validateEstimationOutcome } from '../estimation/outcome-record.mjs';
 import { RUBRIC_RECORD_TYPE, validateEstimationRubric } from '../estimation/rubric-record.mjs';
 
@@ -128,6 +130,10 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
   if (typeof envelope.payloadHash !== 'string' || !HASH_RE.test(envelope.payloadHash)) {
     throw recordError('payload-hash');
   }
+  const isCurrentForecast =
+    envelope.recordType === FORECAST_RECORD_TYPE && envelope.payload?.schema === FORECAST_V3_SCHEMA;
+  if (isCurrentForecast)
+    validateForecastProvenance(envelope.payload, { expectedIssue: envelope.issue });
   const isDeliveryContract =
     ['singleton-projection', 'contract-sealed', 'contract-amended'].includes(envelope.recordType) &&
     envelope.payload?.schema === DELIVERY_CONTRACT_SCHEMA;
@@ -145,14 +151,15 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
       throw recordError('delivery-contract-authority');
     }
   } else {
-    assertNoSecretRecordData(envelope.payload);
+    // Exact v3 validation above admits only the schema's localEvidence.plan.path.
+    assertNoSecretRecordData(envelope.payload, { safeKeyNames: isCurrentForecast ? ['path'] : [] });
   }
   assertNoCredentialValues(envelope);
   if (envelope.recordType === FORECAST_RECORD_TYPE) {
-    validateEstimationForecast(envelope.payload, {
-      expectedIssue: envelope.issue,
-      requireCurrentSchema: requireCurrentForecast,
-    });
+    if (!isCurrentForecast) {
+      if (requireCurrentForecast) throw new TypeError('estimation-record:forecast-schema');
+      validateEstimationForecast(envelope.payload, { expectedIssue: envelope.issue });
+    }
     if (envelope.payload.supersedesForecastRecordId !== envelope.supersedes) {
       throw recordError('supersedes-mismatch');
     }

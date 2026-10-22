@@ -709,6 +709,7 @@ export function createPlanPublicationRuntime({ cfg, deps = {}, adoptLegacyBaseli
         deps: {
           cfg,
           projectDir: deps.projectDir,
+          localForecast: deps.localForecast,
           decomposition: deps.decomposition,
           projectItemForIssue: deps.projectItemForIssue,
           readProjection: () => readProjection(issueNumber),
