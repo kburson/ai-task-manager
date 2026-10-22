@@ -312,3 +312,56 @@ test('retained provenance correlates rubric confidence and cohort metadata', () 
     assert.throws(() => validateForecastProvenance(changed, { evidence }));
   }
 });
+
+for (const [name, mutate] of [
+  [
+    'human implementation coefficient',
+    (args) => {
+      args.rubric.payload.human.coefficients.implementationHour = 2;
+    },
+  ],
+  [
+    'AI implementation coefficient',
+    (args) => {
+      args.rubric.payload.ai.coefficients.implementationHour = 2;
+    },
+  ],
+  [
+    'outcome landscape',
+    (args) => {
+      args.comparableOutcomes[0].payload.landscape.filesChanged = 999;
+    },
+  ],
+])
+  test('v3 calculation refuses changed retained ' + name + ' under unchanged record IDs', () => {
+    const { forecast, evidence, input } = fixture();
+    const args = {
+      issue: 2045,
+      refine: { size: 'S', humanHours: 3.5 },
+      planInput: input,
+      rubric: { recordId: id(1), payload: structuredClone(envelope().payload) },
+      comparableOutcomes: [{ recordId: id(2), payload: structuredClone(outcome(1068)) }],
+      localEvidence: forecast.localEvidence,
+      evidence,
+      repository: 'owner/repo',
+    };
+    mutate(args);
+    assert.throws(() => buildEstimationForecast(args), /estimation-forecast:retained-input/);
+  });
+
+test('v3 calculation requires actual retained inputs even when structural snapshot validates', () => {
+  const { forecast, input } = fixture();
+  assert.doesNotThrow(() => validateForecastProvenance(forecast));
+  assert.throws(
+    () =>
+      buildEstimationForecast({
+        issue: 2045,
+        refine: { size: 'S', humanHours: 3.5 },
+        planInput: input,
+        rubric: { recordId: id(1), payload: envelope().payload },
+        comparableOutcomes: [{ recordId: id(2), payload: outcome(1068) }],
+        localEvidence: forecast.localEvidence,
+      }),
+    /estimation-forecast:retained-input/
+  );
+});

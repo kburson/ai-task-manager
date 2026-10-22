@@ -4,6 +4,8 @@ import { FORECAST_SCHEMA, validateEstimationForecast } from './forecast-record.m
 import { ceilEstimateHours } from './estimate-granularity.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
+import { validateLocalEvidence } from './local-evidence.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 
 const SIZE_ORDER = Object.freeze(['XS', 'S', 'M', 'L', 'XL']);
 const DEFAULT_PLANNING = Object.freeze({
@@ -65,6 +67,27 @@ export function buildEstimationForecast({
   if (!Number.isInteger(issue) || issue <= 0 || !refine || !rubric?.recordId)
     throw new TypeError('estimation-forecast:input');
   const input = parsePlanEstimationInput(planInput);
+  if (localEvidence !== undefined) {
+    if (evidence === undefined) throw new TypeError('estimation-forecast:retained-input-required');
+    const retained = validateLocalEvidence(evidence);
+    const samePayload = (left, right) => canonicalRecordJson(left) === canonicalRecordJson(right);
+    if (
+      !retained.activeRubric ||
+      retained.activeRubric.record.recordId !== rubric.recordId ||
+      !samePayload(retained.activeRubric.record.payload, rubric.payload)
+    )
+      throw new TypeError('estimation-forecast:retained-input-rubric');
+    const allowed = new Set(input.comparableIssueIds);
+    const outcomes = new Map(
+      retained.activeOutcomes.map(({ record }) => [record.recordId, record])
+    );
+    for (const entry of comparableOutcomes) {
+      if (allowed.size !== 0 && !allowed.has(entry.payload.issue)) continue;
+      const record = outcomes.get(entry.recordId);
+      if (!record || !samePayload(record.payload, entry.payload))
+        throw new TypeError('estimation-forecast:retained-input-outcome');
+    }
+  }
   validateEstimationRubric(rubric.payload);
   const humanCoefficients = rubric.payload.human.coefficients;
   const aiCoefficients = rubric.payload.ai.coefficients;
