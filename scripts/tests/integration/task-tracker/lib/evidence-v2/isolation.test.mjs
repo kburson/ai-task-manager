@@ -214,3 +214,49 @@ test('real dispatcher runs in a fresh recorded context and refuses production is
     sandbox.dispose();
   }
 });
+
+test('shipped documentation resolves with native realpath permission enforcement', () => {
+  const sandbox = createSandbox();
+  try {
+    const result = sandbox.probe(`
+      import assert from 'node:assert/strict';
+      import fs from 'node:fs';
+      import path from 'node:path';
+      import { syncBuiltinESMExports } from 'node:module';
+      const root = ${JSON.stringify(path.resolve(toolRoot))};
+      const document = path.join(root, 'docs', 'guides', 'workflow.md');
+      const native = fs.realpathSync.native;
+      assert.equal(process.permission.has('fs.read', root), false);
+      assert.equal(process.permission.has('fs.read', document), true);
+      assert.throws(() => native(root), { code: 'ERR_ACCESS_DENIED' });
+      // Native realpath already enforces the permission check added to JS in Node 24.22.1.
+      fs.realpathSync = Object.assign((...args) => native(...args), { native });
+      syncBuiltinESMExports();
+      const { resolveDocumentationReference } = await import(${JSON.stringify(new URL('../../../../../../guidance/documentation.mjs', import.meta.url).href)});
+      assert.equal(resolveDocumentationReference({ path: 'docs/guides/workflow.md' }, { packageRoot: root }).ok, true);
+      for (const alias of [root + path.sep, [root, 'guidance', '..'].join(path.sep)]) {
+        assert.equal(resolveDocumentationReference({ path: 'docs/guides/workflow.md' }, { packageRoot: alias }).code, 'documentation-path-missing');
+      }
+    `);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.equal(sandbox.provider.effects().length, 0);
+  } finally {
+    sandbox.dispose();
+  }
+});
+
+test('recorded dispatcher refuses an untracked project catalog without effects', () => {
+  const sandbox = createSandbox();
+  try {
+    writeFileSync(
+      path.join(sandbox.context.sourceRoot, '.ai-task-manager', 'aitm-guidance.yml'),
+      'schema: invalid\n'
+    );
+    const status = sandbox.command(['status']);
+    assert.notEqual(status.exitCode, 0);
+    assert.match(status.stderr, /guidance catalog is invalid/);
+    assert.equal(sandbox.provider.effects().length, 0);
+  } finally {
+    sandbox.dispose();
+  }
+});
