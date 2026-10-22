@@ -18,6 +18,13 @@
   "overrides": [
     {
       "filename": [
+        "docs/superpowers/reviews/2039/2063-task-18-reviewer-r4-review.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["reexecute"]
+    },
+    {
+      "filename": [
         "docs/superpowers/reviews/2039/2063-task-18-reviewer-r3-review.md",
         "cspell.json"
       ],
