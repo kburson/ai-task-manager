@@ -1,0 +1,24 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.527042ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (4.419875ms)
+✔ a disconnected operation or a candidate not produced by its operations refuses (0.6555ms)
+✔ caller options and serialized permission unions confer no authority (0.490208ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.167583ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.2705ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.559958ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (2.240542ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.17025ms)
+✔ malformed declarations and malformed operation shapes refuse (0.635834ms)
+✔ synthetic approval markers never become native approval authority (0.166709ms)
+✔ genuine reviewed scope token authorizes only its exact target and survives unrelated edits (9.922959ms)
+✔ genuine decomposition capability requires its live native context and exact record delta (16.101875ms)
+✔ unchanged duplicate labels do not invent a new checkbox transition (0.107833ms)
+✔ newly appended checked promises cannot bypass staged proof validation (0.1415ms)
+✔ a changed verifier cannot retain execution proof for the old command (0.109584ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 206.272667

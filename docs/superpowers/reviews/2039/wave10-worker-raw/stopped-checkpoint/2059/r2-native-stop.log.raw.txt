@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' stop CODE_COMPLETE #2059; independent R2 accepted; release worker for parent integration
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+Stopped #2059: +Unknown active min (wall 60), +868 words. Use "/task resume <N>" to return to it later.

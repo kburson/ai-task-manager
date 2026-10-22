@@ -1,0 +1,5 @@
+[feature/child/2065 f4468fcb6] [#2065] Preserve legacy forecast reads and require retained current provenance
+ 16 files changed, 959 insertions(+), 82 deletions(-)
+ create mode 100644 scripts/task-tracker/lib/estimation/forecast-legacy.mjs
+ create mode 100644 scripts/tests/helpers/task-2065-forecast-fixture.mjs
+ create mode 100644 scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs

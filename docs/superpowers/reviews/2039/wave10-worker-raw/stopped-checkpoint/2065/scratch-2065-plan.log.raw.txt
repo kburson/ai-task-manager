@@ -1,0 +1,14 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' plan 2065
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+WARN: epic WIP budget=1; active siblings #2059.
+✓ Issue #2065 moved to: plan
+✓ move #2065 ready-for-plan→plan complete
+  exit flush  : ready-for-plan row closed (verified)
+  entry stamp : aitm-entered-plan present (verified)
+  entry row   : plan row opened (verified)
+  status      : Status == Plan (verified)
+  sentinel    : aitm-move-complete state=plan (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #2065 promoted: ready-for-plan → plan (direct)

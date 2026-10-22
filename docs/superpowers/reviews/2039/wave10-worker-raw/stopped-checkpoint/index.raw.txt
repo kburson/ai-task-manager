@@ -1,0 +1,1176 @@
+{
+  "kind": "stopped-worker-byte-preserving-snapshot",
+  "workerHeads": {
+    "2059": "81fce4642edf772b4fdbba227427ff0b5ee314b3",
+    "2065": "48dd2f5723e7b30689aa8630bce02056388fbe3e"
+  },
+  "limits": [
+    "Snapshot preserves files present at capture; it does not reconstruct overwritten earlier 2059 15-test output.",
+    "Native capture warnings and gaps remain; no complete transport coverage is claimed.",
+    "Original ignored evidence and prior manifests remain unchanged."
+  ],
+  "files": [
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/eslint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/eslint.log.raw.txt",
+      "bytes": 255,
+      "sha256": "2a3d49bc200e2b18a56296932c4d202a05170f3a036950f8925229942c320928"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/format-final-with-report.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/format-final-with-report.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/format-final-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/format-final-write.log.raw.txt",
+      "bytes": 485,
+      "sha256": "454d6fffc950652349a0f0433162f89f50676a8de5cbdbd8fedbbbbdb89e69c1"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/format-package.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/format-package.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/format-write-v3.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/format-write-v3.log.raw.txt",
+      "bytes": 253,
+      "sha256": "9d12f3f2b25a34021f36fb4afc0aee9509c1fdd33cb66aae8ff4a9c420025c38"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/format-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/format-write.log.raw.txt",
+      "bytes": 474,
+      "sha256": "3033ab8dc78dc1d8213f6b1506910808a8dcb0a2fda3a1cabbe95f924fee738d"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/green-final-target.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/green-final-target.log.raw.txt",
+      "bytes": 1541,
+      "sha256": "8df6f7a9afb7ed8f165248c7ba070c26ed837b7ea6e216d80fa59c9eb2e812b1"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/green-initial.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/green-initial.log.raw.txt",
+      "bytes": 983,
+      "sha256": "781408b524d998d5f2fff8c68617867dee705aea870fd357404baacca6b5080f"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/green-native.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/green-native.log.raw.txt",
+      "bytes": 1284,
+      "sha256": "3359455d560afb4d3bf019c9c87ce4d8d45df0bfb2c6ba882df01d1096008e20"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/lint-final-with-report.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/lint-final-with-report.log.raw.txt",
+      "bytes": 26324,
+      "sha256": "5831580d3983e82ca3c01f660752e9e680fdc351744c466b51bb4a91ef54eb29"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/lint-package-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/lint-package-v2.log.raw.txt",
+      "bytes": 26324,
+      "sha256": "d054747f0546ee72708987bfcbdd72635a0bafda7dc6d151c17afa15cada8d85"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/lint-package.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/lint-package.log.raw.txt",
+      "bytes": 2518,
+      "sha256": "bf154b77d14ae06ac8c3f6ab4d36bc19599ec0ce59d0461972ef7d0b36262ae7"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-commit-trace.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-commit-trace.log.raw.txt",
+      "bytes": 196,
+      "sha256": "3e85b008a2fcabc32c3e79202598fcb9947ff01e9c5dae6685ac2e902126db42"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-explain.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-explain.json.raw.txt",
+      "bytes": 1115,
+      "sha256": "4246f8b7f0d8cc7f801e531261d21d05501304134c1ec389b2ad0c70aa6e3cdc"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-explain.stderr",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-explain.stderr.raw.txt",
+      "bytes": 162,
+      "sha256": "38ad631ee4bfb0f7f3763927116a339d7237417beb5c479ac5dea4c2b42253ae"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-positive-first.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-positive-first.log.raw.txt",
+      "bytes": 2801,
+      "sha256": "6a31f94eb5ef4828c1198c93b2d4bfe48a0487a1ebbd5b14e80ed2a5d493a72b"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-positive-second.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-positive-second.log.raw.txt",
+      "bytes": 2099,
+      "sha256": "0df3003ec4a795289825b563f239892768f5ec90332dc4263be5631732ed78f8"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-positive-third.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-positive-third.log.raw.txt",
+      "bytes": 2020,
+      "sha256": "6ce594dab59902245a587e32724cb81b47fcf9c0bcf06f1199591f15519b5f54"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-stage-integration.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-stage-integration.log.raw.txt",
+      "bytes": 6527,
+      "sha256": "c39cd4736cab262c6cc3c01f8bcbb8c21d19a38f14756e6a8833d9c1dc4d81ee"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/native-start.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/native-start.log.raw.txt",
+      "bytes": 428,
+      "sha256": "4435717cb94a459902e0b8633a76bec7cdec798c075055297d1a3c8df5bfd2d1"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/npm-test.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/npm-test.log.raw.txt",
+      "bytes": 89401,
+      "sha256": "1f81c70061e3189314abce17fdc5702ae7ef3b29b9999380b499a9316c369861"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/owned-cspell-final-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/owned-cspell-final-v2.log.raw.txt",
+      "bytes": 282,
+      "sha256": "5155ca8caa530215ff79369396de600f96bc7cba16b7ac16012aeda9fdf0b739"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/owned-cspell-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/owned-cspell-final.log.raw.txt",
+      "bytes": 1060,
+      "sha256": "9ff56d41a025b1358fc11e9158936ed8c08749dc37c3a5511ef9fa350585fc6b"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-eslint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-eslint.log.raw.txt",
+      "bytes": 255,
+      "sha256": "2a3d49bc200e2b18a56296932c4d202a05170f3a036950f8925229942c320928"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-exact-P1-green.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-exact-P1-green.log.raw.txt",
+      "bytes": 82,
+      "sha256": "ea5379d337dc32ff0cfc571beab7dfcb9c47f8c39912cd3c6a161a7d47ec2afd"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-format-owned-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-format-owned-write.log.raw.txt",
+      "bytes": 473,
+      "sha256": "9a94eb6ccfd1567388ac1d3495b16babf092b044815736e00373e2b7302537f8"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-format-report-write-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-format-report-write-v2.log.raw.txt",
+      "bytes": 219,
+      "sha256": "970280b1c5088e88aeab858a09faff0fb2514b410cd4c88ada326ac71c60a08a"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-format-report-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-format-report-write.log.raw.txt",
+      "bytes": 219,
+      "sha256": "970280b1c5088e88aeab858a09faff0fb2514b410cd4c88ada326ac71c60a08a"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-format-test-final-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-format-test-final-write.log.raw.txt",
+      "bytes": 241,
+      "sha256": "cedf97500111a10804db079755c8fb1c0e7f3a88f6f2155dd8be091d3c55e9b2"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-green-I1-red-I2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-green-I1-red-I2.log.raw.txt",
+      "bytes": 5112,
+      "sha256": "7108eea502940ec9b8788fc02ff4f1615a18de0f044c7f04001ceab135e40ba6"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-green-all-boundaries.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-green-all-boundaries.log.raw.txt",
+      "bytes": 2234,
+      "sha256": "fceec2cdeed62766eef8f577d45981bfadbd8ad084e5797ce08ec2c131baab9a"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-native-commit-trace.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-native-commit-trace.log.raw.txt",
+      "bytes": 196,
+      "sha256": "3e85b008a2fcabc32c3e79202598fcb9947ff01e9c5dae6685ac2e902126db42"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-native-stage-integration.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-native-stage-integration.log.raw.txt",
+      "bytes": 6536,
+      "sha256": "941a3c28aa0d70f715125a2c767dcaebe08337836e17ab936e50f8c8744043f0"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-native-unit-regressions.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-native-unit-regressions.log.raw.txt",
+      "bytes": 9579,
+      "sha256": "ee4d67511839ba2cc4d1df9773c529f7d8c3636a09782825f0a7a88a6dda5382"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-owned-eslint-final-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-owned-eslint-final-v2.log.raw.txt",
+      "bytes": 255,
+      "sha256": "2a3d49bc200e2b18a56296932c4d202a05170f3a036950f8925229942c320928"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-owned-eslint-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-owned-eslint-final.log.raw.txt",
+      "bytes": 255,
+      "sha256": "2a3d49bc200e2b18a56296932c4d202a05170f3a036950f8925229942c320928"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-owned-format-final-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-owned-format-final-v2.log.raw.txt",
+      "bytes": 466,
+      "sha256": "0c75a02ff2d666060f8f1de9411f1e2150d0424cba0a2a8c46a4d0ac847723b7"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-owned-format-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-owned-format-final.log.raw.txt",
+      "bytes": 466,
+      "sha256": "0c75a02ff2d666060f8f1de9411f1e2150d0424cba0a2a8c46a4d0ac847723b7"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-owned-spell-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-owned-spell-final.log.raw.txt",
+      "bytes": 458,
+      "sha256": "e977ab15b877207189eab0f3ad019b253270d86257e1fcdc482ea6e2be4dd107"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-package-format.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-package-format.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-package-lint-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-package-lint-final.log.raw.txt",
+      "bytes": 26461,
+      "sha256": "e534b8595f2b9b83b3bca185bbe1c1807a9fbc16b11c5fc08e69e95aa35c0173"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-package-lint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-package-lint.log.raw.txt",
+      "bytes": 2513,
+      "sha256": "4e1a825b210ffb7b1b69af6248d4989744edf6db33ef0f93e70357bb49fcadd5"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-red-all-boundaries.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-red-all-boundaries.log.raw.txt",
+      "bytes": 10095,
+      "sha256": "e4a5b4359b3f21e15e9f693ff96196d81b9f5a7d7e33e3f3447c26cdadce11a8"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-red-exact-probes-and-boundaries.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-red-exact-probes-and-boundaries.log.raw.txt",
+      "bytes": 8558,
+      "sha256": "25d8e9aba7b2bdbbe79221f893afb78d0d5fab3760ca70b2675fbc3c09d8bd28"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-report-final-format-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-report-final-format-write.log.raw.txt",
+      "bytes": 219,
+      "sha256": "970280b1c5088e88aeab858a09faff0fb2514b410cd4c88ada326ac71c60a08a"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r1-target-final-24.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r1-target-final-24.log.raw.txt",
+      "bytes": 2232,
+      "sha256": "d1893ef42a07da9e5ba52a91e25a65c8cb0641f31817775d4439ec74aa038039"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-format-check-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-format-check-v2.log.raw.txt",
+      "bytes": 221,
+      "sha256": "9fcbe3878128fdd2486c53aad92021d2adf4f039cef334e328fcb597bc36e247"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-format-check.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-format-check.log.raw.txt",
+      "bytes": 221,
+      "sha256": "9fcbe3878128fdd2486c53aad92021d2adf4f039cef334e328fcb597bc36e247"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-format-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-format-write.log.raw.txt",
+      "bytes": 155,
+      "sha256": "66ab62b01a69186902f2fc06757b54e70e7d9bc7af04c2388cf3ce2df46eb858"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-markdownlint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-markdownlint.log.raw.txt",
+      "bytes": 1866,
+      "sha256": "9619466e8e87e1b50e552e18f902c3aafa5694c6b33adffa5700eb60e717c3df"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-spell-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-spell-v2.log.raw.txt",
+      "bytes": 213,
+      "sha256": "e88546cd2cd15bd89751dcfab048376efef71155a06a5094e3a578be4140a8ae"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-doc-spell.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-doc-spell.log.raw.txt",
+      "bytes": 315,
+      "sha256": "c044f034221bcfe9934dd58469d4d7979bc383e132e7719e07243b78761a3be3"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-commit-trace.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-commit-trace.log.raw.txt",
+      "bytes": 196,
+      "sha256": "3e85b008a2fcabc32c3e79202598fcb9947ff01e9c5dae6685ac2e902126db42"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-explain-before-stop.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-explain-before-stop.json.raw.txt",
+      "bytes": 1115,
+      "sha256": "4246f8b7f0d8cc7f801e531261d21d05501304134c1ec389b2ad0c70aa6e3cdc"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-explain-before-stop.stderr",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-explain-before-stop.stderr.raw.txt",
+      "bytes": 162,
+      "sha256": "38ad631ee4bfb0f7f3763927116a339d7237417beb5c479ac5dea4c2b42253ae"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-stop-timestamp-readback.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-stop-timestamp-readback.json.raw.txt",
+      "bytes": 499,
+      "sha256": "a6a29ee6e7bdd653b4d02fa5785633c56ce0e5793328fc78db71efbc81f3cbeb"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-stop-timestamp-readback.stderr",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-stop-timestamp-readback.stderr.raw.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-native-stop.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-native-stop.log.raw.txt",
+      "bytes": 335,
+      "sha256": "9cb3d27915220db3aad3195aadad1710970db8a12dfd77c80fbd0ed6477b5cc4"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/r2-post-stop-state-readback.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/r2-post-stop-state-readback.json.raw.txt",
+      "bytes": 727,
+      "sha256": "4e4c6f4f3823eaae13713365835e08f403049c1a347e1bfbbd86d3e5daf1b706"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/red-checkbox-identities.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/red-checkbox-identities.log.raw.txt",
+      "bytes": 3651,
+      "sha256": "931daf06a53c484bc57b2f32a2630d88896787209b1a948260c8d408f4dbea1b"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/red-checkbox.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/red-checkbox.log.raw.txt",
+      "bytes": 1068,
+      "sha256": "69cd1cadd2f96f53cccd426dbcaebff75c52d45d90e0de09b400fc9bf44de8a1"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/red-composite.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/red-composite.log.raw.txt",
+      "bytes": 15876,
+      "sha256": "df7566bd7b2465e8e9324ab258513711e890b59d8163f96bef194338f06e8a88"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/red-verifier-scope.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/red-verifier-scope.log.raw.txt",
+      "bytes": 2559,
+      "sha256": "7c83d348c696651f75b2b14b06ed6aeca8e483c1309bccf37e6a1bfe36892ea2"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/regression-final-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/regression-final-v2.log.raw.txt",
+      "bytes": 9565,
+      "sha256": "4eb7d80f6c618a97b9e5767befb2905d90526896ada83de1b1b3fe9f618a0a6c"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/regression-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/regression-final.log.raw.txt",
+      "bytes": 9598,
+      "sha256": "ea8c914934fbc1fcf5a4f73cca2e99628e7b060bebf279e367d1e325b1c0ca22"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/regression.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/regression.log.raw.txt",
+      "bytes": 9588,
+      "sha256": "31a58cb67f32e5cf7095b880b9a50738947b34fb03867985bc460aa0f6b8015d"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-format-write-v2.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-format-write-v2.log.raw.txt",
+      "bytes": 148,
+      "sha256": "6bd1b89aa86a0d8d38c66dd799830ebb8aff1dfbe0351e64e228c1684fb2b735"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-format-write-v3.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-format-write-v3.log.raw.txt",
+      "bytes": 148,
+      "sha256": "6bd1b89aa86a0d8d38c66dd799830ebb8aff1dfbe0351e64e228c1684fb2b735"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-format-write-v4.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-format-write-v4.log.raw.txt",
+      "bytes": 148,
+      "sha256": "6bd1b89aa86a0d8d38c66dd799830ebb8aff1dfbe0351e64e228c1684fb2b735"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-format-write-v5.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-format-write-v5.log.raw.txt",
+      "bytes": 148,
+      "sha256": "6bd1b89aa86a0d8d38c66dd799830ebb8aff1dfbe0351e64e228c1684fb2b735"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-format-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-format-write.log.raw.txt",
+      "bytes": 148,
+      "sha256": "6bd1b89aa86a0d8d38c66dd799830ebb8aff1dfbe0351e64e228c1684fb2b735"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/report-markdownlint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/report-markdownlint.log.raw.txt",
+      "bytes": 1852,
+      "sha256": "14b1f0229a2fc4ad5c4b9df9167e0e118105b9f0af5b61878e9b5c283690c98b"
+    },
+    {
+      "issue": 2059,
+      "source": ".worktrees/2039-wave10-2059/.scratch/2059/target-final-16.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2059/target-final-16.log.raw.txt",
+      "bytes": 1552,
+      "sha256": "7ce6f1de1f922edacd7c9f5112be9f4efe511e662fec669149e122c0d7f1bba7"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/bootstrap-npm-ci.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/bootstrap-npm-ci.log.raw.txt",
+      "bytes": 567,
+      "sha256": "4813fa9a1f06722609a04677ae443c8eb8de2c839b7d14f45856ddac208d606a"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/census-correction-post.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/census-correction-post.log.raw.txt",
+      "bytes": 286,
+      "sha256": "888c037900adec11309631f4b2db0859495098004f581df28a9608edc13cd28f"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/census-correction.md",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/census-correction.md.raw.txt",
+      "bytes": 1709,
+      "sha256": "7fb83b7a948a08168d041b1499373dc4bd4981a963ae1599b42b68ab33e274f2"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/consumer-migration-audit.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/consumer-migration-audit.log.raw.txt",
+      "bytes": 4186,
+      "sha256": "0b0f60e9cc089bdb5ef619644d31e6b44b285a14fb50052f8bedff437a99fb62"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/current-fixture-green.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/current-fixture-green.log.raw.txt",
+      "bytes": 2152,
+      "sha256": "4b75d67601b5f781a262a6cac70ab7996d273f2d233f6eae328e9680a644ffc2"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-comment-identity.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-comment-identity.json.raw.txt",
+      "bytes": 177,
+      "sha256": "766067654f3bad542a9c1d356fab5a65e68bd31b09b52321fe7f91e9a54fb1bf"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-complete.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-complete.log.raw.txt",
+      "bytes": 416,
+      "sha256": "468538d23d46bd713e872087f9ecb79cecf46e92a7f41a57dd13c346a1818e3f"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-mirror-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-mirror-corrected.log.raw.txt",
+      "bytes": 377,
+      "sha256": "4cfbef43e27b219d7fc3ed572be39ac741d2222991cecb1661e2553c1ddde53d"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-mirror-url.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-mirror-url.log.raw.txt",
+      "bytes": 405,
+      "sha256": "3d4f94dc64d041d81edd85826efbd4fe7e0e8b6d5e6d04e549048b447d11cbe7"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-mirror.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-mirror.log.raw.txt",
+      "bytes": 358,
+      "sha256": "cb9dd55f82f6f462a9c76798c88b7ca5e084702ce6e1713b7ca553805fb8b8bd"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive-post.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive-post.log.raw.txt",
+      "bytes": 261,
+      "sha256": "3e4d3f203d79ce9c65d482627da405b90a88a19c0f4ba0e6c9698acc57f5e93c"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/deep-dive.md",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/deep-dive.md.raw.txt",
+      "bytes": 3660,
+      "sha256": "ca42f8c9ae38492e15adb5a3fabe09ef7b75a61d376f90562634586d4487002f"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/dependencies.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/dependencies.json.raw.txt",
+      "bytes": 74,
+      "sha256": "734a8ae4361b9131da4277654f6477ee089a9432ae95a7c9b2a526b861d30f40"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/envelope-migration-green.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/envelope-migration-green.log.raw.txt",
+      "bytes": 24599,
+      "sha256": "d5363951c16ff5a299dc7648c3c8b5af98a19e9c66c334b27d5e8b240c9ec09c"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/evidence-manifest.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/evidence-manifest.json.raw.txt",
+      "bytes": 14568,
+      "sha256": "d933e6bb59bfbdd8e18d47d3b65d197406d65b70b6e48f7c805fb04230fd382e"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/exact-verifier-stable.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/exact-verifier-stable.log.raw.txt",
+      "bytes": 3282,
+      "sha256": "04bc212896ced4ce7c3c68ce1f790788af3afb0c6f117458c38d8c015cb8fd1e"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/explain-after-mirror-refusal.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/explain-after-mirror-refusal.json.raw.txt",
+      "bytes": 1351,
+      "sha256": "c390e495f6c121d7e88f3eb2bec49172d735d7fd810b87258802464e9d88b606"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/explain-after-target-parser-refusal.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/explain-after-target-parser-refusal.json.raw.txt",
+      "bytes": 1351,
+      "sha256": "c390e495f6c121d7e88f3eb2bec49172d735d7fd810b87258802464e9d88b606"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/explain-before-develop.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/explain-before-develop.json.raw.txt",
+      "bytes": 670,
+      "sha256": "9fcaebacbdaeaf39e769adfd96e2196e69223edf91146b5b1561530c901935af"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/final-owned-and-consumers.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/final-owned-and-consumers.log.raw.txt",
+      "bytes": 49387,
+      "sha256": "990081c7efcb91e66ce4a41b837c2f523e2ddb02965e86a057220e2b771fd6d5"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/final-targeted-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/final-targeted-corrected.log.raw.txt",
+      "bytes": 37550,
+      "sha256": "06e95b96dce72aaf992f8475ecdca2b43b2f4f97ee1525f2fdc11db16663aadf"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/final-targeted.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/final-targeted.log.raw.txt",
+      "bytes": 39717,
+      "sha256": "7891b7f0f6f3e6f4c45aaddc43dc131cfcbac4b326ead5cc55b88d7fb94531f9"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-accessor.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-accessor.log.raw.txt",
+      "bytes": 247,
+      "sha256": "1436835a7d04e881bf3153176215c68386bf869ce4fa719088cad1b4df6c16b8"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-compatibility.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-compatibility.log.raw.txt",
+      "bytes": 247,
+      "sha256": "53b5f7f46a1a5e0278f2de834ccfd2f1c155016d1a6b1ac31d8b68e76d26ddfc"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-current-fixtures.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-current-fixtures.log.raw.txt",
+      "bytes": 425,
+      "sha256": "62a04eb9581da32a6c0b163527b753fe8250d54e0a631bb2346f7db199bfa5db"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-envelope.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-envelope.log.raw.txt",
+      "bytes": 780,
+      "sha256": "2fa6af2bab770f8ab5dd94e24d6c62f302252b79e90e1e5067bafcc2119acd59"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-extracted-helper.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-extracted-helper.log.raw.txt",
+      "bytes": 390,
+      "sha256": "9b46ef4a10c32e27492856359f3dd5a5830af7eca7d7606ca8a00566baafca07"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-final-artifacts.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-final-artifacts.log.raw.txt",
+      "bytes": 355,
+      "sha256": "2e2277e09949a0f89cf6175d3504de06ac25503b687cd5191b1256cc6fb16319"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-fixture-factory.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-fixture-factory.log.raw.txt",
+      "bytes": 291,
+      "sha256": "6a7383b43eb5259d49368a5fad54aa3f283ec6d78db2c19eee69f0148963bacb"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-helper-boundary.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-helper-boundary.log.raw.txt",
+      "bytes": 402,
+      "sha256": "3cdbc16cfb78c93b6898dbb0ef7bbf4b676c89de6bf4ce64a9713a6c6b808a48"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-historical-fixtures.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-historical-fixtures.log.raw.txt",
+      "bytes": 547,
+      "sha256": "aef6f1bc72a90588938c8a56aae95c808f1616f860caad68d4b057f9ec00030c"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-migration.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-migration.log.raw.txt",
+      "bytes": 873,
+      "sha256": "16e86849992f7a1dff46a5bdbde776dbd5089ec5840b0a7d37e7d9efc92ee438"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-renderer.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-renderer.log.raw.txt",
+      "bytes": 376,
+      "sha256": "db1a6f792333e1ed7a993b0a63d53b8d98538f7ed1c7b01b8e64f669b386d0d1"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-report-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-report-final.log.raw.txt",
+      "bytes": 148,
+      "sha256": "4e0a46e1bbfc3e9d1b053b4727c7c691e3c0628ff8597d8ddf052090173d4728"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-report.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-report.log.raw.txt",
+      "bytes": 148,
+      "sha256": "4e0a46e1bbfc3e9d1b053b4727c7c691e3c0628ff8597d8ddf052090173d4728"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-selected-outcomes.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-selected-outcomes.log.raw.txt",
+      "bytes": 971,
+      "sha256": "f6c4fbb5c87bd59b31f9e2cc75d7831bce67251090e7821321047e3c9b2b62f4"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/format-write.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/format-write.log.raw.txt",
+      "bytes": 674,
+      "sha256": "484c076a3fecd43ee24d661bbf10a89d56f4a423ebab6dee5bfc2ebbf5c07a88"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-compatibility-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-compatibility-corrected.log.raw.txt",
+      "bytes": 4012,
+      "sha256": "e2c5f08a41dd95e5ce4ea85bb7f189efd3568d3792f5be4f13fffa09763e4479"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-compatibility-native-bundle.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-compatibility-native-bundle.log.raw.txt",
+      "bytes": 2320,
+      "sha256": "8d70fe85d9c54b2798a04486fd93176f94e73d6078720be74f8d5b1d93641b03"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-compatibility.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-compatibility.log.raw.txt",
+      "bytes": 5940,
+      "sha256": "d55a271bcbc5e51996425a4512333d6aa4ff2f710f75ab7f18e3ddbfdc40f2cb"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-initial.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-initial.log.raw.txt",
+      "bytes": 1310,
+      "sha256": "dff648e05958ca464b047dfb72780204b2433aa8481d7cb594632af11b23f3e0"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-repository.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-repository.log.raw.txt",
+      "bytes": 2429,
+      "sha256": "ca32b49c62c42f44b1213c8c6426220834d0a2186dde30d1787d8407254131cc"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/green-selected-outcomes.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/green-selected-outcomes.log.raw.txt",
+      "bytes": 3505,
+      "sha256": "ec58033fef6d95efd646d50346ec9d847820d0347c2db79ecfd562bd9b4e8c95"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/helper-final-green.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/helper-final-green.log.raw.txt",
+      "bytes": 1201,
+      "sha256": "8a499baabd2b50740d10371002ff0139e2923fd369fde74dc3c1f2fd0f888be1"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/helper-integration-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/helper-integration-corrected.log.raw.txt",
+      "bytes": 1201,
+      "sha256": "8c0dff94cbbf2be3e4f844dd45a44728215ebf0fa1d5971d68cf3edd2cac59c6"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/helper-integration-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/helper-integration-final.log.raw.txt",
+      "bytes": 1198,
+      "sha256": "d8f325446733ca9adbeacf5ddfda834d294e5fb3a89d9fe1996146168fc32688"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/legacy-historical-green.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/legacy-historical-green.log.raw.txt",
+      "bytes": 11991,
+      "sha256": "4e3286edc8ad8f1edcdc6a3614b60c79c15cc66640ce906fb5a52aa1e3cc60a9"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/line-cap-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/line-cap-final.log.raw.txt",
+      "bytes": 171,
+      "sha256": "7da112de6425d7aa043cd49f04a199786755433705102301b32e7b07cc201bb0"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/line-cap-helper-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/line-cap-helper-corrected.log.raw.txt",
+      "bytes": 171,
+      "sha256": "150f970499c9ecace601960dd6ea4e1fd3f1b5111788700a8916930985584c19"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/line-cap-pass.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/line-cap-pass.log.raw.txt",
+      "bytes": 19530,
+      "sha256": "e2abf061eceb8d1491293085fae90d39bdb9a2de62d456f4e31f8c7a6293c178"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/migration-green-attempt.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/migration-green-attempt.log.raw.txt",
+      "bytes": 25393,
+      "sha256": "f665153b5e54e108bd3b5a31d89c20b51cbd39d7efefa70c21686e3368e070ea"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-format-check.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-format-check.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-format-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-format-corrected.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-format-stable.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-format-stable.log.raw.txt",
+      "bytes": 159,
+      "sha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-lint-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-lint-corrected.log.raw.txt",
+      "bytes": 3680,
+      "sha256": "0ab9756f05e9fa3dd540207e74096dec23ee73ffaa30fa01edc2855203f36142"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-lint-extracted.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-lint-extracted.log.raw.txt",
+      "bytes": 3680,
+      "sha256": "c2da6ca11b725b98564f6658663786b9dfa3a3968f474d02068a9907dfab201a"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-lint-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-lint-final.log.raw.txt",
+      "bytes": 3527,
+      "sha256": "362e0e4f7abc563ce95725f9981049febb861e2cf125250e4de69f4578022338"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-lint-stable.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-lint-stable.log.raw.txt",
+      "bytes": 26324,
+      "sha256": "588cacbb2e739ebded0c3adcfeb7ac6b1cb157d485a5cdfbcffc31b753aa7110"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-lint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-lint.log.raw.txt",
+      "bytes": 26324,
+      "sha256": "c19f17f6ff8e9f2a822b1f814587d3d7cc19ca51338286d511d8b1fbb4a5ec31"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-slow.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-slow.log.raw.txt",
+      "bytes": 5298,
+      "sha256": "f81e0bf373e6a2b661c566f0f1d7b49cfdb7c3ba591795846f5fe9e8f0444a23"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-test-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-test-final.log.raw.txt",
+      "bytes": 124502,
+      "sha256": "041b077b1e2f30b4768748ed18f903c67cf588b50575da51b4c65a516d5ff53d"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/npm-test.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/npm-test.log.raw.txt",
+      "bytes": 125488,
+      "sha256": "dea3f96ee82c8592b80208ece885d6b3bdc35386a337de738cf8bfb864ab568b"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/owned-manual-regressions.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/owned-manual-regressions.log.raw.txt",
+      "bytes": 13743,
+      "sha256": "bd9f55fd90ef2e65f11a99309d1a18a5c684c44c994ca6cb9defcb3e7f74f595"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/plan-approve.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/plan-approve.log.raw.txt",
+      "bytes": 302,
+      "sha256": "467df598007859f558bccc7095c313fe37209d77c7a815e8b6912ee7bd3a2dfa"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/plan-estimate.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/plan-estimate.log.raw.txt",
+      "bytes": 454,
+      "sha256": "7d142f2b3250244bbaf156f2d1d13b4d235a893a32082e2be60ade3cb81bf1fd"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/post-envelope-consumers.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/post-envelope-consumers.log.raw.txt",
+      "bytes": 2107,
+      "sha256": "c4a16e810363cdd7c1cce105a02a5bd85f7d92ad921f21c1279c4ad96e4b98f3"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/predecessor.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/predecessor.json.raw.txt",
+      "bytes": 169,
+      "sha256": "859feb5523b9ea69d6d028fcd4ec614a04d91f98ce1cc25f70e5201214d9f27b"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/product-commit-trace.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/product-commit-trace.log.raw.txt",
+      "bytes": 196,
+      "sha256": "1e014cd5306d4027440a4f9678117ec83c484d40ccf5852e2e719d4d6d9cae63"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/product-commit.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/product-commit.log.raw.txt",
+      "bytes": 412,
+      "sha256": "75f012b1d5892b0779c90d6fdafbedabc4cbb4f9a85435a79e6245aa4e02e1d0"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/promote-develop.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/promote-develop.log.raw.txt",
+      "bytes": 569,
+      "sha256": "a7d42f7310a081cdc33c0e8307f8ed3b865967e7d67bc582665ebf8079520feb"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-caller-mutation.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-caller-mutation.log.raw.txt",
+      "bytes": 2351,
+      "sha256": "3d5f95e5b02a7c846796c50b9936bec0d50de1d829f6bff4bdd36550202e5232"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-envelope.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-envelope.log.raw.txt",
+      "bytes": 6688,
+      "sha256": "769eff7512eec23edb1978ccd7efe30bc20a977d46fc5c8d982c8b1b2e0a5e46"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-renderer.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-renderer.log.raw.txt",
+      "bytes": 3592,
+      "sha256": "7396bbfdc365a6f422ea6f8de8f19ffcd2098d9983b43d5a73eda65c31de1de2"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-repository.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-repository.log.raw.txt",
+      "bytes": 3567,
+      "sha256": "f56be3f64dd75a495b6d1d9dafe60d974f11eae082aed6468bf8932edbf2e671"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-selected-outcomes.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-selected-outcomes.log.raw.txt",
+      "bytes": 3636,
+      "sha256": "70278bbe4a0a573bf2fa39a3970fdf33647e624d51771e6d11ec5e2cc55100e6"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red-snapshot-issue.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red-snapshot-issue.log.raw.txt",
+      "bytes": 4180,
+      "sha256": "49dfbbf5290559be2854265170ab430401381739f928b2f549ce67660b5c95cc"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/red.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/red.log.raw.txt",
+      "bytes": 3486,
+      "sha256": "7b18f8ae27c2ed6ac3495df6b52458c91276188ae1b499e39fe362abade00a60"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/regressions-final.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/regressions-final.log.raw.txt",
+      "bytes": 10563,
+      "sha256": "3b0034743cb8d1edce8e5fbdf62d1f88101395daa88b23f60ea7d2d3b94e6427"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/regressions-initial.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/regressions-initial.log.raw.txt",
+      "bytes": 9858,
+      "sha256": "2727607c903a0484f77e019fd2a24fefc4edbf71e74f1a9ce33ebe423efb7b3f"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/regressions-snapshot.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/regressions-snapshot.log.raw.txt",
+      "bytes": 9981,
+      "sha256": "d9714839a986574babc2c67fae0278a4bc9b0d51c0faa3fe8a8d6f3d826168dd"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/report-commit-trace.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/report-commit-trace.log.raw.txt",
+      "bytes": 196,
+      "sha256": "b653643440be9f99da25fb58c1f7ec6d351b7b42fadbc9ace1537b262341d965"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/report-commit.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/report-commit.log.raw.txt",
+      "bytes": 220,
+      "sha256": "234970a6a0e98746a72eeddeced2c58194796bd0ed42c51b0cc3ee660ff3bcda"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/report-markdownlint-corrected.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/report-markdownlint-corrected.log.raw.txt",
+      "bytes": 1852,
+      "sha256": "40bd0557c2e29fd6c9a460535a460cbf5f6cb7a858932d2a45df9d5fe4add5bb"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/report-markdownlint.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/report-markdownlint.log.raw.txt",
+      "bytes": 2006,
+      "sha256": "8106c8befa1e2bdce5ce39c055c1c9dc57e4e5e23875222db3fc79f7778a12e3"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/report-spelling.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/report-spelling.log.raw.txt",
+      "bytes": 206,
+      "sha256": "d2f5028fbba589e4c5eed43907f7ec12fda28350354a620dd0bba5c489301c14"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scope-supplement-post.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scope-supplement-post.log.raw.txt",
+      "bytes": 288,
+      "sha256": "36c0aa1c7a6d524cdebc9ddcf40662a0449a66fba8e2ecbdf13ac0f75a655baa"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scope-supplement.md",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scope-supplement.md.raw.txt",
+      "bytes": 2772,
+      "sha256": "96e83efdcb9284f734f4f99f32cfa1c25430a34a945744baed10b7a41ecbf990"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scratch-2065-explain-start.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scratch-2065-explain-start.json.raw.txt",
+      "bytes": 750,
+      "sha256": "f2006b3ad5b8597554abcf8dcc95440c4b0d9d8723903a15de291e21e7cdab18"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scratch-2065-issue.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scratch-2065-issue.json.raw.txt",
+      "bytes": 17295,
+      "sha256": "a969effe993f4be56372f44ba6bc5fa3d8788805b9f59fc30da97831547961e4"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scratch-2065-plan.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scratch-2065-plan.log.raw.txt",
+      "bytes": 623,
+      "sha256": "2ae3c30fdc9581bc50da7e9f7b45eb9fe03b7b3aca1af7c9ca9b837502620d72"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/scratch-2065-start.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/scratch-2065-start.log.raw.txt",
+      "bytes": 636,
+      "sha256": "f01cd017542fa4d5466266c24b9a56a177142e0f748a75a6b786a9bead73d500"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/stop-absence.json",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/stop-absence.json.raw.txt",
+      "bytes": 875,
+      "sha256": "63cafdd2297519b473cf32c8512bc44e0dd1368288bec1d0d5239d10fbac50ea"
+    },
+    {
+      "issue": 2065,
+      "source": ".worktrees/2039-wave10-2065/.scratch/2065/stop.log",
+      "archive": "docs/superpowers/reviews/2039/wave10-worker-raw/stopped-checkpoint/2065/stop.log.raw.txt",
+      "bytes": 349,
+      "sha256": "54bac8d2df3242133ea19a1a8b553940c4e318ff2ae2c61dd05c0d7704e030da"
+    }
+  ]
+}

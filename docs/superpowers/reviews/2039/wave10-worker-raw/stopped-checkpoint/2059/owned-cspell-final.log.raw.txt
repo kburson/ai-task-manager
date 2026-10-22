@@ -1,0 +1,11 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'cspell' --no-progress docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:139:15 - Unknown word (Subtest)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:154:31 - Unknown word (unproduced)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:194:29 - Unknown word (Subtests)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:197:35 - Unknown word (Subtests)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:212:29 - Unknown word (Subtests)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:215:35 - Unknown word (Subtests)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:230:31 - Unknown word (unproduced)
+docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:261:29 - Unknown word (Subtests)
+CSpell: Files checked: 2, Issues found: 8 in 1 file.

@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' explain 2059 --json
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
