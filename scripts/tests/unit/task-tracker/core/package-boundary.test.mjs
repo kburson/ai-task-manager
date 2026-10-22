@@ -507,7 +507,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2060: exactly one durable local timing-ingestion adapter.
     2 + // #2064: exactly two retained forecast evidence/lineage readers; measured total 969.
     1 + // #2059: exactly one stage-capability binding module.
-    1; // #2065: exactly one versioned legacy/current forecast reader; measured total 971.
+    1 + // #2065: exactly one versioned legacy/current forecast reader.
+    1; // #2061: exactly one frozen timing-candidate adapter; measured total 972.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -542,6 +543,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'scripts/task-tracker/lib/estimation/forecast-legacy.mjs',
   ])
     assert.ok(files.includes(entry), 'required reviewed wave 10 runtime entry missing: ' + entry);
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
