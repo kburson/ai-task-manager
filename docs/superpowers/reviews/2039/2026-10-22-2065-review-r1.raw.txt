@@ -1,0 +1,46 @@
+### Spec Compliance
+
+- ✅ Spec compliant for the bounded Task21 change visible in the supplied package. forecast-legacy.mjs:8-29 retains the original v1/v2 validator and routes current authority through retained replay plus current selection validation. plan-estimate-authority.mjs:126-134 and :170-178 require that authority before awaiting projection reads. renderers.mjs:13-15 and github-records/record-envelope.mjs:133-165 migrate actual presentation and envelope dispatch without relaxing legacy grids.
+- ✅ The admitted runtime forwarding, historical fixture migrations, new compatibility verifier, own helper and serialized package inventory all have corresponding hunks. package-boundary.test.mjs:480-486 and :512-519 account for exactly the two admitted runtime modules and require both inclusions.
+- ⚠️ Cannot verify from diff: final exact-source slow/aggregate CI, native lifecycle admission/Stop, raw pack measurement provenance and complete global consumer census. The report explicitly leaves exact-final slow/aggregate CI pending; controller must retain that gate. Existing controller clean-HEAD/native trace confirmations are supplied evidence, not independently repeated here. This verdict is a task-scoped gate, not whole-branch approval.
+
+### Strengths
+
+- scripts/task-tracker/lib/estimation/forecast-legacy.mjs:13-22 correlates configured repository, replays retained bytes through the predecessor lineage contract, checks exact selection, and returns the detached validated forecast. The original forecast is not made into a source store.
+- scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:99-219 verifies arbitrary-hour v1, every published v2 grid field, strict legacy keys, requested issue, missing/stale provenance, missing bytes and configured repository refusal. :221-267 exercises both authority entrypoints before any projection read.
+- scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs:500-520 exercises caller mutation across the actual awaited projection boundary and checks both stored forecast hours and projected board hours. The production patch captures the replayed payload before that await.
+- scripts/task-tracker/lib/github-records/record-envelope.mjs:133-165 admits the schema-defined path key only after exact v3 structural validation, keeps credential-value scans, and retains strict legacy reads while current creation refuses legacy versions. scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:588-627 covers actual render/parse roundtrip, unknown fields and credential values.
+- scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:553-646 drives retained calculation into the real publication runtime and read-back; the historical migrations retain native render/parse validation rather than weakening production creation to accept legacy writes.
+- docs/superpowers/reviews/2039/2026-10-22-2065-implementation.md:53-112 distinguishes intermediate overlapping runs from settled-source verification and explicitly preserves final CI limits.
+
+### Issues
+
+#### Critical (Must Fix)
+
+- None found in this task-scoped review.
+
+#### Important (Should Fix)
+
+- [R1-I1] scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs:670-706; scripts/tests/unit/task-tracker/lib/decomposition-cancellation-publication.cases.mjs:646-682; scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs:782-818: the change adds the same historicalForecastEnvelope construction/render/parse logic verbatim in three files. This creates three independently maintained implementations of the exact historical transport contract while the same change already introduces a self-owned fixture helper. A future envelope or legacy transport correction can silently update only one test family and leave divergent fixtures, making compatibility evidence less trustworthy. Extract this common historical builder into the admitted task-2065 fixture helper (or another controller-admitted own helper), import it in all three places, and preserve every existing scenario/assertion. This is Important under the task-reviewer rubric's explicit treatment of verbatim duplicated logic blocks; it is a maintainability finding, not an observed runtime failure.
+
+#### Minor (Nice to Have)
+
+- [R1-M1] scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:1-17, :553-646; .scratch/2065/integrated-npm-lint.log:52: native lint still emits the target's 800-code-line soft-review warning, exactly at the unchanged hard cap. The added own helper prevented a hard-cap violation and the lint chain passed, but this target has no remaining capacity for ordinary regression additions. Consider moving the added retained publication fixture setup into the own helper while keeping integration assertions visible. Other soft warnings in that log concern pre-existing unrelated files and are not new findings against this task.
+
+### Assessment
+
+**Task quality:** Needs fixes
+
+**Reasoning:** The runtime implementation and focused compatibility tests satisfy the visible bounded contract, including strict legacy grids and retained current authority. Consolidate the newly duplicated historical transport builder before approval; final exact-source slow/aggregate CI remains a separate controller gate.
+
+### Review boundary, checks, evidence and limitations
+
+- Review identity: Task21 / #2065; BASE e6c47dff776e88dc1ae9d80538b11a73cf5f5db7; HEAD a5dee940e1b820743955744b0f04a18dbb1ef09f. Supplied package read in manageable line ranges. The first tool output truncated its middle, so the missing source section was recovered from package lines149-390. No git diff, git status, network, suite run, lifecycle mutation or subagent was used.
+- Inputs read: task-reviewer template, exact task brief, controller constraints/rulings, complete implementer report including final integration appendix, and complete supplied review package. No memory files were used.
+- Focused unchanged check, named risk retained identity and detached replay: read forecast-lineage.mjs and forecast-reader.mjs. They canonicalize/detach the forecast, validate requested host/repository/issue against raw replayed retained evidence and correlate provenance to that evidence. This supports the new wrapper's use of resolved.forecast.
+- Focused unchanged check, named risk exact selection/current provenance semantics: read forecast-v3.mjs and local-runtime.mjs validateLocalSelection/localCalculationProvenance definitions, and original technical plan Task7 lines471-523. Strict v3 base validation explicitly uses v2; selection includes host/repository/issue/configuration/plan/refine/modelPolicy and compares each to retained manifest. Original Task7 is split across children; untouched neighboring exports/constants are not judged as missing Task21 work.
+- Focused unchanged check, named risk credential value policy with literal path allowance: inspected record-secret-policy.mjs safeKeyNames traversal via focused rg. The safe-key option controls key-name rejection; the changed envelope still calls assertNoCredentialValues for the full envelope. No general credential exemption was introduced.
+- Disclosed changed-file reread exception: authority diff hunks cut off apply/adopt function bodies. Read plan-estimate-authority.mjs:80-255 solely to verify that the detached validated payload remains the one passed to publication and reconciliation after awaited reads, including adoption's pending-publication await. No other changed source was separately read.
+- Existing evidence inspected, not regenerated: focused rg over integrated-npm-test.log, integrated-npm-lint.log, integrated-npm-format.log and inventory-green-integrated.log. Observed fast lane996 files and final All996 passed; inventory fail0. Integrated lint log contains many soft line-cap review messages, including changed integration target at800; those warnings are explicitly assessed above. No runtime warning/failure was inferred from test filenames containing fail/error. The broad warning-search output was truncated; its relevant target line and fast-lane summary were visible. This is not an assertion of a pristine full raw log.
+- Implementer-reported earlier fixture errors, transient line-cap refusals and native action-capture warnings remain historical observations. They were not relabeled final failures or erased. No claim of exact final slow success, complete native capture or cloud call counts is made.
+- No focused executable probe was necessary or run: code inspection and existing evidence answered the concrete contract risks. Consequently there are no probe commands/outputs to attach. Read-only commands used cat, sed and rg for the paths/ranges described above; the only write is this complete raw review at the controller-designated path. No source/index/branch changes were made.

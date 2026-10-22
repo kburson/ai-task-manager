@@ -110,3 +110,26 @@ There was exactly one settled-source integrated `npm test` run. The earlier 56-f
 Native root/scope read-back (`integrated-native-root-binding.json`) used actual `resolveRuntimeRoot`, `runtimeStoragePaths` and `readExactSessionBinding`, without synthetic project-root adapters. Physical `projectRoot` is `/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065`; Git-verified `mainRoot`/outer primary checkout is `/Users/kpburson/projects/Vibe-Coding/ai-task-manager`. The local runtime/store paths remain under the worker's `.ai-task-manager/runtime`; shared runtime/store paths resolve under that primary checkout's `.ai-task-manager/runtime`. All four project-root aliases were absent. Git registration, common-directory identity and the exact #2065 Develop binding were verified by the native APIs. This read-back proves actual root selection; it does not claim that synthetic offline test fixture stores are external/cloud authority or that a public CLI writer was activated.
 
 The worker remains natively active for the controller's fresh independent Sol-medium review and possible repairs. No reviewer was spawned here. Native Stop will occur only when separately instructed; the earlier Stop evidence belongs to the preceding handoff and is not the resumed session's current status. The 3h bottom-up allocation and all existing scope rulings remain unchanged.
+
+## R1 repair loop 1 and scoped R2 handoff
+
+Fresh R1 reviewed BASE `e6c47dff776e88dc1ae9d80538b11a73cf5f5db7` to HEAD `a5dee940e1b820743955744b0f04a18dbb1ef09f`: Spec compliant, Task quality Needs fixes. Complete raw review is preserved byte-identically as `2026-10-22-2065-review-r1.raw.txt`, SHA-256 `5f451271d389e48e574ea0f0fb503141975d4191e0a33621c8ccfd54737dd266`. `2026-10-22-2065-review-r1-author-dispositions.md` exhaustively addresses all verdicts, all six strengths, Important/Minor findings, recommendations, cannot-verify statements and evidence/method limits. The raw file was read in full and copied directly, never reconstructed.
+
+R1-I1 was verified: all three historical builder blocks were identical. The admitted repair exports one `historicalForecastEnvelope` from the existing own helper; its historical integration branch delegates there too. Three test/case files import it and remove only local copies/unused imports. All scenarios/assertions remain. Explicit predecessor/supersession values remain supported; omitted values default to null, matching the old builders. No production/package/guard/inventory source changed. Source fix: `fd7fe1ffe046ee23dd439eb521d226845b9a603a`, four test/helper files, 19 insertions and 106 deletions.
+
+R1-M1 remains deferred for final whole-branch disposition. The integration target's 800-line soft warning and unchanged hard cap remain. This Important fix concerns maintainability, not an observed runtime failure; no artificial duplication detector was added to manufacture RED evidence.
+
+| Repair check | Observed result | Complete raw output |
+| --- | --- | --- |
+| Three historical/boundary families, actual integration/helper/race consumers, own compatibility/model verifier | 174/174, exit 0 | `r1-fix-covering-tests.log` |
+| Own 36 tests plus publication/race consumers with actual outer project-root alias | 46/46, exit 0 | `r1-fix-native-outer-root-tests.log` |
+| Full native lint including line-cap enforcement | exit 0; existing soft warnings retained | `r1-fix-native-lint.log` |
+| Whole-tree native format check | exit 0 | `r1-fix-native-format.log` |
+| Raw review copy | source/destination bytes and SHA-256 equal | `r1-review-artifact-copy.json` |
+| Production/package diff against R1 HEAD | empty, exit 0 | worker transcript and repair identity |
+
+Exact covering and outer-root commands are reproduced in the exhaustive disposition. The additional outer-root test uses `AI_TASK_MANAGER_PROJECT_DIR="$PWD"`, matching the native `verbs/test.mjs` sandbox contract's actual-worktree alias through `buildSandboxEnv`. Native identity inspection selected that explicit alias, the actual physical bound worker and genuine #2065 Develop session. The actual paths and Git-verified outer primary checkout are retained in `r1-fix-native-outer-root-identity.json`. No synthetic root/fixture adapter or foreign admission was used. The earlier aliases-absent result proves a different condition and is not substituted for this run.
+
+A documentation write was initially refused because the hook interpreted the already verified outer-primary path inside prose as an out-of-scope file read; no write occurred. The same ordinary document operation instead references the existing native identity artifact, with no filesystem/policy/identity override.
+
+Earlier full fast/slow results remain historical to their recorded source. No full-suite repeat was made solely for this fixture repair. Full applicable settled-source CI remains required before Test. Native commit traces and the clean candidate identity are preserved separately. The worker stays active for fresh scoped R2; no Stop/Test/Review/Close/PR/delivery action or self-review occurred.
