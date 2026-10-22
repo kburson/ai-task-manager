@@ -1,4 +1,5 @@
 // @story #1496
+// @story #2084
 // cspell:ignore NOSYSTEM hardlink fsmonitor
 // @story #1857
 // This integration fixture supplies its own actor.
@@ -156,7 +157,20 @@ test('real dispatcher runs in a fresh recorded context and refuses production is
   const sandbox = createSandbox();
   try {
     const status = sandbox.command(['status']);
-    assert.equal(status.exitCode, 0, status.stderr);
+    const diagnostic =
+      status.exitCode === 0
+        ? status.stderr
+        : JSON.stringify({
+            status,
+            guidance: sandbox.probe(`
+              import { loadGuidance } from ${JSON.stringify(new URL('../../../../../../guidance/cache.mjs', import.meta.url).href)};
+              console.log(JSON.stringify({
+                runtime: { version: process.version, execPath: process.execPath },
+                guidance: loadGuidance({ publishedOnly: true, need: 'diagnostics' }),
+              }));
+            `),
+          });
+    assert.equal(status.exitCode, 0, diagnostic);
     assert.match(status.stdout, /No active task/);
     const unguarded = spawnSync(
       process.execPath,
