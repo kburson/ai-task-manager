@@ -1,0 +1,7 @@
+{
+  "from": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.scratch/plan/2039-wave10/2065-review-r1.raw.txt",
+  "to": "docs/superpowers/reviews/2039/2026-10-22-2065-review-r1.raw.txt",
+  "sourceSha256": "5f451271d389e48e574ea0f0fb503141975d4191e0a33621c8ccfd54737dd266",
+  "copiedSha256": "5f451271d389e48e574ea0f0fb503141975d4191e0a33621c8ccfd54737dd266",
+  "identical": true
+}

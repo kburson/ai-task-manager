@@ -1,0 +1,44 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (1.663541ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (15.162916ms)
+✔ v2 rejects off-grid published hours: refine (0.151333ms)
+✔ v2 rejects off-grid published hours: plan (0.098833ms)
+✔ v2 rejects off-grid published hours: p50 (0.094209ms)
+✔ v2 rejects off-grid published hours: p80 (0.058625ms)
+✔ v2 rejects off-grid published hours: stage (0.061708ms)
+✔ v2 rejects off-grid published hours: wbs (0.07975ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.180584ms)
+✔ current v3 reads replay retained evidence and require its current selection (201.854625ms)
+✔ current v3 refuses missing or stale provenance: missing (2.885417ms)
+✔ current v3 refuses missing or stale provenance: manifest (6.339167ms)
+✔ current v3 refuses missing or stale provenance: plan (3.78775ms)
+✔ current v3 refuses missing or stale provenance: unknown (1.70225ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.575584ms)
+✔ current authority correlates its configured repository before reading projection (0.768833ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (0.772541ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (2.291542ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (5.619459ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (1.510625ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (1.846083ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (5.741416ms)
+✔ current replay refuses accessor-based issue substitution (2.253417ms)
+✔ local generation includes only explicitly selected retained outcomes in current provenance (62.438542ms)
+✔ forecast presentation renders strict current v3 and unchanged legacy v1/v2 values (2.967708ms)
+✔ story estimates ceil to the next half hour without moving downward (1.763541ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (1.54925ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.734708ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (4.637333ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (1.560333ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.279458ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.332417ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.340958ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.618ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (0.5705ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (3.213584ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 758.259333

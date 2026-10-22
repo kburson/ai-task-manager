@@ -1,0 +1,66 @@
+✔ canonical durable JSON sorts nested object keys and preserves array order (24.499167ms)
+✔ canonical durable JSON rejects values that JSON would erase or normalize ambiguously (1.378708ms)
+✔ payload hashes are stable SHA-256 vectors over canonical payload JSON only (0.561125ms)
+✔ a v1 envelope renders and parses as a deeply frozen correlated record (1.606958ms)
+✔ a Delivery Contract singleton round-trips through the common record envelope (2.24425ms)
+✔ Delivery Contract semantic keys never exempt malformed or unrelated payloads (0.561125ms)
+✔ Delivery Contract singleton authority must correlate with the outer envelope (0.9285ms)
+✔ record comment transport round-trips benign double-hyphen command arguments (0.262625ms)
+✔ ordinary visible Markdown changes cannot alter structured authority (0.403792ms)
+✔ root and authority objects require their exact v1 key sets (0.696458ms)
+✔ schema dispatch and common field validation fail closed (0.375291ms)
+✔ known estimation record types fail closed when their payload schema is unknown (0.299875ms)
+✔ rendering rejects recursively nested secret-bearing keys and credential values (17.071958ms)
+✔ secret scanning permits ordinary policy and token-accounting fields (0.37275ms)
+✔ parsing rejects secret signatures introduced into visible Markdown (17.671416ms)
+✔ record references require canonical uppercase ULIDs and cannot self-link (0.591209ms)
+✔ canonical JSON rejects excessive nesting with a categorized error (0.308334ms)
+✔ canonical JSON rejects ill-formed Unicode strings and keys (0.098958ms)
+✔ marker syntax is bounded and exactly one complete record is required (0.545917ms)
+✔ embedded JSON must already be canonical, which rejects duplicate members (0.326791ms)
+✔ malformed JSON and secret-bearing parsed records fail closed (0.179625ms)
+✔ hash tampering and caller correlation mismatches fail closed (0.429834ms)
+✖ current forecast envelopes create and roundtrip exact retained v3 provenance including plan path (2.319375ms)
+✔ current forecast envelope refuses missing without broad secret exemptions (0.946209ms)
+✔ current forecast envelope refuses unknown without broad secret exemptions (0.648958ms)
+✔ current forecast envelope refuses credential path without broad secret exemptions (0.599083ms)
+✔ current forecast envelope refuses credential rationale without broad secret exemptions (0.621542ms)
+✖ legacy forecast envelopes remain readable while new creation requires current v3 (0.724042ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 26
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 163.9165
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:563:1
+✖ current forecast envelopes create and roundtrip exact retained v3 provenance including plan path (2.319375ms)
+  TypeError: record-envelope:secret
+      at secretError (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:38:10)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:99:57)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:100:7)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:100:7)
+      at assertNoSecretRecordData (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:103:3)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-envelope.mjs:148:5)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-envelope.mjs:257:3)
+      at createForecast (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:561:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:565:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+
+test at scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:579:1
+✖ legacy forecast envelopes remain readable while new creation requires current v3 (0.724042ms)
+  TypeError: record-envelope:secret
+      at secretError (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:38:10)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:99:57)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:100:7)
+      at assertNoSecretKeys (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:100:7)
+      at assertNoSecretRecordData (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-secret-policy.mjs:103:3)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-envelope.mjs:148:5)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/github-records/record-envelope.mjs:257:3)
+      at createForecast (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:561:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs:580:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)

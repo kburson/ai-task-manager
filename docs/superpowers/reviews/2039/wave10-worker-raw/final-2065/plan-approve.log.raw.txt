@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' plan-approve 2065
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+✓ Plan approved for #2065 at 2026-10-22T13:41:00Z (provenance=full-auto; Full-Auto audit=posted). `/task promote #2065` to move to Develop.

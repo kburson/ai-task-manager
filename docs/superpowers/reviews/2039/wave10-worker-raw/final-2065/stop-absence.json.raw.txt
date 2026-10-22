@@ -1,0 +1,26 @@
+{
+  "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+  "activeTaskPath": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/.tmp/aitm/sessions/01a163c9-05bf-73a0-9e5a-a3895ed7de10/active-task.json",
+  "activeBindingExists": false,
+  "occupancyFor2065": null,
+  "timing": [
+    {
+      "schema": "aitm.actor-timing-state/v1",
+      "actor": "v1:2cc146f7e03aa0b4c1c3f05f1f9395965790b9f91dea9209567b453fc9344a8b",
+      "provider": "codex",
+      "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+      "state": {
+        "active": null,
+        "lastActive": "#2065",
+        "entryStartTs": null,
+        "wordsAtEntryStart": 0,
+        "fullWordsAtEntryStart": 63124,
+        "totalActiveMinutes": 0,
+        "discoverBucket": null,
+        "lastWordMarker": 823,
+        "lastFullWordMarker": 63124,
+        "pausedAtTs": null
+      }
+    }
+  ]
+}

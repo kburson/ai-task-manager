@@ -1,0 +1,37 @@
+✔ package-boundary: no test files are packed (7241.354583ms)
+✔ package-boundary: excluded directories do not reappear (0.270458ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.223667ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.347292ms)
+✖ package-boundary: total entry count stays under the ceiling (0.862708ms)
+✔ package-boundary: development-only context calibration is not shipped (0.324333ms)
+✔ package-boundary: runtime entry points are still shipped (0.132083ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.401083ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.866542ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7304.874875
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:225:1
+✖ package-boundary: total entry count stays under the ceiling (0.862708ms)
+  AssertionError [ERR_ASSERTION]: packed entry count 971 exceeds ceiling 969; the package surface grew — confirm intentional and raise the ceiling, or prune.
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:533:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

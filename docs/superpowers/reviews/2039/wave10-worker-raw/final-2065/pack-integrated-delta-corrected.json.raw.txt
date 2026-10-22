@@ -1,0 +1,13 @@
+{
+  "beforeCount": 970,
+  "afterCount": 971,
+  "added": [
+    "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs"
+  ],
+  "removed": [],
+  "base": "019ea75594c73a70a907844352143ef16d170fd6",
+  "missingFromBase": [
+    "scripts/task-tracker/lib/estimation/forecast-legacy.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs"
+  ]
+}
