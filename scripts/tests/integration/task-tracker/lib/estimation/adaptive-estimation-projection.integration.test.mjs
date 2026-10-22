@@ -250,3 +250,138 @@ test('direct and packaged CLI report typed estimation stops while preserving the
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// @story #2063 — actual loaders must preserve invalid-layer provenance.
+import { loadConfig } from '../../../../../task-tracker/config.mjs';
+import {
+  resolveEstimationMode,
+  estimationDispatchDecision,
+} from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
+for (const scenario of [
+  {
+    name: 'malformed project with defaults',
+    project: '{broken',
+    user: null,
+    reason: 'config-invalid',
+  },
+  {
+    name: 'valid user and malformed project',
+    project: '{broken',
+    user: cfg,
+    reason: 'config-invalid',
+  },
+  {
+    name: 'malformed user and valid project',
+    project: cfg,
+    user: '{broken',
+    reason: 'config-invalid',
+  },
+  { name: 'array project and valid user', project: [], user: cfg, reason: 'config-invalid' },
+  {
+    name: 'missing project and valid local user',
+    project: null,
+    user: { ...cfg, estimationRubricIssue: 12 },
+    reason: 'retained-local-input-required',
+  },
+]) {
+  test(`physical config provenance: ${scenario.name}`, async (t) => {
+    const dir = mkdtempProjectIsolated('local-dispatch-config-');
+    try {
+      const home = path.join(dir, 'home');
+      const projectPath = path.join(dir, '.ai-task-manager/task-tracker.json');
+      const userPath = path.join(home, '.ai-task-manager/task-tracker-config.json');
+      mkdirSync(path.dirname(projectPath), { recursive: true });
+      mkdirSync(path.dirname(userPath), { recursive: true });
+      const write = (file, value) => {
+        if (value !== null)
+          writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value));
+      };
+      write(projectPath, scenario.project);
+      write(userPath, scenario.user);
+      const loaded = loadConfig({ projectPath, userPath });
+      await t.test('loaded configuration', () => {
+        const resolved = resolveEstimationMode(loaded);
+        assert.equal(resolved.mode, scenario.reason === 'config-invalid' ? 'unavailable' : 'local');
+        if (scenario.reason === 'config-invalid') assert.equal(resolved.reason, 'config-invalid');
+      });
+      // Compatibility preserves the general loader's fallback values and native admission.
+      assert.equal(
+        estimationDispatchDecision({
+          cfg: loaded,
+          verb: 'plan-estimate',
+          args: ['--compatibility-mode'],
+        }),
+        null
+      );
+      const bin = path.join(dir, 'bin');
+      mkdirSync(bin);
+      const marker = path.join(dir, 'unexpected-transport');
+      const gh = path.join(bin, 'gh');
+      writeFileSync(
+        gh,
+        '#!/usr/bin/env node\nconst a=process.argv.slice(2); if(JSON.stringify(a)===JSON.stringify(["issue","view","2063","-R","test/repo","--json","body","--jq",".body"])) {process.stdout.write("## Scope\\nTarget lifecycle observation only.\\n");process.exit(0);} require("fs").writeFileSync(' +
+          JSON.stringify(marker) +
+          ', JSON.stringify(a));process.exit(91);\n'
+      );
+      chmodSync(gh, 0o700);
+      const env = {
+        ...process.env,
+        HOME: home,
+        PATH: bin + path.delimiter + process.env.PATH,
+        AITM_CAPTURE_REAL_GH: gh,
+      };
+      const payload = {
+        tool_name: 'Bash',
+        cwd: dir,
+        tool_input: { command: 'npx aitm plan-estimate 2063 --evidence-file does-not-exist.json' },
+      };
+      for (const entry of [
+        'scripts/task-tracker/source-edit-gate.mjs',
+        'scripts/task-tracker/activity-guard.mjs',
+      ]) {
+        await t.test(entry, () => {
+          const result = spawnSync(process.execPath, [path.resolve(entry)], {
+            cwd: dir,
+            input: JSON.stringify(payload),
+            encoding: 'utf8',
+            env,
+          });
+          assert.equal(result.status, 0, result.stderr);
+          const decision = JSON.parse(result.stdout);
+          assert.equal(decision.code, 'estimation-dispatch-stopped');
+          assert.ok(
+            decision.reason.includes('Estimation unavailable: ' + scenario.reason),
+            JSON.stringify(decision)
+          );
+        });
+      }
+      for (const entry of ['scripts/task-tracker/task-tracker.mjs', 'bin/aitm.mjs']) {
+        await t.test(entry, () => {
+          const result = spawnSync(
+            process.execPath,
+            [
+              path.resolve(entry),
+              'plan-estimate',
+              '2063',
+              '--evidence-file',
+              'does-not-exist.json',
+            ],
+            { cwd: dir, encoding: 'utf8', env }
+          );
+          assert.notEqual(result.status, 0);
+          assert.ok(
+            result.stderr.includes(
+              scenario.project === null
+                ? 'config-not-found'
+                : 'Estimation unavailable: ' + scenario.reason
+            ),
+            result.stderr
+          );
+        });
+      }
+      assert.equal(existsSync(marker), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}

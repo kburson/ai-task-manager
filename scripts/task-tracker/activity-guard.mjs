@@ -107,9 +107,7 @@ if (toolName === 'Bash') {
   if (args) {
     let cfg;
     try {
-      cfg = JSON.parse(
-        readFileSync(path.join(projectRoot, '.ai-task-manager', 'task-tracker.json'), 'utf8')
-      );
+      cfg = loadConfig({ projectDir: projectRoot });
     } catch {
       cfg = null;
     }
@@ -525,3 +523,5 @@ function block(reason) {
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);
 }
+
+import { loadConfig } from './config.mjs';
