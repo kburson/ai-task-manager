@@ -12,6 +12,7 @@ import { withProcessRecordClaim } from '../../../../../task-tracker/lib/estimati
 import { createBootstrapRubric } from '../../../../../task-tracker/lib/estimation/rubric-model.mjs';
 import {
   createAdaptivePlanRuntime,
+  createPlanPublicationRuntime,
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
@@ -159,7 +160,7 @@ test('two production close runtimes with the same pre-claim snapshot append one 
   assert.deepEqual(results.map((result) => result.status).sort(), ['existing', 'written']);
 });
 
-test('two production Plan runtimes sharing a stale rubric generation append one successor', async () => {
+test('two obsolete cloud Plan runtimes refuse before a rubric claim or successor write', async () => {
   const { rubric, forecast, outcomePayload } = estimationFixture();
   const rubricRecords = [
     {
@@ -206,17 +207,22 @@ test('two production Plan runtimes sharing a stale rubric generation append one 
     loadProjectFieldDefs: () => [],
     loadProjectEstimationCorpus: async () => [...corpus],
   };
-  const runtimes = [1, 2].map(() =>
-    createAdaptivePlanRuntime({
-      cfg: { repo: repository, projectId: 'PVT_test', estimationRubricIssue: rubricIssue },
-      deps,
-    })
-  );
-  const results = await Promise.all(runtimes.map((runtime) => runtime.loadRubric()));
-
-  assert.equal(writes, 1);
-  assert.equal(rubricRecords.length, 2);
-  assert.equal(results[0].recordId, results[1].recordId);
+  // #2063: two legacy cloud-calibration attempts must refuse before acquiring a
+  // rubric claim or writing a successor; real publication/close races stay below/above.
+  const refusals = [1, 2].map(() => {
+    try {
+      createAdaptivePlanRuntime({
+        cfg: { repo: repository, projectId: 'PVT_test', estimationRubricIssue: rubricIssue },
+        deps,
+      });
+    } catch (error) {
+      return error;
+    }
+  });
+  for (const error of refusals) assert.equal(error.code, 'estimation-cloud-dispatch-prohibited');
+  assert.equal(writes, 0);
+  assert.equal(rubricRecords.length, 1);
+  assert.equal(refusals[0].mode, refusals[1].mode);
 });
 
 test('two production Plan authority runtimes with the same initial projection append one forecast', async () => {
@@ -325,7 +331,7 @@ test('two production Plan authority runtimes with the same initial projection ap
       return { status: 'ok', body: issueBody };
     },
   };
-  const runtimes = [1, 2].map(() => createAdaptivePlanRuntime({ cfg, deps }));
+  const runtimes = [1, 2].map(() => createPlanPublicationRuntime({ cfg, deps }));
   const results = await Promise.all(
     runtimes.map((runtime) =>
       runtime.applyAuthority({ issueNumber: issue, refine, forecastEnvelope })
