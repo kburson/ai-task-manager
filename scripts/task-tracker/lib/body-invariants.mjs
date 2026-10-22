@@ -402,30 +402,62 @@ function lineHasProof(line) {
   return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(s) || parseAcEvidence(s) != null;
 }
 
+// Section ancestry, repeated-heading visit, and same-label occurrence identify
+// a promise independently of blank lines. Checked text elsewhere grants nothing.
+function checkboxIdentities(body) {
+  let headings = [];
+  const visits = new Map();
+  const occurrences = new Map();
+  return String(body || '')
+    .split('\n')
+    .map((line, lineIndex) => {
+      const heading = /^(#{1,6})[ \t]+/.exec(line);
+      if (heading) {
+        const level = heading[1].length;
+        headings = headings.filter((entry) => entry.level < level);
+        const parent = headings.map((entry) => entry.identity);
+        const key = JSON.stringify([parent, line]);
+        const visit = (visits.get(key) || 0) + 1;
+        visits.set(key, visit);
+        headings.push({ level, identity: [line, visit] });
+      }
+      if (!UNCHECKED_LINE_RE.test(line) && !CHECKED_LINE_RE.test(line)) return null;
+      const label = line.replace(/^\s*- \[[ x]\]/, '').trim();
+      const family = JSON.stringify([headings.map((entry) => entry.identity), label]);
+      const occurrence = (occurrences.get(family) || 0) + 1;
+      occurrences.set(family, occurrence);
+      return {
+        line,
+        lineIndex,
+        label,
+        key: JSON.stringify([family, occurrence]),
+        checked: CHECKED_LINE_RE.test(line),
+      };
+    })
+    .filter(Boolean);
+}
+
 export function findCheckboxesTickedWithoutProof(before, after, { includeNew = false } = {}) {
   const beforeLines = String(before || '').split('\n');
-  const afterLines = String(after || '').split('\n');
-  const unchecked = new Set(
-    beforeLines
-      .filter((line) => UNCHECKED_LINE_RE.test(line))
-      .map((line) => line.replace(UNCHECKED_LINE_RE, '').trim())
-  );
-  const existingChecked = new Map();
-  for (const line of beforeLines.filter((entry) => CHECKED_LINE_RE.test(entry))) {
-    existingChecked.set(line, (existingChecked.get(line) || 0) + 1);
-  }
+  const previous = checkboxIdentities(before);
+  const identities = new Map(previous.map((entry) => [entry.key, entry]));
+  const labels = new Set(previous.map((entry) => entry.label));
   const offenders = [];
-  for (let i = 0; i < afterLines.length; i += 1) {
-    if (!CHECKED_LINE_RE.test(afterLines[i])) continue;
-    const existing = existingChecked.get(afterLines[i]) || 0;
-    if (existing) {
-      existingChecked.set(afterLines[i], existing - 1);
+  for (const entry of checkboxIdentities(after)) {
+    if (!entry.checked) continue;
+    const prior = identities.get(entry.key);
+    if (prior?.checked && prior.line === entry.line) continue;
+    const transition = prior && !prior.checked;
+    const relocated = labels.has(entry.label);
+    if (
+      !includeNew &&
+      !transition &&
+      !relocated &&
+      !UNCHECKED_LINE_RE.test(beforeLines[entry.lineIndex] || '')
+    )
       continue;
-    }
-    const moved = unchecked.has(afterLines[i].replace(CHECKED_LINE_RE, '').trim());
-    if (!includeNew && !UNCHECKED_LINE_RE.test(beforeLines[i] || '') && !moved) continue;
-    if (lineHasProof(afterLines[i])) continue;
-    offenders.push({ lineIndex: i, text: afterLines[i] });
+    if (lineHasProof(entry.line)) continue;
+    offenders.push({ lineIndex: entry.lineIndex, text: entry.line });
   }
   return offenders;
 }
