@@ -125,6 +125,7 @@ function tsToMs(ts) {
   return NaN;
 }
 
+// @story #2061 — live admission remains unconditional; cached rendering is not a clock.
 export function buildRow({
   ts,
   event,
@@ -148,6 +149,40 @@ export function buildRow({
   if (Math.abs(tsMs - Date.now()) > RETROACTIVE_TS_WINDOW_MS) {
     throw new Error(RETROACTIVE_TS_ERROR);
   }
+  return renderTimingRow({
+    ts,
+    event,
+    activeMin,
+    idleMin,
+    activeSec,
+    idleSec,
+    deltaWords,
+    deltaWordsFull,
+    wordMarker,
+    fullWordMarker,
+    description,
+    phase,
+    actorKey,
+    engagement,
+  });
+}
+
+function renderTimingRow({
+  ts,
+  event,
+  activeMin,
+  idleMin,
+  activeSec,
+  idleSec,
+  deltaWords,
+  deltaWordsFull,
+  wordMarker,
+  fullWordMarker,
+  description = '',
+  phase,
+  actorKey,
+  engagement,
+}) {
   // Phase descriptor — when supplied as `{state, phase}` (or `{state, kind}`),
   // resolve event + description from PHASE_EVENTS. Caller-supplied `event` /
   // `description` win when the descriptor is missing or unresolved; this keeps
@@ -775,6 +810,51 @@ function appendRow(body, row) {
     lines.splice(lastTableIdx + 1, 0, effectiveRow);
   }
   return lines.join('\n').replace(/\n+$/, '') + '\n';
+}
+
+// @story #2061 — render retained native events only; no clock, transport or authority.
+// The cache adapter validates exact event identities/deltas before calling this seam.
+// Historical table rows are kept byte-for-byte, including actor/word evidence.
+export function renderTimingEventBatch({ timingBody, events, exitEventId } = {}) {
+  if (typeof timingBody !== 'string' || !Array.isArray(events))
+    throw new TypeError('timing-batch:input');
+  const lines = (timingBody || buildInitialComment()).split('\n');
+  const ordered = [...events].sort((a, b) => {
+    const delta = tsToMs(a.timestamp) - tsToMs(b.timestamp);
+    if (delta) return delta;
+    if (a.eventId === exitEventId) return -1;
+    if (b.eventId === exitEventId) return 1;
+    return a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0;
+  });
+  for (const event of ordered) {
+    const seconds = (value) => (value === null ? null : Math.floor(value));
+    const row = renderTimingRow({
+      ts: event.timestamp,
+      event: event.event,
+      activeSec: seconds(event.activeSeconds),
+      idleSec: seconds(event.idleSeconds),
+      actorKey: event.actorId,
+      deltaWords: null,
+      wordMarker: null,
+      fullWordMarker: null,
+    });
+    const parsed = parseTimingRow(row);
+    if (!parsed?.actorKey || !Number.isFinite(tsToMs(event.timestamp)))
+      throw new TypeError('timing-batch:event');
+    const later = lines.findIndex((line) => {
+      const existing = parseTimingRow(line);
+      return existing && _tsToMs(existing.ts) > tsToMs(event.timestamp);
+    });
+    let insertion = later;
+    if (insertion < 0) {
+      let last = -1;
+      for (let i = 0; i < lines.length; i++) if (lines[i].startsWith('|')) last = i;
+      if (last < 0) throw new TypeError('timing-batch:table');
+      insertion = last + 1;
+    }
+    lines.splice(insertion, 0, row);
+  }
+  return lines.join('\n');
 }
 
 // ---- GH shell-out helpers ----
