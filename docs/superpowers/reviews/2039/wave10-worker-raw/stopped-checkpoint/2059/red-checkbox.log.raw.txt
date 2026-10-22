@@ -1,0 +1,30 @@
+✖ line insertion cannot conceal a checkbox tick without proof (0.951333ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 160.708917
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:7:1
+✖ line insertion cannot conceal a checkbox tick without proof (0.951333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:10:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

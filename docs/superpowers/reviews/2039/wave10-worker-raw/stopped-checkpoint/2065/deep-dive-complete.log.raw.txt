@@ -1,0 +1,6 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' check deep dive complete
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+[task-tracker] ✓ Already marked deep-dive-complete on #2065

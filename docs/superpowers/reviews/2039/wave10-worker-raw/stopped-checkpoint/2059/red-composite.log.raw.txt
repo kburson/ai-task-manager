@@ -1,0 +1,287 @@
+✖ line insertion cannot conceal a checkbox tick without proof (1.013375ms)
+✖ ordinary chained edits retain exact candidate and do not mutate operation records (0.248958ms)
+✖ a disconnected operation or unproduced final candidate refuses (0.676291ms)
+✔ caller options and serialized permission unions confer no authority (0.3335ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.150875ms)
+✖ small local shrinks cannot combine into an excessive composite deletion (0.209667ms)
+✖ synthetic complete and incomplete execution stamps both refuse (0.118833ms)
+✖ legacy version bytes and preexisting execution proof survive ordinary edits (0.077458ms)
+✖ proof relocation cannot launder preexisting evidence to a different checkbox (0.118458ms)
+✖ malformed declarations and malformed operation shapes refuse (0.157167ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 2
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 318.814916
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:7:1
+✖ line insertion cannot conceal a checkbox tick without proof (1.013375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:10:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:24:1
+✖ ordinary chained edits retain exact candidate and do not mutate operation records (0.248958ms)
+  AssertionError [ERR_ASSERTION]: composite validator missing
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:29:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:33:1
+✖ a disconnected operation or unproduced final candidate refuses (0.676291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'ERR_ASSERTION'
+  -   code: 'STORY_MUTATION_INVALID'
+    }
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:36:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: composite validator missing
+    + actual - expected
+    
+    + 'undefined'
+    - 'function'
+    
+        at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+        at assert.throws.code (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:36:25)
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:36:12)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: { code: 'STORY_MUTATION_INVALID' },
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:50:1
+✖ small local shrinks cannot combine into an excessive composite deletion (0.209667ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /section-loss/. Input:
+  
+  'AssertionError [ERR_ASSERTION]: composite validator missing\n' +
+    '+ actual - expected\n' +
+    '\n' +
+    "+ 'undefined'\n" +
+    "- 'function'\n"
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:54:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: composite validator missing
+    + actual - expected
+    
+    + 'undefined'
+    - 'function'
+    
+        at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+        at file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:54:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:54:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /section-loss/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:56:1
+✖ synthetic complete and incomplete execution stamps both refuse (0.118833ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /proof/. Input:
+  
+  'AssertionError [ERR_ASSERTION]: composite validator missing\n' +
+    '+ actual - expected\n' +
+    '\n' +
+    "+ 'undefined'\n" +
+    "- 'function'\n"
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: composite validator missing
+    + actual - expected
+    
+    + 'undefined'
+    - 'function'
+    
+        at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+        at file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:59:25
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:59:12)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /proof/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:62:1
+✖ legacy version bytes and preexisting execution proof survive ordinary edits (0.077458ms)
+  AssertionError [ERR_ASSERTION]: composite validator missing
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:65:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:71:1
+✖ proof relocation cannot launder preexisting evidence to a different checkbox (0.118458ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /proof/. Input:
+  
+  'AssertionError [ERR_ASSERTION]: composite validator missing\n' +
+    '+ actual - expected\n' +
+    '\n' +
+    "+ 'undefined'\n" +
+    "- 'function'\n"
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:74:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: composite validator missing
+    + actual - expected
+    
+    + 'undefined'
+    - 'function'
+    
+        at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+        at file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:74:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:74:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /proof/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:76:1
+✖ malformed declarations and malformed operation shapes refuse (0.157167ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /declaration/. Input:
+  
+  'AssertionError [ERR_ASSERTION]: composite validator missing\n' +
+    '+ actual - expected\n' +
+    '\n' +
+    "+ 'undefined'\n" +
+    "- 'function'\n"
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:78:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: composite validator missing
+    + actual - expected
+    
+    + 'undefined'
+    - 'function'
+    
+        at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:18:10)
+        at file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:78:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:78:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /declaration/,
+    operator: 'throws',
+    diff: 'simple'
+  }

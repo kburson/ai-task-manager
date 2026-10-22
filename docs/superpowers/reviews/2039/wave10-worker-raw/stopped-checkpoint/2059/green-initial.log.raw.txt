@@ -1,0 +1,18 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.100167ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (2.954292ms)
+✔ a disconnected operation or unproduced final candidate refuses (0.360792ms)
+✔ caller options and serialized permission unions confer no authority (0.3965ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.144042ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.212709ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.416292ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (0.599042ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.154083ms)
+✔ malformed declarations and malformed operation shapes refuse (0.238ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 173.993709

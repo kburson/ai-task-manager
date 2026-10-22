@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-10-22T14:29:00.066Z",
+  "sid": "01a163c8-acfe-7450-a54a-8525f0fe2857",
+  "activeTaskFilePresent": false,
+  "actorTiming": {
+    "schema": "aitm.actor-timing-state/v1",
+    "actor": "v1:a795156a7f2c665003df0663cad0d34b2c48ba8adfc74044377821684210c21e",
+    "provider": "codex",
+    "sid": "01a163c8-acfe-7450-a54a-8525f0fe2857",
+    "state": {
+      "active": null,
+      "lastActive": "#2059",
+      "entryStartTs": null,
+      "wordsAtEntryStart": 0,
+      "fullWordsAtEntryStart": 61127,
+      "totalActiveMinutes": 0,
+      "discoverBucket": null,
+      "lastWordMarker": 943,
+      "lastFullWordMarker": 61127,
+      "pausedAtTs": null
+    }
+  },
+  "issue2059Claim": null,
+  "claimsForWorker": []
+}

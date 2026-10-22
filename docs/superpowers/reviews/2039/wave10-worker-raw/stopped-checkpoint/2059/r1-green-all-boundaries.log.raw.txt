@@ -1,0 +1,32 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.353959ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (4.024583ms)
+✔ a disconnected operation or a candidate not produced by its operations refuses (0.627542ms)
+✔ caller options and serialized permission unions confer no authority (0.507375ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.235041ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.287959ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.509958ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (1.442459ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.130917ms)
+✔ malformed declarations and malformed operation shapes refuse (0.25225ms)
+✔ synthetic approval markers never become native approval authority (0.125666ms)
+✔ genuine reviewed scope token retains raw coordinates: ordinary bytes (7.602791ms)
+✔ genuine reviewed scope token retains raw coordinates: three newlines before policy (2.068708ms)
+✔ genuine reviewed scope token retains raw coordinates: legacy version marker surrounded by whitespace (2.646708ms)
+✔ genuine reviewed scope token retains raw coordinates: legacy version plus blank-line runs (3.171375ms)
+✔ genuine decomposition capability requires its live native context and exact record delta (13.433834ms)
+✔ unchanged duplicate labels do not invent a new checkbox transition (0.190333ms)
+✔ newly appended checked promises cannot bypass staged proof validation (0.20575ms)
+✔ a changed verifier cannot retain execution proof for the old command (0.123209ms)
+✔ checked promises cannot transfer completion between sections (0.136ms)
+✔ completion identity rejects removed checked source (0.101916ms)
+✔ completion identity rejects inserted target in another section (0.113333ms)
+✔ completion identity rejects same-section duplicate occurrence (0.133417ms)
+✔ completion identity rejects duplicate section headings (0.125125ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.962792

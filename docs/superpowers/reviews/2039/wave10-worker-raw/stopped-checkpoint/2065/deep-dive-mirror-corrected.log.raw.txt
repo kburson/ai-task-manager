@@ -1,0 +1,6 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' mirror-deep-dive 2065 --from-comment 6342083897
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+PROMPT_REQUIRED: bind-mismatch #2065:#6342083897
+⛔ Refusing /task mirror-deep-dive: target #6342083897 differs from active binding #2065. Run `/task #6342083897` to rebind, then retry.
