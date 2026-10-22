@@ -1,3 +1,4 @@
+// @story #2062
 // @story #2040
 // @story #1986
 // @story #1926
@@ -476,7 +477,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2042: exactly one persistent singleton story-writer claim module.
     1 + // #2056: exactly one shared writer-registry implementation, existing claim exports retained.
     2 + // #2045: exactly two durable local estimation evidence modules.
-    5; // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
+    5 + // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
+    1; // #2062: exactly one local calculation and retained-input receipt module.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -494,6 +496,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'writer-handoff-bindings',
   ])
     assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-runtime.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence-store.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));

@@ -269,3 +269,147 @@ test('a historical rubric fork fails closed even when only one branch reaches th
     /rubric-refresh:lineage/
   );
 });
+
+// @story #2039 #2062
+import {
+  deriveLocalRubric,
+  refreshLocalRubric,
+} from '../../../../../task-tracker/lib/estimation/rubric-refresh.mjs';
+import {
+  bundle as localBundle,
+  envelope as localEnvelope,
+  outcome as localOutcome,
+  id as localId,
+  bytes as localBytes,
+  incompleteOutcome as localIncompleteOutcome,
+} from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
+function localFixture({ outcomes = true } = {}) {
+  const evidence = localBundle([
+    { record: localEnvelope(), provenance: 'imported-local' },
+    ...(outcomes
+      ? [
+          {
+            record: localEnvelope({ recordId: localId(2), payload: localOutcome(), issue: 1002 }),
+            provenance: 'imported-local',
+          },
+        ]
+      : []),
+  ]);
+  const {
+    inputs: _inputs,
+    schema: _schema,
+    canonicalizationVersion: _canon,
+    ...selection
+  } = evidence.manifest;
+  return {
+    mode: { mode: 'local' },
+    evidence,
+    selection: structuredClone(selection),
+    recordId: localId(3),
+    generatedAt: '2026-10-22T00:00:00.000Z',
+  };
+}
+test('local rubric derives reproducibly from retained complete outcomes without a cloud grant', () => {
+  const args = localFixture();
+  const original = localBytes(args.evidence.manifest);
+  const one = deriveLocalRubric(args),
+    two = deriveLocalRubric(args);
+  assert.equal(one.status, 'derived');
+  assert.deepEqual(one, two);
+  assert.equal(one.record.recordId, localId(3));
+  assert.equal(one.record.schema, 'aitm.local-derived-record/v1');
+  assert.equal(one.record.recordType, 'estimation-rubric');
+  assert.equal(one.record.predecessor, localId(1));
+  assert.equal(one.record.supersedes, localId(1));
+  assert.equal(one.record.payload.predecessorRecordId, localId(1));
+  assert.equal(one.record.payload.version, 2);
+  assert.deepEqual(one.record.payload.cohort, [{ issue: 1002, outcomeRecordId: localId(2) }]);
+  assert.equal(one.record.payload.ai.coefficients.implementationHour, 0.4286);
+  assert.equal(one.record.payload.human.coefficients.implementationHour, 1);
+  assert.equal(one.record.payload.human.sampleSize, 0);
+  assert.equal(one.record.grantId, undefined);
+  assert.equal(one.bundle.manifest.inputs.at(-1).provenance, 'derived-local');
+  assert.equal(one.bundle.manifest.inputs.at(-1).sourceCommentId, null);
+  assert.ok(original.equals(localBytes(args.evidence.manifest)));
+  assert.equal(validateLocalEvidence(one.bundle).activeRubric.record.recordId, localId(3));
+});
+test('a locally unchanged cohort reuses the exact rubric identity without inventing a bootstrap', () => {
+  const args = localFixture({ outcomes: false });
+  const result = deriveLocalRubric(args);
+  assert.equal(result.status, 'current');
+  assert.equal(result.record.recordId, localId(1));
+  assert.equal(result.bundle.manifest.inputs.length, 1);
+});
+test('derivation of the same retained cohort is idempotent after selecting the successor bundle', () => {
+  const args = localFixture();
+  const first = deriveLocalRubric(args);
+  const second = deriveLocalRubric({ ...args, evidence: first.bundle });
+  assert.equal(second.status, 'current');
+  assert.equal(second.record.recordId, localId(3));
+  assert.equal(second.bundle.manifest.inputs.length, 3);
+});
+for (const change of [
+  'missing',
+  'selection',
+  'bytes',
+  'id-collision',
+  'bad-id',
+  'missing-time',
+  'past-time',
+]) {
+  test('local derivation refuses ' + change + ' without returning a usable rubric', () => {
+    const args = localFixture();
+    if (change === 'missing') args.evidence = null;
+    if (change === 'selection') args.selection.repository = 'wrong/repo';
+    if (change === 'bytes')
+      args.evidence.payloads.set(args.evidence.payloads.keys().next().value, Buffer.from('{}'));
+    if (change === 'id-collision') args.recordId = localId(1);
+    if (change === 'bad-id') args.recordId = 'invented';
+    if (change === 'missing-time') delete args.generatedAt;
+    if (change === 'past-time') args.generatedAt = '2026-10-20T00:00:00.000Z';
+    const result = deriveLocalRubric(args);
+    assert.equal(result.status, 'unavailable');
+    assert.equal(result.record, undefined);
+    assert.equal(result.bundle, undefined);
+  });
+}
+test('incomplete local timing refuses before deriving a rubric', async () => {
+  const args = localFixture();
+  args.evidence = localBundle([
+    { record: localEnvelope(), provenance: 'imported-local' },
+    {
+      record: localEnvelope({
+        recordId: localId(2),
+        payload: await localIncompleteOutcome(),
+        issue: 1002,
+      }),
+      provenance: 'imported-local',
+    },
+  ]);
+  assert.equal(deriveLocalRubric(args).status, 'unavailable');
+});
+test('disabled refresh never opens storage or derives a bootstrap', async () => {
+  const result = await refreshLocalRubric({
+    mode: { mode: 'disabled' },
+    get evidenceStore() {
+      throw Error('must not read storage');
+    },
+  });
+  assert.deepEqual(result, { status: 'disabled', reason: 'rubric-disabled' });
+});
+test('a forged store cannot acknowledge a derived record as durable', async () => {
+  let reads = 0;
+  const result = await refreshLocalRubric({
+    ...localFixture(),
+    evidenceStore: {
+      read() {
+        reads++;
+        return {};
+      },
+    },
+  });
+  assert.equal(result.status, 'unavailable');
+  assert.equal(result.recordId, undefined);
+  assert.equal(reads, 0);
+});
