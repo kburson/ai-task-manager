@@ -450,3 +450,47 @@ for (const [label, thrown] of [
     assert.deepEqual(await f.store.readGeneration(), f.before);
   });
 }
+test('validated title is detached before asynchronous reads and cannot poison durable content', async (t) => {
+  const f = await fixture(t);
+  await f.invoke(async () => {
+    const input = { store: f.store, claim: f.claim, title: 'Validated title' };
+    const pending = adapter.stageStoryTitle(input);
+    input.title = null;
+    assert.equal((await pending).title, 'Validated title');
+  });
+  assert.equal(working(await f.store.readGeneration()).title, 'Validated title');
+  assert.equal((await f.mutate((body) => body + ' usable')).body, 'base story usable');
+  assert.equal((await f.title('Next valid title')).title, 'Next valid title');
+});
+for (const kind of ['body', 'title']) {
+  test(`retained capability references survive refused ordinary ${kind} edits`, async (t) => {
+    const f = await fixture(t);
+    const generation = structuredClone(f.before.generation);
+    generation.generation = 2;
+    const raw = '{"body":"base story","schema":"aitm.story-issue-update/v1","title":"Title"}';
+    generation.working['issue:I_test'] = {
+      payloadPath: 'working/retained.json',
+      digest: hash(raw),
+      kind: 'issue',
+      capabilityRef: 'native-proof-A',
+    };
+    generation.dirtyKeys = ['issue:I_test'];
+    const payloads = new Map(f.before.payloads);
+    payloads.set('working/retained.json', raw);
+    await f.store.commitGeneration(
+      { generation, claimId: f.claim.claimId, payloads },
+      { expectedGeneration: 1 }
+    );
+    const before = await f.store.readGeneration();
+    const operation =
+      kind === 'body' ? f.mutate((body) => body + ' edit') : f.title('Edited title');
+    await assert.rejects(operation, {
+      code: 'STORY_MUTATION_UNAVAILABLE',
+      reason: 'retained-capability',
+    });
+    assert.deepEqual(await f.store.readGeneration(), before);
+    const noop = kind === 'body' ? await f.mutate((body) => body) : await f.title('Title');
+    assert.equal(noop.status, 'no-op');
+    assert.deepEqual(await f.store.readGeneration(), before);
+  });
+}
