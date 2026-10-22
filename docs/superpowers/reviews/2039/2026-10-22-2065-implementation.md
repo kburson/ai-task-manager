@@ -83,3 +83,30 @@ Final stable worker evidence before the product commit:
 The corrected native caller-census comment is `IC_kwDOSU6LgM8AAAABehJQsA` (`census-correction-post.log`). Native commit trace output is retained for both attributed commits. A scratch evidence manifest records raw-file hashes; later native Stop and absence read-back remain separate final handoff observations. They grant no Test/Review/Close authority.
 
 The controller subsequently directed serialized integration: first Stop this clean worker, merge reviewed #2059 in the owner, then explicitly resume this same worker/branch for an ordinary epic merge and the exact two-module package inventory repair plus final integrated checks. That future shared-file repair is not claimed performed by this worker report revision. Intermediate full/slow results and all actual refusals remain preserved.
+
+## Resumed serialized integration and final review candidate
+
+The controller explicitly resumed this same #2065 worker after independently verifying both wave workers' Stop/absence. Native Start succeeded with unchanged provider/session `01a163c9-05bf-73a0-9e5a-a3895ed7de10`, new binding generation `dbccf4d6-ca47-46d3-98c3-8b6b987291bc`, exact physical story worktree/branch and Develop state. Fresh Explain exited 0: promotion remained blocked by the unticked AC and later finalization gate, with no human decision. No Test/Review/Close movement was attempted.
+
+Ordinary merge `ff72a35fb45ea17574a41ee13751dd3c331ec518` has parents `48dd2f5723e7b30689aa8630bce02056388fbe3e` and owner epic `e6c47dff776e88dc1ae9d80538b11a73cf5f5db7`. The latter includes independently reviewed #2059 and the stopped worker raw archive. No rebase, reset, branch rename or foreign-worktree admission was used. Native trace succeeded for the merge and subsequent inventory commit.
+
+The controller then exclusively admitted `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs` to this worker. Actual `npm pack --dry-run --json` measured 970 entries before the epic merge and 971 after it. The merge added only `stage-capabilities.mjs`, with no removed packed path. Comparing every packed path against pinned base `019ea75594c73a70a907844352143ef16d170fd6` found exactly two absent paths: `scripts/task-tracker/lib/story-cache/stage-capabilities.mjs` and `scripts/task-tracker/lib/estimation/forecast-legacy.mjs`. The native inventory test genuinely failed at 971 > 969 before repair, then passed all 9 tests after precisely one +1 term and one inclusion assertion for each module. Existing assertions and exclusions remain intact; no headroom was added.
+
+Raw measurement: `pack-before-epic-merge.json`, `pack-integrated-before-inventory.json`, their separate stderr captures, `pack-integrated-delta-corrected.json`, `inventory-red-integrated.log`, `inventory-green-integrated.log`. A preliminary read-only parser assumed array-shaped npm output and failed; the corrected census uses the repository's actual `parseNpmPackReport` helper for npm's package-keyed object output. The raw pack reports were never rewritten.
+
+Final executable-source commit is `94beaeb74170f67db827f04475e68028dfaa9c09`, tree `c6e5769b60c5ab905e4b645744dfa04ae544da69`, clean `feature/child/2065` at run start (`integrated-source-identity.json`). Inventory source SHA-256: `dc465668dcb296164c95be1305a2038ea15085d45758d574d279a1226762960d`. Subsequent candidate changes update this report only; they do not change the verified executable/test/package source. Review BASE is `e6c47dff776e88dc1ae9d80538b11a73cf5f5db7`, so already-reviewed #2059 changes are excluded from this story diff.
+
+| Integrated check at the source commit | Observed result | Unique raw output |
+| --- | --- | --- |
+| `npm test` | all 996 files pass, exit 0; aggregate 119.4s | `integrated-npm-test.log` |
+| Named compatibility/model verifier | 36/36 pass, exit 0 | `integrated-exact-verifier.log` |
+| Owned/actual-consumer/native/manual plus reviewed capability regressions | 561/561 pass, exit 0 | `integrated-combined-regressions.log` |
+| `npm run lint` | complete native chain passes, exit 0 | `integrated-npm-lint.log` |
+| `npm run format:check` | whole-tree pass, exit 0 | `integrated-npm-format.log` |
+| Exact package boundary after measured repair | 9/9 pass, exit 0 | `inventory-green-integrated.log` |
+
+There was exactly one settled-source integrated `npm test` run. The earlier 56-file slow success remains an intermediate run overlapping earlier edits and was not repeated or relabeled exact-final. Full applicable CI on the controller-pushed final integrated source remains required before Test.
+
+Native root/scope read-back (`integrated-native-root-binding.json`) used actual `resolveRuntimeRoot`, `runtimeStoragePaths` and `readExactSessionBinding`, without synthetic project-root adapters. Physical `projectRoot` is `/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065`; Git-verified `mainRoot`/outer primary checkout is `/Users/kpburson/projects/Vibe-Coding/ai-task-manager`. The local runtime/store paths remain under the worker's `.ai-task-manager/runtime`; shared runtime/store paths resolve under that primary checkout's `.ai-task-manager/runtime`. All four project-root aliases were absent. Git registration, common-directory identity and the exact #2065 Develop binding were verified by the native APIs. This read-back proves actual root selection; it does not claim that synthetic offline test fixture stores are external/cloud authority or that a public CLI writer was activated.
+
+The worker remains natively active for the controller's fresh independent Sol-medium review and possible repairs. No reviewer was spawned here. Native Stop will occur only when separately instructed; the earlier Stop evidence belongs to the preceding handoff and is not the resumed session's current status. The 3h bottom-up allocation and all existing scope rulings remain unchanged.
