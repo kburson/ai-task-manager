@@ -499,12 +499,14 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2056: exactly one shared writer-registry implementation, existing claim exports retained.
     2 + // #2045: exactly two durable local estimation evidence modules.
     5 + // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
-    1; // #2062: exactly one local calculation and retained-input receipt module.
+    1 + // #2062: exactly one local calculation and retained-input receipt module.
+    1; // #2043: exactly one local issue-body/title staging adapter.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/store.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/stage-body.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-events.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/retention.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-claim.mjs'));
