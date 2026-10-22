@@ -1,0 +1,3 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'cspell' --no-progress scripts/task-tracker/lib/body-invariants.mjs scripts/task-tracker/lib/story-cache/stage-capabilities.mjs scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md docs/superpowers/reviews/2039/2026-10-22-2059-r1-author-disposition.md
+CSpell: Files checked: 5, Issues found: 0 in 0 files.

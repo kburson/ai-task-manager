@@ -1,0 +1,6 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --write scripts/task-tracker/lib/estimation/forecast-legacy.mjs scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs
+scripts/task-tracker/lib/estimation/forecast-legacy.mjs 30ms
+scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs 18ms (unchanged)
+scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs 13ms
+scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs 27ms

@@ -1,0 +1,20 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.809167ms)
+✔ story estimates ceil to the next half hour without moving downward (1.7925ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (1.354ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.211ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (6.403ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (2.249292ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.325583ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.448416ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.293875ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.351625ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (33.394417ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (1.394333ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 531.533375

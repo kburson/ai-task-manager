@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'cspell' --no-progress docs/superpowers/reviews/2039/2026-10-22-2059-r2-author-disposition.md
+docs/superpowers/reviews/2039/2026-10-22-2059-r2-author-disposition.md:41:72 - Unknown word (rederive)
+CSpell: Files checked: 1, Issues found: 1 in 1 file.

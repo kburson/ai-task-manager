@@ -1,0 +1,64 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.965292ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.546167ms)
+✔ v2 rejects off-grid published hours: refine (0.119792ms)
+✔ v2 rejects off-grid published hours: plan (0.076917ms)
+✔ v2 rejects off-grid published hours: p50 (0.102625ms)
+✔ v2 rejects off-grid published hours: p80 (0.065375ms)
+✔ v2 rejects off-grid published hours: stage (0.06175ms)
+✔ v2 rejects off-grid published hours: wbs (0.065875ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.155583ms)
+✔ current v3 reads replay retained evidence and require its current selection (12.524125ms)
+✔ current v3 refuses missing or stale provenance: missing (1.061666ms)
+✔ current v3 refuses missing or stale provenance: manifest (1.843959ms)
+✔ current v3 refuses missing or stale provenance: plan (1.579042ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.515333ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.441292ms)
+✔ current authority correlates its configured repository before reading projection (0.790625ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (0.747333ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (0.825875ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (1.873083ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (0.564875ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (0.540792ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (1.352084ms)
+✖ expected issue is checked against the detached replay snapshot (0.935416ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 22
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 226.173375
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:273:1
+✖ expected issue is checked against the detached replay snapshot (0.935416ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /issue-correlation/. Input:
+  
+  'TypeError: forecast-current:canonical-json:invalid:property'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:277:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: forecast-current:canonical-json:invalid:property
+        at requireCurrentSchema (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-legacy.mjs:19:45)
+        at file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:277:23
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:277:10)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12),
+    expected: /issue-correlation/,
+    operator: 'throws',
+    diff: 'simple'
+  }

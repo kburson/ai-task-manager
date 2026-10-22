@@ -1,0 +1,49 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.969875ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.50475ms)
+✔ v2 rejects off-grid published hours: refine (0.111542ms)
+✔ v2 rejects off-grid published hours: plan (0.084083ms)
+✔ v2 rejects off-grid published hours: p50 (0.067167ms)
+✔ v2 rejects off-grid published hours: p80 (0.068958ms)
+✔ v2 rejects off-grid published hours: stage (0.06075ms)
+✔ v2 rejects off-grid published hours: wbs (0.065542ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.145291ms)
+✔ current v3 reads replay retained evidence and require its current selection (17.298958ms)
+✔ current v3 refuses missing or stale provenance: missing (8.013583ms)
+✔ current v3 refuses missing or stale provenance: manifest (3.805458ms)
+✔ current v3 refuses missing or stale provenance: plan (1.278584ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.539166ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (2.246542ms)
+✔ current authority correlates its configured repository before reading projection (11.281541ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (5.676458ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (2.478292ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (35.68875ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (0.883083ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (0.795709ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (2.55975ms)
+✔ current replay refuses accessor-based issue substitution (0.724125ms)
+✔ local generation includes only explicitly selected retained outcomes in current provenance (6.757958ms)
+✖ forecast presentation renders strict current v3 and unchanged legacy v1/v2 values (0.6505ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 350.033083
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:345:1
+✖ forecast presentation renders strict current v3 and unchanged legacy v1/v2 values (0.6505ms)
+  TypeError: estimation-record:forecast-schema
+      at fail (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-record.mjs:27:9)
+      at validateEstimationForecast (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-record.mjs:66:47)
+      at renderEstimationForecast (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/renderers.mjs:11:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:347:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
