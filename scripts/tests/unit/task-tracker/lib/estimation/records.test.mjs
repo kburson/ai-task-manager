@@ -1,3 +1,10 @@
+// @story #2039 #2065
+import {
+  bundle,
+  envelope as retainedEnvelope,
+} from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
+import { localCalculationProvenance } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
 // @story #1091
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
@@ -90,18 +97,44 @@ test('record construction generates canonical ULIDs and validates the complete e
   const randomBytesFn = (length) => Buffer.alloc(length, 0x2a);
   const recordId = createRecordId({ nowMs: 1_722_604_800_000, randomBytesFn });
   assert.match(recordId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
+  const evidence = bundle(
+    [
+      {
+        record: {
+          ...retainedEnvelope({ recordId: ids.rubric }),
+          repository: 'kburson/ai-task-manager',
+        },
+        provenance: 'imported-local',
+      },
+    ],
+    {
+      repository: 'kburson/ai-task-manager',
+      issue: 1091,
+      refine: {
+        ...forecast.refine,
+        source: { kind: 'imported-local', id: 'records-refine', digest: 'b'.repeat(64) },
+      },
+    }
+  );
+  const current = {
+    ...forecast,
+    schema: 'aitm.estimation-forecast/v3',
+    comparableIssues: [],
+    rubric: { ...forecast.rubric, confidence: 0.1 },
+    localEvidence: structuredClone(localCalculationProvenance(validateLocalEvidence(evidence))),
+  };
   const built = createAitmRecordEnvelope({
     recordType: FORECAST_RECORD_TYPE,
     repository: 'kburson/ai-task-manager',
     issue: 1091,
-    payload: forecast,
+    payload: current,
     actor: 'aitm/plan-estimate',
     createdAt: '2026-08-02T13:00:00.000Z',
     recordId,
     grantId: createRecordId({ nowMs: 1_722_604_800_001, randomBytesFn }),
   });
 
-  assert.equal(built.payloadHash, hashRecordPayload(forecast));
+  assert.equal(built.payloadHash, hashRecordPayload(current));
   assert.equal(built.recordId, recordId);
   assert.doesNotThrow(() => renderAitmRecord({ envelope: built }));
 });

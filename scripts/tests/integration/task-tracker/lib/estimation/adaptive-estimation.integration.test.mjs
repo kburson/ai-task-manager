@@ -1,5 +1,10 @@
-// @story #2063
-import { retainedPlanCalculation } from '../../../../helpers/task-2063-retained-plan-fixture.mjs';
+// @story #2039 #2065
+import {
+  retainedContext,
+  forecastEnvelopeFixture,
+} from '../../../../helpers/task-2065-forecast-fixture.mjs';
+// @story #2063 #2039 #2065
+import { calculateLocalEstimate } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
 // @story #1091
 // @story #1160
 import assert from 'node:assert/strict';
@@ -25,7 +30,6 @@ import {
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
-  createAitmRecordEnvelope,
   createRecordId,
   renderAitmRecord,
 } from '../../../../../task-tracker/lib/github-records/record-envelope.mjs';
@@ -43,8 +47,8 @@ const secondIssue = 1094;
 const RANDOM = (length) => Buffer.alloc(length, 0x35);
 let idClock = 1_722_604_800_000;
 const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
-function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
-  return createAitmRecordEnvelope({
+const envelope = ({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) =>
+  forecastEnvelopeFixture({
     recordType,
     repository,
     issue,
@@ -56,7 +60,6 @@ function envelope({ recordType, issue, payload, predecessor = null, supersedes =
     recordId: nextId(),
     grantId: nextId(),
   });
-}
 
 function fake1070Transport() {
   const comments = new Map();
@@ -124,12 +127,21 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   });
   records.push(bootstrap);
 
+  const retained = retainedContext({
+    repository,
+    rubricIssue,
+    issue: firstIssue,
+    rubric: bootstrapEnvelope,
+    refine: { size: 'M', humanHours: 8 },
+  });
   const firstAuthority = authorityHarness({ issue: firstIssue, transport, recordLog: records });
+  firstAuthority.deps.localForecast = retained.localForecast;
   const first = await executeAdaptivePlanEstimate({
     issueNumber: firstIssue,
-    planInput: planInput(),
+    planInput: { ...planInput(), comparableIssueIds: [] },
     cfg: { repo: repository, estimationRubricIssue: rubricIssue },
     deps: {
+      localForecast: retained.localForecast,
       readRefineEstimate: async () => ({ size: 'M', humanHours: 8 }),
       loadRubric: async () => ({
         recordId: bootstrapEnvelope.recordId,
@@ -148,6 +160,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
         applyPlanEstimateAuthority({ ...input, deps: firstAuthority.deps }),
     },
   });
+  assert.equal(first.status, 'converged', first.reason);
   const firstForecast = records.find(
     (record) => record.envelope.recordId === first.forecastRecordId
   ).envelope;
@@ -547,9 +560,23 @@ test('retained local calculation converges board, body, history, forecast and re
       return record;
     },
   };
+  const localRubric = envelope({
+    recordType: 'estimation-rubric',
+    issue: rubricIssue,
+    payload: createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' }),
+    actor: 'fixture',
+  });
+  const retained = retainedContext({
+    repository,
+    rubricIssue,
+    issue: firstIssue,
+    rubric: localRubric,
+    refine: { size: 'M', humanHours: 8 },
+  });
   const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
+      localForecast: retained.localForecast,
       ...estimationPublicationFixture({
         cfg,
         issueNumber: firstIssue,
@@ -588,20 +615,11 @@ test('retained local calculation converges board, body, history, forecast and re
   });
 
   // #2063: preparation consumes retained bytes, never the fake cloud corpus/rubric.
-  const localRubric = envelope({
-    recordType: 'estimation-rubric',
-    issue: rubricIssue,
-    payload: createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' }),
-    actor: 'fixture',
-  });
   const input = { ...planInput(), comparableIssueIds: [] };
-  const calculated = retainedPlanCalculation({
-    repository,
-    issue: firstIssue,
-    rubricIssue,
-    rubric: localRubric,
-    refine: { size: 'M', humanHours: 8 },
-    input,
+  const calculated = calculateLocalEstimate({
+    mode: { mode: 'local' },
+    evidence: retained.evidence,
+    planInput: { selection: retained.selection, input },
   });
   assert.equal(calculated.status, 'estimated', calculated.reason);
   const result = await executeAdaptivePlanEstimate({
@@ -613,7 +631,8 @@ test('retained local calculation converges board, body, history, forecast and re
       readRefineEstimate: async () => calculated.forecast.refine,
       loadRubric: async () => ({ recordId: localRubric.recordId, payload: localRubric.payload }),
       listComparableOutcomes: async () => [],
-      buildForecast: () => calculated.forecast,
+      localForecast: retained.localForecast,
+      buildForecast: buildEstimationForecast,
     },
   });
 

@@ -1,3 +1,4 @@
+// @story #2039 #2065
 // @story #1987 #2034
 import test from 'node:test';
 import { buildPlannedAppendix } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
@@ -5,7 +6,8 @@ import { buildAuditCommentBody } from '../../../../task-tracker/lib/reevaluate-e
 import { buildEstimationForecast } from '../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { createBootstrapRubric } from '../../../../task-tracker/lib/estimation/rubric-model.mjs';
 import {
-  createAitmRecordEnvelope,
+  hashRecordPayload,
+  parseAitmRecord,
   renderAitmRecord,
 } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -494,7 +496,7 @@ function activeForecastComment() {
       payload: createBootstrapRubric({ generatedAt: '2026-10-11T12:00:00.000Z' }),
     },
   });
-  const envelope = createAitmRecordEnvelope({
+  const envelope = historicalForecastEnvelope({
     recordType: 'estimation-forecast',
     repository: 'o/r',
     issue: 1987,
@@ -670,3 +672,35 @@ test('unready unique forecast exposes reconciliation data but remains unavailabl
   assert.equal(read.value.publicationTransition.readyRecordId, null);
   assert.equal(current.capabilities.includes('scoped-implementation'), false);
 });
+
+// Historical transport fixture: validation uses native legacy render/parse, never new publication.
+function historicalForecastEnvelope({
+  recordType,
+  repository,
+  issue,
+  payload,
+  actor,
+  recordId,
+  grantId,
+  createdAt,
+}) {
+  const envelope = {
+    schema: 'aitm.record/v1',
+    recordType,
+    repository,
+    issue,
+    payload,
+    recordId,
+    createdAt,
+    predecessor: null,
+    supersedes: null,
+    authority: { grantId, epoch: 1, actor },
+    payloadHash: hashRecordPayload(payload),
+  };
+  return parseAitmRecord({
+    commentNodeId: 'IC_historical_forecast_fixture',
+    body: renderAitmRecord({ envelope }),
+    expectedRepository: repository,
+    expectedIssue: issue,
+  }).envelope;
+}

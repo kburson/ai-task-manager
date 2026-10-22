@@ -1,3 +1,4 @@
+// @story #2039 #2065
 import { upsertPlannedEstimate as realPlannedUpsert } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,12 @@ import {
   adoptLegacyPlanForecast,
   upsertForecastReadyMarker,
 } from '../../../../task-tracker/lib/estimation/plan-estimate-authority.mjs';
-import { FORECAST_SCHEMA } from '../../../../task-tracker/lib/estimation/forecast-record.mjs';
+import {
+  bundle,
+  envelope as evidenceEnvelope,
+} from '../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../task-tracker/lib/estimation/local-evidence.mjs';
+import { localCalculationProvenance } from '../../../../task-tracker/lib/estimation/local-runtime.mjs';
 import { hashRecordPayload } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 
 export function registerAdaptivePublicationCases() {
@@ -21,7 +27,7 @@ export function registerAdaptivePublicationCases() {
       dir = freshUnitDir('adaptive-publication-');
     f.body = f.body.replace('state="develop"', 'state="plan"');
     const payload = {
-      schema: FORECAST_SCHEMA,
+      schema: 'aitm.estimation-forecast/v3',
       issue: 1987,
       lifecycleState: 'plan',
       refine: { size: 'M', humanHours: 10 },
@@ -55,6 +61,35 @@ export function registerAdaptivePublicationCases() {
       risks: [],
       recommendation: { action: 'proceed', reason: 'Reviewable.' },
       supersedesForecastRecordId: null,
+    };
+    const evidence = bundle(
+      [
+        {
+          record: { ...evidenceEnvelope({ recordId: payload.rubric.recordId }), repository: 'o/r' },
+          provenance: 'imported-local',
+        },
+      ],
+      {
+        repository: 'o/r',
+        issue: 1987,
+        refine: {
+          ...payload.refine,
+          source: { kind: 'imported-local', id: 'refine-publication', digest: 'b'.repeat(64) },
+        },
+      }
+    );
+    const retained = validateLocalEvidence(evidence);
+    payload.localEvidence = structuredClone(localCalculationProvenance(retained));
+    const {
+      inputs: _inputs,
+      schema: _schema,
+      canonicalizationVersion: _canonical,
+      ...selection
+    } = evidence.manifest;
+    const localForecast = {
+      identity: { host: 'github.com', repository: 'o/r', issue: 1987 },
+      evidenceStore: { read: () => validateLocalEvidence(evidence) },
+      selection,
     };
     const envelope = {
       recordId: '01J00000000000000000000601',
@@ -113,6 +148,7 @@ export function registerAdaptivePublicationCases() {
     const cfg = { repo: 'o/r', projectId: 'PVT_a' };
     const deps = {
       cfg,
+      localForecast,
       projectDir: dir,
       decomposition,
       projectItemForIssue: async () => ({ itemId: 'PVTI_a' }),
