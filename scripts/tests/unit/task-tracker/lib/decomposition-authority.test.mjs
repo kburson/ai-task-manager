@@ -1,13 +1,12 @@
+// @story #2039 #2065
+import { historicalForecastEnvelope } from '../../../helpers/task-2065-forecast-fixture.mjs';
 // @story #1987 #2034
 import test from 'node:test';
 import { buildPlannedAppendix } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import { buildAuditCommentBody } from '../../../../task-tracker/lib/reevaluate-estimate.mjs';
 import { buildEstimationForecast } from '../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { createBootstrapRubric } from '../../../../task-tracker/lib/estimation/rubric-model.mjs';
-import {
-  createAitmRecordEnvelope,
-  renderAitmRecord,
-} from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { renderAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { freshUnitDir } from './decomposition-authority-fixtures.mjs';
@@ -494,7 +493,7 @@ function activeForecastComment() {
       payload: createBootstrapRubric({ generatedAt: '2026-10-11T12:00:00.000Z' }),
     },
   });
-  const envelope = createAitmRecordEnvelope({
+  const envelope = historicalForecastEnvelope({
     recordType: 'estimation-forecast',
     repository: 'o/r',
     issue: 1987,
@@ -670,3 +669,5 @@ test('unready unique forecast exposes reconciliation data but remains unavailabl
   assert.equal(read.value.publicationTransition.readyRecordId, null);
   assert.equal(current.capabilities.includes('scoped-implementation'), false);
 });
+
+// Historical transport fixture: validation uses native legacy render/parse, never new publication.

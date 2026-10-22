@@ -1,6 +1,8 @@
+// @story #2039 #2065
 import { createIssueComment } from '../github-records/github-comment-store.mjs';
 import { renderAitmRecord } from '../github-records/record-envelope.mjs';
 import { FORECAST_RECORD_TYPE, validateEstimationForecast } from './forecast-record.mjs';
+import { FORECAST_V3_SCHEMA, validateForecastProvenance } from './forecast-v3.mjs';
 import { OUTCOME_RECORD_TYPE, validateEstimationOutcome } from './outcome-record.mjs';
 import { RUBRIC_RECORD_TYPE, validateEstimationRubric } from './rubric-record.mjs';
 
@@ -8,7 +10,8 @@ const hours = (value) => `${Number(value.toFixed(2))}h`;
 const percent = (value) => `${Math.round(value * 100)}%`;
 
 export function renderEstimationForecast(record) {
-  validateEstimationForecast(record);
+  if (record?.schema === FORECAST_V3_SCHEMA) validateForecastProvenance(record);
+  else validateEstimationForecast(record);
   const stages = Object.entries(record.ai.stages)
     .map(([stage, value]) => `${stage} ${hours(value)}`)
     .join(', ');
