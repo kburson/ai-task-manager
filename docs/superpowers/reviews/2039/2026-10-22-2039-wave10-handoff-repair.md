@@ -122,3 +122,48 @@ compressed verification outputs independently match both their compressed and
 decompressed sizes and hashes. The unchanged candidate was ordinarily merged
 into the epic. Security resolution, full applicable integrated-head CI and native
 acceptance remain pending; exactly 18 direct children remain Done.
+
+## Verified serial continuation in the actual owner checkout
+
+The native repair was exercised beyond restoring the root binding. Original #2086
+and #2087 workers genuinely resumed and stopped to release their own
+claims, preserving their worktrees, branches and untracked bootstrap reports.
+The owner used ordinary native Start with confirmed relocation in actual b187,
+role agent, before each initial implementation. Native binding, actor, occupancy
+and durable issue location agreed with the app checkout. Both ordinary source
+commits and native commit-trace succeeded without an override. Native Stop then
+returned the owner to root orchestration. No unbound worker borrowed another
+session identity, and no tool transport patch is claimed.
+
+The #2086 source candidate `338ee76f99e4e7f782f64a5d5b79c2642dc37189`
+received fresh independent Sol / medium approval with no Critical or Important
+findings. Seven initial regressions observed RED, then all 37 covering tests,
+997 fast files, 56 slow files, full lint and format passed. All 16 captured
+outputs, including an unsuccessful conservation-fixture trial, match committed
+compressed/raw hashes. Commit `ef671d111c6f2352976fee103d08cca50549c512`
+retains its full review and evidence. The change reuses only the internally
+obtained first cold baseline; caller selections, retries and final checks retain
+fresh authority. Only the budget job's current Node 24 setup flag changed.
+
+The #2087 candidate `7a88fea116d768aebc1eb051f8cfd2ab90e90325` also received
+fresh independent Sol / medium approval with no Critical or Important findings.
+Its actual-workflow-shell RED reproduced false docs-only classification for a
+large code-first list; all 12 focused cases and 998 fast files then passed, with
+full final lint and format. Nine actual outputs, including failed import and
+quality trials, match committed compressed/raw hashes. Its one production line
+feeds grep directly and preserves the filename expression, labels, matrix and
+strict receipt gates. Full raw review and all dispositions are retained.
+
+Both reviews retain the existing line-cap and test-reach advisories for final
+whole-branch review. They are not new source regressions, and successful lint
+is not described as pristine output. All four prerequisites remain outside the
+32 direct children. Exactly 18 children remain Done; no pending story or root
+acceptance has advanced.
+
+Native root Start 69594 returned actual exit zero, resuming #2039 as orchestrator
+in b187 on `codex/2039-draft`, generation
+`b48a2d74-50fb-4b69-8719-fc748c1a4552`, entry
+`2026-10-22T20:16:04.462Z`. Independent read-back confirms its matching active
+binding/actor/claim and no #2085, #2086 or #2087 claim. Full combined exact-head
+CI, actual current patched Node 24 budget, all required group artifacts, CodeQL
+and every applicable PR check remain pending before native Test.
