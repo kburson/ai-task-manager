@@ -48,7 +48,19 @@ export function forecastEnvelopeFixture(fields) {
     fields.payload.schema === 'aitm.estimation-forecast/v3'
   )
     return createAitmRecordEnvelope(fields);
-  const { recordType, repository, issue, payload, predecessor, supersedes, actor } = fields;
+  return historicalForecastEnvelope(fields);
+}
+
+export function historicalForecastEnvelope(fields) {
+  const {
+    recordType,
+    repository,
+    issue,
+    payload,
+    predecessor = null,
+    supersedes = null,
+    actor,
+  } = fields;
   const legacy = {
     schema: 'aitm.record/v1',
     recordType,
