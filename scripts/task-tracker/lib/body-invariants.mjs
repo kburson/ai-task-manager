@@ -741,6 +741,14 @@ function acDeclaredCommands(text, vcItems = []) {
   }
 }
 
+// Keep removed comments as separators so surrounding fragments cannot form a new delimiter.
+function formatAcDiagnosticLabel(labelRaw) {
+  return String(labelRaw)
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function findAcsWithoutVerifierOrInvalidTag(body) {
   const src = String(body || '');
   const loc = locateAcSection(src);
@@ -770,10 +778,7 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     // function stays pure.
     if (parseAcCommitCitation(labelRaw)) continue;
     const cmds = acDeclaredCommands(labelRaw, vcItems);
-    const label = String(labelRaw)
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const label = formatAcDiagnosticLabel(labelRaw);
     if (cmds.length === 0) {
       offenders.push({ lineIndex: i, label, reason: 'no-verifier' });
       continue;
@@ -848,10 +853,7 @@ export function findAcsWithLegacyVerificationForm(body) {
     const props = parseProofMarker(labelRaw);
     if (!props) continue; // no recognized marker — #523 owns "no verifier"
 
-    const label = String(labelRaw)
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const label = formatAcDiagnosticLabel(labelRaw);
 
     // Correct form: citation via the `vc-list` attribute. It passes only when
     // every cited id resolves against a live VC entry; a dangling citation is
