@@ -1,3 +1,5 @@
+// @story #2039 #2046
+import { FORECAST_V3_SCHEMA, validateForecastProvenance } from './forecast-v3.mjs';
 import { FORECAST_SCHEMA, validateEstimationForecast } from './forecast-record.mjs';
 import { ceilEstimateHours } from './estimate-granularity.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
@@ -56,6 +58,9 @@ export function buildEstimationForecast({
   planInput,
   rubric,
   comparableOutcomes = [],
+  localEvidence,
+  evidence,
+  repository,
 } = {}) {
   if (!Number.isInteger(issue) || issue <= 0 || !refine || !rubric?.recordId)
     throw new TypeError('estimation-forecast:input');
@@ -222,5 +227,14 @@ export function buildEstimationForecast({
     supersedesForecastRecordId: null,
   };
   validateEstimationForecast(forecast, { expectedIssue: issue });
+  if (localEvidence !== undefined) {
+    const current = {
+      ...forecast,
+      schema: FORECAST_V3_SCHEMA,
+      localEvidence: structuredClone(localEvidence),
+    };
+    validateForecastProvenance(current, { expectedIssue: issue, repository, evidence });
+    return current;
+  }
   return forecast;
 }
