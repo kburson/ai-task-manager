@@ -85,7 +85,19 @@ SHA-256 hashes and exit statuses in its manifest.
 - Full lint: actual exit zero (52916). Full format check: actual exit zero
   (19411). Later scoped final format, spelling and JavaScript lint checks also
   passed after adding the index conservation test.
-- Full slow result will be appended after actual completion.
+- Full slow suite: all 56 files passed, actual exit zero (55233). Bounded
+  sections were 165.3 seconds for the one explicitly safe parallel file and
+  336.1 seconds for 55 serial files, each within its unchanged 600-second limit;
+  aggregate 501.4 seconds. Source and tests remained unchanged during this run.
+- Fresh independent GPT-6.1 Sol / medium review approved the scoped implementation
+  at candidate `338ee76f99e4e7f782f64a5d5b79c2642dc37189`, with no Critical or
+  Important findings. Full raw response and every disposition are retained in
+  the round-1 review document. Existing quality advisories remain attributed,
+  not described as pristine output. All 176 advisory/baseline lines match the
+  committed final #2085 lint output exactly.
+- Ordinary commit and native commit-trace 10174 both succeeded in the actual
+  b187 checkout without an override. Fresh issue read-back confirms its appended
+  durable location matches b187, this owner SID and `codex/2039-draft`.
 
 ## Acceptance boundary
 
