@@ -1,0 +1,49 @@
+Issue 2087 actual captured verification output
+Node 26.8.1 Darwin; product/test behavior frozen after GREEN.
+Import trial is not product RED; both failed lint trials are retained.
+Prior full slow56 belongs to preceding 2086 candidate; final combined exact-head CI remains required.
+
+import-trial.log.gz
+exit=1 raw_bytes=966 gzip_bytes=462
+raw_sha256=5e31a57b49716a77e41cde4071c2c8d416ea0a1f780f8dd24e44cb276f9f4419
+gzip_sha256=c2844554abe21fd02f944fd4d8747aa75bd29a7bbd4046af6c903962a192503f
+
+red.log.gz
+exit=1 raw_bytes=2186 gzip_bytes=841
+raw_sha256=6e6572f88df012a48ca03f1bf0ae4ce11764b31f64c4d8ef4b145f5820784779
+gzip_sha256=8f59678e7d47d9a56118c51f943da623ab994f70c76da6bc2167b662b1c0fa3e
+
+green.log.gz
+exit=0 raw_bytes=1076 gzip_bytes=407
+raw_sha256=f6a20da9090795a8a2d1a2a63cdb9fdf57a5464615a8b1f21fa5aa5cec2b7685
+gzip_sha256=334c89ae265c1c32c51e9f3518a60579a7c78ea9a0a1c8f6657fd5676a89c4cf
+
+fast.log.gz
+exit=0 raw_bytes=87653 gzip_bytes=11774
+raw_sha256=f2ea255641cdc441a6c3be86b9b71e204b9f1a81c14bc74e7da69255eda02be6
+gzip_sha256=e9619c70d655f7b5baece21709f8aeacfacffd5bde8d7d4375500c94e7e2c36b
+
+lint.log.gz
+exit=1 raw_bytes=2423 gzip_bytes=776
+raw_sha256=fafad90b88d9362126738f70d230aca20d7e273f7ad35153c9d07b2ff6c03836
+gzip_sha256=a5b9b45afdc677f0b504a22ba9d4877dffcf16f07afc1c101ca55434894b0753
+
+lint-final.log.gz
+exit=1 raw_bytes=2609 gzip_bytes=812
+raw_sha256=8030b413e44275d3564f81b2e532cc8c9bb8f52e5f4edd816dd26d8732b12acf
+gzip_sha256=2922cace93f5bacea24e5b58f5ace43f3b0f8f19e428c51ed47666b7cdeb04dc
+
+lint-final2.log.gz
+exit=0 raw_bytes=26461 gzip_bytes=3647
+raw_sha256=5a8609479022027a63656159a81cc6683bbfa8f1733bb25dbd798fc226dc408a
+gzip_sha256=a37e893475c4dd6458d908ba6e75682c74c4ab538e6d1cfa72c95dad80370080
+
+format.log.gz
+exit=0 raw_bytes=159 gzip_bytes=137
+raw_sha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+gzip_sha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+final-format.log.gz
+exit=0 raw_bytes=309 gzip_bytes=238
+raw_sha256=40cf2f6eaa0a99a9a3ca732198c43e773deca1165a02ce0f63c513adf70fc02f
+gzip_sha256=9364bbd05267433937cfbc15c4a6e5add2159adb4a84619c90a8573f681c5118
