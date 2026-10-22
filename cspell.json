@@ -17,6 +17,13 @@
   "dictionaries": ["project"],
   "overrides": [
     {
+      "filename": [
+        "docs/superpowers/reviews/2039/2063-task-18-reviewer-r3-review.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["FIXBASE"]
+    },
+    {
       "filename": "docs/worktree-recovery/2026-10-09/index.json",
       "ignoreRegExpList": [
         "\"(?:path|branch|sourceBranch|sourceHead|originalBranch|recoveryBranch|originalPath|storedPath|archivePath|archive|source)\":\\s*\"[^\"]*\""
