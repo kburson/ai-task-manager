@@ -1,3 +1,12 @@
+// @story #2039 #2062
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { createHash } from 'node:crypto';
+import {
+  validateLocalSelection,
+  localEstimationMode,
+  retainLocalEstimateInputs,
+} from './local-runtime.mjs';
+import { createLocalDerivedRecord, validateLocalEvidence } from './local-evidence.mjs';
 import { createBootstrapRubric, updateEstimationRubric } from './rubric-model.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
 import { runLogicalRecordClaim } from './record-claim.mjs';
@@ -152,4 +161,124 @@ export async function loadOrRefreshRubric({
     { key: `rubric:${cfg.repo}:${rubricIssueNumber}`, issue: rubricIssueNumber },
     () => loadOrRefreshRubricUnlocked({ cfg, rubricIssueNumber, through, deps })
   );
+}
+
+const localBytes = (value) => Buffer.from(canonicalRecordJson(value));
+const localHash = (raw) => createHash('sha256').update(raw).digest('hex');
+function retainedBundle(retained) {
+  return {
+    manifest: JSON.parse(canonicalRecordJson(retained.manifest)),
+    payloads: new Map([...retained.payloads].map(([key, raw]) => [key, Buffer.from(raw)])),
+    planBytes: Buffer.from(retained.planBytes),
+  };
+}
+/** Pure candidate only: never a persistence acknowledgement or cloud authority. */
+export function deriveLocalRubric(args = {}) {
+  const stopped = localEstimationMode(args.mode);
+  if (stopped) return stopped;
+  try {
+    const retained = validateLocalSelection(args);
+    const previous = retained.activeRubric.record;
+    const outcomes = retained.activeOutcomes
+      .map(({ record }) => ({
+        recordId: record.recordId,
+        createdAt: record.createdAt,
+        payload: record.payload,
+      }))
+      .sort(
+        (a, b) => a.createdAt.localeCompare(b.createdAt) || a.recordId.localeCompare(b.recordId)
+      )
+      .slice(-50);
+    const bundle = retainedBundle(retained);
+    if (sameCohort(previous.payload, outcomes))
+      return { status: 'current', record: previous, bundle };
+    if (
+      typeof args.generatedAt !== 'string' ||
+      !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(args.generatedAt) ||
+      new Date(args.generatedAt).toISOString() !== args.generatedAt ||
+      args.generatedAt < previous.payload.generatedAt ||
+      outcomes.some((o) => o.createdAt > args.generatedAt)
+    )
+      fail('local-generation-time');
+    if (
+      typeof args.recordId !== 'string' ||
+      retained.records.some(({ record }) => record.recordId === args.recordId)
+    )
+      fail('local-record-id');
+    const payload = updateEstimationRubric({
+      previous: previous.payload,
+      outcomes,
+      generatedAt: args.generatedAt,
+    });
+    payload.predecessorRecordId = previous.recordId;
+    const record = createLocalDerivedRecord({
+      recordId: args.recordId,
+      recordType: 'estimation-rubric',
+      repository: retained.manifest.repository,
+      issue: retained.manifest.configuration.estimationRubricIssue,
+      createdAt: args.generatedAt,
+      predecessor: previous.recordId,
+      supersedes: previous.recordId,
+      payload,
+      modelPolicy: retained.manifest.modelPolicy,
+    });
+    const raw = localBytes(record),
+      digest = localHash(raw),
+      payloadPath = 'payloads/' + digest + '.json';
+    bundle.payloads.set(payloadPath, raw);
+    bundle.manifest.inputs.push({
+      recordId: record.recordId,
+      recordType: record.recordType,
+      schema: record.schema,
+      payloadDigest: digest,
+      payloadPath,
+      predecessorRecordId: record.predecessor,
+      supersedesRecordId: record.supersedes,
+      provenance: 'derived-local',
+      sourceCommentId: null,
+      observedAt: null,
+      importedAt: null,
+    });
+    validateLocalEvidence(bundle);
+    return { status: 'derived', record, bundle };
+  } catch (error) {
+    return {
+      status: 'unavailable',
+      reason: error.reason || error.message || 'local-rubric-invalid',
+    };
+  }
+}
+/** Actual immutable-store import/read-back precedes exposing a usable successor ID. */
+export async function refreshLocalRubric(args = {}) {
+  const stopped = localEstimationMode(args.mode);
+  if (stopped) return stopped;
+  const candidate = deriveLocalRubric(args);
+  if (candidate.status === 'unavailable') return candidate;
+  try {
+    const imported = await retainLocalEstimateInputs({
+      evidenceStore: args.evidenceStore,
+      bundle: candidate.bundle,
+    });
+    if (imported.status !== 'retained') return imported;
+    const evidence = imported.evidence;
+    const verified = validateLocalEvidence(evidence);
+    if (
+      verified.manifestDigest !== imported.manifestDigest ||
+      verified.activeRubric.record.recordId !== candidate.record.recordId ||
+      canonicalRecordJson(verified.activeRubric.record) !== canonicalRecordJson(candidate.record)
+    )
+      fail('local-readback');
+    return {
+      status: candidate.status === 'current' ? 'current' : 'refreshed',
+      recordId: candidate.record.recordId,
+      record: verified.activeRubric.record,
+      manifestDigest: verified.manifestDigest,
+      evidence,
+    };
+  } catch (error) {
+    return {
+      status: 'unavailable',
+      reason: error.reason || error.message || 'local-rubric-persistence',
+    };
+  }
 }
