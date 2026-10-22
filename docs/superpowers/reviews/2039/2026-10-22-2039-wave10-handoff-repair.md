@@ -71,3 +71,54 @@ All four prerequisites remain outside the direct 32-child roster. Bootstrap meta
 Four wrapped shell attempts to capture the current full job logs and security annotations to local scratch files were refused before execution as `WRITE_OTHER`. No files were written, no alternate writer was tried, and no local archive of those full logs is claimed. Their originals remain available through GitHub and the tool records. This limitation differs from the previously verified original test-artifact ZIP archive above.
 
 The native #2085 bootstrap initially recorded human Plan-approval provenance although no human approval occurred: the worker omitted explicit `TT_FULL_AUTO=1` for that command, and `auto both` did not supply it. The worker stopped before Develop. Controller authorized registered cancellation and replanning, retaining the erroneous output as history and requiring genuine Full-Auto approval/audit read-back; recovery is not yet claimed complete. The fresh #2086 issue had no initial recorded state despite verified live Backlog. Registered `reconcile accept-live` subsequently completed with an audit and no board move; bootstrap remains separate from implementation acceptance.
+
+## Native binding recovery without an override
+
+The later #2085 bootstrap recovery completed through registered cancellation,
+replanning, duplicate narrative cleanup preserving both existing owned markers,
+and genuine Full-Auto approval. Its complete implementation record retains that
+history. The prior paragraph describes the earlier checkpoint, not its final
+bootstrap state.
+
+Comparison with waves 1–9 found an existing routing hazard, already documented
+in the wave-4 handoff. Waves 5–7 used serial work in the owner's actual app
+checkout; waves 8–9 used separate implementation bindings and serialized owner
+acceptance. In the failed #2085 commit sequence, the tool's requested working
+directory controlled CLI execution, while PreToolUse still observed this chat's
+b187 app checkout and parent session. An ordinary worker commit therefore saw
+an empty parent index; explicit Git directory selection then encountered foreign
+binding enforcement. Changing a shell directory did not relocate the app chat.
+The cwd resolver and Codex hook registrations are unchanged from the accepted
+execution-plan and deadline-prerequisite baselines. This is not evidence that all
+guard code was unchanged, or proof of the underlying bridge transport defect.
+
+The controller then recreated that hazard by binding this chat to #2085 in the
+sibling checkout. The unchanged candidate committed successfully as
+`505fefbf3b35c3aa1f40cde93c28115ee197b27b`, but subsequent native lifecycle
+commands were refused because the hook still observed b187. No foreign-worktree
+override was used. The earlier topology exception did not authorize these
+operations. All worktrees, branches, source and evidence were preserved.
+
+The human ran native commit-trace and Stop in the recorded #2085 checkout for
+this same existing actor, without an override. The Stop receipt reports Unknown
+active time, wall 37 minutes and 817 words. Independent read-back confirmed its
+canonical commit ledger comment 6349597930 contains the exact candidate SHA,
+branch and checkout, and its occupancy claim is absent.
+
+Native Start then genuinely resumed #2039 as orchestrator in the actual b187
+checkout on `codex/2039-draft`, generation
+`f604996a-22fe-4df7-bb35-5ff7977daaa3`, entry
+`2026-10-22T19:38:25.585Z`. Fresh binding and actor read-back confirmed the
+agreement. Fresh Explain returned typed blocked for unfinished epic readiness
+and decomposition completion, with no root advancement attempted. This repairs
+the active native binding; it does not claim the tool transport itself changed.
+Future work must align native ownership with the actual app checkout rather
+than recreating a controller binding to a sibling path.
+
+Fresh independent GPT-6.1 Sol / medium review accepted the bounded #2085 source
+with no findings. The complete response, every controller disposition and its
+verification limits are retained in the issue's round-1 review document. All ten
+compressed verification outputs independently match both their compressed and
+decompressed sizes and hashes. The unchanged candidate was ordinarily merged
+into the epic. Security resolution, full applicable integrated-head CI and native
+acceptance remain pending; exactly 18 direct children remain Done.
