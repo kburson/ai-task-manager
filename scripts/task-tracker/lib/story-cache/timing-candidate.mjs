@@ -207,7 +207,7 @@ function derive(generation, payloads, transition, frozenBody = null) {
     invalid('undeclared-transition');
   const pairEvents = pending.filter((event) => event.transitionId === transition.id);
   let body = renderTimingEventBatch({ timingBody: prior.body, events: pairEvents, exitEventId });
-  body = body.trimEnd() + '\n';
+  if (!body.endsWith('\n')) body += '\n';
   const record = {
     schema: 'aitm.story-timing-events/v1',
     events,

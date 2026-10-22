@@ -644,3 +644,21 @@ test('R1 I4 compressed metadata cannot expand beyond the bounded evidence budget
   );
   assert.deepEqual(await f.store.readGeneration(), before);
 });
+// Trimming the renderer result must fail this historical-format preservation contract.
+test('R2 retained footer keeps Markdown hard-break spaces and blank lines through recovery', async (t) => {
+  const suffix = '\nHistorical footer  \n\n\n';
+  const f = await fixture(t);
+  await replaceTimingBody(f, historical + suffix);
+  const effect = await f.freeze();
+  assert.ok(effect.candidate.body.split('\n<!-- aitm-timing-events:')[0].endsWith(suffix));
+  await f.persist(effect);
+  assert.equal((await f.confirm(effect)).status, 'confirmed');
+  const move = await nextTransition(f);
+  const second = await f.freeze(move);
+  assert.ok(second.candidate.body.split('\n<!-- aitm-timing-events:')[0].endsWith(suffix));
+  await f.persist(second, { transition: move, batchId: 'footer-two' });
+  assert.equal(
+    (await f.confirm(second, f.observation(second), { batchId: 'footer-two' })).status,
+    'confirmed'
+  );
+});
