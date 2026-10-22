@@ -135,7 +135,8 @@ function issueCandidate(current, key) {
 }
 async function stage(input, kind) {
   const { store, claim } = input;
-  const worktree = resolveRuntimeRoot({ cwd: process.cwd(), env: {} }).projectRoot;
+  const root = resolveRuntimeRoot({ cwd: process.cwd(), env: {} });
+  const worktree = root.projectRoot;
   const sessionId = resolveSessionId();
   if (!claim?.registryKey) unavailable('persistent-claim');
   const context = { worktree, sessionId };
@@ -175,6 +176,7 @@ async function stage(input, kind) {
         if (
           !lockOwner ||
           currentIssueLockOwner(identity.issueNumber) !== lockOwner ||
+          lockOwner.projDir !== root.mainRoot ||
           lockOwner.sessionId !== sessionId
         )
           unavailable('native-lock-owner');
