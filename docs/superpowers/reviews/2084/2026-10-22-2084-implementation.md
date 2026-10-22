@@ -107,3 +107,59 @@ The cache-amended covering suite passed70/70 (exit0), including both new cache r
 Final canonical integration shard1 passed91/91 files, serial363.8s/600s, exit0. Shard2 passed90/90 files, exit0; both genuine timing artifacts were copied before any next runner lane. Exact commands use AI_TASK_MANAGER_PROJECT_DIR="$PWD" and npm run test:integration -- --shard 1/3 or2/3. Raw cache-final-integration-1.log and cache-final-integration-2.log pair with their respective -timing.json files.
 
 Controller authorized this frozen source review checkpoint after shard2 drained. Remaining final local checks are explicitly PENDING: integration shard3/3, npm test (fast lane), npm run test:slow. Full exact-head CI is also PENDING and no patched Node24 success is claimed. This checkpoint is not CODE_COMPLETE, native Test admission, acceptance evidence or delivery. Product/tests/CI source will remain frozen while these serial checks run; later report and review dispositions can be committed separately. No push or workflow dispatch has occurred for this repair candidate yet.
+
+## Final local results and evidence delivery
+
+All required local lanes completed on the frozen repair source with actual Node26.8.1 on Darwin arm64. Commands below use outer AI_TASK_MANAGER_PROJECT_DIR="$PWD". No local Node24 or Ubuntu claim is made.
+
+| Command | Actual result | Raw evidence stem |
+| --- | --- | --- |
+| node --test across the seven covering files listed above | 70/70 tests, exit0 | cache-covering-green |
+| npm run test:integration -- --shard 1/3 | 91/91 files, serial363.8s/600s, exit0 | cache-final-integration-1 |
+| npm run test:integration -- --shard 2/3 | 90/90 files, serial431.8s/600s, exit0 | cache-final-integration-2 |
+| npm run test:integration -- --shard 3/3 | 90/90 files, serial335.2s/600s, exit0 | cache-final-integration-3 |
+| npm test | 996/996 files, pooled58.0s and subprocess42.2s, aggregate100.2s, exit0 | cache-final-fast |
+| npm run test:slow | 56/56 files, parallel142.2s and serial326.9s, aggregate469.1s, exit0 | cache-final-slow |
+| npm run lint | Full gates passed, exit0 after the documented spelling correction | cache-final-lint-corrected |
+| npm run format:check | Full format passed, exit0 | cache-final-format |
+
+The three canonical integration shards cover271 files. Their original timing artifacts remain unchanged: shards1/2 record761a928 because they tested the frozen working-tree repair before its source commit; shard3, fast and slow recordd332c5ddc7a39a5bcd30d1dae24642e22e7f5f2d. No product/test/CI source changed between these runs and the reviewed candidate. The later documentation/evidence commit does not turn local receipts into exact-head CI receipts. The existing native bridge and genuine final fullCI remain required.
+
+The deterministic 2026-10-22-2084-local-evidence.zip retains52 existing owned regular files, including all local RED/GREEN logs, intermediate failures, probe sources, bootstrap ledger, native operation inputs and genuine lane timing artifacts. Its SHA256 is 3501dab3f905039a017719144f085fea069c01e1b55245f9215b4b17d57d80f4. The sibling 2026-10-22-2084-evidence-index.md lists every member's exact bytes/hash and evidence boundaries; ZIP round-trip hashes were verified. Originals are untouched. No dependency tree, credential, production cache or fabricated raw output is included. Native output/refusals available only in the tool record remain identified as tool-record evidence, rather than reconstructed files. Controller separately owns the original failed CI artifact ZIPs and full setup logs; this archive does not impersonate those inputs.
+
+## Independent source review R1 and exhaustive author dispositions
+
+Controller dispatched the fresh independent Sol medium source review for base4ff30cc7f70b6ce173a06a6d27fc58de9c88a0e7 through candidated332c5ddc7a39a5bcd30d1dae24642e22e7f5f2d. I read the complete raw response. It approved spec compliance and quality with zero Critical, Important or Minor findings. Exact raw is retained in 2026-10-22-2084-review-r1.raw.txt.gz: uncompressed SHA256 5acaafbbe2fd379a95013ec6a1393b7dda95a0f4203fc0b8ae1487259e94874e; compressed SHA256 661d4cce702d9829b214276dbd1ea57197a2a42302857aa7d8f7475cc1fc8edf. Decompression was verified byte-identical to the controller's original. This is source approval, not lifecycle or acceptance approval.
+
+Every reviewer item is dispositioned below, including positive findings and verification limits. No source fix was requested or made after review.
+
+| Item | Reviewer observation | Author disposition |
+| --- | --- | --- |
+| Compliance1 | Admitted scope complete, no missing or extra source changes | Confirmed seven-file candidate; scope unchanged. |
+| Compliance2 | Exact caller-root match, canonical file boundary, generic roots strict, document checks retained | Accepted; covering security regressions passed, no normalization privilege or permission grant. |
+| Compliance3 | Resolver digest closes same-version warm recovery; sibling preserves parser traps and caps | Accepted; genuine0/2 RED then70/70 covering GREEN; original774-code-line test unchanged, sibling114. |
+| Compliance4 | Only check-latest:true in floating Node24 setup | Accepted; workflow diff verified one line, actual final runtime still pending CI logs. |
+| Cannot verify1 | AC1/AC3, patched Node24, remaining lanes and final CI not proven at checkpoint | Local shard3/fast/slow now passed as above. Patched-runtime/fullCI/acceptance remain pending controller verification. |
+| Cannot verify2 | Diff cannot prove live VC2/AC marker identities or successful native receipt execution | Controller independently read live version45 and confirmed unchanged AC citation/VC2. Native bridge execution remains pending genuine clean exact-head greenCI; no VC8/9 added. |
+| Strength1 | Small branch explains exact, filesystem-derived boundary | Retained without expansion. |
+| Strength2 | Real native permission API test asserts denied root, allowed document and strict aliases | Retained; its Node26 instrumentation limit remains explicit. |
+| Strength3 | Generic directory alias, escaping symlink and symlink-parent equivalence coverage | Retained and green; canonical containment unchanged. |
+| Strength4 | Real copied-module fresh-process cache API tests hold version/catalog fixed | Retained and green; old-resolver loader is openly test-only. |
+| Strength5 | Original status assertion retained with same-boundary failure diagnostics and invalid-catalog no-effects check | Retained; no retry or softened assertion. |
+| Strength6 | Report preserves failures, unrelated budget result, runtime distinctions and superseded limitation | Retained historical ledger; this final section resolves only completed local pending items. |
+| Critical/Important/Minor | None identified | No changes needed; no invented findings or dismissals. |
+| Check1 | Complete diff reviewed once; tool clipped report hunk but full standalone report read | Acknowledged exact review input boundary; no product/test hunk was clipped. Raw response retained. |
+| Check2 | Unchanged source.mjs constructs normal root compatibly and forwards it to validation | Confirmed with current source73/319; exact-root rule unchanged. |
+| Check3 | Existing sandbox already grants guidance children, not root; no helper/bootstrap change needed | Confirmed source scope and green denials; final CI still required. |
+| Check4 | Complete serialized identity inequality rejects old warm manifests | Confirmed real cache API RED/GREEN; no schema/cache rewrite. |
+| Check5 | Reviewer unnecessarily read contextual cache-identity source under diff-only contract | Acknowledged protocol limit. Reviewer states it was not candidate-content evidence; candidate judgment used supplied diff. No source or integrity receipt rewritten. |
+| Check6 | Review reran no tests and independently inspected no raw worker evidence | Accepted limitation; immutable local ZIP and original timings now delivered for controller verification, not retroactively attributed to reviewer. |
+| Check7 | Finish lanes, green exact-head CI, patched runtime, complete/disjoint receipts; retain budget failure | Local lanes complete. CI/runtime/native bridge remain mandatory; unrelated prior budget failure retained without cap increase or unsupported causality. |
+| Check8 | Read-only review except authorized raw response; no source/index/HEAD/branch/lifecycle/GitHub mutation or delegation | Recorded exactly as reviewer disclosure. No implementation or lifecycle authority inferred. |
+| Assessment | Approved source checkpoint; acceptance, CODE_COMPLETE and delivery not established by review | Accepted scope of approval. Final exact-head CI and native acceptance remain with controller. |
+
+Product implementation and local verification are complete. Full exact-head CI, actual setup runtime read-back, native receipt verification and controller-owned acceptance/lifecycle actions remain pending. No Test/Review/Close, PR, epic integration or delivery action has been performed by this worker.
+
+Final evidence packaging check preserved three spelling failures caused by opaque filename text in the first JSON index attempt. Per controller ruling, the external index is ordinary Markdown with a local spelling directive and exact original member paths/hashes/sizes; machine-readable evidence-index.json is inside the ZIP. No filename, global spelling configuration, policy or source was changed to evade the check. The original index attempt and all failed checks remain archived.
+
+Final controller sequencing ruling supersedes own-branch CI dispatch: after this documentation/evidence commit, ordinary push only codex/2084-draft, then genuinely stop the own2084 binding and report local/source-review CODE_COMPLETE with finalCI explicitly PENDING. Controller will integrate the stopped reviewed candidate into the epic and run one full manualCI and CodeQL at the final integrated exact HEAD. Before native acceptance, stopped child branches may ordinarily fast-forward to that same integrated HEAD; the existing receipt bridge still requires clean exact HEAD/repository, green fullCI and genuine complete/disjoint artifacts. No native gate, coverage or runtime requirement is waived. This worker will not dispatch another CI run, advance lifecycle, create a PR or deliver.
