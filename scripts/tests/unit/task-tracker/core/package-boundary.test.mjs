@@ -1,4 +1,4 @@
-// @story #2058 #2060 #2064 #2059 #2065
+// @story #2058 #2060 #2064 #2059 #2065 #2047
 // @story #2062
 // @story #2040
 // @story #1986
@@ -508,7 +508,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2064: exactly two retained forecast evidence/lineage readers; measured total 969.
     1 + // #2059: exactly one stage-capability binding module.
     1 + // #2065: exactly one versioned legacy/current forecast reader.
-    1; // #2061: exactly one frozen timing-candidate adapter; measured total 972.
+    1 + // #2061: exactly one frozen timing-candidate adapter; measured total 972.
+    2; // #2047: exactly the batch freezer and final-body template; measured total 974.
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
@@ -544,6 +545,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   ])
     assert.ok(files.includes(entry), 'required reviewed wave 10 runtime entry missing: ' + entry);
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
+  for (const entry of ['batch', 'body-template'])
+    assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',
