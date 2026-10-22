@@ -4,6 +4,11 @@ import { test } from 'node:test';
 import * as adapter from '../../../../../task-tracker/lib/story-cache/stage-body.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import {
+  withIssueLock,
+  currentIssueLockOwner,
+} from '../../../../../task-tracker/issue-mutator-lock.mjs';
 import { createRuntimeRootFixture } from '../../../../helpers/runtime-root-fixture.mjs';
 import { context } from '../../../../helpers/story-handoff-runtime-fixture.mjs';
 import { handoffGeneration, identity, hash } from '../../../../helpers/story-handoff-fixture.mjs';
@@ -494,3 +499,70 @@ for (const kind of ['body', 'title']) {
     assert.deepEqual(await f.store.readGeneration(), before);
   });
 }
+
+for (const kind of ['body', 'title'])
+  test(`refuses a foreign repository lock while the correct lock is occupied: ${kind}`, async (t) => {
+    const f = await fixture(t);
+    const foreign = fs.realpathSync(createRuntimeRootFixture('stage-foreign-lock-'));
+    t.after(() => fs.rmSync(foreign, { recursive: true, force: true }));
+    let release;
+    let occupied;
+    const ready = new Promise((resolve) => {
+      occupied = resolve;
+    });
+    const held = withIssueLock(
+      { issue: identity.issueNumber, projDir: f.root, sessionId: 'handoff-B', retries: 0 },
+      async () => {
+        occupied();
+        await new Promise((resolve) => {
+          release = resolve;
+        });
+      }
+    );
+    await ready;
+    try {
+      await withIssueLock(
+        { issue: identity.issueNumber, projDir: foreign, sessionId: 'author-A', retries: 0 },
+        async () => {
+          assert.equal(currentIssueLockOwner(identity.issueNumber).projDir, foreign);
+          await assert.rejects(
+            kind === 'body' ? f.mutate((body) => body + ' forbidden') : f.title('Forbidden'),
+            { code: 'STORY_MUTATION_UNAVAILABLE', reason: 'native-lock-owner' }
+          );
+          assert.deepEqual(await f.store.readGeneration(), f.before);
+        }
+      );
+    } finally {
+      release();
+      await held;
+    }
+  });
+test('accepts a nested lock acquired through a legitimate linked worktree', async (t) => {
+  const f = await fixture(t);
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Tester',
+      '-c',
+      'user.email=tester@example.com',
+      'commit',
+      '--allow-empty',
+      '-m',
+      'fixture',
+    ],
+    { cwd: f.root, stdio: 'pipe' }
+  );
+  const linked = path.join(f.root, 'linked');
+  execFileSync('git', ['worktree', 'add', '--detach', linked], { cwd: f.root, stdio: 'pipe' });
+  await withIssueLock(
+    { issue: identity.issueNumber, projDir: linked, sessionId: 'author-A', retries: 0 },
+    async () => {
+      assert.equal(currentIssueLockOwner(identity.issueNumber).projDir, f.root);
+      const result = await f.mutate(async (body) => body + ' linked');
+      assert.equal(result.status, 'staged');
+      assert.equal(result.generation, 2);
+      assert.equal(working(await f.store.readGeneration()).body, 'base story linked');
+    }
+  );
+});
