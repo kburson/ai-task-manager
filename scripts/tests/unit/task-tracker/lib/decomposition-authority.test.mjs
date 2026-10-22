@@ -1,15 +1,12 @@
 // @story #2039 #2065
+import { historicalForecastEnvelope } from '../../../helpers/task-2065-forecast-fixture.mjs';
 // @story #1987 #2034
 import test from 'node:test';
 import { buildPlannedAppendix } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import { buildAuditCommentBody } from '../../../../task-tracker/lib/reevaluate-estimate.mjs';
 import { buildEstimationForecast } from '../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { createBootstrapRubric } from '../../../../task-tracker/lib/estimation/rubric-model.mjs';
-import {
-  hashRecordPayload,
-  parseAitmRecord,
-  renderAitmRecord,
-} from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { renderAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { freshUnitDir } from './decomposition-authority-fixtures.mjs';
@@ -674,33 +671,3 @@ test('unready unique forecast exposes reconciliation data but remains unavailabl
 });
 
 // Historical transport fixture: validation uses native legacy render/parse, never new publication.
-function historicalForecastEnvelope({
-  recordType,
-  repository,
-  issue,
-  payload,
-  actor,
-  recordId,
-  grantId,
-  createdAt,
-}) {
-  const envelope = {
-    schema: 'aitm.record/v1',
-    recordType,
-    repository,
-    issue,
-    payload,
-    recordId,
-    createdAt,
-    predecessor: null,
-    supersedes: null,
-    authority: { grantId, epoch: 1, actor },
-    payloadHash: hashRecordPayload(payload),
-  };
-  return parseAitmRecord({
-    commentNodeId: 'IC_historical_forecast_fixture',
-    body: renderAitmRecord({ envelope }),
-    expectedRepository: repository,
-    expectedIssue: issue,
-  }).envelope;
-}
