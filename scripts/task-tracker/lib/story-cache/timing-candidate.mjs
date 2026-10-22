@@ -2,12 +2,15 @@
 // cspell:ignore EISSUELOCKED
 // Frozen timing content is provisional. Only the coordinator can dispatch effects.
 import { createHash } from 'node:crypto';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { validateManifest, storyIdentityKey } from './manifest.mjs';
 import { observeContent } from './native-observation.mjs';
 import { mergeTimingEvents } from './timing-events.mjs';
 import { renderTimingEventBatch } from '../../gh-timing-comment.mjs';
 import { resolvePhaseEvent } from '../../phase-events.mjs';
+import { parseTimingRow } from '../timing-row-reader.mjs';
+import { isEmittableTimingEvent } from '../timing-events/index.mjs';
 import { validateExecutableTransition } from '../lifecycle-policy/executable-transitions.mjs';
 import { assertTimingActorKey } from '../timing-actor.mjs';
 import { resolveRuntimeRoot } from '../runtime-storage.mjs';
@@ -24,7 +27,10 @@ const clone = (value) => JSON.parse(canonicalRecordJson(value));
 const same = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
 const token = (v) => typeof v === 'string' && v.length > 0 && !/[\s\p{Cc}]/u.test(v);
 const TIMING_HEADING = '⏱ Timing Log';
-const RECORD_RE = /<!-- aitm-timing-events:v1 payload=([A-Za-z0-9_-]+) -->/g;
+// Conservative UTF-8 budget within GitHub's documented final-comment character cap.
+const COMMENT_BYTE_LIMIT = 65536;
+const RECORD_BYTE_LIMIT = 4 * 1024 * 1024;
+const RECORD_RE = /\n<!-- aitm-timing-events:v1 encoding=gzip payload=([A-Za-z0-9_-]+) -->\n$/g;
 function invalid(reason, cause) {
   throw Object.assign(new Error(`Story timing candidate invalid: ${reason}`, { cause }), {
     code: 'STORY_TIMING_CANDIDATE_INVALID',
@@ -54,22 +60,27 @@ function payload(payloads, reference) {
   return body;
 }
 function retained(body) {
+  if (Buffer.byteLength(body, 'utf8') > COMMENT_BYTE_LIMIT) invalid('comment-size');
   const matches = [...body.matchAll(RECORD_RE)];
   if (matches.length > 1 || body.split('aitm-timing-events:').length - 1 !== matches.length)
     invalid('timing-record-ambiguity');
-  if (!matches.length) return { body, events: [], cursor: null };
+  if (!matches.length) return { body, events: [], cursor: null, transitions: [] };
   const match = matches[0];
   let record;
   try {
-    const bytes = Buffer.from(match[1], 'base64url');
+    const compressed = Buffer.from(match[1], 'base64url');
+    if (compressed.toString('base64url') !== match[1]) invalid('timing-record-encoding');
+    const bytes = gunzipSync(compressed, { maxOutputLength: RECORD_BYTE_LIMIT });
     record = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    if (canonicalRecordJson(record) !== bytes.toString('utf8')) invalid('timing-record-encoding');
     if (
-      bytes.toString('base64url') !== match[1] ||
-      canonicalRecordJson(record) !== bytes.toString('utf8')
-    )
-      invalid('timing-record-encoding');
-    if (
-      !same(Object.keys(record).sort(), ['cursor', 'events', 'schema']) ||
+      !same(Object.keys(record).sort(), [
+        'cursor',
+        'events',
+        'schema',
+        'tableDigest',
+        'transitions',
+      ]) ||
       record.schema !== 'aitm.story-timing-events/v1' ||
       !token(record.cursor) ||
       !same(mergeTimingEvents(record.events, []), record.events)
@@ -78,11 +89,44 @@ function retained(body) {
   } catch (error) {
     invalid('timing-record', error);
   }
-  return {
-    body: body.slice(0, match.index) + body.slice(match.index + match[0].length),
-    ...record,
-  };
+  const tableBody = body.slice(0, match.index);
+  if (
+    hash(tableBody) !== record.tableDigest ||
+    !Array.isArray(record.transitions) ||
+    new Set(record.transitions.map((move) => move.id)).size !== record.transitions.length
+  )
+    invalid('timing-table-drift');
+  const expected = [];
+  for (const move of record.transitions) {
+    const exitEventId = pairFor(record.events, move);
+    expected.push(
+      ...renderTimingEventBatch({
+        timingBody: '',
+        events: record.events.filter((event) => event.transitionId === move.id),
+        exitEventId,
+      })
+        .split('\n')
+        .filter((line) => parseTimingRow(line)?.actorKey)
+    );
+  }
+  if (
+    record.events.some(
+      (event) =>
+        event.transitionId !== null &&
+        !record.transitions.some((move) => move.id === event.transitionId)
+    )
+  )
+    invalid('timing-table-correspondence');
+  const actual = tableBody.split('\n');
+  for (const row of new Set(expected))
+    if (
+      actual.filter((line) => line === row).length !==
+      expected.filter((line) => line === row).length
+    )
+      invalid('timing-table-correspondence');
+  return { body: tableBody, ...record };
 }
+
 function pairFor(events, transition) {
   if (
     !transition ||
@@ -113,7 +157,7 @@ function pairFor(events, transition) {
     invalid('transition-pair');
   return exits[0].eventId;
 }
-function derive(generation, payloads, transition) {
+function derive(generation, payloads, transition, frozenBody = null) {
   if (
     generation.conflicts.length ||
     (generation.batch !== null && generation.batch.status !== 'complete')
@@ -129,7 +173,10 @@ function derive(generation, payloads, transition) {
     invalid('timing-state');
   if (events.filter((event) => event.sourceCursor === timing.ingestedCursor).length !== 1)
     invalid('ingestion-boundary');
-  for (const event of events) assertTimingActorKey(event.actorId);
+  for (const event of events) {
+    assertTimingActorKey(event.actorId);
+    if (!isEmittableTimingEvent(event.event)) invalid('event-vocabulary');
+  }
   const exitEventId = pairFor(events, transition);
   const candidates = Object.values(generation.baseSnapshot.resources).filter(
     (resource) =>
@@ -156,13 +203,34 @@ function derive(generation, payloads, transition) {
   const pending = events.filter((event) => !published.has(event.eventId));
   if (!pending.some((event) => event.eventId === exitEventId) || !pending.length)
     invalid('transition-already-published');
-  let body = renderTimingEventBatch({ timingBody: prior.body, events: pending, exitEventId });
-  const record = { schema: 'aitm.story-timing-events/v1', events, cursor: timing.ingestedCursor };
-  body =
-    body.trimEnd() +
-    '\n\n<!-- aitm-timing-events:v1 payload=' +
-    Buffer.from(canonicalRecordJson(record)).toString('base64url') +
-    ' -->\n';
+  if (pending.some((event) => event.transitionId !== null && event.transitionId !== transition.id))
+    invalid('undeclared-transition');
+  const pairEvents = pending.filter((event) => event.transitionId === transition.id);
+  let body = renderTimingEventBatch({ timingBody: prior.body, events: pairEvents, exitEventId });
+  body = body.trimEnd() + '\n';
+  const record = {
+    schema: 'aitm.story-timing-events/v1',
+    events,
+    cursor: timing.ingestedCursor,
+    transitions: [...prior.transitions, clone(transition)],
+    tableDigest: hash(body),
+  };
+  if (frozenBody !== null) {
+    const recovered = retained(frozenBody);
+    const { body: recoveredTable, ...recoveredRecord } = recovered;
+    if (recoveredTable !== body || !same(recoveredRecord, record)) invalid('frozen-encoding');
+    // Compression library versions may differ after handoff. Reuse verified original bytes.
+    body = frozenBody;
+  } else {
+    const raw = Buffer.from(canonicalRecordJson(record));
+    if (raw.length > RECORD_BYTE_LIMIT) invalid('timing-record-size');
+    body +=
+      '\n<!-- aitm-timing-events:v1 encoding=gzip payload=' +
+      gzipSync(raw, { level: 9, mtime: 0 }).toString('base64url') +
+      ' -->\n';
+  }
+  if (Buffer.byteLength(body, 'utf8') > COMMENT_BYTE_LIMIT) invalid('comment-size');
+
   return frozen({
     key,
     kind: existing ? 'comment-update' : 'comment-create',
@@ -290,7 +358,7 @@ async function confirm({ store, batchId, observation }) {
       origin.timing.canonicalCommentKey = effect.candidate.timing.canonicalCommentKey;
       if (effect.outcome?.state === 'confirmed')
         delete origin.working[`comment:${effect.outcome.providerId}`];
-      const expected = derive(origin, current.payloads, batch.transition);
+      const expected = derive(origin, current.payloads, batch.transition, effect.candidate.body);
       if (!same({ ...effect, attempted: false, outcome: null }, expected))
         unavailable('frozen-candidate');
       const observed = observeContent(observation);
@@ -303,6 +371,15 @@ async function confirm({ store, batchId, observation }) {
       )
         unavailable('readback');
       if (effect.kind === 'comment-create') {
+        const providerId = observed.key.slice(8);
+        if (
+          batch.baseline.inventory.includes(providerId) ||
+          Object.hasOwn(batch.baseline.resources, observed.key) ||
+          (effect.outcome?.state !== 'confirmed' &&
+            (Object.hasOwn(generation.baseSnapshot.resources, observed.key) ||
+              Object.hasOwn(generation.working, observed.key)))
+        )
+          unavailable('creation-existing-resource');
         const inventory = observation.inventory;
         if (
           observation.complete !== true ||

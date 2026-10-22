@@ -1,205 +1,33 @@
 // @story #2039 #2061
 import assert from 'node:assert/strict';
-import { test as baseTest } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createUnitRootFixture } from '../../../../helpers/unit-runtime-root.mjs';
-import { handoffGeneration, identity, hash } from '../../../../helpers/story-handoff-fixture.mjs';
-import { withRuntimeRootAdapters } from '../../../../../task-tracker/lib/runtime-storage.mjs';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import { timingActorKey } from '../../../../../task-tracker/lib/timing-actor.mjs';
 import { parseTimingRow } from '../../../../../task-tracker/lib/timing-row-reader.mjs';
-import { buildRow } from '../../../../../task-tracker/gh-timing-comment.mjs';
+import {
+  buildRow,
+  renderTimingEventBatch,
+} from '../../../../../task-tracker/gh-timing-comment.mjs';
 import { observeContent } from '../../../../../task-tracker/lib/story-cache/native-observation.mjs';
-import {
-  openStoryStore,
-  storyCachePath,
-} from '../../../../../task-tracker/lib/story-cache/store.mjs';
-import {
-  acquireStoryWriter,
-  openStoryWriterRegistry,
-} from '../../../../../task-tracker/lib/story-cache/writer-claim.mjs';
+import { openStoryStore } from '../../../../../task-tracker/lib/story-cache/store.mjs';
 import { ingestTimingEvents } from '../../../../../task-tracker/lib/story-cache/timing-stage.mjs';
-const adapter =
-  await import('../../../../../task-tracker/lib/story-cache/timing-candidate.mjs').catch(
-    (error) => {
-      if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
-      return {};
-    }
-  );
-const actorId = timingActorKey({ provider: 'codex', sid: 'author-A' });
-const transition = { id: 'move:one', from: 'develop', to: 'test', actorId, visit: 1 };
-const historical =
-  '⏱ Timing Log\n\n| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |\n|---|---|---|---|---|---|---|---|\n| 2026-10-01 01:00:00 +00:00 | start |  |  |  | 10 | historical actor | 20 | <!-- row-sec: a=0 i=0 -->\n';
-const event = (id, extra = {}) => ({
-  eventId: id,
+import {
+  test,
+  fixture,
+  context,
+  adapter,
+  identity,
+  hash,
   actorId,
-  transitionId: null,
-  timestamp: '2026-10-19T12:00:00.000Z',
-  event: 'paused',
-  activeSeconds: null,
-  idleSeconds: null,
-  sourceCursor: `native-${id}`,
-  ...extra,
-});
-const pair = (move = transition, at = '2026-10-19T12:01:00.000Z') => [
-  event('z-exit', {
-    actorId: move.actorId,
-    transitionId: move.id,
-    timestamp: at,
-    event: 'develop:completed',
-    activeSeconds: 0.25,
-    idleSeconds: null,
-  }),
-  event('a-entry', {
-    actorId: move.actorId,
-    transitionId: move.id,
-    timestamp: at,
-    event: 'test:started',
-    activeSeconds: 0,
-    idleSeconds: 0,
-  }),
-];
-function test(name, operation) {
-  return baseTest(name, async (t) => {
-    const root = fs.realpathSync(createUnitRootFixture('timing-candidate-2061-'));
-    const commonDir = path.join(root, 'fixture-common');
-    fs.mkdirSync(commonDir);
-    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-    t.unitRoot = root;
-    return withRuntimeRootAdapters(
-      {
-        realpath: (p) => fs.realpathSync(p),
-        assertOutsideArtifacts: () => {},
-        readIdentity: () => ({
-          projectRoot: root,
-          mainRoot: root,
-          worktreeIdentity: { commonDir, registeredRoots: [root], unavailableRoots: [] },
-        }),
-      },
-      () => operation(t)
-    );
-  });
-}
-async function context(root, operation, sid = 'author-A') {
-  const beforeSid = process.env.AI_TASK_MANAGER_SESSION_ID;
-  const cwd = process.cwd();
-  process.env.AI_TASK_MANAGER_SESSION_ID = sid;
-  process.chdir(root);
-  try {
-    return await operation();
-  } finally {
-    process.chdir(cwd);
-    if (beforeSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
-    else process.env.AI_TASK_MANAGER_SESSION_ID = beforeSid;
-  }
-}
-async function fixture(t, { absent = false, events = pair() } = {}) {
-  assert.equal(
-    typeof adapter.freezeTimingCandidate,
-    'function',
-    'frozen timing candidate is missing'
-  );
-  assert.equal(
-    typeof adapter.confirmTimingPublication,
-    'function',
-    'verified cursor confirmation is missing'
-  );
-  const root = t.unitRoot;
-  const registry = openStoryWriterRegistry({ projectRoot: root });
-  const claim = await acquireStoryWriter({
-    identity,
-    human: 'tester',
-    sessionId: 'author-A',
-    worktree: root,
-    cachePath: storyCachePath({ projectRoot: root, identity }),
-    assignment: ['tester'],
-    registry,
-  });
-  const store = await openStoryStore({ projectRoot: root, identity });
-  const initial = await handoffGeneration(claim.claimId);
-  initial.generation.timing = {
-    events: [],
-    ingestedCursor: null,
-    publishedCursor: null,
-    canonicalCommentKey: absent ? null : 'comment:C_timing',
-  };
-  if (!absent) {
-    const { body: ignored, ...observed } = observeContent({
-      identity,
-      node: {
-        id: 'C_timing',
-        lastEditedAt: null,
-        includesCreatedEdit: false,
-        userContentEdits: { totalCount: 0, nodes: [] },
-      },
-      body: historical,
-    });
-    void ignored;
-    initial.generation.baseSnapshot.resources['comment:C_timing'] = {
-      ...observed,
-      ownership: 'owned',
-      payloadPath: 'base/timing.md',
-    };
-    initial.generation.baseSnapshot.inventory = ['C_timing'];
-    initial.payloads.set('base/timing.md', historical);
-  }
-  await store.commitGeneration(initial, { expectedGeneration: null });
-  await context(root, () => ingestTimingEvents({ store, claim, events }));
-  const freeze = async (move = transition) =>
-    adapter.freezeTimingCandidate({ generation: await store.readGeneration(), transition: move });
-  const persist = async (effect, changes = {}) => {
-    const current = await store.readGeneration();
-    const generation = structuredClone(current.generation);
-    generation.generation++;
-    generation.publicationGeneration++;
-    generation.batch = {
-      schema: 'aitm.story-publication-batch/v1',
-      batchId: 'batch-one',
-      publicationGeneration: generation.publicationGeneration,
-      transition,
-      baseline: structuredClone(generation.baseSnapshot),
-      approvedInputDigests: [],
-      effects: [{ ...structuredClone(effect), attempted: true }],
-      bodyTemplate: null,
-      status: 'frozen',
-      ...changes,
-    };
-    return store.commitGeneration(
-      { generation, claimId: claim.claimId, payloads: current.payloads },
-      { expectedGeneration: current.manifest.generation }
-    );
-  };
-  const observation = (effect, changes = {}) => ({
-    identity,
-    node: {
-      __typename: 'IssueComment',
-      id: 'C_timing',
-      body: effect.candidate.body,
-      lastEditedAt: null,
-      includesCreatedEdit: false,
-      userContentEdits: { totalCount: 0, nodes: [] },
-    },
-    body: effect.candidate.body,
-    ...changes,
-  });
-  const confirm = (effect, observed = observation(effect), extra = {}) =>
-    context(root, () =>
-      adapter.confirmTimingPublication({
-        store,
-        batchId: 'batch-one',
-        observation: observed,
-        ...extra,
-      })
-    );
-  return { root, claim, store, freeze, persist, observation, confirm };
-}
-const rows = (body) =>
-  body
-    .split('\n')
-    .map(parseTimingRow)
-    .filter((row) => row?.actorKey);
-
+  transition,
+  historical,
+  event,
+  pair,
+  rows,
+  changeGeneration,
+} from '../../../../helpers/story-timing-candidate-fixture.mjs';
 test('freezes one canonical candidate from retained native events without sampling a clock', async (t) => {
   const f = await fixture(t);
   const before = await f.store.readGeneration();
@@ -263,7 +91,18 @@ for (const count of [1, 1000])
       const f = await fixture(t, { events: [...events, ...pair()] });
       const effect = await f.freeze();
       assert.equal(effect.candidate.timing.events.length, count + 2);
-      assert.equal(rows(effect.candidate.body).length, count + 2);
+      assert.ok(
+        Buffer.byteLength(effect.candidate.body, 'utf8') <= 65536,
+        'representative native-event candidate exceeds publication budget'
+      );
+      console.log(
+        `publication-size events=${count + 2} bytes=${Buffer.byteLength(effect.candidate.body, 'utf8')}`
+      );
+      assert.equal(rows(effect.candidate.body).length, 2);
+      assert.deepEqual(
+        readEventRecord(effect.candidate.body).events,
+        (await f.store.readGeneration()).generation.timing.events
+      );
       assert.equal((await f.store.readGeneration()).generation.timing.publishedCursor, null);
       assert.equal(effect.kind, 'comment-update');
       await f.persist(effect);
@@ -400,17 +239,6 @@ test('a different session cannot acknowledge the original writer cursor', async 
   );
   assert.deepEqual(await f.store.readGeneration(), frozen);
 });
-async function changeGeneration(f, operation) {
-  const before = await f.store.readGeneration();
-  const next = structuredClone(before.generation);
-  next.generation++;
-  const payloads = new Map(before.payloads);
-  operation(next, payloads);
-  return f.store.commitGeneration(
-    { generation: next, claimId: f.claim.claimId, payloads },
-    { expectedGeneration: before.manifest.generation }
-  );
-}
 test('a later backdated delivery publishes once without slicing opaque cursors by timestamp', async (t) => {
   const f = await fixture(t);
   const first = await f.freeze();
@@ -449,9 +277,14 @@ test('a later backdated delivery publishes once without slicing opaque cursors b
   const rendered = rows(second.candidate.body);
   assert.deepEqual(
     rendered.map((row) => row.event),
-    ['paused', 'develop:completed', 'test:started', 'test:passed', 'review:started']
+    ['develop:completed', 'test:started', 'test:passed', 'review:started']
   );
   assert.equal(second.candidate.timing.ingestedCursor, 'native-late-delivery');
+  assert.equal(
+    readEventRecord(second.candidate.body).events.find((e) => e.eventId === 'late-delivery')
+      .activeSeconds,
+    0.125
+  );
   assert.deepEqual(second.candidate.timing.eventIds, [
     'late-delivery',
     'second-entry',
@@ -600,4 +433,214 @@ test('live row admission snapshots a timestamp getter once before rendering', ()
   });
   assert.equal(reads, 1);
   assert.equal(parseTimingRow(row).ts.startsWith('2000-'), false);
+});
+function readEventRecord(body) {
+  const match = body.match(
+    /<!-- aitm-timing-events:v1 (encoding=gzip )?payload=([A-Za-z0-9_-]+) -->/
+  );
+  assert.ok(match, 'exact native event record missing');
+  const bytes = Buffer.from(match[2], 'base64url');
+  return JSON.parse((match[1] ? gunzipSync(bytes) : bytes).toString('utf8'));
+}
+test('R1 I1 same-instant ordinary events cannot split the native exit and entry pair', () => {
+  for (const ordinaryActor of [
+    actorId,
+    timingActorKey({ provider: 'codex', sid: 'other-author' }),
+  ]) {
+    const events = [
+      ...pair().map((e) => ({
+        ...e,
+        eventId: e.event === 'develop:completed' ? 'z-exit' : 'z-entry',
+      })),
+      event('a-ordinary', { actorId: ordinaryActor, timestamp: '2026-10-19T12:01:00.000Z' }),
+    ];
+    const rendered = rows(
+      renderTimingEventBatch({ timingBody: historical, events, exitEventId: 'z-exit' })
+    );
+    const exit = rendered.findIndex((r) => r.event === 'develop:completed');
+    assert.equal(rendered[exit + 1]?.event, 'test:started');
+    assert.equal(rendered.filter((r) => r.event === 'paused').length, 1);
+  }
+});
+async function nextTransition(f) {
+  await changeGeneration(f, (g) => {
+    g.batch = null;
+  });
+  const move = { ...transition, id: 'move:two', from: 'test', to: 'review', visit: 2 };
+  await context(f.root, () =>
+    ingestTimingEvents({
+      store: f.store,
+      claim: f.claim,
+      events: [
+        event('next-exit', {
+          timestamp: '2026-10-20T12:00:00.000Z',
+          transitionId: move.id,
+          event: 'test:passed',
+        }),
+        event('next-entry', {
+          timestamp: '2026-10-20T12:00:00.000Z',
+          transitionId: move.id,
+          event: 'review:started',
+          activeSeconds: 0,
+          idleSeconds: 0,
+        }),
+      ],
+    })
+  );
+  return move;
+}
+async function replaceTimingBody(f, body) {
+  return changeGeneration(f, (g, payloads) => {
+    const payloadPath = 'working/changed-timing.md';
+    payloads.set(payloadPath, body);
+    g.baseSnapshot.resources['comment:C_timing'] = {
+      ...g.baseSnapshot.resources['comment:C_timing'],
+      payloadPath,
+      digest: hash(body),
+    };
+    g.working['comment:C_timing'] = {
+      payloadPath,
+      digest: hash(body),
+      kind: 'comment',
+      capabilityRef: null,
+    };
+  });
+}
+test('R1 I2 changed, missing or duplicated historical table rows refuse despite retained metadata', async (t) => {
+  const f = await fixture(t);
+  const effect = await f.freeze();
+  await f.persist(effect);
+  await f.confirm(effect);
+  const move = await nextTransition(f);
+  const body = effect.candidate.body;
+  const exit = body.split('\n').find((line) => line.includes('| develop:completed |'));
+  const variants = [
+    body.replace(exit + '\n', ''),
+    body.replace(exit, exit + '\n' + exit),
+    body.replace(exit, exit.replace('develop:completed', 'paused')),
+    body.replace('historical actor', 'edited historical actor'),
+  ];
+  for (const candidate of variants) {
+    const before = await replaceTimingBody(f, candidate);
+    await assert.rejects(f.freeze(move));
+    assert.deepEqual(await f.store.readGeneration(), before);
+  }
+});
+test('R1 I3 creation cannot adopt a provider ID already present as read-only baseline context', async (t) => {
+  const f = await fixture(t, { absent: true });
+  await changeGeneration(f, (g, payloads) => {
+    const body = 'human context';
+    const { body: ignored, ...resource } = observeContent({
+      identity,
+      node: {
+        id: 'C_foreign',
+        lastEditedAt: null,
+        includesCreatedEdit: false,
+        userContentEdits: { totalCount: 0, nodes: [] },
+      },
+      body,
+    });
+    void ignored;
+    payloads.set('base/foreign.md', body);
+    g.baseSnapshot.resources['comment:C_foreign'] = { ...resource, payloadPath: 'base/foreign.md' };
+    g.baseSnapshot.inventory = ['C_foreign'];
+  });
+  const effect = await f.freeze();
+  const before = await f.persist(effect);
+  const original = f.observation(effect);
+  const observation = {
+    ...original,
+    node: { ...original.node, id: 'C_foreign' },
+    complete: true,
+    inventory: [{ id: 'C_foreign', body: original.body }],
+  };
+  await assert.rejects(f.confirm(effect, observation));
+  assert.deepEqual(await f.store.readGeneration(), before);
+});
+test('R1 I4 oversized existing human history refuses without discarding local events', async (t) => {
+  const f = await fixture(t);
+  const before = await replaceTimingBody(f, historical + 'retained-context '.repeat(5000));
+  await assert.rejects(
+    f.freeze(),
+    (e) => e.code === 'STORY_TIMING_CANDIDATE_INVALID' && e.reason === 'comment-size'
+  );
+  assert.deepEqual(await f.store.readGeneration(), before);
+});
+test('R1 M1 identical native inputs and recovery are independent of the process timezone', async (t) => {
+  const f = await fixture(t);
+  const before = process.env.TZ;
+  try {
+    process.env.TZ = 'UTC';
+    const effect = await f.freeze();
+    await f.persist(effect);
+    process.env.TZ = 'America/Chicago';
+    const frozen = await f.store.readGeneration();
+    // Reconstruct from the same pre-batch input in another zone without moving the store.
+    const origin = structuredClone(frozen.generation);
+    origin.batch = null;
+    const payloads = new Map(frozen.payloads);
+    const raw = canonicalRecordJson(origin);
+    const payloadPath = 'generations/timezone-model.json';
+    payloads.set(payloadPath, raw);
+    const record = {
+      manifest: { ...frozen.manifest, payloadPath, payloadDigest: hash(raw) },
+      generation: origin,
+      payloads,
+    };
+    assert.deepEqual(adapter.freezeTimingCandidate({ generation: record, transition }), effect);
+    assert.equal((await f.confirm(effect)).status, 'confirmed');
+  } finally {
+    if (before === undefined) delete process.env.TZ;
+    else process.env.TZ = before;
+  }
+});
+test('R1 I4 recovery validates and reuses the frozen compression bytes instead of recompressing', async (t) => {
+  const f = await fixture(t);
+  const effect = structuredClone(await f.freeze());
+  const record = readEventRecord(effect.candidate.body);
+  const alternate = gzipSync(Buffer.from(canonicalRecordJson(record)), { level: 1 }).toString(
+    'base64url'
+  );
+  effect.candidate.body = effect.candidate.body.replace(
+    /<!-- aitm-timing-events:v1 (?:encoding=gzip )?payload=[A-Za-z0-9_-]+ -->/,
+    '<!-- aitm-timing-events:v1 encoding=gzip payload=' + alternate + ' -->'
+  );
+  effect.intendedDigest = hash(effect.candidate.body);
+  await f.persist(effect);
+  assert.equal((await f.confirm(effect)).status, 'confirmed');
+});
+test('R1 I2 a rewritten table digest still cannot hide a missing native pair row', async (t) => {
+  const f = await fixture(t);
+  const effect = await f.freeze();
+  await f.persist(effect);
+  await f.confirm(effect);
+  const move = await nextTransition(f);
+  const record = readEventRecord(effect.candidate.body);
+  const original = effect.candidate.body.split('\n<!-- aitm-timing-events:')[0];
+  const exit = original.split('\n').find((line) => line.includes('| develop:completed |'));
+  const table = original.replace(exit + '\n', '');
+  record.tableDigest = hash(table);
+  const altered =
+    table +
+    '\n<!-- aitm-timing-events:v1 encoding=gzip payload=' +
+    gzipSync(Buffer.from(canonicalRecordJson(record))).toString('base64url') +
+    ' -->\n';
+  const before = await replaceTimingBody(f, altered);
+  await assert.rejects(f.freeze(move), (e) => e.reason === 'timing-table-correspondence');
+  assert.deepEqual(await f.store.readGeneration(), before);
+});
+test('R1 I4 compressed metadata cannot expand beyond the bounded evidence budget', async (t) => {
+  const f = await fixture(t);
+  const compressed = gzipSync(Buffer.from('"' + 'x'.repeat(4 * 1024 * 1024) + '"')).toString(
+    'base64url'
+  );
+  const before = await replaceTimingBody(
+    f,
+    historical + '\n<!-- aitm-timing-events:v1 encoding=gzip payload=' + compressed + ' -->\n'
+  );
+  await assert.rejects(
+    f.freeze(),
+    (e) => e.code === 'STORY_TIMING_CANDIDATE_INVALID' && e.cause?.code === 'ERR_BUFFER_TOO_LARGE'
+  );
+  assert.deepEqual(await f.store.readGeneration(), before);
 });
