@@ -1,6 +1,8 @@
 // @story #2039 #2059
 // Pure validation only. Public staging routes do not acquire proof authority here.
 import { validateReviewedDelta } from '../reviewed-scope/record.mjs';
+import { scanScope, resolveScopeTarget } from '../reviewed-scope/targets.mjs';
+import { stripBodyVersion } from '../versioned-issue-write.mjs';
 import {
   INVARIANT_MARKER_PATTERNS,
   findLostMarkers,
@@ -95,6 +97,18 @@ function markers(base, candidate, capability) {
   if (capability?.decompositionMutationCapability && !allowed.length) refuse('unused-capability');
   validateMarkerAdvances(base, candidate, { ...capability, allowMarkerAdvance: allowed });
 }
+// Native authority reports a coordinate in stripBodyVersion(candidate).
+// Resolve its unique target identity against the original strings; never rewrite
+// raw whitespace or legacy marker bytes to make coordinate systems coincide.
+function rawReviewedTarget(base, candidate, nativeLine) {
+  const normalized = scanScope(stripBodyVersion(candidate)).targets.find(
+    (entry) => entry.lineIndex === nativeLine
+  );
+  if (!normalized) refuse('reviewed-scope-target');
+  const before = resolveScopeTarget(base, normalized.label);
+  const after = resolveScopeTarget(candidate, normalized.label);
+  return { before: before.raw, after: after.raw, lineIndex: after.lineIndex };
+}
 function local(operation) {
   const { base, candidate, capability } = operation;
   common(base, candidate);
@@ -105,14 +119,17 @@ function local(operation) {
   );
   if (capability?.reviewedEvidenceCapability && !Number.isInteger(reviewedLine))
     refuse('capability');
+  const target = capability?.reviewedEvidenceCapability
+    ? rawReviewedTarget(base, candidate, reviewedLine)
+    : null;
   if (
     findCheckboxesTickedWithoutProof(base, candidate, { includeNew: true }).some(
-      (line) => line.lineIndex !== reviewedLine
+      (line) => line.lineIndex !== target?.lineIndex
     )
   )
     refuse('unverified-ticks');
   markers(base, candidate, capability);
-  return reviewedLine;
+  return target;
 }
 function replaceLine(body, from, to) {
   const lines = body.split('\n');
@@ -156,7 +173,7 @@ export function validateStagedComposite(input) {
     let current = base;
     for (const operation of retained) {
       if (operation.base !== current) refuse('operation-chain');
-      operation.reviewedLine = local(operation);
+      operation.reviewedTarget = local(operation);
       current = operation.candidate;
     }
     if (current !== candidate) refuse('candidate-mismatch');
@@ -166,9 +183,8 @@ export function validateStagedComposite(input) {
     let projected = candidate;
     for (const operation of retained.toReversed()) {
       if (operation.capability?.reviewedEvidenceCapability) {
-        const previous = operation.base.split('\n')[operation.reviewedLine];
-        const next = operation.candidate.split('\n')[operation.reviewedLine];
-        const restored = replaceLine(projected, next, previous);
+        const { before, after } = operation.reviewedTarget;
+        const restored = replaceLine(projected, after, before);
         validateReviewedDelta(restored, projected, operation.capability.reviewedEvidenceCapability);
         projected = restored;
       } else if (operation.capability?.decompositionMutationCapability) {

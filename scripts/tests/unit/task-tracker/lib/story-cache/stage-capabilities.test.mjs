@@ -195,105 +195,125 @@ test('synthetic approval markers never become native approval authority', () => 
 import { canonicalRecordJson } from '../../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import { POLICY_MARKER, sha256 } from '../../../../../task-tracker/lib/reviewed-scope/model.mjs';
 const reviewed = await import('../../../../../task-tracker/lib/reviewed-scope/record.mjs');
-test('genuine reviewed scope token authorizes only its exact target and survives unrelated edits', async () => {
-  const authority = {
-    repository: 'owner/repo',
-    issue: 2059,
-    worktree: '/bound/checkout',
-    branch: 'feature/child/2059',
-    head: 'b'.repeat(40),
-    actor: { id: '123', login: 'owner' },
-    state: 'develop',
-  };
-  const manifest = {
-    schema: 'aitm.reviewed-scope-evidence/v1',
-    ...Object.fromEntries(
-      ['repository', 'issue', 'worktree', 'branch', 'head'].map((key) => [key, authority[key]])
-    ),
-    label: 'Inspect output',
-    rationale: 'Saved inspection.',
-    provenance: { kind: 'operator-inspection' },
-    artifacts: [{ path: 'output.txt', sha256: sha256('output') }],
-  };
-  const bytes = Buffer.from(canonicalRecordJson(manifest) + '\n');
-  let body = `## Scope\n${POLICY_MARKER}\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [ ] Other output\n`;
-  const initial = body;
-  const comments = new Map();
-  let retained;
-  globalThis[captureKey] = (input) => {
-    retained = input.reviewedEvidenceCapability;
-  };
-  const deps = {
-    readRecordingAuthority: async () => authority,
-    readBoundManifest: async () => bytes,
-    validateLocalEvidence: async () => ({ manifestDigest: sha256(bytes) }),
-    readLiveBody: async () => body,
-    readComment: async ({ commentId }) => comments.get(commentId),
-    listComments: async () => [...comments.values()],
-    createComment: async ({ body: content }) => {
-      const comment = {
-        id: '1',
-        body: content,
-        user: { id: '123' },
-        issue_url: 'https://api.github.com/repos/owner/repo/issues/2059',
-      };
-      comments.set('1', comment);
-      return comment;
-    },
-    fetchBody: async () => body,
-    pushBody: async (_repo, _issue, next) => {
-      body = next;
-    },
-    now: () => '2026-10-22T00:00:00.000Z',
-    warn: () => {},
-  };
-  try {
-    await reviewed.recordReviewedScope({
-      ctx: {
-        cfg: { repo: 'owner/repo' },
-        projectDir: authority.worktree,
-        issueNumber: 2059,
-        deps: { reviewedScope: deps },
-      },
+for (const [name, prefix, expectedNativeIndex, expectedRawIndex] of [
+  ['ordinary bytes', '', 2, 2],
+  ['three newlines before policy', '\n\n', 3, 4],
+  [
+    'legacy version marker surrounded by whitespace',
+    '\n \t<!-- aitm-body-version: 7 --> \t\n\n',
+    5,
+    5,
+  ],
+  ['legacy version plus blank-line runs', '\n\n\n \t<!-- aitm-body-version: 7 --> \t\n\n\n', 5, 8],
+]) {
+  test(`genuine reviewed scope token retains raw coordinates: ${name}`, async () => {
+    const authority = {
+      repository: 'owner/repo',
+      issue: 2059,
+      worktree: '/bound/checkout',
+      branch: 'feature/child/2059',
+      head: 'b'.repeat(40),
+      actor: { id: '123', login: 'owner' },
+      state: 'develop',
+    };
+    const manifest = {
+      schema: 'aitm.reviewed-scope-evidence/v1',
+      ...Object.fromEntries(
+        ['repository', 'issue', 'worktree', 'branch', 'head'].map((key) => [key, authority[key]])
+      ),
       label: 'Inspect output',
-      manifestPath: 'manifest.json',
-    });
-  } finally {
-    delete globalThis[captureKey];
-  }
-  assert.ok(retained, 'native coordinator did not expose its genuine capability to real mutator');
-  const candidate = body.replace(/\n?<!-- aitm-body-version[^]*?-->\n?/, '');
-  const capability = { reviewedEvidenceCapability: retained };
-  const op = operation(initial, candidate, capability);
-  assert.equal(validate({ base: initial, candidate, operations: [op] }), true);
-  const appended = candidate + '\nAdditional context.\n';
-  assert.equal(
-    validate({
-      base: initial,
-      candidate: appended,
-      operations: [op, operation(candidate, appended)],
-    }),
-    true
-  );
-  assert.throws(() =>
-    validate({
-      base: initial,
-      candidate,
-      operations: [operation(initial, candidate, JSON.parse(JSON.stringify(capability)))],
-    })
-  );
-  const altered = candidate.replace('Inspect output', 'Different inspection');
-  assert.throws(() =>
-    validate({
-      base: initial,
-      candidate: altered,
-      operations: [operation(initial, altered, capability)],
-    })
-  );
-  assert.throws(() =>
-    validate({ base: initial, candidate: altered, operations: [op, operation(candidate, altered)] })
-  );
-});
+      rationale: 'Saved inspection.',
+      provenance: { kind: 'operator-inspection' },
+      artifacts: [{ path: 'output.txt', sha256: sha256('output') }],
+    };
+    const bytes = Buffer.from(canonicalRecordJson(manifest) + '\n');
+    let body = `## Scope\n${prefix}${POLICY_MARKER}\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [ ] Other output\n`;
+    const initial = body;
+    const comments = new Map();
+    let retained;
+    globalThis[captureKey] = (input) => {
+      retained = input.reviewedEvidenceCapability;
+    };
+    const deps = {
+      readRecordingAuthority: async () => authority,
+      readBoundManifest: async () => bytes,
+      validateLocalEvidence: async () => ({ manifestDigest: sha256(bytes) }),
+      readLiveBody: async () => body,
+      readComment: async ({ commentId }) => comments.get(commentId),
+      listComments: async () => [...comments.values()],
+      createComment: async ({ body: content }) => {
+        const comment = {
+          id: '1',
+          body: content,
+          user: { id: '123' },
+          issue_url: 'https://api.github.com/repos/owner/repo/issues/2059',
+        };
+        comments.set('1', comment);
+        return comment;
+      },
+      fetchBody: async () => body,
+      pushBody: async (_repo, _issue, next) => {
+        body = next;
+      },
+      now: () => '2026-10-22T00:00:00.000Z',
+      warn: () => {},
+    };
+    try {
+      await reviewed.recordReviewedScope({
+        ctx: {
+          cfg: { repo: 'owner/repo' },
+          projectDir: authority.worktree,
+          issueNumber: 2059,
+          deps: { reviewedScope: deps },
+        },
+        label: 'Inspect output',
+        manifestPath: 'manifest.json',
+      });
+    } finally {
+      delete globalThis[captureKey];
+    }
+    assert.ok(retained, 'native coordinator did not expose its genuine capability to real mutator');
+    const nativeLine = body.split('\n').find((line) => line.startsWith('- [x] Inspect output'));
+    const candidate = initial.replace('- [ ] Inspect output', nativeLine);
+    assert.equal(reviewed.validateReviewedDelta(initial, candidate, retained), expectedNativeIndex);
+    assert.equal(candidate.split('\n').indexOf(nativeLine), expectedRawIndex);
+    assert.equal(candidate.replace(nativeLine, '- [ ] Inspect output'), initial);
+    const capability = { reviewedEvidenceCapability: retained };
+    const op = operation(initial, candidate, capability);
+    assert.equal(validate({ base: initial, candidate, operations: [op] }), true);
+    const appended = candidate + '\nAdditional context.\n';
+    assert.equal(
+      validate({
+        base: initial,
+        candidate: appended,
+        operations: [op, operation(candidate, appended)],
+      }),
+      true
+    );
+    assert.throws(() =>
+      validate({
+        base: initial,
+        candidate,
+        operations: [operation(initial, candidate, JSON.parse(JSON.stringify(capability)))],
+      })
+    );
+    const altered = candidate.replace('Inspect output', 'Different inspection');
+    assert.throws(() =>
+      validate({
+        base: initial,
+        candidate: altered,
+        operations: [operation(initial, altered, capability)],
+      })
+    );
+    assert.throws(() =>
+      validate({
+        base: initial,
+        candidate: altered,
+        operations: [op, operation(candidate, altered)],
+      })
+    );
+  });
+}
 
 const { refreshDecompositionProjection } =
   await import('../../../../../task-tracker/lib/decomposition-projection.mjs');
@@ -373,3 +393,43 @@ test('a changed verifier cannot retain execution proof for the old command', () 
     /proof-loss/
   );
 });
+
+// R1 I1 / exact P1: a Scope completion is not proof of an AC completion.
+test('checked promises cannot transfer completion between sections', () => {
+  const base = '## Scope\n- [x] Inspect output\n\n## Acceptance Criteria\n- [ ] Inspect output\n';
+  const candidate =
+    '## Scope\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [x] Inspect output\n';
+  assert.equal(findCheckboxesTickedWithoutProof(base, candidate).length, 1);
+  assert.throws(() => validate({ base, candidate, operations: [operation(base, candidate)] }), {
+    reason: 'unverified-ticks',
+  });
+});
+for (const [name, base, candidate] of [
+  [
+    'removed checked source',
+    '## Scope\n- [x] Inspect output\n\n## Acceptance Criteria\n- [ ] Inspect output\n',
+    '## Scope\n\n## Acceptance Criteria\n- [x] Inspect output\n',
+  ],
+  [
+    'inserted target in another section',
+    '## Scope\n- [x] Inspect output\n\n## Acceptance Criteria\n',
+    '## Scope\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [x] Inspect output\n',
+  ],
+  [
+    'same-section duplicate occurrence',
+    '## Scope\n- [x] Inspect output\n- [ ] Inspect output\n',
+    '## Scope\n- [ ] Inspect output\n- [x] Inspect output\n',
+  ],
+  [
+    'duplicate section headings',
+    '## Scope\n- [x] Inspect output\n\n## Scope\n- [ ] Inspect output\n',
+    '## Scope\n- [ ] Inspect output\n\n## Scope\n- [x] Inspect output\n',
+  ],
+]) {
+  test(`completion identity rejects ${name}`, () => {
+    assert.equal(findCheckboxesTickedWithoutProof(base, candidate).length, 1);
+    assert.throws(() => validate({ base, candidate, operations: [operation(base, candidate)] }), {
+      reason: 'unverified-ticks',
+    });
+  });
+}

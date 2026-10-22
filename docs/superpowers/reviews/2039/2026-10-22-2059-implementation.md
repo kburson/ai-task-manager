@@ -331,3 +331,22 @@ test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.
 ```
 
 <!-- cspell:enable -->
+
+## R1 repair round
+
+Reviewed head: `0efa34da8e6c5926fcbec0784b9e789d873d40a8`.
+The full independent report is preserved unchanged as `2026-10-22-2059-review-r1.raw.txt`, SHA-256 `d26df8638f87af69303293dc0549b9766bf12964f0230f8306202422819e897c`.
+The normal Markdown author disposition is `2026-10-22-2059-r1-author-disposition.md`; it explicitly addresses every finding, strength, recommendation, declined boundary, cannot-verify item, and limitation.
+
+I1 was reproduced: another section's checked label could authorize an unchecked target's completion. The shared helper now binds completion to heading ancestry, repeated-heading visit, and same-label occurrence within that section. Removing or unticking the checked source cannot transfer its authority; shifted lines and unchanged duplicates remain supported.
+
+I2 was reproduced with genuine native reviewed authority and blank-line normalization. The adapter now maps the native normalized target identity back to original raw body coordinates for both checkbox exception and reversal. It retains exact original target lines and never rewrites raw whitespace or legacy markers to align indices. Genuine native tests include blank-line runs, whitespace around a legacy marker, their combination, and an unrelated later edit exercising final reversal.
+
+Unique semantic evidence: `r1-red-all-boundaries.log` (17/24 passed; seven I1/I2 failures), `r1-green-I1-red-I2.log` (22/24 passed; only two I2 failures remain), and `r1-green-all-boundaries.log` (24/24 passed).
+Prior shifted-checkbox, unchanged-duplicate, verifier-scope, serialization, and expired-decomposition tests remain in the named verifier.
+The shared 970/969 inventory finding, unsupported execution-proof producer authority, native capture warnings, install warnings, and overwritten earlier 15/15 capture limitation remain disclosed and unresolved within this slice.
+The complete 995-file suite is not rerun for its known shared inventory failure; final integrated CI belongs to the controller.
+
+R1 relevant native unit regressions passed 105/105 (`r1-native-unit-regressions.log`, SHA-256 `ee4d67511839ba2cc4d1df9773c529f7d8c3636a09782825f0a7a88a6dda5382`); native staging integration passed 75/75 (`r1-native-stage-integration.log`, SHA-256 `941a3c28aa0d70f715125a2c767dcaebe08337836e17ab936e50f8c8744043f0`). Targeted ESLint passed (`r1-eslint.log`); package formatting passed (`r1-package-format.log`). The initial R1 package lint stopped on one authored-prose spelling issue, corrected in the disposition without touching raw review bytes. Final lint and commit trace results are supplied in the final handoff.
+
+Final R1 named verifier passed 24/24 in `r1-target-final-24.log` (SHA-256 `d1893ef42a07da9e5ba52a91e25a65c8cb0641f31817775d4439ec74aa038039`). The native-coordinate assertions pin the ordinary pair to 2/2, exact P2 to normalized/raw 3/4, whitespace-marker variant to 5/5, and marker-plus-blank-lines variant to 5/8. Raw byte preservation and later unrelated edits are asserted for each. The exact P1 command also now reports `STORY_MUTATION_INVALID unverified-ticks` in `r1-exact-P1-green.log` (SHA-256 `ea5379d337dc32ff0cfc571beab7dfcb9c47f8c39912cd3c6a161a7d47ec2afd`). Package lint passed in `r1-package-lint-final.log` (SHA-256 `e534b8595f2b9b83b3bca185bbe1c1807a9fbc16b11c5fc08e69e95aa35c0173`); package format passed in `r1-package-format.log` (SHA-256 `b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77`). Later report/test-assertion edits receive final owned-file checks. No whole-suite-green or independent R2 acceptance is claimed.
