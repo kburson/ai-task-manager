@@ -1,0 +1,4 @@
+[feature/child/2065 a6880acfa] [#2065] Preserve accepted R2 review and exhaustive author rulings
+ 3 files changed, 59 insertions(+)
+ create mode 100644 docs/superpowers/reviews/2039/2026-10-22-2065-review-r2-author-dispositions.md
+ create mode 100644 docs/superpowers/reviews/2039/2026-10-22-2065-review-r2.raw.txt

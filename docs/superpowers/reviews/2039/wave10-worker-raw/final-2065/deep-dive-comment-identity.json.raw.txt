@@ -1,0 +1,2 @@
+[aitm graphql-usage] invalid-inherited-context
+{"data":{"node":{"databaseId":6342083897,"url":"https://github.com/kburson/ai-task-manager/issues/2065#issuecomment-6342083897"}}}

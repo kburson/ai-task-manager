@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' start 2065 --role agent --confirm-relocation
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+Resumed #2065.

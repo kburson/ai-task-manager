@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --check docs/superpowers/reviews/2039/2026-10-22-2065-review-r2-author-dispositions.md docs/superpowers/reviews/2039/2026-10-22-2065-implementation.md
+Checking formatting...
+All matched files use Prettier code style!

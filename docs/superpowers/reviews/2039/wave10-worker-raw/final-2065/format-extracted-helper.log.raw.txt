@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --write scripts/tests/helpers/task-2065-forecast-fixture.mjs scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs
+scripts/tests/helpers/task-2065-forecast-fixture.mjs 24ms
+scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs 41ms

@@ -1,0 +1,24 @@
+{
+  "base": "a5dee940e1b820743955744b0f04a18dbb1ef09f",
+  "head": "3f03fd3200529d21026cf77274c2bcc6482daf63",
+  "repairSource": "fd7fe1ffe046ee23dd439eb521d226845b9a603a",
+  "status": "",
+  "files": [
+    "docs/superpowers/reviews/2039/2026-10-22-2065-implementation.md",
+    "docs/superpowers/reviews/2039/2026-10-22-2065-review-r1-author-dispositions.md",
+    "docs/superpowers/reviews/2039/2026-10-22-2065-review-r1.raw.txt",
+    "scripts/tests/helpers/task-2065-forecast-fixture.mjs",
+    "scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/decomposition-cancellation-publication.cases.mjs",
+    "scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs"
+  ],
+  "productionAndPackageDiff": "",
+  "rawReviewSha256": "5f451271d389e48e574ea0f0fb503141975d4191e0a33621c8ccfd54737dd266",
+  "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+  "binding": {
+    "issueNumber": 2065,
+    "worktreePath": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+    "worktreeBranch": "feature/child/2065",
+    "kanbanState": "develop"
+  }
+}
