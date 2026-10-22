@@ -1522,6 +1522,7 @@
       "command": null,
       "staticImports": [
         "node:fs",
+        "./lib/estimation/runtime-adapter.mjs",
         "node:path",
         "./lib/decomposition-activity.mjs",
         "./lib/decomposition-local-targets.mjs",
@@ -1534,7 +1535,8 @@
         "./lib/chore-mode.mjs",
         "./lib/artifact-write-policy.mjs",
         "./lib/installed-guard-path.mjs",
-        "./lib/apply-patch-targets.mjs"
+        "./lib/apply-patch-targets.mjs",
+        "./config.mjs"
       ],
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
@@ -2400,6 +2402,7 @@
       "classification": "internal-hook-or-guard",
       "command": null,
       "staticImports": [
+        "./lib/estimation/runtime-adapter.mjs",
         "node:fs",
         "node:child_process",
         "node:util",

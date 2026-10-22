@@ -163,6 +163,12 @@ import path from 'node:path';
 import { runHook } from '../../../../../task-tracker/source-edit-gate.mjs';
 import { mkdtempProjectIsolated } from '../../../../../task-tracker/lib/scratch-dir.mjs';
 const cfg = { repo: 'test/repo', projectId: 'PVT_test', estimationRubricIssue: 0 };
+// Synthetic correlation identity for disposable child processes only. Never
+// inherit the owning agent's actor, and never change the actual worker session.
+const fixtureActor = {
+  AI_TASK_MANAGER_APP_NAME: 'claude',
+  AI_TASK_MANAGER_SESSION_ID: 'fixture-2063-estimation-dispatch',
+};
 test('hook estimator requests stop before decomposition, but quoted mentions are ordinary commands', async () => {
   const dir = mkdtempProjectIsolated('local-dispatch-');
   try {
@@ -181,6 +187,7 @@ test('hook estimator requests stop before decomposition, but quoted mentions are
           cwd: dir,
           input: JSON.stringify(payload),
           encoding: 'utf8',
+          env: { ...process.env, ...fixtureActor },
         })
       );
       assert.equal(activity.code, 'estimation-dispatch-stopped');
@@ -236,6 +243,7 @@ test('direct and packaged CLI report typed estimation stops while preserving the
             encoding: 'utf8',
             env: {
               ...process.env,
+              ...fixtureActor,
               PATH: bin + path.delimiter + process.env.PATH,
               AITM_CAPTURE_REAL_GH: gh,
             },
@@ -326,6 +334,7 @@ for (const scenario of [
       chmodSync(gh, 0o700);
       const env = {
         ...process.env,
+        ...fixtureActor,
         HOME: home,
         PATH: bin + path.delimiter + process.env.PATH,
         AITM_CAPTURE_REAL_GH: gh,
