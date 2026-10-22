@@ -28,6 +28,18 @@ function freeze(value) {
   return value;
 }
 const detached = (value) => freeze(JSON.parse(canonicalRecordJson(value)));
+/** JavaScript can throw any value; diagnostics must never throw or change result shape. */
+export function localFailureReason(error, fallback) {
+  for (const key of ['reason', 'message']) {
+    try {
+      const value = error?.[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    } catch {
+      // An exception-valued getter is not a diagnostic string.
+    }
+  }
+  return fallback;
+}
 export function localEstimationMode(mode) {
   if (mode?.mode === 'disabled') return { status: 'disabled', reason: 'rubric-disabled' };
   if (mode?.mode !== 'local')
@@ -171,7 +183,7 @@ export function calculateLocalEstimate(args = {}) {
   } catch (error) {
     return {
       status: 'unavailable',
-      reason: error.reason || error.message || 'local-calculation-invalid',
+      reason: localFailureReason(error, 'local-calculation-invalid'),
     };
   }
 }
@@ -193,7 +205,7 @@ export async function retainLocalEstimateInputs({ evidenceStore, bundle } = {}) 
   } catch (error) {
     return {
       status: 'unavailable',
-      reason: error.reason || error.message || 'local-retention-invalid',
+      reason: localFailureReason(error, 'local-retention-invalid'),
     };
   }
 }

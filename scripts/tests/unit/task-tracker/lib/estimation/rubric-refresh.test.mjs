@@ -413,3 +413,32 @@ test('a forged store cannot acknowledge a derived record as durable', async () =
   assert.equal(result.recordId, undefined);
   assert.equal(reads, 0);
 });
+
+for (const [name, thrown] of [
+  ['null', null],
+  ['undefined', undefined],
+  ['object reason', { reason: { invalid: 'object' } }],
+  [
+    'throwing reason getter',
+    {
+      get reason() {
+        throw null;
+      },
+    },
+  ],
+]) {
+  test('local derivation and refresh normalize thrown ' + name, async () => {
+    const args = localFixture();
+    Object.defineProperty(args, 'evidence', {
+      get() {
+        throw thrown;
+      },
+    });
+    const result = deriveLocalRubric(args);
+    assert.equal(result.status, 'unavailable');
+    assert.equal(typeof result.reason, 'string');
+    const refreshed = await refreshLocalRubric(args);
+    assert.equal(refreshed.status, 'unavailable');
+    assert.equal(typeof refreshed.reason, 'string');
+  });
+}
