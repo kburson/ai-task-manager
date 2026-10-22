@@ -1,0 +1,86 @@
+# #2059 independent scoped re-review R2
+
+Reviewed repair range: 0efa34da8e6c5926fcbec0784b9e789d873d40a8..77bc6e6ca9961ecbe32da34104e1f5fc87eb9b74.
+Review basis: the supplied task-12 brief, full original R1 raw report, complete author disposition, implementation report, and supplied 817-line fix-diff package. Parent supplied exact-head/clean-tree verification; this reviewer did not rederive the diff or perform Git verification.
+
+## Verdict
+
+Spec compliance within the assigned #2059 capability/composite-invariant slice: PASS for this repair.
+Task quality: ACCEPTABLE; no further repair requested within the scoped diff.
+Original Important I1: ADDRESSED.
+Original Important I2: ADDRESSED.
+New Critical findings: none found.
+New Important findings: none found.
+Minor findings: none raised.
+This accepts the repair, not aggregate branch readiness, public activation, lifecycle completion, or final integrated CI.
+
+## Original Important findings: explicit dispositions
+
+### I1 -- global checked-label multiset launders cross-section/occurrence completion: ADDRESSED
+
+Repair locations: scripts/task-tracker/lib/body-invariants.mjs:407 and :440.
+The global allowance for any identical previously checked line is removed. The new identity includes full heading ancestry, repeated-heading visit, same-label occurrence within that ancestry, and an exact original line comparison for checked carry-forward. An unchecked matching promise, a same-label relocation, or a wholly new checked promise under includeNew:true must pass proof validation. Blank-line shifts do not change the identity. Unchanged checked/unchecked duplicate occurrences continue to correspond separately.
+
+The exact original P1 Scope-to-Acceptance-Criteria exchange is represented in stage-capabilities.test.mjs:398. Its direct shared-helper assertion must find one offender, and staged validation must refuse unverified-ticks. The added cases at :407 cover removing the checked source, inserting the target in a different section while unticking the source, exchanging checked/unchecked duplicate occurrences within one section, and exchanging completion across repeated Scope headings. Each checks both the shared helper and staged refusal. The preexisting shifted-line, unchanged-duplicate, and appended-checked-promise regressions remain present and green in the final retained log.
+
+This addresses the reproduced authority transfer and the requested section/occurrence variants. It introduces no permission union, capability minting, or proof-generation path. Existing native callers retain the helper's default mode; staged evaluation retains strict includeNew:true.
+
+### I2 -- native normalized reviewed index applied to raw bodies and reversal: ADDRESSED
+
+Repair locations: scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:103, :122, :176, and :186.
+The native validator still establishes genuine authority first. rawReviewedTarget resolves the returned native coordinate only in stripBodyVersion(candidate), then resolves the unique native target label independently against raw base and raw candidate. The local checkbox exception uses the raw candidate index. Retained original before/after target lines supply final reversal through exact-line replacement, followed by validateReviewedDelta against the retained genuine authority. The previous raw split()[nativeLine] assumption is removed from both locations.
+
+The four real-coordinator positive cases at stage-capabilities.test.mjs:198 retain ordinary bytes, the exact P2 three-newline boundary, whitespace surrounding a legacy version marker, and the legacy marker combined with blank-line runs. Assertions explicitly pin normalized/raw pairs to 2/2, 3/4, 5/5, and 5/8 respectively. Candidate construction changes only the approved raw target line; replacing it back must recover initial exactly. Each case also stages a later unrelated append and requires successful composite validation, exercising reversal against the final candidate. Serialized capabilities, an altered target within the capability operation, and later target alteration still refuse.
+
+The exact P2 failure mode is therefore repaired without normalizing the retained raw body, deleting legacy markers, or changing unrelated whitespace. This preserves genuine native authority rather than replacing it with a caller assertion.
+
+## Strengths retained and confirmed within the repair
+
+- The change is limited to assigned body-invariant/capability source and assigned tests, plus review/report artifacts. No public adapter, parallel production module, package inventory, guard, or budget change appears in the repair package.
+- Public exports are preserved. checkboxIdentities and rawReviewedTarget are private helpers; validateStagedComposite and the existing checkbox helper remain exported with their accepted interfaces.
+- Local operation validation still precedes final-composite validation. The exact ordered operation chain and exact candidate remain requirements. Native-authorized deltas are reversed and revalidated individually; the repair adds no union of override flags.
+- The new target adapter reuses the native scanner/resolver, including native unique-target and pointer-duplication refusal, rather than inventing a weaker label lookup.
+- Existing marker, section, legacy-version, execution-proof, cumulative-shrink, malformed-proof, serialized-token, and expired-decomposition checks are retained by the diff. No genuine capability lifetime is extended.
+- The tests obtain actual coordinator-minted reviewed capability and continue using native validation. The review accepts the existing delegating interception seam as evidence of retained private authority, not as proof of public production extraction.
+- The disposition preserves the complete original R1 report and explicitly accounts for every finding, favorable assessment, recommendation, declined scope, cannot-verify item, and limitation. R1 raw bytes hash to d26df8638f87af69303293dc0549b9766bf12964f0230f8306202422819e897c, matching the supplied recorded digest.
+
+## Named focused unchanged-source contract check
+
+Risk checked: translating a normalized native coordinate through a label could accidentally broaden authority, select an ambiguous target, or rewrite original bytes.
+Read unchanged worker sources reviewed-scope/targets.mjs:1-130, reviewed-scope/record.mjs:45-130, and versioned-issue-write.mjs:75-85. record.mjs validates private WeakMap capability, resolves the authorized base descriptor, and requires the exact permitted normalized candidate. targets.mjs resolves the label uniquely across all live targets and requires the selected target to be in Scope; it also rejects duplicate pointer lineages/comments. stripBodyVersion removes the legacy version form and collapses runs of newlines only in its returned projection. The added adapter obtains raw line coordinates and raw text from original inputs, leaving that native authorization contract intact. No new defect established by this focused check.
+
+Requirement context: read current worker Task 4 at docs/superpowers/plans/2026-10-19-2039-local-estimation-transition-cache.md:316-370, matching the task brief's staging/preservation contract. Original Task 4 pin f2894455a97bb80f6afb82ce5ff722cad2a46c2b and specification pin dafb1d276036ddc17490f76329f6aa2c09732a15 are supplied authoritative references; no claim is made that this reviewer independently resolved historical Git objects or cloud state.
+
+## Retained regression evidence inspected
+
+No suite was rerun. These are author-run physical logs inspected and hashed by this reviewer under .worktrees/2039-wave10-2059/.scratch/2059, not new reviewer test executions.
+
+- r1-red-all-boundaries.log: 24 tests, 17 pass, 7 fail. The failing names identify five I1 cases and two I2 blank-line cases; inspected I2 errors are STORY_MUTATION_INVALID/unverified-ticks and I1 helper mismatch is actual 0 versus expected 1. SHA-256 e4a5b4359b3f21e15e9f693ff96196d81b9f5a7d7e33e3f3447c26cdadce11a8.
+- r1-green-I1-red-I2.log: 24 tests, 22 pass, 2 fail, both I2 blank-line cases. SHA-256 7108eea502940ec9b8788fc02ff4f1615a18de0f044c7f04001ceab135e40ba6.
+- r1-green-all-boundaries.log: 24 tests, 24 pass, 0 fail. SHA-256 fceec2cdeed62766eef8f577d45981bfadbd8ad084e5797ce08ec2c131baab9a.
+- r1-target-final-24.log: complete final named-test output inspected; 24 tests, 24 pass, 0 fail, 0 cancelled/skipped/todo. Includes all four reviewed-coordinate variants, five new identity refusals, and retained original regressions. SHA-256 d1893ef42a07da9e5ba52a91e25a65c8cb0641f31817775d4439ec74aa038039.
+- r1-native-unit-regressions.log: 105 tests, 105 pass, 0 fail. SHA-256 ee4d67511839ba2cc4d1df9773c529f7d8c3636a09782825f0a7a88a6dda5382.
+- r1-native-stage-integration.log: 75 tests, 75 pass, 0 fail. SHA-256 941a3c28aa0d70f715125a2c767dcaebe08337836e17ab936e50f8c8744043f0.
+- r1-exact-P1-green.log: exact retained output is STORY_MUTATION_INVALID unverified-ticks Story composite refused: unverified-ticks. SHA-256 ea5379d337dc32ff0cfc571beab7dfcb9c47f8c39912cd3c6a161a7d47ec2afd.
+- r1-package-lint-final.log: retained package lint completes through guidance release manifest agreement; recorded spelling checks show zero issues. SHA-256 e534b8595f2b9b83b3bca185bbe1c1807a9fbc16b11c5fc08e69e95aa35c0173.
+- r1-package-format.log: retained output says all matched files use Prettier code style. SHA-256 b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77.
+
+All hashes above match author-reported digests. Reading these retained outputs establishes their present contents, not an independent recreation of execution provenance or exact-final-source CI. The source/test diff itself supplies the behavioral basis for this acceptance. No additional runtime probe was necessary: the specific original doubts and their requested variants are answered by the repair and retained RED-to-GREEN evidence. Accordingly there are no new reviewer probe commands or outputs to attach.
+
+## Recommendations, deferred boundaries, and limitations
+
+- Accept I1 and I2 as repaired within #2059 and preserve this complete raw review byte-identically with every subsequent author ruling.
+- Preserve the unresolved parent integration finding: intermediate npm test passed 994/995 files, with packed inventory 970 above ceiling 969. That run preceded a later verifier-scope change and is not final whole-suite evidence. No inventory/budget repair appears here. Parent must perform serialized inventory accounting/repair and final integrated exact-head verification/CI; this review does not authorize merely widening a ceiling to silence failure.
+- Public activation, capability extraction/retention through persistence, asynchronous cloud freshness, transition publication, dirty manifests, recovery behavior, complete caller census/schemas, and full provider/native budget matrix remain later or aggregate work. Unchanged public adapters' non-null capability refusal is an explicit boundary, not a fresh defect in this repair.
+- Genuine opaque execution-stamper authority is not introduced. Rejecting new execution proof rather than accepting evidenceStamp:true remains conservative; execution-proof producer integration is still incomplete and not claimed accepted here.
+- Decomposition's live context/lock lifetime remains authoritative; retained object identity cannot extend it. This repair does not independently re-audit the unchanged decomposition implementation.
+- The earlier standalone 15/15 physical capture was overwritten. Its historical evidence is transcript-only, and this reviewer did not reconstruct it or infer complete physical capture. The retained unique 16/16 and new 24/24 outputs do not restore that missing earlier file.
+- Native diagnostics invalid-inherited-context, soft-byte-cap, soft-file-cap, and initial action-capture unavailability remain disclosed limits. The npm dependency-vulnerability and blocked optional Puppeteer-script warnings remain disclosed. No fresh task-specific defect is established from them; dependency/capture remediation is outside this scoped repair. No claim of complete transport accounting is made.
+- Initial native-positive setup errors, initial spelling/lint correction, and source-command scope-parser refusals are preserved in author reports. This review does not reinterpret a refused command as execution authority or claim independent lifecycle/commit-trace verification.
+- No independent live Plan/Develop admission, native Test/Review/approve/Close/delivery, external provider freshness, native slow lane, aggregate branch audit, or exact integrated final source was verified. No network, lifecycle action, source fix, branch/index mutation, or subagent dispatch was performed.
+- The whole supplied fix package was read, including all source/test hunks and review artifacts. One combined documentation output was truncated; documentation portions were reissued in bounded chunks to complete inspection. Changed production source was not separately reread; only the named unchanged native contracts were read for mapping context. No alternate diff was generated.
+- The only reviewer write is this raw report at /Users/kpburson/.codex/worktrees/b187/ai-task-manager/.scratch/plan/2039-wave10/2059-review-r2.raw.txt. Evidence hashes were calculated read-only. No suite reruns or ad hoc runtime probes were performed.
+
+## Final assessment
+
+Both original Important defects are ADDRESSED by the exact repair diff and relevant retained regression evidence. No new Critical or Important repair finding is established. The slice meets its bounded proof-capability/composite-invariant contract for this re-review, while parent integration, activation, persistence, freshness, and final CI remain explicitly outstanding.

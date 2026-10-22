@@ -1,0 +1,127 @@
+### Spec Compliance
+
+- ❌ Issues found. Task #2059 does not yet meet the requirement to preserve operation-specific proof and genuine reviewed capability semantics. Important I1 permits an unproved checkbox transition through cross-section label reuse; Important I2 rejects a genuine native reviewed-scope delta when native normalization changes line indices.
+- ✅ Scope and interface: the package adds the assigned `scripts/task-tracker/lib/story-cache/stage-capabilities.mjs` with `validateStagedComposite({base,candidate,operations})`, updates the assigned `body-invariants.mjs`, and supplies the exact assigned test path. No parallel production file or public staging adapter is changed. The existing exports remain and the new proof-location helper is additive (`body-invariants.mjs:407`, `:487`; `stage-capabilities.mjs:146`).
+- ✅ The operation chain must start at the supplied base and produce the exact candidate; local checks precede the final composite checks (`stage-capabilities.mjs:146-183`). No broad caller permission union or capability minting API is introduced (`:59-96`).
+- ⚠️ Cannot verify from this task diff: the complete accepted schemas, caller census, provider budgets, native lifecycle admission, transition-only publication, delayed-write recovery, dirty manifests, and full native fixture matrix. These span other slices and controller evidence; this is a task review, not the aggregate whole-branch review.
+- ⚠️ Known integration failure remains: the implementation report records packed entry count 970 above ceiling 969 (`docs/superpowers/reviews/2039/2026-10-22-2059-implementation.md:79`). The parent explicitly retains serialized inventory repair and exact integrated-head verification. This review does not declare whole-suite green or treat that finding as repaired.
+
+### Strengths
+
+- `stage-capabilities.mjs:24-37` reads own data descriptors and rejects unexpected record keys/accessors rather than accepting loosely shaped override bags. `:59-79` keeps the two native capability forms separate.
+- `stage-capabilities.mjs:45-58` preserves existing marker/section constraints, legacy version bytes, and execution-proof bytes, refusing both structurally incomplete and complete newly introduced synthetic proof. The cumulative shrink test exercises a real distinction between locally acceptable steps and an unacceptable composite (`scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:97-113`).
+- `stage-capabilities.mjs:165-182` reverses exact authorized deltas for whole-composite evaluation and revalidates each native authority instead of aggregating flags. The decomposition path continues to rely on its native live context and lock through `validateMarkerAdvances` (`body-invariants.mjs:319-358`, unchanged contract).
+- The native-positive tests use the real coordinator's private reviewed token and the real decomposition capability, and explicitly reject serialized replacements and expired decomposition authority (`stage-capabilities.test.mjs:191-351`). The test-only module hook delegates to the actual mutator rather than replacing proof validation (`:7-39`).
+- The implementation report openly preserves the intermediate package failure, earlier overwritten physical log limitation, setup failures, lifecycle diagnostics, and future activation boundaries (`2026-10-22-2059-implementation.md:69-121`). Those disclosures are useful limits, not substitutes for code review.
+
+### Issues
+
+#### Critical (Must Fix)
+
+- None found within this task scope.
+
+#### Important (Should Fix)
+
+**I1 — Existing checked labels can launder completion into a different section.**
+
+- Location: `scripts/task-tracker/lib/body-invariants.mjs:415-425` (the global `existingChecked` multiset and exact-line early continue), reached by `scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:108-112` and its final checkbox check.
+- The helper counts prior checked lines across the entire body, then exempts any identical checked line in the candidate before considering its section or original promise. With `Scope: [x] Inspect output` and `Acceptance Criteria: [ ] Inspect output`, changing Scope to unchecked and AC to checked consumes the prior Scope checked-line allowance. The AC transition has no proof or capability, yet the complete staged composite returns `true`.
+- This violates the explicit no-fabricated-evidence/checkbox-proof requirement. It also affects existing native callers of this shared helper, not only the new staged path.
+- Repair: match existing checked promises with section-aware identities (and occurrence identity within that section, or an equivalent conservative correspondence), preserving the existing unchanged-duplicate-label behavior without treating another section's checked line as authority. Add a focused regression for this cross-section transfer and for inserting a same-label checked line while removing or unticking the checked occurrence elsewhere. Retain the shifted-line and unchanged-duplicate tests.
+- Confirmed by focused probe P1 below; no reported run covered this particular case.
+
+**I2 — Native reviewed line numbers are used against unnormalized raw bodies.**
+
+- Location: `scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:101-110` (native `reviewedLine` compared to raw checkbox indices), and `:168-171` (the same index used to select raw original/candidate lines for projection).
+- `reviewed-scope/record.mjs:112-123` first calls `stripBodyVersion` on both bodies and returns the target index in that normalized string. `versioned-issue-write.mjs:78-82` also collapses three or more consecutive newlines to two. The new validator's checkbox helper and `split('\n')` operate on the original strings. Therefore genuine authority is incorrectly rejected if an earlier blank-line run changes the native index.
+- Focused probe P2 minted a genuine native capability through the real coordinator and delegated to the real native mutator. For a base with three consecutive newlines after `## Scope`, the native delta validator accepted the exact candidate and returned index 3; the actual candidate target was index 4. `validateStagedComposite` refused with `STORY_MUTATION_INVALID`, reason `unverified-ticks`. This is a valid byte-preserving operation, so rejecting it breaks the required genuine retained-capability behavior. Even bypassing the local comparison would leave raw-line projection incorrect.
+- Repair: resolve/map the native authorized target back to exact raw-body coordinates before both exception matching and reversal, or use a stable target identity while preserving the original bytes. Do not normalize away legacy marker bytes or unrelated whitespace to make the indices agree. Add positive native-capability tests with multiple blank lines before the target and a legacy body-version marker surrounded by whitespace; include an unrelated later edit to exercise final reversal.
+- Confirmed by focused probe P2 below; the existing positive fixture has no pre-target whitespace normalization.
+
+#### Minor (Nice to Have)
+
+- No additional code polish finding. Coverage recommendations are attached to I1/I2 rather than listed again as independent findings.
+
+### Focused Cross-Contract Checks
+
+- Risk: whether purported reviewed capability delegation is genuine and whether its returned index addresses the same string the staging code uses. Checked unchanged `scripts/task-tracker/lib/reviewed-scope/record.mjs:54-123`, `scripts/task-tracker/lib/versioned-issue-write.mjs:78-82`, `scripts/task-tracker/lib/body-version.mjs:20-22`, and `scripts/task-tracker/lib/reviewed-scope/targets.mjs:66-130`. The WeakMap authority check is genuine; the normalization/index mismatch produced I2.
+- Risk: whether per-operation marker exceptions can weaken native decomposition authority or skip existing constraints. Checked unchanged `body-invariants.mjs:164-358` and `:828-892` outside the changed hunks. Marker advances still delegate to native validators; section/shrink checks preserve their native defaults. No additional defect established in that contract.
+- Requirement reference: read Task 4 at `docs/superpowers/plans/2026-10-19-2039-local-estimation-transition-cache.md:316-370` and its capability/caller constraints at `:75-124`. The parent supplied the authoritative pins; this reviewer did not independently resolve Git commits or cloud issue state.
+- The provided diff package was read once in full in three nontruncated chunks (lines 1–360, 361–710, 711–1027). Changed source files were not separately reread. The focused native checks used unchanged root sources, and runtime probes imported the worker implementation. No Git command, network request, provider operation, lifecycle mutation, source/index/branch edit, or test-suite rerun was performed. The sole reviewer write is this report.
+
+### Focused Probe P1
+
+Exact command, executed from `/Users/kpburson/.codex/worktrees/b187/ai-task-manager`:
+
+```sh
+node --input-type=module <<'JS'
+import {validateStagedComposite} from './.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs';
+const base='## Scope\n- [x] Inspect output\n\n## Acceptance Criteria\n- [ ] Inspect output\n';
+const candidate='## Scope\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [x] Inspect output\n';
+try { console.log(JSON.stringify({risk:'cross-section checkbox completion transfer',result:validateStagedComposite({base,candidate,operations:[{base,candidate}]})})); } catch(e){console.log(e.code,e.reason,e.message);}
+JS
+```
+
+Complete output (exit 0):
+
+```text
+{"risk":"cross-section checkbox completion transfer","result":true}
+```
+
+### Focused Probe P2
+
+Exact command, executed from `/Users/kpburson/.codex/worktrees/b187/ai-task-manager`:
+
+```sh
+node --input-type=module <<'JS'
+import {registerHooks} from 'node:module';
+const dir = new URL('./.worktrees/2039-wave10-2059/scripts/task-tracker/lib/', import.meta.url);
+const recordUrl = new URL('reviewed-scope/record.mjs',dir).href;
+const mutatorUrl = new URL('issue-body-mutate.mjs',dir).href;
+let retained;
+globalThis.__capture2059 = input => {retained=input.reviewedEvidenceCapability};
+const hook = registerHooks({resolve(specifier,context,next){if(context.parentURL===recordUrl && specifier==='../issue-body-mutate.mjs'){const source=`import {mutateIssueBody as real} from ${JSON.stringify(mutatorUrl)};export async function mutateIssueBody(input){globalThis.__capture2059(input);return real(input);}`;return {url:'data:text/javascript,'+encodeURIComponent(source),shortCircuit:true};}return next(specifier,context);}});
+const {validateStagedComposite} = await import(new URL('story-cache/stage-capabilities.mjs',dir));
+const {recordReviewedScope,validateReviewedDelta} = await import(recordUrl);
+hook.deregister();
+const {POLICY_MARKER,sha256} = await import(new URL('reviewed-scope/model.mjs',dir));
+const {canonicalRecordJson} = await import(new URL('github-records/canonical-json.mjs',dir));
+const authority={repository:'owner/repo',issue:2059,worktree:'/bound/checkout',branch:'feature/child/2059',head:'b'.repeat(40),actor:{id:'123',login:'owner'},state:'develop'};
+const manifest={schema:'aitm.reviewed-scope-evidence/v1',...Object.fromEntries(['repository','issue','worktree','branch','head'].map(k=>[k,authority[k]])),label:'Inspect output',rationale:'Saved inspection.',provenance:{kind:'operator-inspection'},artifacts:[{path:'output.txt',sha256:sha256('output')}]};
+const bytes=Buffer.from(canonicalRecordJson(manifest)+'\n');
+let body=`## Scope\n\n\n${POLICY_MARKER}\n- [ ] Inspect output\n\n## Acceptance Criteria\n- [ ] Other output\n`;
+const base=body;const comments=new Map();
+const deps={readRecordingAuthority:async()=>authority,readBoundManifest:async()=>bytes,validateLocalEvidence:async()=>({manifestDigest:sha256(bytes)}),readLiveBody:async()=>body,readComment:async({commentId})=>comments.get(commentId),listComments:async()=>[...comments.values()],createComment:async({body:content})=>{const c={id:'1',body:content,user:{id:'123'},issue_url:'https://api.github.com/repos/owner/repo/issues/2059'};comments.set('1',c);return c;},fetchBody:async()=>body,pushBody:async(_r,_i,next)=>{body=next},now:()=> '2026-10-22T00:00:00.000Z',warn:()=>{}};
+await recordReviewedScope({ctx:{cfg:{repo:'owner/repo'},projectDir:authority.worktree,issueNumber:2059,deps:{reviewedScope:deps}},label:'Inspect output',manifestPath:'manifest.json'});
+const line=body.split('\n').find(l=>l.startsWith('- [x] Inspect output'));
+const candidate=base.replace('- [ ] Inspect output',line);
+console.log(JSON.stringify({nativeReviewedLine:validateReviewedDelta(base,candidate,retained),actualReviewedLine:candidate.split('\n').indexOf(line)}));
+try{console.log('staged result',validateStagedComposite({base,candidate,operations:[{base,candidate,capability:{reviewedEvidenceCapability:retained}}]}));}catch(e){console.log(JSON.stringify({code:e.code,reason:e.reason}));}
+delete globalThis.__capture2059;
+JS
+```
+
+Complete output (exit 0):
+
+```text
+{"nativeReviewedLine":3,"actualReviewedLine":4}
+{"code":"STORY_MUTATION_INVALID","reason":"unverified-ticks"}
+```
+
+### Evidence, Recommendations, and Declined Boundaries
+
+- Inspected the implementer's complete report and its complete retained semantic RED/final GREEN excerpts. Those excerpts report 16 targeted tests green; the reported 105 native and 75 staging integration passes remain author/controller evidence, not reruns by this reviewer. Neither focused probe substitutes for the required regression runs after repair.
+- The intermediate 994/995 package run is not final green and preceded a later verifier-scope change. The known 970/969 inventory failure requires the parent-owned serialized repair and final exact-head CI; do not widen a budget merely to silence it without the required inventory accounting.
+- The earlier standalone 15/15 physical log was overwritten; only transcript evidence remains for that historical run. The uniquely named 16/16 log is reported as retained. This reviewer did not reconstruct or pretend to verify the lost physical capture.
+- Native diagnostics (`invalid-inherited-context`, `soft-byte-cap`, `soft-file-cap`, unavailable initial action capture), npm's 14 dependency vulnerabilities, and the blocked optional Puppeteer install script are disclosed in `2026-10-22-2059-implementation.md:36-40,82`. They are non-pristine execution output and limits on capture/install evidence. No causal task-specific defect beyond I1/I2 was established from those disclosures, and dependency/native-capture repair is outside this owned task review.
+- Execution-proof producers expose no genuine opaque authority in this diff. Rejecting new execution proof rather than accepting `evidenceStamp: true` is a conservative integrity-preserving boundary. This does not establish later producer integration as complete. Public activation, retention through persistence, and asynchronous freshness validation remain separate required integration work; unchanged public adapters continuing to refuse retained capabilities are not a newly discovered task defect because activation is explicitly deferred.
+- No full native transport/budget matrix, live issue admission, cloud freshness, slow lane, package verification rerun, source repair, reviewer spawning, or aggregate branch review was attempted. No independent claim is made that lifecycle state, raw external logs, or the final integrated source has been verified.
+- Recommended repair verification: add the exact I1 and I2 focused regressions, run the named task verifier and the relevant existing shared body-invariant/reviewed-scope regressions, then conduct a fresh scoped review of the repair diff. The controller should perform its already assigned final integrated inventory and CI checks after serialized integration.
+
+### Assessment
+
+**Spec compliance:** Issues found — Important I1 and I2.
+
+**Task quality:** Needs fixes.
+
+**Reasoning:** The code meaningfully narrows authority and validates local and composite deltas, but the checkbox identity algorithm permits false completion and the reviewed-capability adapter confuses normalized and raw line coordinates. Both are concrete reproduced failures in this task's central contract; public activation and aggregate verification remain separate controller boundaries.
