@@ -217,3 +217,23 @@ named verifier passed 27/27. All 22 additional completed outputs were archived
 and verified against raw bytes, including all six failed trials. Source has
 not changed since these final runs. Documentation additions are verified
 separately. Fresh independent round 2 and exact-head CI remain pending.
+
+## Second independent review and footer repair
+
+The second fresh Sol / medium review found no Critical or Important timing
+finding and verified all 45 archived outputs. Its complete raw response and all
+author dispositions are retained in the round-2 review record. Its historical
+footer normalization finding was raised from Minor to an Important mismatch
+with the literal byte-preservation contract. A genuine failing regression
+showed lost trailing Markdown spaces and blank lines. Replacing trimEnd with
+only a missing-newline append preserves that suffix through two transitions
+and confirmation; the focused regression then passed. No shared native helper
+or inventory location changed. The soft test-size advisory remains deferred to
+whole-branch review, and no future integration/activation gate is waived.
+
+Final footer repair checks returned actual exit zero: all 28 named tests,
+all 999 fast files (113.8 seconds; pooled 68.6/600, subprocess 45.2/600), full
+lint and full formatting. Seven additional completed outputs, including the
+genuine RED, have verified raw/compressed bytes and hashes in the manifest.
+The final source has not changed since those checks. Fresh scoped independent
+re-review, complete exact-head CI and native acceptance are still pending.
