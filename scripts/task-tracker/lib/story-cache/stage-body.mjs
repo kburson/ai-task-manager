@@ -44,19 +44,22 @@ function normalize(error) {
 }
 function argumentsOf(input, kind) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('arguments');
-  // Check callback/title before touching claim or store, including their getters.
+  // Read and validate primitives once, before dependency access or the first await.
+  const operation =
+    kind === 'body' ? { mutate: input.mutate, key: input.key } : { title: input.title };
   if (kind === 'body') {
-    if (typeof input.mutate !== 'function' || !text(input.key)) fail('arguments');
-    if (!input.key.startsWith('issue:')) fail('resource-key');
-  } else if (!titleText(input.title)) fail('arguments');
+    if (typeof operation.mutate !== 'function' || !text(operation.key)) fail('arguments');
+    if (!operation.key.startsWith('issue:')) fail('resource-key');
+  } else if (!titleText(operation.title)) fail('arguments');
   const keys =
     kind === 'body'
       ? ['store', 'claim', 'key', 'mutate', 'capability']
       : ['store', 'claim', 'title', 'capability'];
   if (Object.keys(input).some((key) => !keys.includes(key))) fail('arguments');
   // Task #2059 owns genuine retained proof capabilities. No flags acquire authority here.
-  if (input.capability !== undefined && input.capability !== null) fail('capability');
-  return input;
+  const capability = input.capability;
+  if (capability !== undefined && capability !== null) fail('capability');
+  return Object.freeze({ ...operation, store: input.store, claim: input.claim });
 }
 function validateBody(base, next, identity) {
   if (!text(next)) fail('result');
@@ -199,6 +202,7 @@ async function stage(input, kind) {
       const body = kind === 'body' ? await input.mutate(candidate.body) : candidate.body;
       const title = kind === 'title' ? input.title : candidate.title;
       revalidate();
+      if (!titleText(title)) fail('title');
       validateBody(candidate.body, body, identity);
       // Revalidate the composite against the immutable baseline as well as the last edit.
       validateBody(readPayload(current, generation.baseSnapshot.resources[key]), body, identity);
@@ -213,6 +217,9 @@ async function stage(input, kind) {
         });
       if (body === candidate.body && title === candidate.title)
         return result('no-op', generation.generation, generation.dirtyKeys);
+      const retainedCapability = generation.working[key]?.capabilityRef;
+      if (retainedCapability !== undefined && retainedCapability !== null)
+        unavailable('retained-capability');
       const payload = canonicalRecordJson({ schema: ISSUE_UPDATE, body, title });
       const payloadPath = `working/issue-${hash(payload)}.json`;
       const payloads = new Map(current.payloads);
