@@ -365,3 +365,32 @@ test('v3 calculation requires actual retained inputs even when structural snapsh
     /estimation-forecast:retained-input/
   );
 });
+
+for (const kind of ['rubric', 'outcome'])
+  test('v3 calculation refuses ' + kind + ' wrapper payload getter check/use substitution', () => {
+    const { forecast, evidence, input } = fixture();
+    const args = {
+      issue: 2045,
+      refine: { size: 'S', humanHours: 3.5 },
+      planInput: input,
+      rubric: { recordId: id(1), payload: structuredClone(envelope().payload) },
+      comparableOutcomes: [{ recordId: id(2), payload: structuredClone(outcome(1068)) }],
+      localEvidence: forecast.localEvidence,
+      evidence,
+      repository: 'owner/repo',
+    };
+    const wrapper = kind === 'rubric' ? args.rubric : args.comparableOutcomes[0];
+    const genuine = wrapper.payload,
+      altered = structuredClone(genuine);
+    if (kind === 'rubric') altered.human.coefficients.implementationHour = 2;
+    else altered.landscape.filesChanged = 999;
+    let reads = 0;
+    Object.defineProperty(wrapper, 'payload', {
+      enumerable: true,
+      get() {
+        return ++reads <= (kind === 'rubric' ? 1 : 2) ? genuine : altered;
+      },
+    });
+    assert.throws(() => buildEstimationForecast(args), /canonical-json:invalid:property/);
+    assert.equal(reads, 0);
+  });

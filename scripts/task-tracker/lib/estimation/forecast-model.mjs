@@ -64,6 +64,13 @@ export function buildEstimationForecast({
   evidence,
   repository,
 } = {}) {
+  if (localEvidence !== undefined) {
+    // Capture the complete data domain before validation; never reread caller wrappers.
+    // Canonical serialization rejects executable properties, including payload getters.
+    ({ issue, refine, planInput, rubric, comparableOutcomes, localEvidence } = JSON.parse(
+      canonicalRecordJson({ issue, refine, planInput, rubric, comparableOutcomes, localEvidence })
+    ));
+  }
   if (!Number.isInteger(issue) || issue <= 0 || !refine || !rubric?.recordId)
     throw new TypeError('estimation-forecast:input');
   const input = parsePlanEstimationInput(planInput);
