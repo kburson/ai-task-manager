@@ -1,0 +1,165 @@
+# #2084 bootstrap receipt
+
+<!-- cspell:ignore AHOABCEY Xillzh hostedtoolcache syscall unsharded -->
+
+Native agent admission reached Develop; implementation awaits controller GO.
+
+Checkout /Users/kpburson/.codex/worktrees/2039-wave10-2059/ai-task-manager; branch codex/2084-draft; clean HEAD/base db3b1bd56f56b3ec2a439f5b3b8f47a1ee4f36aa. No product/test edit or execution. No merge of later epic head yet.
+Actual SID 01a16440-a633-7451-9245-a5220c6d7afc; provider codex; claim boundAt 2026-10-22T15:36:54.603Z; binding generation 3a5eee20-59fb-4024-8e28-3a0739394ee6. Native Develop timer active entryStartTs 2026-10-22T15:57:52.216Z before handoff pause.
+
+Develop entered 2026-10-22T15:58:00.747Z; move-complete 2026-10-22T15:58:06.717Z; move ID move:ac9176e3-9cc8-4f18-a49c-f32379cab713; native promotion exit0 all8/8 tail verified.
+Deep dive comment <https://github.com/kburson/ai-task-manager/issues/2084#issuecomment-6345109034>; native mirror posted/completed markers 2026-10-22T15:54:40.518Z; ensureChecked confirmed already complete.
+Full-Auto Plan approval 2026-10-22T15:56:56Z, mode full-auto, story intent source deep-dive. Audit <https://github.com/kburson/ai-task-manager/issues/2084#issuecomment-6345168371>. This is automated approval, not human reviewer approval.
+Fresh Develop Explain blocked next promotion on unchecked AC/code-complete/commit-trail evidence; expected before implementation, no Test advancement attempted.
+
+Native event-field repair set board and fieldDB startTime 2026-10-22 10:50:15 -05:00. This is actual repair time only, not original entry time. Registered update-event-fields used actual verified project item PVTI_lAHOABCEY84BXillzhCv6T4, local moveToRefine startTime now set_once only; no demote/re-entry/helper override.
+
+Budget: local/board/fieldDB/refinement snapshot/Planned Estimate appendix all S and3.5hours; actual estimationRubricIssue0. Planned Estimate exact native command used --compatibility-mode --planned-size S --planned-estimate3.5; exit0 appendix written; comment <https://github.com/kburson/ai-task-manager/issues/2084#issuecomment-6345053835> shows3.5→3.5 delta0. Decomposition assessment/publication wire4hours is existing whole-hour normalization, not increased allocation: scripts/task-tracker/lib/decomposition-policy.mjs normalizeDecompositionHours returns Math.ceil(ceilEstimateHours(hours)); decomposition-authority.mjs normalizes comment proposals and authoritative values; decomposition-publication-inputs.mjs compares normalizedHours. No budget source change or blind rerun. Authorized actual allocation remains3.5h. No historical corpus/rubric/calibration/comparable tasks/adaptive discovery used.
+
+Diagnostic ownership candidates: scripts/tests/helpers/evidence-v2/sandbox.mjs; process-bootstrap.mjs only if necessary; regression isolation.test.mjs and rehearsal-cli.test.mjs. Production guidance files read-only pending controller scope reassessment. Source-only hypothesis: guidance/documentation.mjs realpathSync(packageRoot) may hit runtime permission boundary despite child dirs allowed; dependency or cache identity may instead be causal. Actual refusal unproven. Next diagnostic must retain existing isolation and verified runtime identity; no broad read grants, policy changes, or guard bypass.
+
+## Implementation ledger
+
+Ruling: execute the native current deep-dive diagnostic plan as one bounded defect repair, without inventing a linked plan document; source and current issue are governing evidence. No independent task interfaces. Controller owns fresh independent review, Test/Review/Close, PR and delivery.
+
+Controller implementation GO authorized native resume and ordinary merge of epic4ff30cc7f70b6ce173a06a6d27fc58de9c88a0e7. Merge completed as clean fast-forward from db3b1bd; original base preserved in ancestry. Current actual process is Node v26.8.1 at /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node.
+
+RED investigation baseline: original focused command under Node26 with actual outer AI_TASK_MANAGER_PROJECT_DIR set to this checkout passed7/7. This is not Node24 or Ubuntu proof. Raw .scratch/gh/2084-evidence/baseline-focused.log.
+
+Original unmodified sandbox diagnostics: status exit0; direct dispatcher command guidance validate/source exit2 unknown verb because sandbox.command enters task-tracker.mjs, whereas public guidance is a separate entrypoint. A sandbox.probe import of loadGuidance({need:'diagnostics',publishedOnly:true}) returned valid true, no errors, package catalog digest sha256:9eb5c55c7c52dab8106e89e16a367dbf8b819eb742dc72fa3fe340878cb890a5 on verified Node26.8.1. Raw .scratch/gh/2084-evidence/diagnostic-original.log. The public validation diagnostic must be invoked through its actual API or entrypoint rather than treating unknown verb as catalog failure.
+
+Controller authorized isolated official npm Node24 provisioning in .scratch/2084-node24-runtime. npm install --prefix .scratch/2084-node24-runtime --no-save --no-package-lock node@24.22.1 exited0 but policy blocked its preinstall architecture installer; bin/node was absent. No npm trust, allowScripts or global runtime settings changed, and the blocked installer was not invoked manually. Raw .scratch/gh/2084-evidence/runtime-install.log. Read-only installer source shows node-bin-darwin-arm64@24.22.1 is the selected architecture package on this host. Provisioning route stopped pending controller direction. This scratch dependency is test tooling only and has no repository package/lock changes; retained evidence must survive any later dependency cleanup.
+
+Current root cause remains unproven; no helper/product fix selected and no weakened assertions or permission allowances introduced.
+
+## Diagnostic CI checkpoint (repair incomplete)
+
+Controller ruling: do not install an architecture package or invoke the blocked installer, as either would bypass the blocked provisioning route. Preserve the npm policy refusal. Obtain supported-runtime failure detail from the existing CI Node24.22.1 runner instead.
+
+Only isolation.test.mjs changes for this checkpoint: on status failure, use the same existing sandbox.probe launch boundary to print actual process.version/process.execPath and loadGuidance({publishedOnly:true,need:'diagnostics'}), alongside original status stdout/stderr/exit. Original assertion remains required exit0; it does not retry status or change permissions/catalog/production admission/transport. Successful status runs retain their existing path. No process-bootstrap/helper change is needed. The original failing exact CI run39802814237 is the red evidence; localNode26 is green before instrumentation and cannot reproduce the failure. This diagnostic commit is not a root cause fix or completion claim.
+
+Current targeted local instrumentation verification: focused7/7 on verifiedNode26.8.1 (raw .scratch/gh/2084-evidence/diagnostic-focused.log). Exact CI command will run the normal workflow_dispatch ci.yml on OWNcodex/2084-draft, not epic/trunk. No workflowYAML change, PR, root integration, Test/Review/Close or delivery is authorized for this checkpoint. Independent review will cover the eventual complete #2084 diff after proven-cause repair.
+
+Diagnostic tooling check: initial full lint stopped on three bare GitHub links in this report (MD034), corrected to Markdown automatic links; no product diagnostic failure was hidden. Raw diagnostic-lint.log retained.
+
+Second lint run reached spelling and reported compressed prose and opaque item-ID tokens in this report. Prose was expanded and only the opaque item-ID fragments are locally declared. Raw diagnostic-lint-fixed.log retained.
+
+Diagnostic checkpoint validation: focused tests passed 7/7 on Node 26.8.1; full lint and format checks exited 0. This validates the instrumentation locally and does not prove the Node 24 repair. Full raw logs remain in the evidence scratch directory for later compressed archival.
+
+## Second diagnostic CI checkpoint
+
+First diagnostic CI run 39811322712 at exact 4e3190bf910733a852a02e5a9ac459da1819600f reproduced the same status and retained matrix failures on actual Node v24.22.1, executable /opt/hostedtoolcache/node/24.22.1/x64/bin/node. The complete integration job log was retrieved via the GitHub connector: <https://github.com/kburson/ai-task-manager/actions/runs/39811322712/job/119938039675>. The catalog is published with matching source and released digest sha256:9eb5c55c7c52dab8106e89e16a367dbf8b819eb742dc72fa3fe340878cb890a5. Validation reports 25 documentation-path-missing errors across 23 entries, involving workflow.md, ask-the-script.md, guard-architecture.md and reviewed-scope-evidence.md. No source-identity or catalog-digest mismatch is established. Sparse checkout was explicitly disabled.
+
+Source tracing identifies a catch around two realpathSync calls in guidance/documentation.mjs: package root, then allowed document path. Those errors do not distinguish the failing call or permission denial from absence. Controller authorized only an additional failure-path filesystem diagnostic in the same sandbox probe: observe root realpath, document realpath and document read, preserve error code/message/syscall/path/resource/permission, and inspect process.permission.has. No permission or production behavior changes.
+
+A local Node26 probe showed root read permission false and document permission true; root and document realpath and document read succeeded, while direct root lstat was denied ERR_ACCESS_DENIED. This explains why local success cannot distinguish the Node24 path behavior. Raw diagnostic-paths-node26.log is retained. No root cause has yet been asserted and no production fix is selected.
+
+Pre-execution tooling refusal: the filesystem hook reported "Access to path outside allowed scope" when it interpreted an absolute-looking documentation suffix in the proposed source replacement as a filesystem-root path. No edit or check in that call executed. The full refusal and command remain verbatim in the tool record. Controller ruled to use transparent path.join(root, 'docs', 'guides', 'workflow.md') to express the intended authorized toolRoot child, without encoding, alternate writer, permission change or access to an outside path. This was a tooling refusal, not product RED evidence. The timer was genuinely paused and resumed around the ruling.
+
+Second diagnostic validation: focused tests passed 7/7 on verified local Node 26.8.1. Changed-file JavaScript and Markdown lint passed. Spelling first reported the exact CI executable directory and error-property identifiers; these opaque evidence tokens are now locally declared. No functional behavior or permission grant changed.
+
+## Approved root cause and repair
+
+Primary upstream evidence: the [Node 24.22.1 security release](https://nodejs.org/en/blog/release/v24.22.1) identifies CVE-2026-106073; [upstream commit 8dc18a6218](https://github.com/nodejs/node/commit/8dc18a6218) adds the upfront permission check to the JavaScript realpathSync implementation. Its native counterpart already enforced the check. The sandbox grants the actual guidance module and shipped documentation children while denying their package-root directory. The original resolver unconditionally resolved that denied root before considering the allowed document, so the corrected runtime properly rejected it. This is a compatibility defect in our root observation, not an invalid catalog or reason to weaken Node security.
+
+Ruling: controller admitted guidance/documentation.mjs only for the canonical boundary change. For an exact string match with the running module's package-root path, derive the canonical boundary from the real path of the actual permitted documentation.mjs file and its two parent directories. Generic roots, trailing paths, aliases, and lexically matching symlink-parent forms retain the original strict directory realpath. No catch falls back to a lexical path. Canonical document resolution, boundary containment, regular-file checks and anchor validation remain unchanged. No filesystem grant, helper transport, cache authority or admission override changed.
+
+Ruling: controller admitted exactly check-latest:true on the existing fast-tests setup-node24 step, shared by unit and integration groups. Diagnostic2 run 39813010731 passed integration group3 on actual Node24.21.0 from a cached image; the failure-only probe therefore did not execute. That success was not repair evidence. The setup change keeps floating Node24 while requesting the latest patched runtime rather than an older cached patch; it may add download latency. All other workflow settings and thresholds are unchanged. Actual final CI runtime still requires log read-back, rather than an assumed patch number.
+
+The same diagnostic2 run independently failed its budget lane on Node24.22.0: checked cold p95 326.88ms exceeded the unchanged320ms bound, while the earlier measurement was293.88ms and all warm cases stayed within bounds. This is recorded separately from the documentation failure. No benchmark, budget, performance, or threshold change is included, and the old head was not retried merely to obtain green.
+
+Scope was recorded by updating the native owned deep-dive comment6345109034. Native mirror returned no-op for its existing comment ID; the body copy may retain the earlier narrative. Existing Story Intent was unchanged, and no approval marker was rewritten or fabricated. The controller approved the exact-root refinement before production edits.
+
+## Regression evidence and limits
+
+Existing isolation coverage now adds the shipped-document case under actual native filesystem permission enforcement. In that isolated child only, realpathSync calls the real native implementation and syncBuiltinESMExports refreshes the imported API binding. Root read remains denied and document read remains allowed. This reproduces the upstream check with Node26's existing stricter API; it is explicitly not a local Node24 execution claim. Existing dispatcher, network, arbitrary-process and production-filesystem denial assertions remain intact. An untracked project catalog is refused before effects. Existing validator cases continue covering malformed references and missing anchors, and registry coverage remains exercised.
+
+Existing guidance-documentation integration coverage adds canonical directory aliases with an escaping document symlink, and a symlink-parent root whose lexical path matches the shipped root but must not gain the exact-root boundary. The latter uses the same native enforcement in the unchanged sandbox. Generic aliases continue resolving through their actual directory when permitted.
+
+Raw progression: repair-red.log first showed the valid-document product failure plus an incorrect new-test helper import. The import was corrected; repair-red-corrected.log then showed11/12 passing with only the intended valid-document failure. First repair-green-focused.log still failed because the test fixture passed a trailing root separator, which is intentionally outside the exact canonical-root contract; it also named the wrong integration path for the unit registry test. The test setup was corrected to the published canonical root and actual unit path, without relaxing production matching. repair-green-focused-corrected.log passed41/41. To verify the final exact test independently, temporarily removed only the new root branch, watched repair-exact-red.log fail on the intended valid-document assertion, then restored the fix before running repair-exact-green.log. The original source was restored immediately; no Git reset or history rewrite occurred.
+
+The scoped change is one production resolver, the existing isolation and documentation integration tests, one CI setup flag, and this implementation report. No runtime bundle, npm trust change, public estimate activation, archive rewrite, PR, epic integration or lifecycle advancement beyond Develop is included.
+
+The [setup-node v5 documentation](https://github.com/actions/setup-node/blob/v5/README.md) describes check-latest as requesting the latest available version satisfying the existing specification, with false as the default. It also explains the default local-cache match. This supports the one-flag CI ruling; actual runtime log output remains the proof.
+
+Bounded verification limitation raised to controller: guidance cache identity hashes parser, validator and requirements modules but not the separate documentation resolver. A same-version warm invalid result from before the fix is not covered by fresh-sandbox tests. No cache purge, package-version change or cache-identity scope expansion has been attempted. Normal new package identity or an explicit supported refresh may cause recompilation, but a general warm-cache upgrade claim is not made here.
+
+## Cache amendment and verification correction
+
+Controller reassessment supersedes the earlier cache limitation: the documentation resolver is a semantic dependency of catalog validation. The existing cache identity omitted it, so a same-version invalid warm result could survive the resolver repair. Approved scope adds only documentationResolverDigest to the existing runtime identity, using the same fileDigest pattern as the other semantic modules. No cache purge, schema change, cache implementation rewrite, package-version change or general dependency expansion is included.
+
+The existing guidance-cache-process test has 774 code lines against the unchanged 800-line limit. Controller approved the coherent sibling guidance-cache-documentation.test.mjs instead of modifying parser traps or raising the cap. It uses isolated copied package modules/data, a read-only scripts symlink for registry requirements, and the real fresh-process loadGuidance/cache API. A test-only loader seeds a coherent old-resolver invalid result. One case explicitly removes only the new runtime key to model the legacy manifest shape; the other changes actual copied resolver bytes while keeping package version and catalog digest constant. Neither case touches production cache or native issue proof. These are cache regression fixtures on local Node26, not a Node24 permission reproduction.
+
+Cache RED: cache-red.log, exit1, 0/2 pass. Both tests reached the intended valid-result assertion and retained the old invalid documentation result before the production fingerprint was added. The minimal production amendment then added the one runtime digest field. The complete covering result is recorded below once settled.
+
+Tooling refusals preserved separately: the freeform apply_patch call to create the authorized sibling was rejected before target evaluation with "mutation target parsing failed: mutation-targets: empty or invalid patch payload". No file was created. Source inspection confirmed the parser expects string or patch/input/text object fields. Controller authorized a normal guarded heredoc naming the same exact target transparently; it succeeded, without policy changes or encoded targets. The patch refusal is not product RED. An attempted redirected Explain capture was independently refused as WRITE_OTHER with active task2039; no capture file was written and no policy changed. Direct read-only Explain succeeded. Native Pause/Start surrounded the blocking transport ruling; subsequent native status confirmed active2084 on codex/2084-draft in the recorded checkout, with Unknown active minutes.
+
+The resolver-only intermediate full integration run passed 270/270 files but exited1 solely because its serial section took1109.5s, exceeding the unchanged600s ceiling. Raw final-integration.log remains unchanged, with genuine intermediate-unsharded-timing.json retained before any next runner lane. This tested the uncommitted resolver-only tree based on761a928, not committed761a928 or the later cache amendment. Intermediate owned-file SHA256 values: documentation.mjs bf16005585cd9dcdc974a35f288c3267045e19a4365241aeb894993ee6eda45a; cache-identity.mjs 350f2fb6c41550567ffefbce21935a52268a91727c132c1f5f8d04aa0c5f3017; isolation.test.mjs afdda17a9d1b455373f07bcddfd773562de46cca30c4ce36c5c2ad6b6af28ba8; guidance-documentation.test.mjs e1705198716df86fed215af868f39a9b0f6d4f4cf1969ae00dc37d8fba53ed10; ci.yml 95b0762c6bdd9c27969a2eebb693e916ba6d8fc8179757b7623885242d4e8f4f. Intermediate lint and format exited0 before the cache amendment.
+
+Controller first proposed new shard verification IDs, then rescinded that proposal before execution. Independently read current native loadConfig().verificationProvider: project, with Test step node scripts/maintenance/verify-ci-receipts.mjs. Read the entire existing bridge: it requires clean exact HEAD/repository/run success, all unit/integration/slow shard identities, complete and disjoint current inventories, genuine worker and aggregate timing/output artifacts, and applicable merge provenance. Through the registered issue-body replace-exact operation with fresh version42, changed only unchecked VC2 from npm run test:integration to node scripts/maintenance/verify-ci-receipts.mjs. Native update returned version44; fresh read-back confirmed AC3 still cites exact vc:2 and all other IDs and marker bytes remain unchanged. No new VC IDs, heal enumeration, stamps or ticks were introduced. The bridge has not been executed against incomplete CI; controller owns that later native evidence boundary. Complete local integration will use all three canonical shards on settled source, without changing the ceiling or runner.
+
+Every final local runner lane/shard is serialized and its genuine .tmp/aitm/test-timing.json copied immediately to a unique evidence filename before the next lane can overwrite it. Raw logs and actual exit status remain paired; no timing is reconstructed. Quality checks do not write this artifact and may overlap.
+
+## Frozen source review checkpoint
+
+The cache-amended covering suite passed70/70 (exit0), including both new cache regressions, existing warm parser traps, canonical documentation and native-permission isolation cases, rehearsal, validator and registry coverage. Final full format passed (cache-final-format.log). Full lint initially flagged only the literal evidence filename token unsharded in this report; the opaque filename token is now declared locally, and repeated full lint passed (cache-final-lint-corrected.log), preserving the original failure log.
+
+Final canonical integration shard1 passed91/91 files, serial363.8s/600s, exit0. Shard2 passed90/90 files, exit0; both genuine timing artifacts were copied before any next runner lane. Exact commands use AI_TASK_MANAGER_PROJECT_DIR="$PWD" and npm run test:integration -- --shard 1/3 or2/3. Raw cache-final-integration-1.log and cache-final-integration-2.log pair with their respective -timing.json files.
+
+Controller authorized this frozen source review checkpoint after shard2 drained. Remaining final local checks are explicitly PENDING: integration shard3/3, npm test (fast lane), npm run test:slow. Full exact-head CI is also PENDING and no patched Node24 success is claimed. This checkpoint is not CODE_COMPLETE, native Test admission, acceptance evidence or delivery. Product/tests/CI source will remain frozen while these serial checks run; later report and review dispositions can be committed separately. No push or workflow dispatch has occurred for this repair candidate yet.
+
+## Final local results and evidence delivery
+
+All required local lanes completed on the frozen repair source with actual Node26.8.1 on Darwin arm64. Commands below use outer AI_TASK_MANAGER_PROJECT_DIR="$PWD". No local Node24 or Ubuntu claim is made.
+
+| Command | Actual result | Raw evidence stem |
+| --- | --- | --- |
+| node --test across the seven covering files listed above | 70/70 tests, exit0 | cache-covering-green |
+| npm run test:integration -- --shard 1/3 | 91/91 files, serial363.8s/600s, exit0 | cache-final-integration-1 |
+| npm run test:integration -- --shard 2/3 | 90/90 files, serial431.8s/600s, exit0 | cache-final-integration-2 |
+| npm run test:integration -- --shard 3/3 | 90/90 files, serial335.2s/600s, exit0 | cache-final-integration-3 |
+| npm test | 996/996 files, pooled58.0s and subprocess42.2s, aggregate100.2s, exit0 | cache-final-fast |
+| npm run test:slow | 56/56 files, parallel142.2s and serial326.9s, aggregate469.1s, exit0 | cache-final-slow |
+| npm run lint | Full gates passed, exit0 after the documented spelling correction | cache-final-lint-corrected |
+| npm run format:check | Full format passed, exit0 | cache-final-format |
+
+The three canonical integration shards cover271 files. Their original timing artifacts remain unchanged: shards1/2 record761a928 because they tested the frozen working-tree repair before its source commit; shard3, fast and slow recordd332c5ddc7a39a5bcd30d1dae24642e22e7f5f2d. No product/test/CI source changed between these runs and the reviewed candidate. The later documentation/evidence commit does not turn local receipts into exact-head CI receipts. The existing native bridge and genuine final fullCI remain required.
+
+The deterministic 2026-10-22-2084-local-evidence.zip retains52 existing owned regular files, including all local RED/GREEN logs, intermediate failures, probe sources, bootstrap ledger, native operation inputs and genuine lane timing artifacts. Its SHA256 is 3501dab3f905039a017719144f085fea069c01e1b55245f9215b4b17d57d80f4. The sibling 2026-10-22-2084-evidence-index.md lists every member's exact bytes/hash and evidence boundaries; ZIP round-trip hashes were verified. Originals are untouched. No dependency tree, credential, production cache or fabricated raw output is included. Native output/refusals available only in the tool record remain identified as tool-record evidence, rather than reconstructed files. Controller separately owns the original failed CI artifact ZIPs and full setup logs; this archive does not impersonate those inputs.
+
+## Independent source review R1 and exhaustive author dispositions
+
+Controller dispatched the fresh independent Sol medium source review for base4ff30cc7f70b6ce173a06a6d27fc58de9c88a0e7 through candidated332c5ddc7a39a5bcd30d1dae24642e22e7f5f2d. I read the complete raw response. It approved spec compliance and quality with zero Critical, Important or Minor findings. Exact raw is retained in 2026-10-22-2084-review-r1.raw.txt.gz: uncompressed SHA256 5acaafbbe2fd379a95013ec6a1393b7dda95a0f4203fc0b8ae1487259e94874e; compressed SHA256 661d4cce702d9829b214276dbd1ea57197a2a42302857aa7d8f7475cc1fc8edf. Decompression was verified byte-identical to the controller's original. This is source approval, not lifecycle or acceptance approval.
+
+Every reviewer item is dispositioned below, including positive findings and verification limits. No source fix was requested or made after review.
+
+| Item | Reviewer observation | Author disposition |
+| --- | --- | --- |
+| Compliance1 | Admitted scope complete, no missing or extra source changes | Confirmed seven-file candidate; scope unchanged. |
+| Compliance2 | Exact caller-root match, canonical file boundary, generic roots strict, document checks retained | Accepted; covering security regressions passed, no normalization privilege or permission grant. |
+| Compliance3 | Resolver digest closes same-version warm recovery; sibling preserves parser traps and caps | Accepted; genuine0/2 RED then70/70 covering GREEN; original774-code-line test unchanged, sibling114. |
+| Compliance4 | Only check-latest:true in floating Node24 setup | Accepted; workflow diff verified one line, actual final runtime still pending CI logs. |
+| Cannot verify1 | AC1/AC3, patched Node24, remaining lanes and final CI not proven at checkpoint | Local shard3/fast/slow now passed as above. Patched-runtime/fullCI/acceptance remain pending controller verification. |
+| Cannot verify2 | Diff cannot prove live VC2/AC marker identities or successful native receipt execution | Controller independently read live version45 and confirmed unchanged AC citation/VC2. Native bridge execution remains pending genuine clean exact-head greenCI; no VC8/9 added. |
+| Strength1 | Small branch explains exact, filesystem-derived boundary | Retained without expansion. |
+| Strength2 | Real native permission API test asserts denied root, allowed document and strict aliases | Retained; its Node26 instrumentation limit remains explicit. |
+| Strength3 | Generic directory alias, escaping symlink and symlink-parent equivalence coverage | Retained and green; canonical containment unchanged. |
+| Strength4 | Real copied-module fresh-process cache API tests hold version/catalog fixed | Retained and green; old-resolver loader is openly test-only. |
+| Strength5 | Original status assertion retained with same-boundary failure diagnostics and invalid-catalog no-effects check | Retained; no retry or softened assertion. |
+| Strength6 | Report preserves failures, unrelated budget result, runtime distinctions and superseded limitation | Retained historical ledger; this final section resolves only completed local pending items. |
+| Critical/Important/Minor | None identified | No changes needed; no invented findings or dismissals. |
+| Check1 | Complete diff reviewed once; tool clipped report hunk but full standalone report read | Acknowledged exact review input boundary; no product/test hunk was clipped. Raw response retained. |
+| Check2 | Unchanged source.mjs constructs normal root compatibly and forwards it to validation | Confirmed with current source73/319; exact-root rule unchanged. |
+| Check3 | Existing sandbox already grants guidance children, not root; no helper/bootstrap change needed | Confirmed source scope and green denials; final CI still required. |
+| Check4 | Complete serialized identity inequality rejects old warm manifests | Confirmed real cache API RED/GREEN; no schema/cache rewrite. |
+| Check5 | Reviewer unnecessarily read contextual cache-identity source under diff-only contract | Acknowledged protocol limit. Reviewer states it was not candidate-content evidence; candidate judgment used supplied diff. No source or integrity receipt rewritten. |
+| Check6 | Review reran no tests and independently inspected no raw worker evidence | Accepted limitation; immutable local ZIP and original timings now delivered for controller verification, not retroactively attributed to reviewer. |
+| Check7 | Finish lanes, green exact-head CI, patched runtime, complete/disjoint receipts; retain budget failure | Local lanes complete. CI/runtime/native bridge remain mandatory; unrelated prior budget failure retained without cap increase or unsupported causality. |
+| Check8 | Read-only review except authorized raw response; no source/index/HEAD/branch/lifecycle/GitHub mutation or delegation | Recorded exactly as reviewer disclosure. No implementation or lifecycle authority inferred. |
+| Assessment | Approved source checkpoint; acceptance, CODE_COMPLETE and delivery not established by review | Accepted scope of approval. Final exact-head CI and native acceptance remain with controller. |
+
+Product implementation and local verification are complete. Full exact-head CI, actual setup runtime read-back, native receipt verification and controller-owned acceptance/lifecycle actions remain pending. No Test/Review/Close, PR, epic integration or delivery action has been performed by this worker.
+
+Final evidence packaging check preserved three spelling failures caused by opaque filename text in the first JSON index attempt. Per controller ruling, the external index is ordinary Markdown with a local spelling directive and exact original member paths/hashes/sizes; machine-readable evidence-index.json is inside the ZIP. No filename, global spelling configuration, policy or source was changed to evade the check. The original index attempt and all failed checks remain archived.
+
+Final controller sequencing ruling supersedes own-branch CI dispatch: after this documentation/evidence commit, ordinary push only codex/2084-draft, then genuinely stop the own2084 binding and report local/source-review CODE_COMPLETE with finalCI explicitly PENDING. Controller will integrate the stopped reviewed candidate into the epic and run one full manualCI and CodeQL at the final integrated exact HEAD. Before native acceptance, stopped child branches may ordinarily fast-forward to that same integrated HEAD; the existing receipt bridge still requires clean exact HEAD/repository, green fullCI and genuine complete/disjoint artifacts. No native gate, coverage or runtime requirement is waived. This worker will not dispatch another CI run, advance lifecycle, create a PR or deliver.
