@@ -68,5 +68,24 @@
         "log": "native-host-context-and-regressions.log.gz"
       }
     ]
+  },
+  "containerCandidate": {
+    "guidanceAdmission": {
+      "tests": 17,
+      "exit": 0,
+      "toolSession": 42619,
+      "log": "guidance-admission-17-green.log.gz"
+    },
+    "lint": {
+      "exit": 0,
+      "toolSession": 51757,
+      "log": "lint-container-candidate.log.gz"
+    },
+    "format": {
+      "exit": 0,
+      "toolSession": 41047,
+      "log": "format-container-candidate.log.gz"
+    },
+    "scope": "Production guard unchanged; complete container CI and genuine worker proof still required."
   }
 }

@@ -1412,6 +1412,7 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "../lib/self-doc.mjs",
+        "../task-tracker/lib/native-binding-proof.mjs",
         "./install-observer.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
@@ -1522,6 +1523,8 @@
       "command": null,
       "staticImports": [
         "node:fs",
+        "./lib/native-binding-proof.mjs",
+        "./lib/native-worktree-bootstrap.mjs",
         "./lib/estimation/runtime-adapter.mjs",
         "node:path",
         "./lib/decomposition-activity.mjs",
