@@ -1,2 +1,0 @@
-[codex/2066-draft fcdf5a243] [#2066] Preserve fractional GraphQL variables with JSON input
- 2 files changed, 63 insertions(+), 19 deletions(-)
