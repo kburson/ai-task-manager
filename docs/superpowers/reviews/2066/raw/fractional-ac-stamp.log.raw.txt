@@ -1,5 +1,0 @@
-npm notice run @kburson/ai-task-manager@0.1.0 npx
-npm notice run 'aitm' ac-stamp Deliver "### Task 23: Single-attempt resource publisher and exact read-back" exactly as specified in the pinned source plan.
-[task-tracker] ac-stamp on #2066: running 1 verifier(s) for AC "Deliver "### Task 23: Single-attempt resource publisher and exact read-back" exactly as specified in the pinned source plan."…
-  ✓ node --test scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs (exit=0)
-[task-tracker] ✓ ac-stamp on #2066: run-props (key=e326f25f) upserted onto the AC line's aitm-verified marker (sha=fcdf5a243).
