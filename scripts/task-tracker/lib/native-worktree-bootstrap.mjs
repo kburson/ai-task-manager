@@ -17,12 +17,33 @@ const entrypoint = 'scripts/dev-env/setup-local-worktree.sh';
 function refuse(reason) {
   throw new Error('native-bootstrap: ' + reason);
 }
+// The native host supplies session_id to hooks. Executor-only CODEX_* variables
+// may be absent in the hook process; never substitute a resolver fallback for it.
+export function assertNativeHookSession(sessionId, env = process.env) {
+  if (
+    typeof sessionId !== 'string' ||
+    sessionId === 'default-session' ||
+    !/^[A-Za-z0-9_-]+$/.test(sessionId)
+  )
+    refuse('invalid native hook session');
+  if (env.AI_TASK_MANAGER_SESSION_ID || PROJECT_ROOT_ALIASES.some((key) => env[key]))
+    refuse('identity override');
+  const corroborating = [env.CODEX_THREAD_ID, env.CODEX_SESSION_ID].filter(Boolean);
+  if (corroborating.some((value) => value !== sessionId))
+    refuse(
+      `native hook identity disagreement (hook=${sessionId}; thread=${env.CODEX_THREAD_ID ?? '<unset>'}; session=${env.CODEX_SESSION_ID ?? '<unset>'})`
+    );
+}
 export function assertNativeSession(sessionId, env = process.env) {
   if (typeof sessionId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(sessionId))
     refuse('invalid session');
   if (env.AI_TASK_MANAGER_SESSION_ID || PROJECT_ROOT_ALIASES.some((key) => env[key]))
     refuse('identity override');
-  if (resolveSessionId({ env }) !== sessionId) refuse('hook/CLI session disagreement');
+  const resolved = resolveSessionId({ env });
+  if (resolved !== sessionId)
+    refuse(
+      `hook/CLI session disagreement (hook=${sessionId}; resolved=${resolved}; thread=${env.CODEX_THREAD_ID ?? '<unset>'}; session=${env.CODEX_SESSION_ID ?? '<unset>'})`
+    );
   const native = [env.CODEX_THREAD_ID, env.CODEX_SESSION_ID].filter(Boolean);
   if (!native.length) refuse('native Codex identity required');
   if (native.some((value) => value !== sessionId)) refuse('conflicting native session');
@@ -143,7 +164,7 @@ export function admitNativeBootstrap({
     return false;
   }
   if (command !== NATIVE_BOOTSTRAP_COMMAND) refuse('only the exact canonical setup is admitted');
-  assertNativeSession(sessionId, env);
+  assertNativeHookSession(sessionId, env);
   const tools = assertBootstrapHost({ root, env });
   if (path.resolve(invocationDir) !== root || realpathSync(root) !== root)
     refuse('foreign invocation');
@@ -167,7 +188,7 @@ export function admitNativeBootstrap({
     refuse('Git execution configuration');
   const identity = readPhysicalRuntimeIdentity(root);
   if (identity.projectRoot !== root || identity.mainRoot === root) refuse('foreign registration');
-  const binding = resolveCurrentSessionWorktreeBinding({ invokingDir: root });
+  const binding = resolveCurrentSessionWorktreeBinding({ invokingDir: root, deps: { sessionId } });
   if (binding || getActiveTask(sessionId, identity.mainRoot)?.issue)
     refuse('session already has a binding');
   if (existsSync(path.join(root, 'node_modules')))

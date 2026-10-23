@@ -147,8 +147,11 @@ bash scripts/dev-env/setup-local-worktree.sh
 ```
 
 The hook admits this one setup operation only when its executable inputs match
-the reviewed digest inventory, the checkout and index are clean, native session
-identities agree, and the session has no binding in another checkout. Shell
+the reviewed digest inventory, the checkout and index are clean, the native hook
+payload supplies the session identity, and that session has no binding elsewhere.
+Any Codex identity keys present in the hook environment must agree with the
+payload. The host may omit executor-only identity variables from hook processes;
+a resolver fallback never replaces the explicit hook identity. Shell
 wrappers, extra arguments, composition, redirects, identity overrides, symbolic
 setup paths and untrusted executables are refused. General unbound writes remain
 subject to the normal guards.

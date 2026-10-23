@@ -19,7 +19,7 @@ import { getActiveTask } from '../session-state.mjs';
 import { resolveSessionId } from './session-id.mjs';
 import { readPhysicalRuntimeIdentity } from './runtime-storage.mjs';
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
-import { assertNativeSession } from './native-worktree-bootstrap.mjs';
+import { assertNativeSession, assertNativeHookSession } from './native-worktree-bootstrap.mjs';
 
 const schema = 'aitm.native-binding-proof/v1';
 const noncePattern = /^[a-f0-9]{32,64}$/;
@@ -55,8 +55,15 @@ function exact(value, keys) {
   )
     fail('invalid observation schema');
 }
-export function observeNativeBinding({ cwd, sessionId, env = process.env }) {
-  assertNativeSession(sessionId, env);
+export function observeNativeBinding({
+  cwd,
+  sessionId,
+  env = process.env,
+  identitySource = 'cli',
+}) {
+  if (identitySource === 'hook') assertNativeHookSession(sessionId, env);
+  else if (identitySource === 'cli') assertNativeSession(sessionId, env);
+  else fail('unknown identity source');
   const identity = readPhysicalRuntimeIdentity(cwd);
   const root = identity.projectRoot;
   if (root !== cwd) fail('invocation is not the physical worktree root');
@@ -104,7 +111,7 @@ function observationFile(root, sid, nonce, create) {
   return path.join(current, nonce + '.json');
 }
 export function recordNativeHookObservation({ cwd, sessionId, nonce, env = process.env }) {
-  const hook = observeNativeBinding({ cwd, sessionId, env });
+  const hook = observeNativeBinding({ cwd, sessionId, env, identitySource: 'hook' });
   const file = observationFile(hook.root, sessionId, nonce, true);
   if (existsSync(file + '.consumed')) fail('nonce already consumed');
   const descriptor = openSync(

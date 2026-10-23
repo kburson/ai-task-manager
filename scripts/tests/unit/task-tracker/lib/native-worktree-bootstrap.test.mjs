@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assertNativeSession,
+  assertNativeHookSession,
   NATIVE_BOOTSTRAP_COMMAND,
 } from '../../../../task-tracker/lib/native-worktree-bootstrap.mjs';
 import {
@@ -85,4 +86,20 @@ test('binding comparison refuses malformed or extended observations', () => {
   const { sessionId, ...partial } = tuple;
   assert.equal(sessionId, sid);
   assert.throws(() => compareBindingObservations(tuple, partial));
+});
+
+test('identity refusal exposes actual hook and hook-environment resolver observations', () => {
+  assert.throws(
+    () => assertNativeSession(sid, { CODEX_THREAD_ID: 'foreign-native' }),
+    (error) =>
+      error.message.includes('hook=' + sid) && error.message.includes('resolved=foreign-native')
+  );
+});
+
+test('hook identity uses the actual payload without resolver fallback and corroborates optional native environment', () => {
+  assert.doesNotThrow(() => assertNativeHookSession(sid, {}));
+  assert.doesNotThrow(() => assertNativeHookSession(sid, env));
+  assert.throws(() => assertNativeHookSession('default-session', {}));
+  assert.throws(() => assertNativeHookSession(sid, { ...env, CODEX_THREAD_ID: 'foreign-native' }));
+  assert.throws(() => assertNativeHookSession(sid, { AI_TASK_MANAGER_SESSION_ID: sid }));
 });

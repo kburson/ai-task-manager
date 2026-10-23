@@ -37,5 +37,36 @@
       "toolSession": 51113,
       "log": "named-and-unit-purity-30.log.gz"
     }
-  ]
+  ],
+  "hostContextCorrection": {
+    "results": [
+      {
+        "command": "npm test",
+        "exit": 0,
+        "files": 1001,
+        "seconds": 101.5,
+        "toolSession": 66490,
+        "log": "fast-native-host-correction.log.gz"
+      },
+      {
+        "command": "npm run lint",
+        "exit": 0,
+        "toolSession": 67506,
+        "log": "lint-native-host-correction.log.gz"
+      },
+      {
+        "command": "npm run format:check",
+        "exit": 0,
+        "toolSession": 85287,
+        "log": "format-native-host-correction.log.gz"
+      },
+      {
+        "command": "Extended native host and legacy regressions",
+        "exit": 0,
+        "tests": 80,
+        "toolSession": 2989,
+        "log": "native-host-context-and-regressions.log.gz"
+      }
+    ]
+  }
 }

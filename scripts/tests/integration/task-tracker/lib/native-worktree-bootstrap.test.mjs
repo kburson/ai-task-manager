@@ -449,7 +449,7 @@ test('reviewed digest inventory covers the executable setup closure independentl
     );
 });
 
-test('native setup rejects absent Codex identity and inherited Bash functions', async () => {
+test('CLI requires Codex identity and native setup rejects inherited Bash functions', async () => {
   const { assertNativeSession } =
     await import('../../../../task-tracker/lib/native-worktree-bootstrap.mjs');
   assert.throws(() => assertNativeSession('default-session', {}), /native Codex/);
@@ -534,6 +534,71 @@ test('npm user configuration cannot redirect execution or hide another global co
       assert.equal(result?.decision, 'block', setting);
       assert.match(result.reason, /npm execution configuration/);
     }
+  } finally {
+    rmSync(f.parent, { recursive: true, force: true });
+  }
+});
+
+test('native hook payload remains authoritative when executor-only identity variables are absent', async () => {
+  const { setActiveTask } = await import('../../../../task-tracker/session-state.mjs');
+  const { inspectNativeBindingProof } =
+    await import('../../../../task-tracker/lib/native-binding-proof.mjs');
+  const f = fixture();
+  try {
+    const hookEnv = { ...f.env };
+    delete hookEnv.CODEX_THREAD_ID;
+    delete hookEnv.CODEX_SESSION_ID;
+    assert.equal(run(f.root, hookEnv), null);
+    setActiveTask(
+      sid,
+      {
+        issue: '#2088',
+        worktreePath: f.root,
+        worktreeBranch: 'HEAD',
+        bindingGenerationId: 'native-payload-generation',
+        entryStartTs: new Date().toISOString(),
+        kanbanState: 'develop',
+      },
+      f.root
+    );
+    const nonce = 'e'.repeat(32);
+    const hookResult = run(f.root, hookEnv, 'npx aitm doctor --json --binding-proof ' + nonce);
+    assert.notEqual(hookResult?.decision, 'block');
+    const proof = inspectNativeBindingProof({ cwd: f.root, nonce, env: f.env });
+    assert.equal(proof.healthy, true, JSON.stringify(proof));
+    assert.deepEqual(proof.hook, proof.cli);
+  } finally {
+    rmSync(f.parent, { recursive: true, force: true });
+  }
+});
+
+test('payload SID detects a foreign fleet binding when hook executor variables are absent', async () => {
+  const { setActiveTask, getActiveTask } =
+    await import('../../../../task-tracker/session-state.mjs');
+  const { registerTask } = await import('../../../../task-tracker/fleet-registry.mjs');
+  const f = fixture();
+  try {
+    const other = path.join(f.parent, 'another-worker');
+    git(f.parent, 'worktree', 'add', '--detach', other, 'HEAD');
+    setActiveTask(
+      sid,
+      {
+        issue: '#2088',
+        worktreePath: other,
+        worktreeBranch: 'HEAD',
+        bindingGenerationId: 'foreign-payload-generation',
+        entryStartTs: new Date().toISOString(),
+        kanbanState: 'develop',
+      },
+      other
+    );
+    registerTask(f.parent, '#2088', other, 'HEAD', 'child');
+    const before = getActiveTask(sid, other);
+    const hookEnv = { ...f.env };
+    delete hookEnv.CODEX_THREAD_ID;
+    delete hookEnv.CODEX_SESSION_ID;
+    assert.equal(run(f.root, hookEnv)?.decision, 'block');
+    assert.deepEqual(getActiveTask(sid, other), before);
   } finally {
     rmSync(f.parent, { recursive: true, force: true });
   }
