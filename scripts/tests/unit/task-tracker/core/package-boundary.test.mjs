@@ -1,4 +1,4 @@
-// @story #2048
+// @story #2048 #2066
 // @story #2088
 // @story #2058 #2060 #2064 #2059 #2065 #2047
 // @story #2062
@@ -513,7 +513,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2061: exactly one frozen timing-candidate adapter; measured total 972.
     2 + // #2047: exactly the batch freezer and final-body template; measured total 974.
     3 + // #2088: exact bootstrap admission, reviewed input pins and binding diagnostic; measured total 977.
-    1; // #2048: exactly one immutable completion receipt validator; measured total 978.
+    1 + // #2048: exactly one immutable completion receipt validator; measured total 978.
+    2; // #2066: exactly the publisher and provider adapters; measured total 980.
   for (const entry of [
     'native-worktree-bootstrap',
     'native-bootstrap-inputs',
@@ -556,6 +557,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     assert.ok(files.includes(entry), 'required reviewed wave 10 runtime entry missing: ' + entry);
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/completion-receipt.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/publisher.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/provider-adapters.mjs'));
   for (const entry of ['batch', 'body-template'])
     assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   for (const module of [

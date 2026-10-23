@@ -1,0 +1,36 @@
+**Accept the final collateral statically at `5c90d599dac63e46d5a7908e0f68226b64d29b43`.**
+
+Verified ancestry:
+
+- Parent: `92afc8f4557dd363b33348eda0a24368121a0a30`
+- Its parent: preserved original collateral `dc862d83c8d397e4e87600a989fe24af84db9e54`
+- Final tree: `3250294ef894f32873c63150b28ba1d534fbda08`
+
+**Findings:** no Critical, Important, or required Minor changes.
+
+**Integrity and completeness**
+
+- Final collateral contains **71 files**, comprising **70 hashed payloads** plus the payload manifest.
+- All payload hashes match; no omissions, duplicates, or extra archives.
+- All **63 gzip archives** match stored and decoded hashes and byte lengths.
+- All **61 original raw artifacts** decode **byte-for-byte identically** to their `dc862` versions—including full reviews, failed outputs and qualifications.
+- The two additional archives preserve complete inherited-trunk diagnostics.
+- Changes since accepted `fcdf` are exclusively within `docs/superpowers/reviews/2066`.
+- All three product/test hashes remain unchanged from accepted `fcdf`.
+
+Manifest SHA-256 values:
+
+- Payload manifest: `7266203f008188a691546424084716c956be9ddbfdb169f47be165c85e8cc1a3`
+- Archive manifest: `3d3056e60a069f88eedbb4240a56ae41433d065ea6a135919d888122fdbea335`
+
+**Packaging and provenance**
+
+The unrestricted `git diff --check c67..5c90` returned **0**. Actual broader trunk checks returned **2** for both c67 and the final candidate, with **identical diagnostics**; both archives exactly match those independently inspected outputs. This is inherited baseline evidence, not a waiver of new #2066 whitespace.
+
+The README now explicitly states that `sourceHead` identifies invocation HEAD and does not attest loaded guard/module hashes. Diagnostic, cryptographic, mutation-authority and lifecycle boundaries remain clear. The old exclusion-based whitespace check is retained as historical evidence; final packaging does not rely on it.
+
+The **27-test pass**, **two declared fast-suite failures**, **pre-transport-fix slow-run qualification**, and pending integrated acceptance remain accurately preserved.
+
+Ignored originals in the foreign worker filesystem were not inspected; committed `dc862` bytes provide the independent preservation comparison.
+
+No tests, lifecycle actions, writes, Git mutations, foreign filesystem reads, or delegation. Native Test, integrated verification, CI and the whole-branch checkpoint remain outside this static collateral acceptance.
