@@ -35,8 +35,10 @@
 - [x] Add real-publication cases for all five Review Focus conditions. Use persisted rank 3 and replacement 7. Assert snapshot validity, field values, legal promotion count and operation identity.
 - [x] Run harness against unchanged production and retain full RED output/exit. Confirm failures at `refinement-snapshot:field-rank`.
 - [x] Supply `...(rankNum != null ? { rank: rankNum } : {})` to body refresh. Append rank to override keys only under that condition. Keep the publication key unchanged.
-- [ ] Run harness, all four declared Refine files, `npm test`, `npm run test:slow`, `npm run lint`, and `npm run format:check`; retain raw results.
+- [x] Run harness, all four declared Refine files, `npm test`, `npm run test:slow`, `npm run lint`, and `npm run format:check`; retain raw results.
 - [x] Obtain fresh independent source review, retain full report and rulings, repair verified findings.
-- [ ] Commit source/tests and native commit trace. Commit complete evidence, record hashes and byte lengths, pause natively and report CODE_COMPLETE pending root acceptance.
+- [x] Commit source/tests and native commit trace. Commit complete evidence, record hashes and byte lengths, pause natively and report CODE_COMPLETE pending root acceptance.
 
 Verification limit: all commands ran, but the full slow suite and exact isolated reproduction are red due to capture-fixture stderr diagnostics under the required telemetry flag. That is retained for root acceptance; no all-tests-green claim or native acceptance is made.
+
+Completion clarification requested by root artifact review: source and original evidence commits, their native traces and the original Pause/CODE_COMPLETE report were completed. Canonical slow follow-up also passed without code changes. These checked implementation steps do not claim native acceptance, Test, Review, approval, Close, source adoption or release; those remain root-owned.

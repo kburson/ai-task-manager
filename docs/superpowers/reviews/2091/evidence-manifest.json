@@ -192,6 +192,38 @@
       "compressedSha256": "533bac997f10ca11a5081f8651bcbdcad239ddd6910c2c7f88cc32696a06c4f0"
     },
     {
+      "original": ".scratch/2091/followup-final-markdown.exit",
+      "originalBytes": 2,
+      "originalSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "compressed": "docs/superpowers/reviews/2091/evidence/followup-final-markdown.exit.gz",
+      "compressedBytes": 22,
+      "compressedSha256": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae"
+    },
+    {
+      "original": ".scratch/2091/followup-final-markdown.log",
+      "originalBytes": 1794,
+      "originalSha256": "95f2cc92b48fa3945d7ad75b810fc53dd85f0bce75ade3cb1b739b2c02bbee10",
+      "compressed": "docs/superpowers/reviews/2091/evidence/followup-final-markdown.log.gz",
+      "compressedBytes": 552,
+      "compressedSha256": "c52e7341de9524eb99f3a6741e2a2ced9dfa1f2fafb291fe23032fa18a15bc10"
+    },
+    {
+      "original": ".scratch/2091/followup-final-spell.exit",
+      "originalBytes": 2,
+      "originalSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "compressed": "docs/superpowers/reviews/2091/evidence/followup-final-spell.exit.gz",
+      "compressedBytes": 22,
+      "compressedSha256": "89ed3b723e0e40d8957a2df55fcb04d57b6d95fa665c5fe67b098df7f29694ae"
+    },
+    {
+      "original": ".scratch/2091/followup-final-spell.log",
+      "originalBytes": 185,
+      "originalSha256": "d9c1acdac25c31e299656513cd8b5d5690306d245735e08c1709f47f8e059314",
+      "compressed": "docs/superpowers/reviews/2091/evidence/followup-final-spell.log.gz",
+      "compressedBytes": 167,
+      "compressedSha256": "bcbe95139a642d220691428185283c1fb8966c3b5b3a8918c7a951e8c4c4ff0f"
+    },
+    {
       "original": ".scratch/2091/followup-markdown.exit",
       "originalBytes": 2,
       "originalSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
