@@ -1,7 +1,9 @@
 // @story #2039 #2066
 // Provider observations are evidence, never admission or server-side compare-and-swap.
 import { createHash } from 'node:crypto';
-import { pexec } from '../../../gh/lib/gh-client.mjs';
+import { ghClient } from '../../../gh/lib/gh-client.mjs';
+import { prepareGraphqlQuery } from '../graphql-usage/identity.mjs';
+import { usageEnabled } from '../graphql-usage/collection.mjs';
 import { canonicalRecordJson as json } from '../github-records/canonical-json.mjs';
 import { observeContent } from './native-observation.mjs';
 import { parseAitmRecord } from '../github-records/record-envelope.mjs';
@@ -109,10 +111,27 @@ export function confirmResourceEffect(effect, value, { baseline } = {}) {
 const content =
   'id body lastEditedAt userContentEdits(first:1){totalCount nodes{id editedAt deletedAt}}';
 async function defaultGraphql({ query, variables, host }) {
-  const args = ['api', 'graphql', '--hostname', host, '-f', 'query=' + query];
-  for (const [key, value] of Object.entries(variables))
-    args.push(typeof value === 'number' ? '-F' : '-f', key + '=' + value);
-  return JSON.parse((await pexec('gh', args, { timeout: 30000, maxBuffer: 4194304 })).stdout);
+  const prepared = usageEnabled(process.env) ? prepareGraphqlQuery(query) : { query, alias: null };
+  const env = prepared.alias
+    ? { ...process.env, AITM_GRAPHQL_USAGE_PRIVATE: JSON.stringify({ alias: prepared.alias }) }
+    : process.env;
+  // Match the repository JSON-input transport: gh --field only coerces integers.
+  // execFile retains the native timeout/maxBuffer bounds while stdin carries exact JSON types.
+  const raw = await new Promise((resolve, reject) => {
+    const child = ghClient.execFile(
+      'gh',
+      ['api', 'graphql', '--hostname', host, '--input', '-'],
+      { env, timeout: 30000, maxBuffer: 4194304 },
+      (error, stdout) => (error ? reject(error) : resolve(stdout))
+    );
+    child.stdin.on('error', (error) => {
+      if (error?.code !== 'EPIPE') reject(error);
+    });
+    child.stdin.end(JSON.stringify({ query: prepared.query, variables }));
+  });
+  const parsed = JSON.parse(raw);
+  if (prepared.alias && parsed.data) delete parsed.data[prepared.alias];
+  return parsed;
 }
 /** Unexposed transport seam. observe is a bounded native target reader, not an authority collector.
  * #2073 createFieldEffectReaders may supply Estimate/Size observations at this seam only when

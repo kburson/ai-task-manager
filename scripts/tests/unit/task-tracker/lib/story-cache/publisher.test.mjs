@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { EventEmitter } from 'node:events';
 import {
   test,
   identity,
@@ -485,29 +486,53 @@ test('realized native body validation refusal preserves confirmed prerequisites 
   assert.equal(g.batch.effects[0].outcome.state, 'confirmed');
   assert.equal(g.batch.effects[1].attempted, false);
 });
-// A string-encoded numeric GraphQL variable is rejected by the real provider before publication.
-test('default GraphQL transport retains numeric field variable types', async (t) => {
+// Check the actual serialized provider payload, not a CLI flag that only converts integers.
+test('default GraphQL transport serializes fractional NUMBER values as JSON numbers', async (t) => {
   const { ghClient } = await import('../../../../../gh/lib/gh-client.mjs');
-  const calls = [];
+  const response = '{"data":{"updateProjectV2ItemFieldValue":{"projectV2Item":{"id":"PI_test"}}}}';
+  const payloads = [];
+  // Cover the old production branch offline: gh --field converts integer literals only.
   t.mock.method(ghClient, 'pexec', async (file, args) => {
-    calls.push({ file, args });
-    return {
-      stdout: '{"data":{"updateProjectV2ItemFieldValue":{"projectV2Item":{"id":"PI_test"}}}}',
+    const variables = {};
+    for (let i = 0; i < args.length; i++)
+      if (['-f', '-F'].includes(args[i])) {
+        const [key, ...tail] = args[++i].split('=');
+        const raw = tail.join('=');
+        variables[key] = args[i - 1] === '-F' && /^-?\d+$/.test(raw) ? Number(raw) : raw;
+      }
+    payloads.push({ variables });
+    return { stdout: response };
+  });
+  t.mock.method(ghClient, 'execFile', (file, args, options, callback) => {
+    assert.equal(file, 'gh');
+    assert.ok(args.includes('--input'));
+    assert.equal(args[args.indexOf('--input') + 1], '-');
+    assert.equal(args[args.indexOf('--hostname') + 1], 'github.com');
+    assert.equal(options.maxBuffer, 4194304);
+    const child = new EventEmitter();
+    child.stdin = new EventEmitter();
+    child.stdin.end = (raw) => {
+      payloads.push(JSON.parse(raw));
+      queueMicrotask(() => callback(null, response, ''));
     };
+    return child;
   });
   const ports = adapters.createStoryProviderAdapters({
     capabilities: [],
     validateIssue() {},
     observe() {},
   });
-  await ports.apply({
-    kind: 'project-field-update',
-    target: { identity, projectId: 'P_test', itemId: 'PI_test', fieldId: 'F_estimate' },
-    candidate: { itemId: 'PI_test', fieldId: 'F_estimate', type: 'NUMBER', value: 3.5 },
-  });
-  const index = calls[0].args.indexOf('value=3.5');
-  assert.ok(index > 0);
-  assert.equal(calls[0].args[index - 1], '-F');
+  for (const value of [3.5, 0, -1.25])
+    await ports.apply({
+      kind: 'project-field-update',
+      target: { identity, projectId: 'P_test', itemId: 'PI_test', fieldId: 'F_estimate' },
+      candidate: { itemId: 'PI_test', fieldId: 'F_estimate', type: 'NUMBER', value },
+    });
+  assert.deepEqual(
+    payloads.map((payload) => payload.variables.value),
+    [3.5, 0, -1.25]
+  );
+  assert.ok(payloads.every((payload) => typeof payload.variables.value === 'number'));
 });
 // A provider cannot bind two declared creations to the same newly returned node.
 test('a second creation cannot reuse an already confirmed new provider ID', async (t) => {
