@@ -1,5 +1,5 @@
 // @story #2088
-// cspell:words userconfig globalconfig SHELLOPTS BASHOPTS CDPATH DYLD fsmonitor nonordinary scriptshell nodeoptions onloadscript includeworkspaceroot
+// cspell:words attributesfile hookspath userconfig globalconfig SHELLOPTS BASHOPTS CDPATH DYLD fsmonitor nonordinary scriptshell nodeoptions onloadscript includeworkspaceroot
 // A closed bootstrap operation, never a general unbound-shell allowance.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -178,15 +178,33 @@ export function admitNativeBootstrap({
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   // Querying config does not execute configured filters; reject them before status.
-  const config = git('config', '--list');
+  const config = git('config', '--null', '--list')
+    .split('\0')
+    .filter(Boolean)
+    .map((entry) => {
+      const separator = entry.indexOf('\n');
+      return separator < 0
+        ? [entry.toLowerCase(), undefined]
+        : [entry.slice(0, separator).toLowerCase(), entry.slice(separator + 1)];
+    });
   if (
-    new RegExp(
-      '^(?:filter\\.|include(?:if)?\\.|core\\.(?:fsmonitor|hooksPath|attributesFile|worktree)=)',
-      'im'
-    ).test(config)
+    config.some(([key]) =>
+      /^(?:filter\.|include(?:if)?\.|core\.(?:fsmonitor|attributesfile|worktree)$)/.test(key)
+    )
   )
     refuse('Git execution configuration');
   const identity = readPhysicalRuntimeIdentity(root);
+  const hookPaths = config.filter(([key]) => key === 'core.hookspath').map(([, value]) => value);
+  if (hookPaths.length) {
+    // An explicit default is equivalent to Git's existing common hooks lookup.
+    // Never normalize a relocated path or claim that default hooks are inert.
+    const expected = path.join(identity.worktreeIdentity.commonDir, 'hooks');
+    if (hookPaths.length !== 1 || hookPaths[0] !== expected)
+      refuse('Git execution configuration: relocated or ambiguous hooks path');
+    for (let cursor = expected; cursor !== path.dirname(cursor); cursor = path.dirname(cursor))
+      ordinary(cursor, { directory: true });
+    if (realpathSync(expected) !== expected) refuse('nonphysical default hooks directory');
+  }
   if (identity.projectRoot !== root || identity.mainRoot === root) refuse('foreign registration');
   const binding = resolveCurrentSessionWorktreeBinding({ invokingDir: root, deps: { sessionId } });
   if (binding || getActiveTask(sessionId, identity.mainRoot)?.issue)

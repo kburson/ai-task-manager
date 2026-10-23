@@ -518,6 +518,62 @@ test('canonical setup refuses external PATH shims before invoking them', () => {
   }
 });
 
+test('one explicit physical default common hooks directory retains bootstrap admission', () => {
+  const f = fixture();
+  try {
+    const hooks = path.join(f.parent, '.git', 'hooks');
+    git(f.parent, 'config', 'core.hooksPath', hooks);
+    assert.equal(run(f.root, f.env), null);
+  } finally {
+    rmSync(f.parent, { recursive: true, force: true });
+  }
+});
+
+test('relocated, ambiguous and nonphysical hooks paths remain refused without hook execution', () => {
+  const f = fixture();
+  try {
+    const hooks = path.join(f.parent, '.git', 'hooks');
+    const alternate = path.join(f.parent, 'alternate-hooks');
+    const marker = path.join(f.parent, 'hook-was-executed');
+    mkdirSync(alternate);
+    const hook = path.join(alternate, 'post-index-change');
+    writeFileSync(hook, '#!/bin/sh\ntouch ' + JSON.stringify(marker) + '\n');
+    chmodSync(hook, 0o755);
+    const values = [
+      alternate,
+      '.git/hooks',
+      hooks + path.sep,
+      hooks + path.sep + path.join('..', 'hooks'),
+      '',
+      hooks + '\n',
+    ];
+    for (const value of values) {
+      git(f.parent, 'config', 'core.hooksPath', value);
+      const result = run(f.root, f.env);
+      assert.equal(result?.decision, 'block', JSON.stringify(value));
+      assert.ok(result.reason.includes('Git execution configuration'));
+      assert.equal(spawnSync('test', ['-e', marker]).status, 1);
+    }
+    git(f.parent, 'config', 'core.hooksPath', hooks);
+    git(f.parent, 'config', '--add', 'core.hooksPath', hooks);
+    assert.equal(run(f.root, f.env)?.decision, 'block', 'duplicate local values');
+    git(f.parent, 'config', '--unset-all', 'core.hooksPath');
+    git(f.parent, 'config', 'core.hooksPath', hooks);
+    const global = path.join(f.env.HOME, '.gitconfig');
+    writeFileSync(global, '[core]\n  hooksPath = ' + JSON.stringify(hooks) + '\n');
+    assert.equal(run(f.root, f.env)?.decision, 'block', 'duplicate across scopes');
+    rmSync(global);
+    rmSync(hooks, { recursive: true, force: true });
+    symlinkSync(alternate, hooks, 'dir');
+    const result = run(f.root, f.env);
+    assert.equal(result?.decision, 'block', 'symbolic default directory');
+    assert.ok(result.reason.includes('nonphysical'));
+    assert.equal(spawnSync('test', ['-e', marker]).status, 1);
+  } finally {
+    rmSync(f.parent, { recursive: true, force: true });
+  }
+});
+
 test('effective global and worktree Git execution configuration is refused before status', () => {
   const f = fixture();
   try {
