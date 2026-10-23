@@ -66,7 +66,6 @@ function fixture() {
   git(parent, 'worktree', 'add', '--detach', root, 'HEAD');
   const env = Object.fromEntries(
     [
-      'HOME',
       'USER',
       'LOGNAME',
       'TMPDIR',
@@ -84,7 +83,11 @@ function fixture() {
   );
   // The fixture supplies trusted host tools; native lifecycle capture can add
   // a project-local gh shim to its caller PATH, which production must refuse.
+  const home = path.join(parent, 'fixture-home');
+  mkdirSync(home);
   Object.assign(env, {
+    HOME: home,
+    XDG_CONFIG_HOME: home,
     PATH: [
       path.dirname(process.execPath),
       '/opt/homebrew/bin',
@@ -127,7 +130,14 @@ function run(root, env, command = canonical, extra = {}) {
 test('canonical trusted setup is admitted before native issue binding', () => {
   const f = fixture();
   try {
-    assert.equal(run(f.root, f.env), null);
+    assert.equal(
+      run(f.root, f.env),
+      null,
+      execFileSync('git', ['-C', f.root, 'config', '--show-origin', '--name-only', '--list'], {
+        env: f.env,
+        encoding: 'utf8',
+      })
+    );
     assert.equal(git(f.root, 'status', '--porcelain'), '');
   } finally {
     rmSync(f.parent, { recursive: true, force: true });
