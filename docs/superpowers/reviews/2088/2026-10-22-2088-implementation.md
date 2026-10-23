@@ -163,3 +163,32 @@ production refusal and the independent hostile-path test. A fresh independent
 Sol/medium review accepted this fixture-only correction; all 25 focused tests
 then passed with actual exit 0 (session 93329). The failed native run remains
 archived. Native stamping and exact final-head CI remain separate requirements.
+
+## Complete CI host and admission inventory repair
+
+CI run 39897671356 at b597a0b32 failed integration group 2. The retained
+configuration-origin diagnostic identified the hosted image's four system
+Git LFS keys in /etc/gitconfig. HOME isolation correctly did not suppress
+system configuration. Production continues to refuse executable Git filters.
+The proposed system-configuration removal edit was blocked before execution
+because it contained an elevation command; no file changed and that approach
+was abandoned.
+
+The complete unit/integration matrix now runs in an ordinary Node 24 Bookworm
+container with Bash as its explicit default shell. The container installs gh
+and jq before capture-source inspection and prints effective Git configuration
+origins/key names. All matrix groups, full collection plans, failure artifacts,
+exit capture and aggregate verification remain. No production exception,
+configuration bypass or skipped bootstrap case was added. This validates a
+clean host; it does not establish admission on hosts with system Git filters.
+
+CI also exposed the exact guidance import inventory's missing doctor import.
+The first correction exposed the guard's two new imports in the same inventory.
+Both exact static import lists now include the new modules, retaining strict
+equality and direct guidance admission. The original local integration suite
+failed with actual exit 1 (session 59152); the intermediate guard mismatch also
+failed (session 16490). The final complete suite passed all 17 tests with zero
+skips and actual exit 0 (session 42619). Full lint and format passed with actual
+exit 0 (sessions 51757 and 41047). Independent Sol/medium review accepted the
+container and exact import corrections without blocking findings.
+Native worker setup/Start/proof and final corrected-head CI remain outstanding.
