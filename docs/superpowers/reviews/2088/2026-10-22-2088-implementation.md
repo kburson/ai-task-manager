@@ -57,7 +57,7 @@ All six actionable findings were accepted and repaired:
 | Arbitrary external executables and omitted dirname | Restrict installation roots and paired Node/npm, include dirname, check before Git readers; shim markers remain absent. |
 | Git configuration scopes | Inspect effective configuration before status; global and worktree regressions. |
 | Wrong global npm configuration path | Inspect builtin/user config, require paired supported npm, discover and inspect its actual global config. |
-| Nonnative session fallback | Require native Codex identity and agreement; default and other-provider cases refuse. |
+| Nonnative session fallback | CLI requires native Codex identity and agreement. Hook identity uses the explicit native payload, rejects default/invalid/overridden identity, and corroborates any present native environment keys. |
 | Quoted INI execution keys | Actual guard-process red/green reproduction; conservative plain-key subset rejects quoted/escaped/ambiguous keys and normalizes prohibited names. |
 
 The independent final preliminary disposition found no remaining actionable P1/P2.
@@ -118,3 +118,40 @@ with dependency-aware parallel execution and serialized native acceptance.
 
 The independent [lane-repair addendum](evidence/2088-independent-lane-repair-addendum.txt.gz)
 found no new actionable defects and rechecked the 14 pinned input hashes.
+
+## Native host context correction after the first commit
+
+The first clean source commit was `0e55fb01f571144d81536ae70cf9bb159369fb3f`.
+Its first genuine controller diagnostic refused because the hook payload SID was
+correct, but the hook process had no executor-only Codex environment keys; its
+environment resolver returned `default-session`. The actual command executor
+had both Codex keys set to the correct controller SID. Requiring executor
+variables inside the hook was an incorrect assumption, not evidence that the
+actual chat IDs differed.
+
+A failing regression captured that host boundary. The correction preserves the
+existing native rule: hook payload identity is authoritative for hook reads;
+CLI reads independently require real Codex keys. Present hook environment keys
+must corroborate the payload. Default identities and operator session/project
+overrides remain refused. The bootstrap census receives the observed payload SID
+directly instead of falling back to the hook environment. A separate failing
+foreign-fleet regression preceded that correction; no environment identity is
+rewritten. The extended context/legacy checks passed all 80 tests with actual
+exit 0.
+
+Two genuine native controller diagnostics subsequently returned actual exit 0
+and matching complete tuples for controller #2088. Native successful-hook
+additionalContext was delivered by the host alongside independent CLI output.
+The loaded runtime included the uncommitted host correction, while tuple HEAD
+still identified `0e55fb01f`; this is qualified working-source evidence, not a
+claim that the first commit already contained the correction. The generated
+consumed hook observations remain preserved locally; full CLI output and native
+origin evidence remain in the chat. An optional printf archive copy was refused
+as WRITE_OTHER and was not retried through another writer.
+
+A fresh independent GPT-6.1 Sol/medium reviewer accepted the correction with no
+blocking finding, independently ran all seven pure tests, recomputed all 14 input
+hashes, and reviewed the integration cases without writing fixtures. Its title
+and documentation recommendations were accepted. Exact corrected-commit CI and
+native #2048 setup/Start/proof still remain required; controller proof is never
+substituted for worker proof.
