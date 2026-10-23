@@ -1,3 +1,4 @@
+// @story #2088
 // @story #2058 #2060 #2064 #2059 #2065 #2047
 // @story #2062
 // @story #2040
@@ -509,7 +510,14 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2059: exactly one stage-capability binding module.
     1 + // #2065: exactly one versioned legacy/current forecast reader.
     1 + // #2061: exactly one frozen timing-candidate adapter; measured total 972.
-    2; // #2047: exactly the batch freezer and final-body template; measured total 974.
+    2 + // #2047: exactly the batch freezer and final-body template; measured total 974.
+    3; // #2088: exact bootstrap admission, reviewed input pins and binding diagnostic; measured total 977.
+  for (const entry of [
+    'native-worktree-bootstrap',
+    'native-bootstrap-inputs',
+    'native-binding-proof',
+  ])
+    assert.ok(files.includes(`scripts/task-tracker/lib/${entry}.mjs`));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
