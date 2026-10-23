@@ -342,6 +342,10 @@
       "count": 1
     },
     {
+      "key": "scripts/task-tracker/lib/story-cache/provider-adapters.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
       "key": "scripts/task-tracker/lib/versioned-issue-write.mjs|opaque-gh-cli|opaque",
       "count": 2
     },
@@ -660,6 +664,7 @@
     "scripts/task-tracker/lib/seed-kanban-cache.mjs|59|gh-api-graphql|planned",
     "scripts/task-tracker/lib/seed-kanban-cache.mjs|63|gh-api-graphql|planned",
     "scripts/task-tracker/lib/shelve-transaction.mjs|97|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/story-cache/provider-adapters.mjs|121|gh-api-graphql|planned",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|244|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|264|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/workflow-policy/enforcement.mjs|158|gh-api-graphql|planned",
