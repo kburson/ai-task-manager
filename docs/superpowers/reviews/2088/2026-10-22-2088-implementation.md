@@ -287,3 +287,9 @@ Author ruling: accept the assertion finding and its reinspection, implement the
 three positive checks, retain explicit foreign-root refusal and every scope
 qualification. No production guard or shared helper changed. Final committed
 verification and CI remain required for this fixture-only correction.
+
+### Full lint follow-up: fixture test extraction
+
+CI run 39933840073 for commit `81090d39784699c23b8fb58ad942fc316a52a89f` rejected the slow activity-guard test at 829 code lines against the existing 800-line limit. Format, spelling and earlier lint gates passed; the fast test groups did not execute after that lint failure. All three slow groups passed. This is retained as failed exact-head CI, not a successful full-suite receipt.
+
+Move only the added fixture-environment regression to a focused slow test file and share the environment clone through a test helper. Preserve the real hook subprocess, successful exit, null decision, empty stdout, outer environment preservation and explicit foreign-root refusal. Production source remains unchanged. The governed VC2 now includes the focused file. Direct combined verification passed all 47 tests, and the full lint command passed with all 1331 discovered test files within the unchanged line cap. These local results do not replace fresh native verification or exact-head CI.

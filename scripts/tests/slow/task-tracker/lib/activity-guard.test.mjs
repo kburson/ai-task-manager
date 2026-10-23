@@ -22,7 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
-import { PROJECT_ROOT_ALIASES } from '../../../../task-tracker/lib/runtime-storage.mjs';
+import { fixtureEnvironment } from '../../../helpers/hook-fixture-environment.mjs';
 // @story #1873
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -68,12 +68,6 @@ function makeRepoNoState() {
   spawnSync('git', ['init', '-q', dir], { stdio: 'ignore' });
   // No state file at all.
   return dir;
-}
-
-function fixtureEnvironment() {
-  const environment = { ...process.env };
-  for (const key of PROJECT_ROOT_ALIASES) delete environment[key];
-  return environment;
 }
 
 function runGuard({ cwd, payload, stdinRaw, env = fixtureEnvironment(), guardPath = GUARD }) {
@@ -886,40 +880,5 @@ test('Plan runner does not bypass exact document binding', () => {
     assert.match(result.decision.reason, /session binding/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-// Synthetic hook repositories must not borrow their verifier's outer root.
-test('fixture environment isolates outer root aliases while explicit foreign authority refuses', () => {
-  const before = PROJECT_ROOT_ALIASES.map((key) => process.env[key]);
-  const dir = makeRepo({ state: 'develop' });
-  try {
-    for (const key of PROJECT_ROOT_ALIASES) process.env[key] = process.cwd();
-    const outer = PROJECT_ROOT_ALIASES.map((key) => process.env[key]);
-    const payload = {
-      tool_name: 'Bash',
-      tool_input: { command: "cat > docs/draft.md <<'EOF'\ngh issue create --title example\nEOF" },
-    };
-    const allowed = runGuard({ cwd: dir, payload, guardPath: BASH_GUARD });
-    assert.equal(allowed.code, 0, allowed.stderr);
-    assert.equal(allowed.decision, null);
-    assert.equal(allowed.stdout, '');
-    assert.deepEqual(
-      PROJECT_ROOT_ALIASES.map((key) => process.env[key]),
-      outer
-    );
-    const explicit = Object.fromEntries(
-      Object.entries(process.env).filter(([key]) => !PROJECT_ROOT_ALIASES.includes(key))
-    );
-    explicit.AI_TASK_MANAGER_PROJECT_DIR = process.cwd();
-    const refused = runGuard({ cwd: dir, payload, env: explicit, guardPath: BASH_GUARD });
-    assert.equal(refused.decision?.decision, 'block');
-    assert.ok(refused.decision.reason.includes('Foreign project root'));
-  } finally {
-    PROJECT_ROOT_ALIASES.forEach((key, index) => {
-      if (before[index] === undefined) delete process.env[key];
-      else process.env[key] = before[index];
-    });
-    cleanup(dir);
   }
 });
