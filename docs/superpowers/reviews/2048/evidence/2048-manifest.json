@@ -1,0 +1,387 @@
+{
+  "format": "review-evidence-manifest/v1",
+  "issue": 2048,
+  "sourceCandidate": "4fd03020d39a2c0c1bd5a303e99bdfdb6881f585",
+  "base": "c0ca120cc8a08d3bc74887daac5ba1f50b436fce",
+  "scope": "Review collateral only; not native authority or a verification receipt.",
+  "counts": {
+    "listedArtifacts": 38,
+    "rawCommandLogs": 19,
+    "collateralCheckLogs": 8,
+    "originalConsumedHookObservations": 3
+  },
+  "selfExclusion": "This manifest excludes itself to avoid a self-hash cycle; its SHA256 is reported separately.",
+  "artifacts": [
+    {
+      "path": "2026-10-23-2048-author-rulings.md",
+      "kind": "authored-collateral-or-index",
+      "bytes": 11938,
+      "sha256": "446961766f2941266e2ff88831f3c3f0b3d3ea51bc2752261a97462a8b725634"
+    },
+    {
+      "path": "2026-10-23-2048-contract-audit-raw.txt",
+      "kind": "authored-collateral-or-index",
+      "bytes": 3387,
+      "sha256": "afb779ed80e410c92943b6f393917f7b3422c5b4b2e000d2ba534a789627e13f"
+    },
+    {
+      "path": "2026-10-23-2048-implementation.md",
+      "kind": "authored-collateral-or-index",
+      "bytes": 9525,
+      "sha256": "6d1071bb55c2b3039f777e5115ea6eab3dcddd27c96a2eaf828391defe1df7bd"
+    },
+    {
+      "path": "2026-10-23-2048-native-provenance.md",
+      "kind": "authored-collateral-or-index",
+      "bytes": 8575,
+      "sha256": "a6366672e48e1088ac83f2c7b862287c8643a9a265fc6ba77bd673dab67c2fee"
+    },
+    {
+      "path": "2026-10-23-2048-review-r1-raw.txt",
+      "kind": "authored-collateral-or-index",
+      "bytes": 4086,
+      "sha256": "52b5432ea27d3213535b18e0442d0c92520e9408a8081c022fc7c47c3ab387c5"
+    },
+    {
+      "path": "evidence/2048-capture-index.json",
+      "kind": "authored-collateral-or-index",
+      "bytes": 11964,
+      "sha256": "8181e38fc033a052404a70a01062e884a855c6af0b8a0b4c337202867c4878b0"
+    },
+    {
+      "path": "evidence/2048-collateral-format-final.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-format-final.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 228,
+      "decodedSha256": "60a13dad3282ad1e3eaca0c26263f7a7a35f55201c2a212ed70b7f87adbf7588",
+      "bytes": 173,
+      "sha256": "3667b67dbd897457b179eab8a11d61e98653cd74c252dbca885fe038e3c79ba9"
+    },
+    {
+      "path": "evidence/2048-collateral-format.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-format.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 228,
+      "decodedSha256": "60a13dad3282ad1e3eaca0c26263f7a7a35f55201c2a212ed70b7f87adbf7588",
+      "bytes": 173,
+      "sha256": "3667b67dbd897457b179eab8a11d61e98653cd74c252dbca885fe038e3c79ba9"
+    },
+    {
+      "path": "evidence/2048-collateral-markdown-final.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-markdown-final.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 1794,
+      "decodedSha256": "830a1209d91e8f3a8c5de80d87f161225ebe01530f272c555318a1f0428c2a13",
+      "bytes": 552,
+      "sha256": "7fcf8c4f640fd0e0a902fed7869d19a2fbd7476b5f250cd123c19016c727f63d"
+    },
+    {
+      "path": "evidence/2048-collateral-markdown.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-markdown.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 1794,
+      "decodedSha256": "830a1209d91e8f3a8c5de80d87f161225ebe01530f272c555318a1f0428c2a13",
+      "bytes": 552,
+      "sha256": "7fcf8c4f640fd0e0a902fed7869d19a2fbd7476b5f250cd123c19016c727f63d"
+    },
+    {
+      "path": "evidence/2048-collateral-prettier-final-write.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-prettier-final-write.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 279,
+      "decodedSha256": "b603a261588bf99c0798e03c3a462078140c0d132d67906d8487f0c2af0e037b",
+      "bytes": 161,
+      "sha256": "425245af84fea448f19ea839fd5342fb48fffc69b0dd66c2c5ce55bc32c97732"
+    },
+    {
+      "path": "evidence/2048-collateral-prettier-write.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-prettier-write.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 403,
+      "decodedSha256": "af244412e9500d9eea46500d59ebd8067e300c15898754199fac8bc068dcb054",
+      "bytes": 194,
+      "sha256": "575cb7dad82f9a6edadb4eb88eb7223f9e5c3d58d77099143790184070382046"
+    },
+    {
+      "path": "evidence/2048-collateral-spell-final.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-spell-final.log",
+      "exitCode": 0,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 187,
+      "decodedSha256": "79d003e449097334a0072ae3508f818dcbcd2c0044c3167722e7014b2dcfa3f6",
+      "bytes": 171,
+      "sha256": "a141f656576a45b9a14b53dded6c8686766cc30d6c21fbd42c78234af91fc894"
+    },
+    {
+      "path": "evidence/2048-collateral-spell.log.gz",
+      "kind": "raw-collateral-check-log",
+      "source": ".scratch/plan/2048-collateral-spell.log",
+      "exitCode": 1,
+      "note": "actual documentation-check invocation; spell trial retained with final correction",
+      "decodedBytes": 282,
+      "decodedSha256": "d253ab358ce7efd37e0dcf64e7afc3981ff6a1f2bef0c041f7224bf2ff37b509",
+      "bytes": 222,
+      "sha256": "0673f61190f0930f485fecebd486862d04705cad4b552f20ea6a1b6c81d1ad83"
+    },
+    {
+      "path": "evidence/2048-comment-target-red.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-comment-target-red.log",
+      "exitCode": 1,
+      "note": "corrected comment target RED; missing expected exception",
+      "decodedBytes": 901,
+      "decodedSha256": "eb0005e61350cc3f66d41faae7ffc76e20f81f81715967ce7e9845a9e9471953",
+      "bytes": 522,
+      "sha256": "7281a5ec13ff0c9e896d8e7b6d9788227c5676375ee132c6d472b7718b587919"
+    },
+    {
+      "path": "evidence/2048-format-final.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-format-final.log",
+      "exitCode": 0,
+      "note": "final source full formatting",
+      "decodedBytes": 159,
+      "decodedSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "bytes": 137,
+      "sha256": "2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7"
+    },
+    {
+      "path": "evidence/2048-format.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-format.log",
+      "exitCode": 0,
+      "note": "initial formatting before final hardening",
+      "decodedBytes": 159,
+      "decodedSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77",
+      "bytes": 137,
+      "sha256": "2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7"
+    },
+    {
+      "path": "evidence/2048-green-1.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-green-1.log",
+      "exitCode": 1,
+      "note": "24/28; four negative tests mutated immutable fixture readbacks",
+      "decodedBytes": 5002,
+      "decodedSha256": "268b1439ad27363d4ec54d4187de86afe45eb164d76d03fce28fd01ebe399fb3",
+      "bytes": 1197,
+      "sha256": "0ba5f23907c7395526b48151cb438e8b98151aab646950b877a4f14925c79eab"
+    },
+    {
+      "path": "evidence/2048-green-2.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-green-2.log",
+      "exitCode": 0,
+      "note": "28/28 after cloning negative fixture evidence",
+      "decodedBytes": 2178,
+      "decodedSha256": "4301577da42163f706933dbb84efb61c9381f1845c42e4bf3c522269950ef669",
+      "bytes": 808,
+      "sha256": "ddf5ca1109529e17842a4e7bd4a81ab2ac8bd817bad4e351513840b3b9fbde31"
+    },
+    {
+      "path": "evidence/2048-green-3.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-green-3.log",
+      "exitCode": 0,
+      "note": "30/30; predecessor row correspondence retained",
+      "decodedBytes": 2379,
+      "decodedSha256": "71b94383df890767e809c1f15931c1a3ebe1130c941cc1aeda3fe2c5c9c3f818",
+      "bytes": 911,
+      "sha256": "96a07bf6c4b488517bd238391c5502c849cf495f8729aa2eb4f8995932012df6"
+    },
+    {
+      "path": "evidence/2048-hook-config-snapshot.json",
+      "kind": "current-config-snapshot",
+      "source": ".codex/hooks.json",
+      "note": "current 4fd candidate configuration; not historical loaded-guard provenance",
+      "bytes": 10057,
+      "sha256": "689f5b2557eb2b71710a3e906e8083997d5675637456f0c48a3bd1f25d299124"
+    },
+    {
+      "path": "evidence/2048-legacy-red.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-legacy-red.log",
+      "exitCode": 1,
+      "note": "1/2; preserved legacy actor rows over-rejected",
+      "decodedBytes": 2091,
+      "decodedSha256": "396e9504ea4c1347eaef14168afcda2c8b7a8300ec82a63f1f1799e19d3188a7",
+      "bytes": 639,
+      "sha256": "910b0185e606b5dac37db1685ebd42174003cce1cc6e18d11ad2e88133325f8c"
+    },
+    {
+      "path": "evidence/2048-lint-final.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-lint-final.log",
+      "exitCode": 0,
+      "note": "final source full lint",
+      "decodedBytes": 27120,
+      "decodedSha256": "77e1de7a25160eb959a0ede4c4ede407f9867cea8be06e08c0c43194d6fcd6be",
+      "bytes": 3713,
+      "sha256": "57ae9da26b89e7420cc31d1802aa83e55c39a290b3d21143741492d70d149504"
+    },
+    {
+      "path": "evidence/2048-lint.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-lint.log",
+      "exitCode": 0,
+      "note": "initial full lint before final target/type hardening",
+      "decodedBytes": 27120,
+      "decodedSha256": "f105053505ade7d3e2623d7f8979f7f65c90bc52bad697f4df98ebe420e0e9e8",
+      "bytes": 3713,
+      "sha256": "b8e0184bce4f51e6abcf76bf8a79d5fdd010c976d7489170e25e63677772e2a6"
+    },
+    {
+      "path": "evidence/2048-native-hook-022c3982aea83f6b60b3fc9b0f50103a1f3defdf75ea7e44.json.consumed",
+      "kind": "original-native-consumed-observation",
+      "source": ".tmp/aitm/native-binding-proof/01a16802-877c-7092-a221-780a859a2313/022c3982aea83f6b60b3fc9b0f50103a1f3defdf75ea7e44.json.consumed",
+      "note": "exact original bytes; diagnostic transport, not mutation authority",
+      "bytes": 471,
+      "sha256": "5afd4c12b3a3e2f592ac997c4710ce3ad49fc9ef972e708f6d350e07dac48038"
+    },
+    {
+      "path": "evidence/2048-native-hook-277a200db409206cc4dc588777d77ed6e5f3f86822644cb2.json.consumed",
+      "kind": "original-native-consumed-observation",
+      "source": ".tmp/aitm/native-binding-proof/01a16802-877c-7092-a221-780a859a2313/277a200db409206cc4dc588777d77ed6e5f3f86822644cb2.json.consumed",
+      "note": "exact original bytes; diagnostic transport, not mutation authority",
+      "bytes": 468,
+      "sha256": "1cc4934008c8c4a2a23cc787478928e11c73ab50ade8655a3c5189966de5aef3"
+    },
+    {
+      "path": "evidence/2048-native-hook-ec5951642052d54df83919be786c118e18a523afbdcefc1a.json.consumed",
+      "kind": "original-native-consumed-observation",
+      "source": ".tmp/aitm/native-binding-proof/01a16802-877c-7092-a221-780a859a2313/ec5951642052d54df83919be786c118e18a523afbdcefc1a.json.consumed",
+      "note": "exact original bytes; diagnostic transport, not mutation authority",
+      "bytes": 466,
+      "sha256": "3d6b49e45b1913bab45caa20cd21bcfc43920c65ace33873efb3ba5e5896e0dd"
+    },
+    {
+      "path": "evidence/2048-npm-test-final.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-npm-test-final.log",
+      "exitCode": 1,
+      "note": "final source fast run: 1001/1002 files; sole 978 > 977 inventory ceiling failure",
+      "decodedBytes": 89885,
+      "decodedSha256": "87e0bfd0b84429bc1d1a1b27b1852f81bd1ce6094427e1ef0dfe307996844bea",
+      "bytes": 12627,
+      "sha256": "f4898400eef55daa64db491ccdba78d4b58ce98bd2ea45494693576c13ea635e"
+    },
+    {
+      "path": "evidence/2048-npm-test.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-npm-test.log",
+      "exitCode": 1,
+      "note": "first fast run; sole inventory ceiling failure; WIP verification",
+      "decodedBytes": 89876,
+      "decodedSha256": "81159657ae961cac148b58be56ca81c2711c3fae99c9205562f8602ea86b6389",
+      "bytes": 12568,
+      "sha256": "52142ef7b460012967b578114c17c5779cca234a271a6f5d2cafb74921a0904f"
+    },
+    {
+      "path": "evidence/2048-red-corrected.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-red-corrected.log",
+      "exitCode": 1,
+      "note": "corrected missing-validator RED, 0/28",
+      "decodedBytes": 43956,
+      "decodedSha256": "c8e24ca37fe0dcd247da05cd60f08ce6ad7dab5117228c90be10f70b9d61f396",
+      "bytes": 2543,
+      "sha256": "71b3f934c496441256670b3a0714994bc1f27942e9a60ac264261c069eb60dad"
+    },
+    {
+      "path": "evidence/2048-red.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-red.log",
+      "exitCode": 1,
+      "note": "initial missing-validator RED; includes fixture failures, not all behavioral RED",
+      "decodedBytes": 43938,
+      "decodedSha256": "da22bd96d5960570fe116fcf77d924cfc96f6facaeeb18ea7d2903e7f03ce0a1",
+      "bytes": 2530,
+      "sha256": "d538a82ab92a816338200d1edb9cb53fafd9fc8039b475aeef9d699f7370b8c1"
+    },
+    {
+      "path": "evidence/2048-slow-final.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-slow-final.log",
+      "exitCode": 0,
+      "note": "final source slow lane: all 57 files passed",
+      "decodedBytes": 5389,
+      "decodedSha256": "3f708c967681ca963e22d26582373dffff84a3a816489e47bb1564779b39d1a8",
+      "bytes": 1255,
+      "sha256": "6568221904ad9f16eff899ae98439672e17241dc7296b3785ba2b43c34520bb8"
+    },
+    {
+      "path": "evidence/2048-source-pins.json",
+      "kind": "authored-collateral-or-index",
+      "bytes": 745,
+      "sha256": "0cee9fd3605406929e2c173524bf4fbd36bc02b69639043c76b71ecf74590392"
+    },
+    {
+      "path": "evidence/2048-standalone-post-commit.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/task-25-tests.log",
+      "exitCode": 0,
+      "note": "post-commit exact named verifier, 36/36",
+      "decodedBytes": 2899,
+      "decodedSha256": "49f271eabf983f9d2db73f967e07c06673fa7e669955afe61dfbcf88c21583c6",
+      "bytes": 1097,
+      "sha256": "58a62a4c9b865f295efc13853af9372caecc166fdde0586c3f76b17920a50569"
+    },
+    {
+      "path": "evidence/2048-subset-trial.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-subset-trial.log",
+      "exitCode": 0,
+      "note": "2/2 coherent historical tampering and working-view separation",
+      "decodedBytes": 316,
+      "decodedSha256": "9f89ea33f8eba676234e64b2fbab81f4dedeee4431c1fd6965a1098f17a9a24f",
+      "bytes": 230,
+      "sha256": "e6c0c60c9acb87587d960fe3b1193f5a053912823410dc31c235c41f02f3705a"
+    },
+    {
+      "path": "evidence/2048-target-binding-red.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-target-binding-red.log",
+      "exitCode": 1,
+      "note": "comment/provider/type refusals missing; one fixture DataCloneError",
+      "decodedBytes": 3205,
+      "decodedSha256": "a5f8d20cf36d29c581b5c5bd9a8625960153769092ce3281f16b45c615707c80",
+      "bytes": 861,
+      "sha256": "954d7efefd6bbb47d15e9aa66ba8de5fa587af6e1cd291a6de6dd210a87400f7"
+    },
+    {
+      "path": "evidence/2048-targeted-final-v2.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-targeted-final-v2.log",
+      "exitCode": 0,
+      "note": "final source predecessor group 139/139",
+      "decodedBytes": 11800,
+      "decodedSha256": "5cd98f3e6c1e29cf66a4513cc425940f750efb36fc86789504dcbafd2d846677",
+      "bytes": 4294,
+      "sha256": "ef7bdba01aef1e55494d5498f67b23d7ae75d25b810e42297641327fbc85a350"
+    },
+    {
+      "path": "evidence/2048-targeted-final.log.gz",
+      "kind": "raw-command-log",
+      "source": ".superpowers/sdd/2026-10-20-2039-active-child-execution-plan/2048-targeted-final.log",
+      "exitCode": 0,
+      "note": "first predecessor group; before final target/type hardening",
+      "decodedBytes": 11454,
+      "decodedSha256": "6fb8273dd5299fae6223b1eeeaca52a1c704eabcb24de4235ebe2a35d4972dde",
+      "bytes": 4197,
+      "sha256": "1ed34ebd8357ec8540431e15d63092f5ac3eef06d4454240289dba995e39ef74"
+    }
+  ]
+}
