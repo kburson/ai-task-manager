@@ -192,3 +192,12 @@ skips and actual exit 0 (session 42619). Full lint and format passed with actual
 exit 0 (sessions 51757 and 41047). Independent Sol/medium review accepted the
 container and exact import corrections without blocking findings.
 Native worker setup/Start/proof and final corrected-head CI remain outstanding.
+
+The first container run, 39899009305 at c040d11b4, initialized its container,
+installed tools and checked out source successfully. Git then refused the
+mounted checkout's differing ownership before any tests ran. The ordinary
+container Git setup now trusts only the exact GITHUB_WORKSPACE immediately
+after checkout; it changes no ownership, native binding, filter policy or
+unrelated repository trust. Synthetic fixture HOME isolation remains intact.
+Independent Sol/medium review accepted this bounded CI correction. The failed
+run remains evidence of an environment failure, never a completed test run.
