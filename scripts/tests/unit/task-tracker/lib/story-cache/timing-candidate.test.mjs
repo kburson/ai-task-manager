@@ -1,4 +1,4 @@
-// @story #2039 #2061
+// @story #2039 #2061 #2090
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -56,6 +56,51 @@ test('freezes one canonical candidate from retained native events without sampli
   assert.ok(Object.isFrozen(effect.candidate.timing.events[0]));
   assert.deepEqual(await f.store.readGeneration(), before);
   assert.deepEqual(await f.freeze(), effect);
+});
+// A global cursor uniqueness check rejects events the actor-scoped ingestion contract accepts.
+test('freezes ingested events when independent actors share an opaque cursor', async (t) => {
+  const sharedCursor = 'opaque-shared-cursor';
+  const older = event('historical-peer', {
+    actorId: timingActorKey({ provider: 'codex', sid: 'historical-peer' }),
+    timestamp: '2026-10-18T12:00:00.000Z',
+    sourceCursor: sharedCursor,
+    activeSeconds: null,
+    idleSeconds: null,
+  });
+  const f = await fixture(t, { events: [older] });
+  const delivered = pair();
+  delivered[1].sourceCursor = sharedCursor;
+  const acknowledged = await context(f.root, () =>
+    ingestTimingEvents({ store: f.store, claim: f.claim, events: delivered })
+  );
+  assert.equal(acknowledged.status, 'ingested');
+  assert.equal(acknowledged.ingestedCursor, sharedCursor);
+  const before = await f.store.readGeneration();
+  assert.equal(before.generation.timing.events.length, 3);
+  assert.equal(
+    before.generation.timing.events.filter((row) => row.sourceCursor === sharedCursor).length,
+    2
+  );
+  const effect = await f.freeze();
+  assert.deepEqual(effect.candidate.timing.events, before.generation.timing.events);
+  assert.deepEqual(readEventRecord(effect.candidate.body).events, before.generation.timing.events);
+  assert.equal(effect.candidate.timing.ingestedCursor, sharedCursor);
+  assert.deepEqual(await f.store.readGeneration(), before);
+  await f.persist(effect);
+  assert.equal((await f.confirm(effect)).status, 'confirmed');
+  assert.equal((await f.store.readGeneration()).generation.timing.publishedCursor, sharedCursor);
+});
+// Removing the boundary check entirely would accept a cursor no retained event acknowledges.
+test('refuses an ingestion cursor absent from retained events without mutating the generation', async (t) => {
+  const f = await fixture(t);
+  const before = await changeGeneration(f, (generation) => {
+    generation.timing.ingestedCursor = 'absent-cursor';
+  });
+  await assert.rejects(f.freeze(), {
+    code: 'STORY_TIMING_CANDIDATE_INVALID',
+    reason: 'ingestion-boundary',
+  });
+  assert.deepEqual(await f.store.readGeneration(), before);
 });
 test('keeps the existing live timing constructor retroactive refusal', async () => {
   assert.throws(

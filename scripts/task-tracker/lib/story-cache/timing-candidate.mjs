@@ -1,4 +1,4 @@
-// @story #2039 #2061
+// @story #2039 #2061 #2090
 // cspell:ignore EISSUELOCKED
 // Frozen timing content is provisional. Only the coordinator can dispatch effects.
 import { createHash } from 'node:crypto';
@@ -171,7 +171,8 @@ function derive(generation, payloads, transition, frozenBody = null) {
     !(timing.publishedCursor === null || token(timing.publishedCursor))
   )
     invalid('timing-state');
-  if (events.filter((event) => event.sourceCursor === timing.ingestedCursor).length !== 1)
+  // Ingestion scopes opaque cursor uniqueness per actor; independent actors may share tokens.
+  if (!events.some((event) => event.sourceCursor === timing.ingestedCursor))
     invalid('ingestion-boundary');
   for (const event of events) {
     assertTimingActorKey(event.actorId);
