@@ -249,3 +249,41 @@ agreement during that observation, without explaining the earlier combined
 output. It does not establish a binding or replace the required full proof.
 The retained worktree-seed and activity-guard regressions also passed all 46
 cases with actual exit 0 (session 18957).
+
+## Native sandbox legacy fixture repair
+
+The genuine worker canary passed in chat01a16802-877c-7092-a221-780a859a2313
+at source `8d051fffcbca2035aecef2eb136de7b343fd6601`. Canonical setup, normal Start,
+actor/occupancy readbacks, all eight native hook/CLI tuple fields and Pause
+returned actual exit0. The controller independently read the actual commands
+and outputs. Full original native origin evidence remains in that worker chat;
+the owned source-review comment on2088 records its provenance and qualifications.
+Controller source `a6d4e0591` also passed complete CI39929590756: strict nine-artifact
+validation covered1330 files and verified tested-merge parent provenance.
+
+The subsequent governed Test entered Test then genuinely returned to Develop
+visit2 after one verifier failed. The failed command was the retained legacy
+activity-guard fixture, which inherited the sandbox's outer project-root alias
+into independent synthetic repositories. Production correctly refused foreign
+root authority. Its durable native failure comment6361716710 is archived in
+full as returned by the bounded GitHub read, including the original failure
+table and tail; it is not represented as complete original subprocess output.
+
+The test-local repair clones inherited environments and removes only the
+production root-alias inventory. Explicit caller environments and identity keys
+remain unchanged. A controlled regression reproduced the actual quoted-document
+Bash branch refusal before the helper changed (tool9df71d, exit1). Earlier
+exploratory probes used a branch that did not consume configuration and are
+retained as unsuccessful test-development attempts, not causal reproductions.
+Normal and controlled-outer-environment combined runs each passed47 cases
+(sessions97807 and23510) before the final assertion strengthening. Independent
+review required actual subprocess exit0 and no refusal decision as well as
+empty stdout. The first replacement missed formatted source; reinspection
+correctly refused acceptance. The actual repair then landed and the strengthened
+named regression passed with exit0 and zero skips (tool4e9e6e).
+
+The complete review messages are retained in the new compressed review archive.
+Author ruling: accept the assertion finding and its reinspection, implement the
+three positive checks, retain explicit foreign-root refusal and every scope
+qualification. No production guard or shared helper changed. Final committed
+verification and CI remain required for this fixture-only correction.
