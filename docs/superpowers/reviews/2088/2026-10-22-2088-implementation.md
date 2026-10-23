@@ -174,7 +174,7 @@ The proposed system-configuration removal edit was blocked before execution
 because it contained an elevation command; no file changed and that approach
 was abandoned.
 
-The complete unit/integration matrix now runs in an ordinary Node 24 Bookworm
+The complete unit/integration matrix now runs in an ordinary Node 24 Trixie
 container with Bash as its explicit default shell. The container installs gh
 and jq before capture-source inspection and prints effective Git configuration
 origins/key names. All matrix groups, full collection plans, failure artifacts,
@@ -195,9 +195,20 @@ Native worker setup/Start/proof and final corrected-head CI remain outstanding.
 
 The first container run, 39899009305 at c040d11b4, initialized its container,
 installed tools and checked out source successfully. Git then refused the
-mounted checkout's differing ownership before any tests ran. The ordinary
-container Git setup now trusts only the exact GITHUB_WORKSPACE immediately
-after checkout; it changes no ownership, native binding, filter policy or
-unrelated repository trust. Synthetic fixture HOME isolation remains intact.
-Independent Sol/medium review accepted this bounded CI correction. The failed
-run remains evidence of an environment failure, never a completed test run.
+mounted checkout's differing ownership before any tests ran. The next source, f9bd2a6c3, added an exact-workspace global trust entry.
+Run 39899731644 then executed the full collection: bootstrap tests passed, but
+HOME-isolated source lookups lost that global trust and five existing test
+files failed. Delivery comparison tests also exposed Bookworm Git 2.39.5
+lacking the required merge-tree --merge-base option. Both failed runs remain
+failure evidence, never completed successful verification.
+
+The final CI correction replaces the trust entry with ownership alignment of
+only the ephemeral GITHUB_WORKSPACE immediately after checkout. Recursive chown
+uses the container user and group with no symlink traversal option. It does not
+alter any local checkout or native binding. HOME isolation and production
+refusals remain intact. The official Node 24 Trixie image supplies Debian 13
+Git with the existing merge-tree capability; all groups and aggregate checks
+remain unchanged. Independent Sol/medium review accepted the actual two-file correction with no
+blocking findings and independently confirmed YAML structure, ownership scope
+and all four matrix groups. Exact-head CI and genuine worker proof remain
+required.
