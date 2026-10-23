@@ -174,7 +174,7 @@ The proposed system-configuration removal edit was blocked before execution
 because it contained an elevation command; no file changed and that approach
 was abandoned.
 
-The complete unit/integration matrix now runs in an ordinary Node 24 Trixie
+The complete unit/integration matrix now runs in an ordinary Node 24 Debian 13
 container with Bash as its explicit default shell. The container installs gh
 and jq before capture-source inspection and prints effective Git configuration
 origins/key names. All matrix groups, full collection plans, failure artifacts,
@@ -206,7 +206,7 @@ The final CI correction replaces the trust entry with ownership alignment of
 only the ephemeral GITHUB_WORKSPACE immediately after checkout. Recursive chown
 uses the container user and group with no symlink traversal option. It does not
 alter any local checkout or native binding. HOME isolation and production
-refusals remain intact. The official Node 24 Trixie image supplies Debian 13
+refusals remain intact. The official Node 24 Debian 13 image supplies Debian 13
 Git with the existing merge-tree capability; all groups and aggregate checks
 remain unchanged. Independent Sol/medium review accepted the actual two-file correction with no
 blocking findings and independently confirmed YAML structure, ownership scope
