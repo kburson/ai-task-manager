@@ -1,0 +1,15 @@
+# #2066 independent source review
+
+Read-only review of the staged fixed tree, compared with base c67d1dc49f44cef34991df5727273263b8074960. Owned product paths only:
+
+- scripts/task-tracker/lib/story-cache/publisher.mjs
+- scripts/task-tracker/lib/story-cache/provider-adapters.mjs
+- scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs
+
+Contract: exact pinned Task 23 at 0ad57329a5eb4e3aec395adb06a6216178e45c87 docs/superpowers/plans/2026-10-20-2039-active-child-execution-plan.md; original Task 8 f2894455a97bb80f6afb82ce5ff722cad2a46c2b docs/superpowers/plans/2026-10-19-2039-local-estimation-transition-cache.md; spec dafb1d276036ddc17490f76329f6aa2c09732a15 docs/superpowers/specs/2026-10-19-2039-local-estimation-guarded-publication-design.md. Read exact relevant content and upstream store/claim/batch/template/observation APIs as needed.
+
+Deliver only single-attempt resource publisher and exact readback, full current target equality before mutation, acquired registry/native issue lock/full verified store, durable dispatching before transport, one attempt per frozen resource, complete responses or one readback, truthful uncertainty and non-atomic limitations. Recovery #2067, final coordinator #2068, public activation and final full-vector completion remain outside scope. Shared package inventory is read-only; current measured 980 versus ceiling978 is an expected controller-owned integration requirement, not a waiver or green test claim.
+
+Rulings: #2073 scalar Estimate/Size reader cannot substitute for full body/native revision or complete vector authority; only suitable target-reader seam reuse is allowed. The adapter accepts a bounded observe port for this, rather than recreating the refinement writer optimization. Ports retain genuine #2047 capability operations and run native composite validation for the realized issue. No broad flags grant authority.
+
+Review focus: missing native history is unavailable, immutable-generation durability/readback, delayed writes cannot trigger replay, duplicate creation and external comment inventory drift, no unsupported completion claim. Judge reasonable operational expectations even where spec silent. Report each actual finding with severity, file/line, impact and evidence. List any behavior declined as out of scope plus why. Return clear verdict. Do not mutate checkout/index/HEAD, do not bind/move lifecycle, do not dispatch any subagent. Source tree identity and hashes are supplied in dispatch; inspect that fixed tree, not later collateral changes.

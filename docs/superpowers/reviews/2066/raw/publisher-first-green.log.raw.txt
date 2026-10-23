@@ -1,0 +1,121 @@
+✔ incomplete observation refuses before dependency access or dispatch (1.713333ms)
+✖ publishes each frozen resource once after durable dispatching and checkpoints exact results (498.663625ms)
+✖ full target preflight retains equal revision with different bytes without mutation (371.721666ms)
+✖ full target preflight retains comment deletion without mutation (396.211875ms)
+✖ full target preflight retains comment addition without mutation (372.104209ms)
+✖ full target preflight retains ownership drift without mutation (490.214458ms)
+✖ full target preflight retains title drift without mutation (401.839875ms)
+✔ altered frozen candidates or unverified payloads cannot reach transport (499.912792ms)
+✔ unregistered claim and wrong actual session refuse before dispatch (362.748042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 3
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3530.113708
+
+✖ failing tests:
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ publishes each frozen resource once after durable dispatching and checkpoints exact results (498.663625ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:46:49
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ full target preflight retains equal revision with different bytes without mutation (371.721666ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:66:63
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ full target preflight retains comment deletion without mutation (396.211875ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:66:63
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ full target preflight retains comment addition without mutation (372.104209ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:66:63
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ full target preflight retains ownership drift without mutation (490.214458ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:66:63
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ full target preflight retains title drift without mutation (401.839875ms)
+  Error: Story batch invalid: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:31:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:45:5)
+      at freezeStoryBatch (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/batch.mjs:243:5)
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/lib/story-cache/publisher.mjs:78:20
+      at async withIssueLock (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:377:12)
+      at async context (file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/helpers/story-timing-candidate-fixture.mjs:85:12)
+      at async file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:66:63
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_BATCH_INVALID',
+    reason: 'shape',
+    [cause]: undefined
+  }

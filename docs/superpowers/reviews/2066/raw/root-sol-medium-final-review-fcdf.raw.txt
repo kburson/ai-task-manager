@@ -1,0 +1,36 @@
+Reviewed **fcdf5a243911eeea70247cae5372eb9e78c1ab4a**, parent **03f608911194eb00b0b0ab6a16b92491b64da39a**, tree **41f9515eb3aa14bc13845d9ae934902a72948b89**.
+
+**Findings**
+
+- Previous P1 fractional-variable transport finding: **closed in source**.
+- Critical: none.
+- Important: none remaining established.
+- Minor: no required changes.
+
+**Verified correction**
+
+`provider-adapters.mjs:113–134` now serializes `{query,variables}` as JSON to `gh api graphql --input -`. Fractional values remain JSON numbers rather than relying on integer-only CLI flag conversion. Host selection, 30-second timeout, 4-MiB output limit, the repository’s fail-closed `ghClient` process seam, and error propagation remain intact.
+
+The revised regression at `publisher.test.mjs:489–535` inspects the actual serialized stdin payload for **3.5, 0, and -1.25**, asserting numeric values and types. Its alternate mocked flag-conversion path represents the original defect, so the assertion would fail against the former implementation. This meaningfully addresses the prior shallow flag assertion.
+
+Telemetry preparation follows the existing query-preparation convention; mutation queries remain unchanged by that helper. No retry was introduced.
+
+**Scope and retained strengths**
+
+The complete follow-up changes only the adapter and named unit test. `publisher.mjs` is unchanged from the earlier review.
+
+The previously reviewed full snapshot comparison, verified frozen batch, registered writer/lock checks, durable dispatching state, single apply attempt, bounded fallback observation, creation inventory/identity refusals, preserved original batch baseline, confirmed outcomes, and frozen final-body materialization remain intact. Aggregate transition completion remains outside this publisher.
+
+**Verified SHA-256**
+
+- Publisher: `e4bd0b3191834b87b1ad73a9d4792891c5b2644d724f66db21e1b1cdeec4200b`
+- Adapters: `22967c6d95f2b8d128794615542be58662059973a0c0e3cddb72be70220eb85a`
+- Unit: `c243a3edd50732430a1d98e1a1c95b4706e4e1394ab3686d11631a27126c191d`
+
+**Recommendations and limits**
+
+Accept this exact source candidate **statically**, subject to final verification and controller integration. The reported 27-test pass was not independently executed here. The reported 57-file slow run started before this transport correction and therefore does not establish exact-final-source slow verification. Post-fix full-fast, lint and format results remain unverified in this review.
+
+Package-count growth to 980 and the GraphQL dispatch-site inventory remain explicit controller-owned companions. Recovery #2067, coordinator #2068, production activation, lifecycle approval, CI, collateral, and the fresh whole-branch checkpoint are outside this assessment.
+
+I used committed Git objects from permitted b187 only. No foreign filesystem reads, tests, native lifecycle actions, writes, Git mutations, or delegation. Acceptance covers only the identified commit and hashes.

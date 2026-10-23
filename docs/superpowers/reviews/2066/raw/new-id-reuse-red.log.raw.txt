@@ -1,0 +1,32 @@
+✔ creation missing result remains uncertain without second creation (1101.0935ms)
+✔ creation duplicate purpose remains uncertain without second creation (1007.864584ms)
+✖ a second creation cannot reuse an already confirmed new provider ID (2083.755ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4328.052125
+
+✖ failing tests:
+
+test at scripts/tests/helpers/story-timing-candidate-fixture.mjs:59:10
+✖ a second creation cannot reuse an already confirmed new provider ID (2083.755ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'confirmed'
+  - 'uncertain'
+  
+      at file:///Users/kpburson/.codex/worktrees/438b/ai-task-manager/scripts/tests/unit/task-tracker/lib/story-cache/publisher.test.mjs:522:37
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'confirmed',
+    expected: 'uncertain',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

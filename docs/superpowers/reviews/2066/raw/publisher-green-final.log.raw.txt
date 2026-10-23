@@ -1,0 +1,31 @@
+✔ incomplete observation refuses before dependency access or dispatch (1.888375ms)
+✔ publishes each frozen resource once after durable dispatching and checkpoints exact results (1240.688083ms)
+✔ full target preflight retains equal revision with different bytes without mutation (413.736042ms)
+✔ full target preflight retains comment deletion without mutation (405.301542ms)
+✔ full target preflight retains comment addition without mutation (447.736833ms)
+✔ full target preflight retains ownership drift without mutation (1947.149042ms)
+✔ full target preflight retains title drift without mutation (1513.363ms)
+✔ altered frozen candidates or unverified payloads cannot reach transport (448.675666ms)
+✔ unregistered claim and wrong actual session refuse before dispatch (342.507416ms)
+✔ persistence failure at commit 1 stops subsequent writes and replay (331.034708ms)
+✔ persistence failure at commit 2 stops subsequent writes and replay (448.511875ms)
+✔ persistence failure at commit 3 stops subsequent writes and replay (563.822708ms)
+✔ an incomplete mutation response uses one targeted readback (795.092625ms)
+✔ timeout with delayed write never triggers a second apply (638.895084ms)
+✔ timeout with landed write never triggers a second apply (919.51275ms)
+✔ readback changed bytes or wrong returned node ID remain uncertain and stop dependencies (593.54525ms)
+✔ native registry drift after provider dispatch stops further effects and preserves dispatching (485.782791ms)
+✔ provider adapters dispatch exact native resource mutations without retry or invented field confirmation (1.043875ms)
+✔ new comment ID is uniquely verified and persisted before exact final-body slot dispatch (1711.296542ms)
+✔ creation missing result remains uncertain without second creation (1189.907625ms)
+✔ creation duplicate purpose remains uncertain without second creation (875.33475ms)
+✔ realized native body validation refusal preserves confirmed prerequisites and prevents issue write (608.409542ms)
+✔ default GraphQL transport retains numeric field variable types (1.507458ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16054.183041

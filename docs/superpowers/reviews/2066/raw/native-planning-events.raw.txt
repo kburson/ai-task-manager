@@ -1,0 +1,24 @@
+Original command/tool records are retained in chat 01a16877-b4b6-7b83-adf6-0e9e2209c25a. The following are copied terminal excerpts, not a replacement for those native invocation records.
+
+npx aitm draft-branch 2066 — initial exit1
+ draft-branch: exact singleton owner required
+
+Native assignment after controller authorization — exit0
+assign: #2066 assigned; owner @kburson; Status plan
+
+Native draft retry after changed ownership — exit0
+Draft branch codex/2066-draft at c67d1dc49f44cef34991df5727273263b8074960; binding verified.
+
+Native plan-approve — exit0
+✓ Plan approved for #2066 at 2026-10-23T11:23:34Z (provenance=full-auto; Full-Auto audit=posted). `/task promote #2066` to move to Develop.
+
+Native Develop promotion — exit0
+✓ Issue #2066 moved to: develop
+✓ move #2066 plan→develop complete
+  exit flush  : plan row closed (verified)
+  entry stamp : aitm-entered-develop present (verified)
+  entry row   : develop row opened (verified)
+  status      : Status == Develop (verified)
+  sentinel    : aitm-move-complete state=develop (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #2066 promoted: plan → develop (direct)

@@ -1,0 +1,31 @@
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+{
+  "schema": "aitm.native-binding-proof/v1",
+  "matches": true,
+  "bound": true,
+  "healthy": true,
+  "nonce": "a3cf97c51a7028e063e7d7002895649d9bed4c8cf4c695d4",
+  "cli": {
+    "sessionId": "01a16877-b4b6-7b83-adf6-0e9e2209c25a",
+    "root": "/Users/kpburson/.codex/worktrees/438b/ai-task-manager",
+    "branch": "codex/2066-draft",
+    "sourceHead": "c67d1dc49f44cef34991df5727273263b8074960",
+    "issue": "#2066",
+    "bindingGenerationId": "b9c009f5-cca1-42de-bd4b-139b2be27b85",
+    "state": "develop",
+    "entryStartTs": "2026-10-23T11:24:45.167Z"
+  },
+  "hook": {
+    "sessionId": "01a16877-b4b6-7b83-adf6-0e9e2209c25a",
+    "root": "/Users/kpburson/.codex/worktrees/438b/ai-task-manager",
+    "branch": "codex/2066-draft",
+    "sourceHead": "c67d1dc49f44cef34991df5727273263b8074960",
+    "issue": "#2066",
+    "bindingGenerationId": "b9c009f5-cca1-42de-bd4b-139b2be27b85",
+    "state": "develop",
+    "entryStartTs": "2026-10-23T11:24:45.167Z"
+  },
+  "mismatches": [],
+  "provenance": "Local hook diagnostic transport; retain the genuine native tool invocation as origin evidence. This is not a mutation authority or cryptographic attestation."
+}

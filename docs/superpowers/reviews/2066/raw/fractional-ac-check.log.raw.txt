@@ -1,0 +1,3 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' ensureChecked Deliver "### Task 23: Single-attempt resource publisher and exact read-back" exactly as specified in the pinned source plan.
+[task-tracker] ✓ Checked "Deliver "### Task 23: Single-attempt resource publisher and exact read-back" exactly as specified in the pinned source plan." on #2066
