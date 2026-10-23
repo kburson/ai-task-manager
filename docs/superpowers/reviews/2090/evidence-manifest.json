@@ -1,0 +1,76 @@
+{
+  "schema": "diagnostic-evidence-manifest/v1",
+  "authority": "none; local review evidence only",
+  "selfExcluded": "evidence-manifest.json",
+  "baseHead": "4069e3cbc06b7d89139c2ef3d7d4820132667d65",
+  "files": [
+    {
+      "path": "2090-fast.log.gz",
+      "bytes": 11986,
+      "sha256": "d1f6a8ed94bdca56a248895d73a85358c675330eb4f79d7bff02e72f1711adeb",
+      "decodedBytes": 88189,
+      "decodedSha256": "bdf32a0f9a7d35c5bb50bc7926042727bcd24555145b15fd51dd8457e2bb721b"
+    },
+    {
+      "path": "2090-format.log.gz",
+      "bytes": 137,
+      "sha256": "2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7",
+      "decodedBytes": 159,
+      "decodedSha256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+    },
+    {
+      "path": "2090-lint.log.gz",
+      "bytes": 3725,
+      "sha256": "e94dd37b06ce7643cc8f44b35ce241e2f87b9aee0877a4aea2fbbcbfa8fd6ff8",
+      "decodedBytes": 27248,
+      "decodedSha256": "8a7d94119aca471be8c48cbd23b8b4788a92f4b48c402dacd45faa9c464083cd"
+    },
+    {
+      "path": "2090-slow.log.gz",
+      "bytes": 1261,
+      "sha256": "dee15588572dab5223d34ee0d67be21408d7a1c3394070057f86f312fddcd776",
+      "decodedBytes": 5392,
+      "decodedSha256": "8c121c70719eb79db33d0a11f5f628db551d13efd58ddf608677469078de032c"
+    },
+    {
+      "path": "2090-timing-green.log.gz",
+      "bytes": 3008,
+      "sha256": "02845799d8151d291aee8914ad87b4348b1f60d197aa2349d196eb179cac6df4",
+      "decodedBytes": 7871,
+      "decodedSha256": "a9f8d5d2fd26c66a1912193fe3c24d4a343935a844c5d779eaeab1c7c6e3e100"
+    },
+    {
+      "path": "2090-timing-red.log.gz",
+      "bytes": 1838,
+      "sha256": "8d87bb3d48e518555b8cc65cb3298ffeafdeefdd88a18b9ad25c114a0e985758",
+      "decodedBytes": 4380,
+      "decodedSha256": "bd12829aa3df358e88a755d38e493ddd2e9ddcd510e3e073b8affc22a5d2873a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5741,
+      "sha256": "68d9344f329c0238b4479369792ecb87c6792b871a75e9ecb89646826aa0a50e"
+    },
+    {
+      "path": "deep-dive-original.md",
+      "bytes": 3611,
+      "sha256": "6213f5946c7dcf13fc17d7fb48c9c400d95a0c69895128624b167122fccb3690"
+    },
+    {
+      "path": "develop-doctor-final-tool-result.json",
+      "bytes": 1476,
+      "sha256": "0757d1bf7ae6a68618a45478159eb5f201090009c7780e9c51de4266e928232b"
+    },
+    {
+      "path": "develop-hook-observation.json",
+      "bytes": 471,
+      "sha256": "cf6b2514b2bac3dc79b5f13b031f107aab84d65f4e78d89d4ebb0b3a1312d109"
+    },
+    {
+      "path": "source-review-r1.raw.txt",
+      "bytes": 3877,
+      "sha256": "62cd65d32830c1b0cb7b844c1f67eddeddd9aba04da8b8f3cfd1dad0d77fce48"
+    }
+  ],
+  "sourceCommit": "5aeb03289ddafd2d858bfc6f1ea2681cedf989ee"
+}
