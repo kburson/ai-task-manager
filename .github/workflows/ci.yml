@@ -121,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     # #2088: bootstrap fixtures need an ordinary host without executable Git
     # filters. Keep production refusals; isolate the complete test collection.
-    container: node:24-bookworm
+    container: node:24-trixie
     defaults:
       run:
         shell: bash
@@ -137,8 +137,8 @@ jobs:
           # epic-child PRs need ancestry beyond the merge ref's direct parents
           # to discover that merge base, so the Fast checkout is unshallow.
           fetch-depth: 0
-      - name: Trust the checked out workspace for container Git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Align checked out workspace ownership with container user
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
       # The capture source can become unreachable after squash delivery. Fetch
       # its exact manifest identity without rewriting archived bytes or hashes.
       - name: Prepare immutable guidance capture source (#1876)
