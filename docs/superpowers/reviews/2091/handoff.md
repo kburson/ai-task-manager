@@ -37,3 +37,7 @@ The issue remains in Develop. AC/VC/DoD acceptance boxes, Develop finalization, 
 ## Rulings
 
 All decisions and costs are in `progress.md`: preserve existing evidence instead of skill cleanup; execute the explicitly authorized native approach; expand the existing cited focused verifier; use the assigned artifact directory; accept the finding-free bounded source review; and retain the reproduced out-of-scope slow validation failure for root acceptance. Deferred minors: none.
+
+## Subsequent invocation correction
+
+The owning chat corrected the original overbroad tracking instruction after this report: tracking flags are mandatory for native AITM and real GH operations, not offline verifiers. The exact bare capture verifier passed 5/5, and the exact bare full slow command passed all 57 files with exit 0. The earlier red rows above are preserved observations of noncanonical invocations with unnecessary flags. They no longer describe the canonical verifier outcome. See [the follow-up](followup-verification.md) for the correction, ambient-variable evidence and complete additional results. Source remains unchanged.
