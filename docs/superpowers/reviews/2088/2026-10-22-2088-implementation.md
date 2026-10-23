@@ -155,3 +155,11 @@ hashes, and reviewed the integration cases without writing fixtures. Its title
 and documentation recommendations were accepted. Exact corrected-commit CI and
 native #2048 setup/Start/proof still remain required; controller proof is never
 substituted for worker proof.
+
+The native AC verifier subsequently retained a 21/25 failure: its inherited
+executable path caused four positive fixtures to refuse an untrusted executable.
+The fixture now supplies explicit trusted host tool directories, retaining the
+production refusal and the independent hostile-path test. A fresh independent
+Sol/medium review accepted this fixture-only correction; all 25 focused tests
+then passed with actual exit 0 (session 93329). The failed native run remains
+archived. Native stamping and exact final-head CI remain separate requirements.
