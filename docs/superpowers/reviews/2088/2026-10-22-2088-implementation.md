@@ -212,3 +212,42 @@ remain unchanged. Independent Sol/medium review accepted the actual two-file cor
 blocking findings and independently confirmed YAML structure, ownership scope
 and all four matrix groups. Exact-head CI and genuine worker proof remain
 required.
+
+
+## Native default hooks directory correction
+
+The selected fresh app-owned worker is chat
+`01a167f4-228f-7ca0-8350-cd1a71a42ff0`, with actual clean detached checkout
+`2b34` at `d58b0719c8ddb7e4c66a1a45c56b30d78eb5f1dd`.
+Its first exact canonical setup attempt was refused before execution with
+`native-bootstrap: Git execution configuration`. The controller independently
+observed that the shared repository configuration explicitly sets core.hooksPath
+to its ordinary common Git directory's hooks directory. No configuration was
+changed and no setup retry occurred in that worker.
+
+A new offline default-path regression reproduced the exact refusal with actual
+exit 1 (tool ed5568). The correction recognizes either an absent hooks-path
+setting or one literal absolute value equal to the verified physical common
+hooks directory. A single NUL-delimited effective configuration read retains
+complete values and duplicates across scopes. Every path component must be an
+ordinary directory. Alternate spelling, relocation, duplicates, empty or multiline
+values and symlinks remain refused before status. Other execution hazards,
+foreign bindings and immutable setup inputs retain their existing checks.
+This preserves default lookup semantics; it does not attest that default hook
+contents are harmless or create an operation without Git hooks.
+
+All 27 focused tests passed with zero skips and actual exit 0 (session 60413),
+including the original absent-setting case and new positive/negative hook-path
+cases. Independent Sol/medium review accepted the actual source correction
+without blocking findings. Exact committed-source verification, CI and a fresh
+genuine worker setup/binding proof remain required. The failed worker remains
+preserved. Follow-up executor observations with missing Codex identity keys are
+unresolved; strict CLI identity checks were not weakened or given a fallback.
+
+
+A later read-only follow-up in the same worker separately queried each native
+identity key: both returned the actual worker chat ID with exit 0. This confirms
+agreement during that observation, without explaining the earlier combined
+output. It does not establish a binding or replace the required full proof.
+The retained worktree-seed and activity-guard regressions also passed all 46
+cases with actual exit 0 (session 18957).
