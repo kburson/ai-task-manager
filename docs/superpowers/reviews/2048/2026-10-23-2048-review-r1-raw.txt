@@ -1,0 +1,42 @@
+Reviewed **4fd03020d39a2c0c1bd5a303e99bdfdb6881f585** against base **c0ca120cc8a08d3bc74887daac5ba1f50b436fce**, using committed Git objects from permitted `b187`. The diff contains exactly the two owned files.
+
+**Findings**
+
+- Critical: none.
+- Important: none established within this slice.
+- Minor: no required changes.
+
+**Strengths**
+
+- The primary API remains exact. It binds transition identity, executable states, actor and visit; confirmed effects must have been attempted, carry confirmed outcomes, and match candidate digests (`completion-receipt.mjs:176–211,276–336`).
+- Timing proof binds actual provider identity, original resource digest, native transition, and the complete frozen pending-event subset (`:128–174,308–319`). The implementation preserves #2061’s inclusion of ordinary backdated events.
+- The historical companion receives original confirmation context separately from current storage. It validates the manifest and supplied generation, reads published `baseSnapshot` content, and checks retained transition and exact subset digest without requiring equality with the older full-comment hash (`:353–377`).
+- Historical validation checks bounded compressed metadata, canonical event ordering, native pairs, table digest and rendered-row correspondence (`:73–125`). Matching storage checksums alone cannot conceal changed old event values.
+- No publishing, recovery execution, lifecycle activation, or source writes are introduced.
+
+**Test assessment**
+
+The timing evidence exercises real predecessor behavior: fixture freeze/persist/confirm operations produce confirmed timing outcomes (`completion-receipt.test.mjs:73–110`), including original-baseline preservation in #2061 confirmation. Prerequisite field outcomes are synthetic pure-validator inputs, which is appropriate for this scope.
+
+The tests cover consecutive appends, demotion/reentry, separate old confirmation context, Unknown preservation, updated storage checksums, altered visible rows, altered synchronized event/table content, reduced records, foreign identities, and working-versus-published content (`:318–527`). The ordinary-event test verifies full pending-subset binding (`:459–480`). These are substantive behavioral checks.
+
+The provisional-body test demonstrates that an earlier receipt remains valid while a later timing batch remains frozen. Its null-receipt rejection does **not** prove downstream sentinel or lifecycle enforcement; that remains integration work.
+
+**Recommendations / contract boundary**
+
+The coordinator must supply `confirmedEffects` from the preserved, verified original batch. This API checks evidence correlation; it does not independently authenticate caller-created confirmation objects or reconstruct the original pending-versus-published partition from baseline bytes. That division is consistent with the existing API and the module’s explicit authority limitation (`:2,348`).
+
+**Declined scope**
+
+- Final-body receipt/sentinel persistence and required-effect ordering: #2068.
+- Recovery authorization, provider dispatch and fresh snapshot collection: adjacent publisher/recovery work.
+- Reader activation and actual lifecycle completion decisions: later integration.
+- Package inventory adjustment: controller-owned companion work.
+- Revalidating historical legacy authority: existing consumer integration; this module correctly refuses manufacturing a new native receipt from legacy rows.
+
+**Verified SHA-256**
+
+- Module: `e7a25fa4e5c1d13bd3aee1429fe7dfb239da43ac104740d638beb674b86f3c12`
+- Unit: `d11dfb563a2767c6f4ca94302d6a185764888d9458aa97068890f02f1067221b`
+
+**Assessment:** acceptable for this committed #2048 slice, subject to controller verification and integration. This is static source review only: I ran no tests, native actions, or mutations. Reported targeted checks and lint/format results were supplied by the controller, not independently observed here. Full-fast is not green because of the reported inventory-count failure; slow-suite results remain unverified. This assessment does not cover future edits.
