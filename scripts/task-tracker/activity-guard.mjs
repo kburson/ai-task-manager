@@ -30,6 +30,12 @@
 // `reconcile accept-live` to repair the body marker.
 
 import { readFileSync } from 'node:fs';
+import { bindingProofNonce, recordNativeHookObservation } from './lib/native-binding-proof.mjs';
+import {
+  admitNativeBootstrap,
+  assertBootstrapHost,
+  NATIVE_BOOTSTRAP_COMMAND,
+} from './lib/native-worktree-bootstrap.mjs';
 import { estimationCommandArgs, estimationHookRefusal } from './lib/estimation/runtime-adapter.mjs';
 import path from 'node:path';
 import {
@@ -99,6 +105,18 @@ try {
   projectRoot = observedIdentity.worktreePath;
 } catch (error) {
   block(`[task-tracker] mutation context unavailable: ${error.message}`);
+}
+// Validate setup tool resolution before any runtime reader can invoke Git.
+if (
+  input.session_id !== undefined &&
+  toolName === 'Bash' &&
+  toolInput.command === NATIVE_BOOTSTRAP_COMMAND
+) {
+  try {
+    assertBootstrapHost({ root: projectRoot });
+  } catch (error) {
+    block('[task-tracker] ' + error.message);
+  }
 }
 const policy = loadPolicy(projectRoot);
 // Estimation requests are refused locally before decomposition/authority reads.
@@ -488,6 +506,21 @@ if (
   }
 }
 if (isChoreModeActive(projectRoot) && activityClass !== 'COMMIT_DOCS') process.exit(0);
+if (input.session_id !== undefined && !activeIssue && toolName === 'Bash') {
+  try {
+    if (
+      admitNativeBootstrap({
+        command: toolInput.command,
+        sessionId: input.session_id,
+        root: projectRoot,
+        invocationDir,
+      })
+    )
+      process.exit(0);
+  } catch (error) {
+    block('[task-tracker] ' + error.message);
+  }
+}
 if (input.session_id !== undefined && !activeIssue && activityClass !== 'READ_*')
   block('[task-tracker] Native hook session has no active issue binding.');
 
@@ -503,6 +536,26 @@ if (
 
 const refusedClass = (activityClasses || [activityClass]).find((value) => !isAllowed(state, value));
 if (!refusedClass) {
+  const nonce = toolName === 'Bash' ? bindingProofNonce(toolInput.command) : null;
+  if (nonce) {
+    try {
+      const observation = recordNativeHookObservation({
+        cwd: projectRoot,
+        sessionId: input.session_id,
+        nonce,
+      });
+      process.stdout.write(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            additionalContext: JSON.stringify(observation),
+          },
+        })
+      );
+    } catch (error) {
+      block('[task-tracker] ' + error.message);
+    }
+  }
   process.exit(0);
 }
 

@@ -1,0 +1,41 @@
+{
+  "schema": "aitm.local-verification-summary/v1",
+  "recordedAt": "2026-10-23T03:14:14.684Z",
+  "results": [
+    {
+      "command": "npm test",
+      "exit": 0,
+      "files": 1001,
+      "seconds": 112.1,
+      "toolSession": 31239,
+      "log": "fast-1001.log.gz"
+    },
+    {
+      "command": "npm run test:slow",
+      "exit": 0,
+      "files": 56,
+      "seconds": 526.9,
+      "toolSession": 41403,
+      "provenance": "Complete terminal output and actual exit retained in chat; standalone raw file was not captured. Run began before the behavior-preserving comparator extraction and test-lane repair; final exact-head CI still required."
+    },
+    {
+      "command": "npm run lint",
+      "exit": 0,
+      "toolSession": 25818,
+      "log": "full-lint.log.gz"
+    },
+    {
+      "command": "npm run format:check",
+      "exit": 0,
+      "toolSession": 19465,
+      "log": "full-format.log.gz"
+    },
+    {
+      "command": "node --test scripts/tests/unit/meta/unit-lane-purity.test.mjs scripts/tests/unit/task-tracker/lib/native-worktree-bootstrap.test.mjs scripts/tests/integration/task-tracker/lib/native-worktree-bootstrap.test.mjs",
+      "exit": 0,
+      "tests": 30,
+      "toolSession": 51113,
+      "log": "named-and-unit-purity-30.log.gz"
+    }
+  ]
+}
