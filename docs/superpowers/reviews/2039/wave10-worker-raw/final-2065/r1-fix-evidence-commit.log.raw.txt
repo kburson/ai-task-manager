@@ -1,0 +1,4 @@
+[feature/child/2065 3f03fd320] [#2065] Preserve full R1 review and exhaustive repair dispositions
+ 3 files changed, 134 insertions(+)
+ create mode 100644 docs/superpowers/reviews/2039/2026-10-22-2065-review-r1-author-dispositions.md
+ create mode 100644 docs/superpowers/reviews/2039/2026-10-22-2065-review-r1.raw.txt

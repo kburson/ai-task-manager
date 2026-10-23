@@ -1,0 +1,22 @@
+{
+  "head": "a6880acfadaca04b3c73fbc3bbd5c6e699b5056d",
+  "status": "",
+  "root": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+  "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+  "provider": "codex",
+  "activeBinding": null,
+  "actor": {
+    "active": null,
+    "lastActive": "#2065",
+    "entryStartTs": null,
+    "wordsAtEntryStart": 0,
+    "fullWordsAtEntryStart": 78893,
+    "totalActiveMinutes": 0,
+    "discoverBucket": null,
+    "lastWordMarker": 1328,
+    "lastFullWordMarker": 78893,
+    "pausedAtTs": null
+  },
+  "occupancy2065": null,
+  "timingQueue": []
+}

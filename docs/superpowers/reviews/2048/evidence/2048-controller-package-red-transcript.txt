@@ -1,0 +1,7 @@
+Controller transcription of the bounded returned package-test failure summary, exec session 22033, actual exit 1. This is a tool-output transcription, not a new subprocess capture. Command: node --test scripts/tests/unit/task-tracker/core/package-boundary.test.mjs. The preceding Git read established integrated HEAD 0c728819534eb760902231153231c44acbb3de91.
+
+Tests: 9; pass: 8; fail: 1; cancelled/skipped/todo: 0.
+Only failure: package-boundary: total entry count stays under the ceiling.
+AssertionError [ERR_ASSERTION]: packed entry count 978 exceeds ceiling 977; the package surface grew — confirm intentional and raise the ceiling, or prune.
+Failure location: scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:553:10.
+The original complete tool output remains in controller chat 01a16382-9511-7401-baed-5dd61fd8a380, returned chunk 565de4. The other eight named package checks passed. No policy or exclusion changed in response.

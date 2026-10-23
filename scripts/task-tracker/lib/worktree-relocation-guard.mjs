@@ -1,8 +1,9 @@
-// @story #1191
+// @story #1191 #2057
 // Durable re-engagement guard. It compares the issue's append-only location
 // history with the invoking checkout before local task state or verb preflight
 // is allowed to govern the command.
 
+import { assertStoryBindingSettled } from './story-cache/writer-handoff-bindings.mjs';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 
 import { mutateIssueBody as defaultMutateIssueBody } from './issue-body-mutate.mjs';
@@ -116,6 +117,13 @@ async function writeLocation({ issueNumber, repo, entry, confirmRelocation, deps
       if (recorded && !sameIssueWorktreeLocation(recorded, entry) && !confirmRelocation) {
         throw new WorktreeRelocationRequiredError({ issueNumber, recorded, live: entry });
       }
+      if (recorded && !sameIssueWorktreeLocation(recorded, entry))
+        assertStoryBindingSettled({
+          projectRoot: recorded.worktreePath,
+          issue: issueNumber,
+          sessionId: recorded.sessionId,
+          repository: repo,
+        });
       return recordIssueWorktreeLocationOnChange(base, entry).body;
     },
   });
@@ -151,6 +159,13 @@ export async function enforceIssueWorktreeLocation({
       live,
     });
   }
+  if (recorded)
+    assertStoryBindingSettled({
+      projectRoot: recorded.worktreePath,
+      issue: target.issueNumber,
+      sessionId: recorded.sessionId,
+      repository: cfg.repo,
+    });
   // Legacy issues acquire their initial durable location at bind. A later verb
   // that is invoked without the required bind may still run its existing
   // semantic preflight, but this entry guard must not mutate the body before

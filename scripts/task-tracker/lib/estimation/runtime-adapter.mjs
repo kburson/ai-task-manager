@@ -43,7 +43,7 @@ import {
   parsePreloadedIssueComments,
 } from '../github-records/github-comment-store.mjs';
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
-import { buildEstimationForecast } from './forecast-model.mjs';
+// Forecast calculation lives in local-runtime.mjs; publication accepts validated payloads.
 import { buildEstimationOutcome } from './outcome-builder.mjs';
 import {
   INCOMPLETE_OUTCOME_SCHEMA,
@@ -61,7 +61,7 @@ import {
   upsertForecastReadyMarker,
 } from './plan-estimate-authority.mjs';
 import { writeEstimationRecord } from './renderers.mjs';
-import { loadOrRefreshRubric } from './rubric-refresh.mjs';
+// Calculation/calibration uses retained local-runtime inputs, never this publication adapter.
 
 const SINCE_EPOCH = '1970-01-01T00:00:00.000Z';
 const PROJECT_RECORDS_QUERY = `
@@ -467,7 +467,9 @@ export function refineEstimateFromProjection(projection) {
   return { size: source.size, humanHours: source.humanHours };
 }
 
-export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graphql } = {}) {
+export async function loadProjectEstimationCorpus({ cfg, io, graphql } = {}) {
+  refuseCloudEstimation(cfg);
+  graphql ??= io?.graphql;
   if (!cfg?.projectId || !cfg?.repo || typeof graphql !== 'function') fail('corpus-input');
   const records = [];
   const candidates = new Map();
@@ -575,11 +577,13 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
   return records;
 }
 
-export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline = false } = {}) {
+export function createAdaptivePlanRuntime({ cfg } = {}) {
+  refuseCloudEstimation(cfg);
+}
+
+// Explicit lifecycle projection/publication only: no rubric, corpus or comparable loaders.
+export function createPlanPublicationRuntime({ cfg, deps = {}, adoptLegacyBaseline = false } = {}) {
   if (!cfg?.repo || !cfg?.projectId) fail('plan-config');
-  if (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0) {
-    fail('rubric-issue-unconfigured');
-  }
   const io = deps.recordIo ?? createGitHubEstimationRecordIo(deps);
   const graphql = deps.graphql ?? io.graphql;
   const fieldDefs = (deps.loadProjectFieldDefs ?? loadProjectFieldDefs)();
@@ -587,15 +591,6 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   let lastItemId = null;
   let supersededForecastRecordId = null;
   let activeForecast = null;
-  let corpusPromise = null;
-  const loadCorpusFresh = () =>
-    (deps.loadProjectEstimationCorpus ?? loadProjectEstimationCorpus)({
-      cfg,
-      io,
-      graphql,
-    });
-  const corpus = () => (corpusPromise ??= loadCorpusFresh());
-
   const readProjection = async (issueNumber) => {
     const response = await graphql({
       query: ISSUE_PROJECTION_QUERY,
@@ -685,60 +680,6 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
       supersededForecastRecordId = activeForecast?.recordId ?? null;
       return refineEstimateFromProjection(projection);
     },
-    loadRubric: async () => {
-      const result = await loadOrRefreshRubric({
-        cfg,
-        deps: {
-          // Both reads execute only after loadOrRefreshRubric acquires the
-          // authority claim. Never decide from corpusPromise: another process
-          // may have appended while this runtime waited for the lock.
-          listRubricRecords: async () =>
-            (
-              await io.listIssueRecords({
-                repository: cfg.repo,
-                issue: cfg.estimationRubricIssue,
-              })
-            ).filter((record) => record.envelope.recordType === 'estimation-rubric'),
-          listEligibleOutcomes: async () => {
-            const freshRecords = await loadCorpusFresh();
-            // Reuse this just-read projection for the non-authoritative
-            // comparable lookup that follows in the same Plan execution.
-            corpusPromise = Promise.resolve(freshRecords);
-            return estimationOutcomeSamples(freshRecords);
-          },
-          writeRubric: async ({ issue, payload, predecessorRecordId }) =>
-            io.write({
-              envelope: createAitmRecordEnvelope({
-                recordType: 'estimation-rubric',
-                repository: cfg.repo,
-                issue,
-                payload,
-                actor: 'aitm/rubric-refresh',
-                predecessor: predecessorRecordId,
-                supersedes: predecessorRecordId,
-              }),
-            }),
-          withLogicalRecordClaim: io.withLogicalRecordClaim,
-        },
-      });
-      return { recordId: result.recordId, payload: result.rubric };
-    },
-    listComparableOutcomes: async ({ planInput }) => {
-      const allowed = new Set(planInput.comparableIssueIds ?? []);
-      return activeEstimationOutcomes(await corpus())
-        .filter(
-          (record) =>
-            record.envelope.recordType === 'estimation-outcome' &&
-            record.envelope.payload.kind === 'story' &&
-            !isIncompleteOutcome(record.envelope.payload) &&
-            (allowed.size === 0 || allowed.has(record.envelope.issue))
-        )
-        .map((record) => ({
-          recordId: record.envelope.recordId,
-          payload: record.envelope.payload,
-        }));
-    },
-    buildForecast: buildEstimationForecast,
     createForecastEnvelope: ({ repository, issue, payload }) => {
       if (
         activeForecast &&
@@ -768,6 +709,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
         deps: {
           cfg,
           projectDir: deps.projectDir,
+          localForecast: deps.localForecast,
           decomposition: deps.decomposition,
           projectItemForIssue: deps.projectItemForIssue,
           readProjection: () => readProjection(issueNumber),
@@ -1610,3 +1552,128 @@ export function createEstimationOutcomeRuntime({
     },
   };
 }
+
+// @story #2039 #2063
+import { splitCommandSegments } from '../gh-edit-guard.mjs';
+// The maintained retained-input calculator is the only estimation implementation.
+export { calculateLocalEstimate } from './local-runtime.mjs';
+
+/** Resolve before creating clients, loading corpus, or consulting lifecycle authority. */
+export function resolveEstimationMode(cfg = {}) {
+  if (configurationReadProvenance(cfg)?.valid === false)
+    return { mode: 'unavailable', reason: 'config-invalid' };
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg))
+    return { mode: 'unavailable', reason: 'config-invalid' };
+  const rubric = cfg.estimationRubricIssue === undefined ? 0 : cfg.estimationRubricIssue;
+  if (!Number.isSafeInteger(rubric) || rubric < 0)
+    return { mode: 'unavailable', reason: 'rubric-invalid' };
+  return rubric === 0
+    ? { mode: 'disabled', reason: 'rubric-disabled' }
+    : { mode: 'local', reason: 'retained-evidence-only' };
+}
+
+export function estimationDispatchDecision({ cfg, verb, args = [] } = {}) {
+  if (verb !== 'plan-estimate') return null;
+  // A human appendix is a governed lifecycle write, not adaptive calculation.
+  // Evidence takes precedence in the actual verb, even when both flags occur.
+  if (
+    args.includes('--compatibility-mode') &&
+    !args.some((arg) => arg === '--evidence-file' || arg.startsWith('--evidence-file='))
+  )
+    return null;
+  const resolved = resolveEstimationMode(cfg);
+  return {
+    status: resolved.mode === 'disabled' ? 'disabled' : 'unavailable',
+    mode: resolved.mode,
+    reason: resolved.mode === 'local' ? 'retained-local-input-required' : resolved.reason,
+  };
+}
+
+// This narrow recognizer only intercepts actual canonical estimator invocations.
+// Unrecognized shell syntax falls through native guards; the runtime also refuses
+// cloud dispatch, so recognition is never a grant to execute a cloud estimator.
+export function estimationCommandArgs(command = '') {
+  for (const segment of splitCommandSegments(command)) {
+    const words = [];
+    let word = '',
+      quote = '',
+      escaped = false,
+      active = false;
+    for (const char of segment.trim()) {
+      if (escaped) {
+        word += char;
+        escaped = false;
+        active = true;
+        continue;
+      }
+      if (char === '\\' && quote !== "'") {
+        escaped = true;
+        continue;
+      }
+      if (quote) {
+        if (char === quote) quote = '';
+        else word += char;
+        active = true;
+        continue;
+      }
+      if (char === "'" || char === '"') {
+        quote = char;
+        active = true;
+        continue;
+      }
+      if (/\s/.test(char)) {
+        if (active) words.push(word);
+        word = '';
+        active = false;
+      } else {
+        word += char;
+        active = true;
+      }
+    }
+    if (quote || escaped) continue;
+    if (active) words.push(word);
+    while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0] ?? '')) words.shift();
+    const name = (value) =>
+      String(value ?? '')
+        .split('/')
+        .at(-1);
+    if (name(words[0]) === 'npx') {
+      words.shift();
+      if (words[0] === '--no-install') words.shift();
+    }
+    if (name(words[0]) === 'node' && ['aitm.mjs', 'task-tracker.mjs'].includes(name(words[1])))
+      words.splice(0, 2, 'aitm');
+    if (name(words[0]) !== 'aitm' || words[1] !== 'plan-estimate') continue;
+    const args = words.slice(2);
+    if (!(
+      args.includes('--compatibility-mode') &&
+      !args.some((arg) => arg === '--evidence-file' || arg.startsWith('--evidence-file='))
+    ))
+      return args;
+  }
+  return null;
+}
+
+export function estimationHookRefusal({ cfg, args } = {}) {
+  const estimation = estimationDispatchDecision({ cfg, verb: 'plan-estimate', args });
+  return (
+    estimation && {
+      decision: 'block',
+      code: 'estimation-dispatch-stopped',
+      estimation,
+      reason: `[task-tracker] Estimation ${estimation.status}: ${estimation.reason}. Cloud estimation is prohibited; use retained local inputs.`,
+    }
+  );
+}
+
+function refuseCloudEstimation(cfg) {
+  const resolved = resolveEstimationMode(cfg);
+  throw Object.assign(new Error(`estimation-runtime:${resolved.mode}:cloud-dispatch-prohibited`), {
+    code: 'estimation-cloud-dispatch-prohibited',
+    status: resolved.mode === 'disabled' ? 'disabled' : 'unavailable',
+    mode: resolved.mode,
+    reason: resolved.mode === 'local' ? 'retained-local-input-required' : resolved.reason,
+  });
+}
+
+import { configurationReadProvenance } from '../../config.mjs';

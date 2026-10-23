@@ -1,0 +1,55 @@
+{
+  "schema": "aitm.controller-evidence/v1",
+  "issue": 2066,
+  "excludes": [
+    "manifest.json"
+  ],
+  "artifacts": [
+    {
+      "path": "README.md",
+      "storedSha256": "790413147d2c5db1efe0b40b07e22bba67220b6600392d8b4be9c908a58c6e9a",
+      "storedBytes": 5152
+    },
+    {
+      "path": "collateral-review-final.raw.txt",
+      "storedSha256": "cb0e0a10e0c36073e5a56b678f23ae1971ae0e01a13f64985cabd254f9f26b69",
+      "storedBytes": 2463
+    },
+    {
+      "path": "collateral-review-preliminary.raw.txt",
+      "storedSha256": "e188fc9ec1b6af320ec2026430a7b80bbc794938d74bb9742c0cdfcfca71f760",
+      "storedBytes": 2024
+    },
+    {
+      "path": "controller-native-hook.json.consumed",
+      "storedSha256": "034ed3e4e149615649d86756276eb725900c5c2c08cd37da239d7e5cacbed5c8",
+      "storedBytes": 471
+    },
+    {
+      "path": "fast-green.log.gz",
+      "storedSha256": "09a445eebff18c6c118c450eb7d581f694cb34195ecb7e27302e6016413d1707",
+      "storedBytes": 11913,
+      "decodedSha256": "26955bbf75880d66ff0bd85826b1c279cdbb8fa470854c6383ce162fad1a09a1",
+      "decodedBytes": 88174
+    },
+    {
+      "path": "integration-review.raw.txt",
+      "storedSha256": "517ff1bf5496bfc86c44a14e775e7612d86d49c92f2647ea4d54f835c9b37f6b",
+      "storedBytes": 2035
+    },
+    {
+      "path": "inventory-green.log.gz",
+      "storedSha256": "1c9a3de6832df045661b613d29f9a1afa7ea9c63b70311498caa8217b6701cea",
+      "storedBytes": 1565,
+      "decodedSha256": "b0b830ce9761ea227ea964d5a40e5bb5bdb7f99418205481a52634f1e8cb3ab6",
+      "decodedBytes": 3766
+    },
+    {
+      "path": "inventory-red.log.gz",
+      "storedSha256": "a4285078ca33611878f5ec6945584610a2e15c1e198cf3952bf27feae7956f45",
+      "storedBytes": 1359,
+      "decodedSha256": "e9dccc8542e3a00cb8749f60f84a877b2fe08f93dc2e0797723b687cfa94b6e5",
+      "decodedBytes": 3934
+    }
+  ]
+}

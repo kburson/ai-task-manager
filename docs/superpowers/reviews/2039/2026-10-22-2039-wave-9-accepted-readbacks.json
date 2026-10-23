@@ -1,0 +1,106 @@
+{
+  "sourceHeads": {
+    "wave8": "47dc94bdcd84072ba2889d22716c69b051f99dd7",
+    "wave9": "352f2c501d9a2218cf1721d45b23229b10a8b18f"
+  },
+  "completeCI": {
+    "wave8": 39742622823,
+    "wave9": 39765281069
+  },
+  "codeQL": {
+    "wave8": 39742616994,
+    "wave9": 39765277624
+  },
+  "liveReadbacks": [
+    {
+      "closedAt": "2026-10-22T08:19:17Z",
+      "nativeDone": true,
+      "number": 2043,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    },
+    {
+      "closedAt": "2026-10-22T08:05:58Z",
+      "nativeDone": true,
+      "number": 2063,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    },
+    {
+      "closedAt": "2026-10-22T08:30:44Z",
+      "nativeDone": true,
+      "number": 2046,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    },
+    {
+      "closedAt": "2026-10-22T11:26:05Z",
+      "nativeDone": true,
+      "number": 2058,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    },
+    {
+      "closedAt": "2026-10-22T11:40:39Z",
+      "nativeDone": true,
+      "number": 2060,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    },
+    {
+      "closedAt": "2026-10-22T11:10:55Z",
+      "nativeDone": true,
+      "number": 2064,
+      "projectItems": [
+        {
+          "status": {
+            "name": "Done",
+            "optionId": "98236657"
+          },
+          "title": "aitm backlog"
+        }
+      ],
+      "state": "CLOSED"
+    }
+  ]
+}

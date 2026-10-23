@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'eslint' scripts/task-tracker/lib/body-invariants.mjs scripts/task-tracker/lib/story-cache/stage-capabilities.mjs scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs

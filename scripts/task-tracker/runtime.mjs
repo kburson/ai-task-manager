@@ -313,7 +313,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     .map((a) => (ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a));
 
   const projectDir = getProjectDir();
-  const cfg = loadConfig();
+  const cfg = loadRuntimeConfig(verb, rest);
   // #314 — surface configuration drift once per process so operators see
   // missing project-field ids before silent skips bury them.
   if (process.env.TT_SKIP_FIELD_SELF_CHECK !== '1') {
@@ -982,4 +982,17 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   });
 
   return ctx;
+}
+
+// @story #2063 — invalid estimation config cannot be masked by initialization/defaults.
+import { estimationDispatchDecision } from './lib/estimation/runtime-adapter.mjs';
+function loadRuntimeConfig(verb, args) {
+  const cfg = loadConfig();
+  const stopped = estimationDispatchDecision({ cfg, verb, args });
+  if (stopped?.reason === 'config-invalid')
+    throw Object.assign(new Error(`Estimation ${stopped.status}: ${stopped.reason}`), {
+      code: 'estimation-dispatch-stopped',
+      ...stopped,
+    });
+  return cfg;
 }

@@ -1,0 +1,15 @@
+# Response to root source review of #2066
+
+Accepted the Important fractional-variable transport finding. Commit `03f608911194eb00b0b0ab6a16b92491b64da39a` remains preserved as the failed candidate. Its earlier transport test asserted only that `-F` was selected and did not prove the provider received a JSON number. The complete independent root review is retained in [raw/root-sol-medium-review-03f.raw.txt.gz](raw/root-sol-medium-review-03f.raw.txt.gz).
+
+The replacement regression exercises the production default transport at the external process boundary. Its old-path offline double applies the installed CLI's documented integer-only conversion. The test observed `['3.5', 0, '-1.25']` and failed before the fix. The corrected default adapter sends a JSON request body through `gh api graphql --input -`; the test decodes actual stdin and verifies `[3.5, 0, -1.25]` as numbers. It replaces only the external process, never the serializer under test. No live mutation or network probe ran. The adapter retains explicit host selection, timeout, response-size cap and repository telemetry preparation.
+
+All 27 named tests passed after this change. Follow-up source commit: `fcdf5a243911eeea70247cae5372eb9e78c1ab4a`, tree `41f9515eb3aa14bc13845d9ae934902a72948b89`. The unchanged publisher hash is `e4bd0b3191834b87b1ad73a9d4792891c5b2644d724f66db21e1b1cdeec4200b`; adapters `22967c6d95f2b8d128794615542be58662059973a0c0e3cddb72be70220eb85a`; unit test `c243a3edd50732430a1d98e1a1c95b4706e4e1394ab3686d11631a27126c191d`.
+
+The source scanner still sees one explicit planned GraphQL dispatch, now at provider-adapters.mjs line 121. No classification was hidden, downgraded or registered by this worker. The package inventory remains 980 versus ceiling 978. Both companions remain for the controller under proper binding. Full earlier failed runs, first reviews and their dispositions remain preserved; no prior verdict is presented as acceptance of the changed source. The controller owns exact follow-up commit review and integrated native Test/Review/Close.
+
+## Final review ruling
+
+The root reviewer statically accepted exact commit fcdf5a243911eeea70247cae5372eb9e78c1ab4a and closed its P1 finding, with no remaining required source changes. Its complete raw follow-up is retained in [the final raw review](raw/root-sol-medium-final-review-fcdf.raw.txt.gz). Accept this source verdict within its stated limits: it did not execute tests or assess integrated lifecycle acceptance, CI, collateral or the parent checkpoint. Treating it as full workflow acceptance would incorrectly hide the two shared inventory failures and pre-fix slow-run provenance.
+
+The worker's actual post-fix targeted verifier passed 27 tests, full lint and format checks exited 0, and full fast verification exited 1 with exactly the package and GraphQL inventory test files failing. The slow run exited 0 with all 57 files passing, but began before this transport change; no exact-final-source slow claim is made. The controller retains the full integrated verification boundary.

@@ -1,3 +1,5 @@
+// @story #2039 #2065
+import { historicalForecastEnvelope } from '../../../helpers/task-2065-forecast-fixture.mjs';
 // @story #277
 // Unit tests for the plan-exit guards introduced in #277:
 //   - planApprovedGuard       (lib/plan-approved-guard.mjs)
@@ -29,10 +31,7 @@ import { runGuards } from '../../../../task-tracker/lib/guard-registry.mjs';
 import { buildEstimationForecast } from '../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { buildEpicOrchestrationPlanMarker } from '../../../../task-tracker/lib/epic-orchestration-plan.mjs';
 import { createBootstrapRubric } from '../../../../task-tracker/lib/estimation/rubric-model.mjs';
-import {
-  createAitmRecordEnvelope,
-  renderAitmRecord,
-} from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { renderAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 import '../../../../task-tracker/lib/guard-bootstrap.mjs';
 import { resolveStoryIntentSource } from '../../../../task-tracker/lib/story-intent-source.mjs';
 import { upsertPlanApprovedMarker } from '../../../../task-tracker/lib/markers.mjs';
@@ -381,7 +380,7 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
     },
     rubric: { recordId: rubricRecordId, payload: rubric },
   });
-  const envelope = createAitmRecordEnvelope({
+  const envelope = historicalForecastEnvelope({
     recordType: 'estimation-forecast',
     repository: 'owner/name',
     issue: 1091,
@@ -782,3 +781,5 @@ test('runGuards(plan,develop): marker present + solo issue → ok', async () => 
   );
   assert.equal(r.ok, true, JSON.stringify(r.refusals));
 });
+
+// Historical transport fixture: validation uses native legacy render/parse, never new publication.

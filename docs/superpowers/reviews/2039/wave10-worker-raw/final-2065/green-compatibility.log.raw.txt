@@ -1,0 +1,81 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.813458ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.491625ms)
+✔ v2 rejects off-grid published hours: refine (0.104583ms)
+✔ v2 rejects off-grid published hours: plan (0.067541ms)
+✔ v2 rejects off-grid published hours: p50 (0.077375ms)
+✔ v2 rejects off-grid published hours: p80 (0.05975ms)
+✔ v2 rejects off-grid published hours: stage (0.072709ms)
+✔ v2 rejects off-grid published hours: wbs (0.075708ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.133542ms)
+✖ current v3 reads replay retained evidence and require its current selection (7.382334ms)
+✔ current v3 refuses missing or stale provenance: missing (0.908584ms)
+✖ current v3 refuses missing or stale provenance: manifest (0.62375ms)
+✖ current v3 refuses missing or stale provenance: plan (0.55575ms)
+✖ current v3 refuses missing or stale provenance: unknown (0.5375ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.876875ms)
+✔ story estimates ceil to the next half hour without moving downward (0.864959ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (0.821417ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.204333ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (3.248666ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (1.351209ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.297958ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.272041ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.245709ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.290041ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (0.3525ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (1.083708ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 22
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.550917
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:81:1
+✖ current v3 reads replay retained evidence and require its current selection (7.382334ms)
+  TypeError: forecast-current:forecast-provenance:retained-rubric-metadata
+      at requireCurrentSchema (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-legacy.mjs:12:45)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:84:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:93:3
+✖ current v3 refuses missing or stale provenance: manifest (0.62375ms)
+  TypeError: Cannot assign to read only property 'manifestDigest' of object '#<Object>'
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:96:69)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:93:3
+✖ current v3 refuses missing or stale provenance: plan (0.55575ms)
+  TypeError: Cannot assign to read only property 'commit' of object '#<Object>'
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:97:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:93:3
+✖ current v3 refuses missing or stale provenance: unknown (0.5375ms)
+  TypeError: Cannot add property invented, object is not extensible
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:98:62)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "`node --test scripts/tests/unit/task-tracker/lib/story-cache/handoff.test.mjs`",
+  "replacement": "`node --test scripts/tests/unit/task-tracker/lib/story-cache/handoff.test.mjs scripts/tests/integration/task-tracker/lib/story-cache/handoff.integration.test.mjs scripts/tests/integration/task-tracker/lib/story-cache/handoff-recovery.integration.test.mjs scripts/tests/integration/task-tracker/lib/story-cache/handoff-bindings.integration.test.mjs`",
+  "expectedVersion": 36
+}

@@ -337,7 +337,7 @@ test('schema dispatch and common field validation fail closed', () => {
 });
 
 test('known estimation record types fail closed when their payload schema is unknown', () => {
-  const estimationPayload = { schema: 'aitm.estimation-forecast/v3', issue: 1069 };
+  const estimationPayload = { schema: 'aitm.estimation-forecast/v4', issue: 1069 };
   assert.throws(
     () =>
       renderAitmRecord({
@@ -536,4 +536,91 @@ test('hash tampering and caller correlation mismatches fail closed', () => {
   );
   assert.throws(() => parse(render(), { expectedIssue: 1070 }), /record-envelope:issue-mismatch/);
   assert.throws(() => parse(render(), { commentNodeId: '' }), /record-envelope:comment-node-id/);
+});
+
+// @story #2039 #2065
+import {
+  bundle,
+  envelope as retainedEnvelope,
+} from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
+import { localCalculationProvenance } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
+function currentForecastPayload() {
+  const evidence = bundle([{ record: retainedEnvelope(), provenance: 'imported-local' }], {
+    issue: 1069,
+  });
+  const retained = validateLocalEvidence(evidence);
+  return {
+    schema: 'aitm.estimation-forecast/v3',
+    issue: 1069,
+    lifecycleState: 'plan',
+    refine: { size: 'S', humanHours: 3.5 },
+    plan: { size: 'S', humanHours: 3.5, deltaHours: 0, rationale: 'Retained local calculation.' },
+    ai: {
+      p50EngagedHours: 1,
+      p80EngagedHours: 1.5,
+      stages: { plan: 0.5, develop: 0.5, test: 0, review: 0 },
+    },
+    wbs: [{ id: 'change', description: 'Implement bounded change', humanHours: 3.5, signals: [] }],
+    comparableIssues: [],
+    rubric: {
+      recordId: retained.activeRubric.record.recordId,
+      version: 1,
+      cohortSize: 0,
+      confidence: 0.1,
+    },
+    testPlan: { expectedMinutes: 1, impactedLanes: ['unit'], isolation: 'offline' },
+    risks: [],
+    recommendation: { action: 'proceed', reason: 'Bounded scope' },
+    supersedesForecastRecordId: null,
+    localEvidence: structuredClone(localCalculationProvenance(retained)),
+  };
+}
+function createForecast(payload) {
+  return createAitmRecordEnvelope({
+    recordType: 'estimation-forecast',
+    repository: 'owner/repo',
+    issue: 1069,
+    payload,
+    actor: 'fixture',
+  });
+}
+test('current forecast envelopes create and roundtrip exact retained v3 provenance including plan path', () => {
+  const payload = currentForecastPayload();
+  const created = createForecast(payload);
+  const parsed = parseAitmRecord({
+    commentNodeId: 'IC_v3_fixture',
+    body: renderAitmRecord({ envelope: created }),
+    expectedRepository: 'owner/repo',
+    expectedIssue: 1069,
+  });
+  assert.deepEqual(parsed.envelope.payload, payload);
+});
+for (const mutation of ['missing', 'unknown', 'credential path', 'credential rationale']) {
+  test('current forecast envelope refuses ' + mutation + ' without broad secret exemptions', () => {
+    const payload = currentForecastPayload();
+    if (mutation === 'missing') delete payload.localEvidence;
+    if (mutation === 'unknown') payload.localEvidence.plan.invented = true;
+    if (mutation === 'credential path')
+      payload.localEvidence.plan.path = 'docs/ghp_1234567890abcdefghijklmnop.md';
+    if (mutation === 'credential rationale') payload.plan.rationale = 'Bearer abcdefghijklmnop';
+    assert.throws(() => createForecast(payload));
+  });
+}
+test('legacy forecast envelopes remain readable while new creation requires current v3', () => {
+  const current = createForecast(currentForecastPayload());
+  for (const schema of ['aitm.estimation-forecast/v1', 'aitm.estimation-forecast/v2']) {
+    const { localEvidence: _local, ...payload } = currentForecastPayload();
+    payload.schema = schema;
+    if (schema.endsWith('v1')) payload.ai.p80EngagedHours = 1.125;
+    assert.throws(() => createForecast(payload), new RegExp('forecast-schema'));
+    const legacy = { ...current, payload, payloadHash: hashRecordPayload(payload) };
+    const parsed = parseAitmRecord({
+      commentNodeId: 'IC_legacy_fixture',
+      body: renderAitmRecord({ envelope: legacy }),
+      expectedRepository: 'owner/repo',
+      expectedIssue: 1069,
+    });
+    assert.deepEqual(parsed.envelope.payload, payload);
+  }
 });

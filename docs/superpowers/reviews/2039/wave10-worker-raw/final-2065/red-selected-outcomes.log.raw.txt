@@ -1,0 +1,48 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.896083ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.474459ms)
+✔ v2 rejects off-grid published hours: refine (0.107ms)
+✔ v2 rejects off-grid published hours: plan (0.087792ms)
+✔ v2 rejects off-grid published hours: p50 (0.074625ms)
+✔ v2 rejects off-grid published hours: p80 (0.06ms)
+✔ v2 rejects off-grid published hours: stage (0.052417ms)
+✔ v2 rejects off-grid published hours: wbs (0.059833ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.144166ms)
+✔ current v3 reads replay retained evidence and require its current selection (11.776833ms)
+✔ current v3 refuses missing or stale provenance: missing (0.711ms)
+✔ current v3 refuses missing or stale provenance: manifest (2.139041ms)
+✔ current v3 refuses missing or stale provenance: plan (1.14325ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.504334ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.19225ms)
+✔ current authority correlates its configured repository before reading projection (0.6465ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (0.6625ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (0.748125ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (2.422167ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (0.708833ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (0.63725ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (1.972791ms)
+✔ current replay refuses accessor-based issue substitution (0.971292ms)
+✖ local generation includes only explicitly selected retained outcomes in current provenance (7.076667ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 23
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.68725
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:289:2
+✖ local generation includes only explicitly selected retained outcomes in current provenance (7.076667ms)
+  TypeError: forecast-provenance:outcome-correlation
+      at fail (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-v3.mjs:14:9)
+      at validateForecastProvenance (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-v3.mjs:121:68)
+      at Object.buildEstimationForecast [as buildForecast] (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-model.mjs:266:5)
+      at executeAdaptivePlanEstimate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:55:25)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:300:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)

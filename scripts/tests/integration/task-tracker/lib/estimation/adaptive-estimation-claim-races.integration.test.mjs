@@ -1,4 +1,4 @@
-// @story #1091
+// @story #1091 #2039 #2065
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -6,12 +6,19 @@ import {
   estimationPublicationFixture,
 } from '../../../../fixtures/estimation-publication.mjs';
 
+import {
+  bundle,
+  envelope as retainedEnvelope,
+} from '../../../../helpers/local-estimation-evidence-fixture.mjs';
+import { validateLocalEvidence } from '../../../../../task-tracker/lib/estimation/local-evidence.mjs';
+import { localCalculationProvenance } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
 import { buildEstimationForecast } from '../../../../../task-tracker/lib/estimation/forecast-model.mjs';
 import { buildEstimationOutcome } from '../../../../../task-tracker/lib/estimation/outcome-builder.mjs';
 import { withProcessRecordClaim } from '../../../../../task-tracker/lib/estimation/record-claim.mjs';
 import { createBootstrapRubric } from '../../../../../task-tracker/lib/estimation/rubric-model.mjs';
 import {
   createAdaptivePlanRuntime,
+  createPlanPublicationRuntime,
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
@@ -159,7 +166,7 @@ test('two production close runtimes with the same pre-claim snapshot append one 
   assert.deepEqual(results.map((result) => result.status).sort(), ['existing', 'written']);
 });
 
-test('two production Plan runtimes sharing a stale rubric generation append one successor', async () => {
+test('two obsolete cloud Plan runtimes refuse before a rubric claim or successor write', async () => {
   const { rubric, forecast, outcomePayload } = estimationFixture();
   const rubricRecords = [
     {
@@ -206,26 +213,69 @@ test('two production Plan runtimes sharing a stale rubric generation append one 
     loadProjectFieldDefs: () => [],
     loadProjectEstimationCorpus: async () => [...corpus],
   };
-  const runtimes = [1, 2].map(() =>
-    createAdaptivePlanRuntime({
-      cfg: { repo: repository, projectId: 'PVT_test', estimationRubricIssue: rubricIssue },
-      deps,
-    })
-  );
-  const results = await Promise.all(runtimes.map((runtime) => runtime.loadRubric()));
-
-  assert.equal(writes, 1);
-  assert.equal(rubricRecords.length, 2);
-  assert.equal(results[0].recordId, results[1].recordId);
+  // #2063: two legacy cloud-calibration attempts must refuse before acquiring a
+  // rubric claim or writing a successor; real publication/close races stay below/above.
+  const refusals = [1, 2].map(() => {
+    try {
+      createAdaptivePlanRuntime({
+        cfg: { repo: repository, projectId: 'PVT_test', estimationRubricIssue: rubricIssue },
+        deps,
+      });
+    } catch (error) {
+      return error;
+    }
+  });
+  for (const error of refusals) assert.equal(error.code, 'estimation-cloud-dispatch-prohibited');
+  assert.equal(writes, 0);
+  assert.equal(rubricRecords.length, 1);
+  assert.equal(refusals[0].mode, refusals[1].mode);
 });
 
 test('two production Plan authority runtimes with the same initial projection append one forecast', async () => {
   const { forecast } = estimationFixture();
+  const evidence = bundle(
+    [
+      {
+        record: {
+          ...retainedEnvelope({ recordId: forecast.payload.rubric.recordId, issue: rubricIssue }),
+          repository,
+        },
+        provenance: 'imported-local',
+      },
+    ],
+    {
+      repository,
+      issue,
+      configuration: { estimationRubricIssue: rubricIssue },
+      refine: {
+        ...forecast.payload.refine,
+        source: { kind: 'imported-local', id: 'claim-race-refine', digest: 'b'.repeat(64) },
+      },
+    }
+  );
+  const retained = validateLocalEvidence(evidence);
+  const {
+    inputs: _inputs,
+    schema: _schema,
+    canonicalizationVersion: _canonical,
+    ...selection
+  } = evidence.manifest;
+  const localForecast = {
+    manifestDigest: retained.manifestDigest,
+    evidenceStore: { read: () => validateLocalEvidence(evidence) },
+    identity: { host: 'github.com', repository, issue },
+    selection,
+  };
+  const payload = {
+    ...forecast.payload,
+    schema: 'aitm.estimation-forecast/v3',
+    localEvidence: structuredClone(localCalculationProvenance(retained)),
+  };
   const forecastEnvelope = createAitmRecordEnvelope({
     recordType: 'estimation-forecast',
     repository,
     issue,
-    payload: forecast.payload,
+    payload,
     actor: 'aitm/plan-estimate',
   });
   const cfg = {
@@ -304,6 +354,7 @@ test('two production Plan authority runtimes with the same initial projection ap
     },
   };
   const deps = {
+    localForecast,
     ...estimationPublicationFixture({
       cfg,
       issueNumber: issue,
@@ -325,7 +376,7 @@ test('two production Plan authority runtimes with the same initial projection ap
       return { status: 'ok', body: issueBody };
     },
   };
-  const runtimes = [1, 2].map(() => createAdaptivePlanRuntime({ cfg, deps }));
+  const runtimes = [1, 2].map(() => createPlanPublicationRuntime({ cfg, deps }));
   const results = await Promise.all(
     runtimes.map((runtime) =>
       runtime.applyAuthority({ issueNumber: issue, refine, forecastEnvelope })

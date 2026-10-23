@@ -1,4 +1,5 @@
 // @story #1674
+// @story #2084
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
@@ -140,6 +141,9 @@ export function observeCacheIdentity({
       adapter: 'js-yaml-events-v1',
       parserAdapterDigest: fileDigest(fileURLToPath(new URL('./parse.mjs', import.meta.url))),
       validatorDigest: fileDigest(fileURLToPath(new URL('./validate.mjs', import.meta.url))),
+      documentationResolverDigest: fileDigest(
+        fileURLToPath(new URL('./documentation.mjs', import.meta.url))
+      ),
       requirementsDigest: fileDigest(fileURLToPath(new URL('./requirements.mjs', import.meta.url))),
       catalogSchema: CATALOG_SCHEMA,
       validationSchema: VALIDATION_SCHEMA,

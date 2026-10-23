@@ -1,0 +1,57 @@
+{
+  "schema": "aitm.controller-integration-evidence/v1",
+  "issue": 2048,
+  "integratedHead": "0c728819534eb760902231153231c44acbb3de91",
+  "artifacts": [
+    {
+      "path": "2026-10-23-2048-integration-review-raw.txt",
+      "bytes": 2100,
+      "sha256": "c968e736cd02a9b9c4c8005027d1bf4c9979c9c80b632a5fb5fe2173f6a8d401",
+      "provenance": "controller-transcription-of-complete-review-message"
+    },
+    {
+      "path": "2026-10-23-2048-collateral-review-raw.txt",
+      "bytes": 3323,
+      "sha256": "4354dcb20e2ba54a559fbb92e3aba40fea95b4d2d79b32e3dcd13442ddd388d8",
+      "provenance": "controller-transcription-of-complete-review-message"
+    },
+    {
+      "path": "evidence/2048-controller-package-red-transcript.txt",
+      "bytes": 948,
+      "sha256": "c8e21d0e1506c292371d4c216bfa3ef0372880915ff6fbf7ef25871bc0c096df",
+      "provenance": "bounded-controller-tool-output-summary"
+    },
+    {
+      "path": "evidence/2048-controller-package-and-receipt-green.log.gz",
+      "bytes": 1419,
+      "sha256": "16ca67eb2e00e6d290cdc6ad8edcf5ebf13f9bfdc273792bb49fabf277f8f329",
+      "decodedBytes": 3654,
+      "decodedSha256": "0bc22a3c833529e5a4eef937f5827b97b84a42beaff7856e266687abb13d6b0e",
+      "exitCode": 0,
+      "origin": ".scratch/plan/2048-controller-integration/package-and-receipt-green.log",
+      "provenance": "actual-command-stdout-stderr-capture"
+    },
+    {
+      "path": "evidence/2048-controller-fast-green.log.gz",
+      "bytes": 11869,
+      "sha256": "de785b43af4d7081dae73cb98d80b5c6e887a7986c8039ef53a38b8180052279",
+      "decodedBytes": 88045,
+      "decodedSha256": "d985e34192599b0d118a2b90b39f0dbb02f8f4fe93c64e32a59ad3e9e2d5b3ee",
+      "exitCode": 0,
+      "origin": ".scratch/plan/2048-controller-integration/fast-integrated.log",
+      "provenance": "actual-command-stdout-stderr-capture"
+    },
+    {
+      "path": "evidence/2048-controller-hook-8b4ba133b0d27a3ae3af6081b8cf931004dcd90f60c50d63.json.consumed",
+      "bytes": 471,
+      "sha256": "e46001ce78d1f21faae6306cf96200a1537168b215ce344cd78948e8727127dd",
+      "provenance": "byte-copy-of-original-consumed-native-hook-observation"
+    },
+    {
+      "path": "2026-10-23-2048-controller-integration.md",
+      "bytes": 5695,
+      "sha256": "ae1318e98ab2a96ece76448c839558f652b68ec25ba110969142e59b20efe98e"
+    }
+  ],
+  "qualification": "Local evidence integrity; not cryptographic origin attestation or lifecycle approval."
+}

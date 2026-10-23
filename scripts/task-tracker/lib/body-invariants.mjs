@@ -402,16 +402,62 @@ function lineHasProof(line) {
   return hasExecutionProof(line) || DOD_EVIDENCE_RE.test(s) || parseAcEvidence(s) != null;
 }
 
-export function findCheckboxesTickedWithoutProof(before, after) {
+// Section ancestry, repeated-heading visit, and same-label occurrence identify
+// a promise independently of blank lines. Checked text elsewhere grants nothing.
+function checkboxIdentities(body) {
+  let headings = [];
+  const visits = new Map();
+  const occurrences = new Map();
+  return String(body || '')
+    .split('\n')
+    .map((line, lineIndex) => {
+      const heading = /^(#{1,6})[ \t]+/.exec(line);
+      if (heading) {
+        const level = heading[1].length;
+        headings = headings.filter((entry) => entry.level < level);
+        const parent = headings.map((entry) => entry.identity);
+        const key = JSON.stringify([parent, line]);
+        const visit = (visits.get(key) || 0) + 1;
+        visits.set(key, visit);
+        headings.push({ level, identity: [line, visit] });
+      }
+      if (!UNCHECKED_LINE_RE.test(line) && !CHECKED_LINE_RE.test(line)) return null;
+      const label = line.replace(/^\s*- \[[ x]\]/, '').trim();
+      const family = JSON.stringify([headings.map((entry) => entry.identity), label]);
+      const occurrence = (occurrences.get(family) || 0) + 1;
+      occurrences.set(family, occurrence);
+      return {
+        line,
+        lineIndex,
+        label,
+        key: JSON.stringify([family, occurrence]),
+        checked: CHECKED_LINE_RE.test(line),
+      };
+    })
+    .filter(Boolean);
+}
+
+export function findCheckboxesTickedWithoutProof(before, after, { includeNew = false } = {}) {
   const beforeLines = String(before || '').split('\n');
-  const afterLines = String(after || '').split('\n');
-  const limit = Math.min(beforeLines.length, afterLines.length);
+  const previous = checkboxIdentities(before);
+  const identities = new Map(previous.map((entry) => [entry.key, entry]));
+  const labels = new Set(previous.map((entry) => entry.label));
   const offenders = [];
-  for (let i = 0; i < limit; i += 1) {
-    if (!UNCHECKED_LINE_RE.test(beforeLines[i])) continue;
-    if (!CHECKED_LINE_RE.test(afterLines[i])) continue;
-    if (lineHasProof(afterLines[i])) continue;
-    offenders.push({ lineIndex: i, text: afterLines[i] });
+  for (const entry of checkboxIdentities(after)) {
+    if (!entry.checked) continue;
+    const prior = identities.get(entry.key);
+    if (prior?.checked && prior.line === entry.line) continue;
+    const transition = prior && !prior.checked;
+    const relocated = labels.has(entry.label);
+    if (
+      !includeNew &&
+      !transition &&
+      !relocated &&
+      !UNCHECKED_LINE_RE.test(beforeLines[entry.lineIndex] || '')
+    )
+      continue;
+    if (lineHasProof(entry.line)) continue;
+    offenders.push({ lineIndex: entry.lineIndex, text: entry.line });
   }
   return offenders;
 }
@@ -474,6 +520,33 @@ function collectProofMarkers(body) {
     }
   }
   return markers;
+}
+
+// @story #2059 — proof stays bound to its original section and promise.
+export function findLostOrMovedExecutionProof(before, after) {
+  const entries = (body) => {
+    const lines = String(body || '').split('\n');
+    return collectProofMarkers(body).map((entry) => {
+      const section =
+        lines
+          .slice(0, entry.lineIndex + 1)
+          .filter((line) => /^## /.test(line))
+          .at(-1) || '';
+      const carrier = entry.text
+        .replace(/^\s*- \[[ x]\]/, '')
+        .replace(entry.marker, '')
+        .trim();
+      return { ...entry, key: JSON.stringify([section, carrier, entry.marker]) };
+    });
+  };
+  const remaining = new Map();
+  for (const entry of entries(after)) remaining.set(entry.key, (remaining.get(entry.key) || 0) + 1);
+  return entries(before).filter((entry) => {
+    const count = remaining.get(entry.key) || 0;
+    if (!count) return true;
+    remaining.set(entry.key, count - 1);
+    return false;
+  });
 }
 
 export function findNewlyIntroducedExecutionProof(before, after) {
@@ -668,6 +741,14 @@ function acDeclaredCommands(text, vcItems = []) {
   }
 }
 
+// Keep removed comments as separators so surrounding fragments cannot form a new delimiter.
+function formatAcDiagnosticLabel(labelRaw) {
+  return String(labelRaw)
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function findAcsWithoutVerifierOrInvalidTag(body) {
   const src = String(body || '');
   const loc = locateAcSection(src);
@@ -697,10 +778,7 @@ export function findAcsWithoutVerifierOrInvalidTag(body) {
     // function stays pure.
     if (parseAcCommitCitation(labelRaw)) continue;
     const cmds = acDeclaredCommands(labelRaw, vcItems);
-    const label = String(labelRaw)
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const label = formatAcDiagnosticLabel(labelRaw);
     if (cmds.length === 0) {
       offenders.push({ lineIndex: i, label, reason: 'no-verifier' });
       continue;
@@ -775,10 +853,7 @@ export function findAcsWithLegacyVerificationForm(body) {
     const props = parseProofMarker(labelRaw);
     if (!props) continue; // no recognized marker — #523 owns "no verifier"
 
-    const label = String(labelRaw)
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const label = formatAcDiagnosticLabel(labelRaw);
 
     // Correct form: citation via the `vc-list` attribute. It passes only when
     // every cited id resolves against a live VC entry; a dangling citation is

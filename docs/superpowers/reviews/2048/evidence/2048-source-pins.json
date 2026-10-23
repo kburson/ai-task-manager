@@ -1,0 +1,19 @@
+{
+  "candidate": "4fd03020d39a2c0c1bd5a303e99bdfdb6881f585",
+  "base": "c0ca120cc8a08d3bc74887daac5ba1f50b436fce",
+  "files": [
+    {
+      "path": "scripts/task-tracker/lib/story-cache/completion-receipt.mjs",
+      "bytes": 14723,
+      "sha256": "e7a25fa4e5c1d13bd3aee1429fe7dfb239da43ac104740d638beb674b86f3c12",
+      "gitBlob": "e5aee3d4190647ec1db429fc2abda92d16c8c844"
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/story-cache/completion-receipt.test.mjs",
+      "bytes": 19038,
+      "sha256": "d11dfb563a2767c6f4ca94302d6a185764888d9458aa97068890f02f1067221b",
+      "gitBlob": "91d55e2a548bb2b37c186702ea3d68069a1e3588"
+    }
+  ],
+  "limit": "Source content pins, not proof of a historically loaded guard module."
+}

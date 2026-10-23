@@ -1,0 +1,48 @@
+✖ current authority rejects legacy v2 before reading or publishing authority (1.3565ms)
+✔ story estimates ceil to the next half hour without moving downward (1.901125ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (0.858666ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.187125ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (14.3275ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (1.511834ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (2.438334ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.969292ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.941042ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (1.148292ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (1.790666ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (0.852542ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 390.145334
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:19:1
+✖ current authority rejects legacy v2 before reading or publishing authority (1.3565ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /forecast-current:schema/. Input:
+  
+  'Error: authority was read'
+  
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:22:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: authority was read
+        at Object.readProjection (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:25:58)
+        at read (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:90:28)
+        at applyPlanEstimateAuthorityUnlocked (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:114:23)
+        at applyPlanEstimateAuthority (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:138:10)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:22:24)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.start (node:internal/test_runner/test:1262:17)
+        at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17),
+    expected: /forecast-current:schema/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

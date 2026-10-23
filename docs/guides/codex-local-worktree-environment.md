@@ -137,6 +137,56 @@ branch, use **Create branch here** in the chat header and choose a
 `codex/<short-task-name>` branch. Alternatively, use **Hand off** to move the
 chat and changes into the local checkout.
 
+## Native Setup Before Issue Binding
+
+In an unbound native Codex session, run this exact single command from the
+physical registered AITM source worktree:
+
+```bash
+bash scripts/dev-env/setup-local-worktree.sh
+```
+
+The hook admits this one setup operation only when its executable inputs match
+the reviewed digest inventory, the checkout and index are clean, the native hook
+payload supplies the session identity, and that session has no binding elsewhere.
+Any Codex identity keys present in the hook environment must agree with the
+payload. The host may omit executor-only identity variables from hook processes;
+a resolver fallback never replaces the explicit hook identity. Shell
+wrappers, extra arguments, composition, redirects, identity overrides, symbolic
+setup paths and untrusted executables are refused. General unbound writes remain
+subject to the normal guards.
+
+This admission requires the running Node runtime and its paired npm 11 or newer.
+Supported tool roots cover standard macOS/Linux system binaries, Apple Silicon
+and Intel Homebrew, the actual Node installation and its paired npm package.
+Other layouts fail closed. npm execution or configuration-location redirection,
+exported shell functions and Git execution configuration are refused. npm config
+keys must use an unquoted, unescaped plain assignment form; ambiguous syntax is
+refused without exposing configuration values.
+
+After normal Start, compare the real hook and CLI observations with a fresh
+32 to 64 character lowercase hexadecimal nonce, supplied literally:
+
+```text
+npx aitm doctor --json --binding-proof <fresh-nonce>
+```
+
+The closed diagnostic accepts the bare invocation above or the standard
+`env AITM_GRAPHQL_USAGE=1 TT_FULL_AUTO=1` prefix. It compares session, physical
+root, branch, source HEAD, issue, binding generation, state and open timing entry.
+Every mismatch fails. Matching observations without an active issue binding
+remain unhealthy. Ordinary `doctor` and `doctor --json` retain their installation
+health behavior.
+
+The successful native activity hook records a bounded local observation; the
+CLI independently reads its own context and consumes that nonce. This transport
+never changes the binding or grants mutation authority. Retain the genuine
+native tool invocation, setup/Start results and actual loaded hook entrypoint
+alongside the JSON. Local files provide no cryptographic origin attestation;
+synthetic hook-process fixtures are regression tests, not live worker proof.
+The source HEAD field describes the invocation worktree; independently record
+the source of the loaded guard when establishing live native acceptance.
+
 ## Bind AITM Work After Setup
 
 Environment setup is repository-wide; issue binding is session-specific. Bind
@@ -181,7 +231,7 @@ node scripts/dev-env/verify-local-worktree.mjs
 If dependencies are absent or stale, rerun the complete setup:
 
 ```bash
-scripts/dev-env/setup-local-worktree.sh
+bash scripts/dev-env/setup-local-worktree.sh
 ```
 
 If only the dogfood link is missing or resolves to another checkout:
@@ -275,7 +325,7 @@ Install the missing host prerequisite, restart Codex so the app receives the
 updated `PATH`, and rerun:
 
 ```bash
-scripts/dev-env/setup-local-worktree.sh
+bash scripts/dev-env/setup-local-worktree.sh
 ```
 
 ### `npm ci` Reports Lockfile Errors

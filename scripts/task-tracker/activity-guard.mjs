@@ -30,6 +30,13 @@
 // `reconcile accept-live` to repair the body marker.
 
 import { readFileSync } from 'node:fs';
+import { bindingProofNonce, recordNativeHookObservation } from './lib/native-binding-proof.mjs';
+import {
+  admitNativeBootstrap,
+  assertBootstrapHost,
+  NATIVE_BOOTSTRAP_COMMAND,
+} from './lib/native-worktree-bootstrap.mjs';
+import { estimationCommandArgs, estimationHookRefusal } from './lib/estimation/runtime-adapter.mjs';
 import path from 'node:path';
 import {
   evaluateHookDecomposition,
@@ -99,7 +106,33 @@ try {
 } catch (error) {
   block(`[task-tracker] mutation context unavailable: ${error.message}`);
 }
+// Validate setup tool resolution before any runtime reader can invoke Git.
+if (
+  input.session_id !== undefined &&
+  toolName === 'Bash' &&
+  toolInput.command === NATIVE_BOOTSTRAP_COMMAND
+) {
+  try {
+    assertBootstrapHost({ root: projectRoot });
+  } catch (error) {
+    block('[task-tracker] ' + error.message);
+  }
+}
 const policy = loadPolicy(projectRoot);
+// Estimation requests are refused locally before decomposition/authority reads.
+if (toolName === 'Bash') {
+  const args = estimationCommandArgs(toolInput.command);
+  if (args) {
+    let cfg;
+    try {
+      cfg = loadConfig({ projectDir: projectRoot });
+    } catch {
+      cfg = null;
+    }
+    process.stdout.write(JSON.stringify(estimationHookRefusal({ cfg, args })));
+    process.exit(0);
+  }
+}
 
 // #1873 — denied artifact allowances still enforce the physical source class.
 let physicalShellWriteClass = null;
@@ -473,6 +506,21 @@ if (
   }
 }
 if (isChoreModeActive(projectRoot) && activityClass !== 'COMMIT_DOCS') process.exit(0);
+if (input.session_id !== undefined && !activeIssue && toolName === 'Bash') {
+  try {
+    if (
+      admitNativeBootstrap({
+        command: toolInput.command,
+        sessionId: input.session_id,
+        root: projectRoot,
+        invocationDir,
+      })
+    )
+      process.exit(0);
+  } catch (error) {
+    block('[task-tracker] ' + error.message);
+  }
+}
 if (input.session_id !== undefined && !activeIssue && activityClass !== 'READ_*')
   block('[task-tracker] Native hook session has no active issue binding.');
 
@@ -488,6 +536,26 @@ if (
 
 const refusedClass = (activityClasses || [activityClass]).find((value) => !isAllowed(state, value));
 if (!refusedClass) {
+  const nonce = toolName === 'Bash' ? bindingProofNonce(toolInput.command) : null;
+  if (nonce) {
+    try {
+      const observation = recordNativeHookObservation({
+        cwd: projectRoot,
+        sessionId: input.session_id,
+        nonce,
+      });
+      process.stdout.write(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            additionalContext: JSON.stringify(observation),
+          },
+        })
+      );
+    } catch (error) {
+      block('[task-tracker] ' + error.message);
+    }
+  }
   process.exit(0);
 }
 
@@ -508,3 +576,5 @@ function block(reason) {
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);
 }
+
+import { loadConfig } from './config.mjs';

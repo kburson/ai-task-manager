@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' plan-estimate 2065 --compatibility-mode --planned-size S --planned-estimate 3 --rationale Pinned Task21 local allocation: 1.5h implementation,0.75h focused verification,0.75h independent review/integration repair; no cloud historical estimation inputs.
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+[task-tracker] ✓ #2065 Planned Estimate appendix written

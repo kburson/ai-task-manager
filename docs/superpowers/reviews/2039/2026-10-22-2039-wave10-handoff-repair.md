@@ -1,0 +1,169 @@
+# Epic #2039 wave-10 owner and story topology repair
+
+The human directed the outgoing owner to repair the handoff so the epic owner stays on `codex/2039-draft`, each story keeps its own branch forked from the epic head, and the two independent wave-10 stories resume in parallel. That direct repair direction authorized the registered audited renewal needed for the existing same-worktree branch mismatch. The previous one-off #2043 exception was not reused.
+
+## Verified owner
+
+Chat `01a16382-9511-7401-baed-5dd61fd8a380` owns actual app and shell workspace `/Users/kpburson/.codex/worktrees/b187/ai-task-manager`. The local self-link resolves to that workspace. Native Start #2059 with role agent, confirmed relocation and the explicitly authorized foreign-worktree flag succeeded; read-back renewed the recorded branch from `codex/2059-draft` to `codex/2039-draft` without product edits. Native Pause #2059 then succeeded, reporting Unknown active time and wall 60 minutes; no retrospective pause or finite active duration is asserted for the prior blocked interval.
+
+Native Start #2039 with role orchestrator and confirmed relocation succeeded. The root active record shows Develop, branch `codex/2039-draft`, entry `2026-10-22T13:20:12.544Z` and generation `73eaebc1-8c0b-4226-8f00-3006758dda08`. Native occupancy read confirmed that exact root actor/worktree claim and no #2059 claim. The new actor's first root re-engagement was honestly downgraded to start because it had no prior root interruption/start; the warning is retained, not repaired by invented history. Upstream is `origin/codex/2039-draft`.
+
+The prior outgoing 6dfe actor remains paused with active/entry null, no binding and no root claim. Its preserved branch remains `codex/2039-draft-preserved-6dfe` at `a4b5dedf249e68be49b690e0b31619a3d29ca15b`; 7f44 and bc8d remain untouched. The current aggregate head is `019ea75594c73a70a907844352143ef16d170fd6`, preserving the genuine #2059 Plan collateral on the published checkpoint. That commit is planning evidence, not implementation or acceptance.
+
+## Separate story branches
+
+The registered `npx aitm cut-child-worktree` procedure created `feature/child/2059` and `feature/child/2065` from `codex/2039-draft` at the exact current aggregate head `019ea75594c73a70a907844352143ef16d170fd6`. Both branch/head read-backs succeeded. Their paths are `.worktrees/2039-wave10-2059` and `.worktrees/2039-wave10-2065` beneath b187; `.gitignore` ignores this directory and a physical descendant check succeeded. These are native-created linked Git worktrees. App attachment returned that the checkout is not managed; no app-managed claim is made for them.
+
+Two earlier app-created worktrees at `/Users/kpburson/.codex/worktrees/2039-wave10-2059/ai-task-manager` and `/Users/kpburson/.codex/worktrees/2039-wave10-2065/ai-task-manager` were created detached at the same exact head. They remain physically preserved, unused for product work. Nothing was reset, rebased, forced, deleted or archived. The native child cutter is explicitly documented as the owned epic-child isolation route. Its actual graph adapter supplies parent body authority and no own-body branch override; its successful output names the distinct child branches and aggregate base.
+
+Two fresh independent GPT-6.1 Sol / medium implementation agents received separate task briefs and bootstrap-only admission instructions. Product edits require verified distinct native identities, self-links, roles, bindings and timers, plus serialized native admission. This record does not assert their future admission, product completion, review, Test or Done.
+
+## Preserved refusals and limitations
+
+The first bootstrap memory read was refused outside project scope; no workaround was used. Initial native Start warned action capture unavailable because `.tmp/aitm/state/task-tracker-state.json` was absent. That original coverage gap remains unverified. Later captured operations cannot retroactively prove it.
+
+The initial ordinary branch-name renewal and Pause were both refused by PreToolUse before execution. Direct human repair direction subsequently authorized the audited native renewal above. The renewed command was not hidden in a compound shell command and no metadata was edited manually.
+
+A native child-cutter destination in the sibling Codex directory was refused outside allowed filesystem scope before execution. The documented project-local destination then succeeded through the registered native command. The two app-created detached worktrees remain preserved.
+
+After root bind, `npx aitm explain 2039 --json` exited 1 with `TypeError: action-decision:blockers[0].code:status` in action-decision contract validation (contract.mjs:536, validateBlocker:679, evaluateCompletedAction:908, evaluateExplanation:342). This was not a typed ready/blocked result and gives no root promotion authority. Root Start separately reported `epic-readiness-required`; the root remains Develop with unfinished children and unchecked acceptance. No native guard was weakened or patched as part of topology repair.
+
+The heartbeat has not been transferred, changed, stopped or duplicated. Explicit human permission for reading its configuration did not make the refused filesystem read succeed. Saved settings remain unavailable; no alternate-path, UI or internal metadata workaround was used.
+
+A bounded current-comment read found no separate `AITM Foreign-Worktree Override Audit` comment for #2059. Source inspection explains this limit: the native CLI worktree guard returns matched for the same physical path; the shell guard enforces the branch-name mismatch. The explicit flag admitted the shell command, and ordinary native Start renewed the branch through the durable location/binding path. The direct human repair direction, exact command, tool result and read-back are retained here; no separate native audit-comment receipt is asserted.
+
+The executed renewal was `AITM_GRAPHQL_USAGE=1 TT_FULL_AUTO=1 npx aitm start 2059 --role agent --confirm-relocation --allow-foreign-worktree` (exit zero, `already active: #2059`), followed by the actual binding read-back and genuine Pause. Human direction was received through the outgoing chat at `2026-10-22T13:17:39.632Z`. The command was executed alone; the old #2043 exception was not its authority.
+
+## Reviewed wave-10 integration
+
+Both workers completed genuine independent admissions and parallel implementation on their distinct story branches. Controller live native read-back subsequently verified their binding, active timing entry and occupancy claim absence, with clean final branch heads. Neither worker advanced Test, Review or Done.
+
+For #2059, the first independent GPT-6.1 Sol / medium review found two Important defects: checked-label completion could cross section/occurrence identities, and native normalized reviewed coordinates were applied to raw body lines. The original implementer repaired both; a fresh scoped review accepted them without new findings. Complete reviews and exhaustive author dispositions are committed. Reviewed worker head `81fce4642edf772b4fdbba227427ff0b5ee314b3` was ordinarily merged in `96ef79072f31fc30064340ea96a670bcca2a45c7`.
+
+For #2065, the first independent Sol / medium review accepted bounded spec compliance but found duplicated historical fixture builders. The original implementer consolidated them in the admitted own helper; fresh scoped review accepted the repair without new findings. The integration test's unchanged 800-line soft warning remains deferred for final whole-branch review. Complete raw reviews and exhaustive dispositions are committed. Final worker head `a6880acfadaca04b3c73fbc3bbd5c6e699b5056d` was ordinarily merged in `c06204302755d17be968fa556c5d6f3c00b46f59`; executable/test/package bytes match that reviewed worker.
+
+The serialized package inventory was measured at exactly 971 entries: accepted 969 plus the two new runtime modules. The failing inventory check preceded precise one-entry accounting and inclusion assertions for each module, then passed all nine tests. Before the fixture repair, one stable-source fast run passed all 996 files, with 561 combined tests, 36 named tests and full lint/format passing. After the test-only repair, 174 covering tests and 46 tests under the actual native project-root environment passed, with full lint/format passing. These are distinct source-specific observations. Exact aggregate CI, native Test and lifecycle acceptance remain pending; the 18-of-32 native Done boundary is unchanged.
+
+The stopped worker checkpoint archive preserves 166 regular files (1,003,778 bytes) in `wave10-worker-raw/stopped-checkpoint/`. The final resumed #2065 Stop archive preserves 146 regular files (1,238,126 bytes) in `wave10-worker-raw/final-2065/`. Each index records original/archive path, size and SHA-256; copies were verified byte-identical after checking that source size and modification time stayed stable. These are separate snapshots, not a count of unique observations. Earlier manifests and original ignored files remain intact. The overwritten earlier #2059 capture and native coverage gaps remain disclosed.
+
+A fresh root Explain after the #2059 merge returned a typed indeterminate result, rather than the earlier contract exception. Its epic promotion blockers include unfinished children and unavailable decomposition authority; no promotion was attempted or inferred. The root remains Develop. The heartbeat transfer remains incomplete as described above.
+
+## Standalone runtime prerequisite integrated; acceptance pending
+
+The separately governed #2084 repair is outside the 32 direct children. Independent GPT-6.1 Sol / medium source review approved d332c5ddc7a39a5bcd30d1dae24642e22e7f5f2d with no findings. Complete raw review, every author disposition, 52 original local evidence files and their member hashes are committed in 6662cb2b7fc782ee4de6598f44cad1a128405156. The worker genuinely stopped; controller read-back confirmed no binding, active actor, entry timer or occupancy. Its Unknown active timing was preserved.
+
+Ordinary integration produced 32a3aab0054a8bab651d753561b9caf53975d7eb. Product, test and CI bytes match the reviewed worker candidate. The controller independently verified every archived member size/hash and exact raw-review decompression, and inspected original successful local outputs: 70 focused tests, 271 integration files across three bounded shards, 996 fast files and 56 slow files. The first two local shard receipts retain their pre-source-commit HEAD; this provenance was not rewritten. Local Node 26 results do not establish patched Node 24 success.
+
+The original failed CI artifacts are retained in wave10-ci-prerequisite-artifacts with full provenance and hashes. The unchanged existing native CI-receipt bridge will require one successful full CI run at the final clean integrated HEAD. Stopped story branches retain their own names and may fast-forward to that tested integrated head before native acceptance. No Test, Review, Close or current-runtime success is claimed here. Exactly 18 direct children remain accepted; #2059 and #2065 are still awaiting native acceptance. Standalone #2084 needs verified trunk delivery before its eventual Close.
+
+## Integrated CI outcomes and remaining prerequisites
+
+At source `b4088fcff0c93f3cbbdf0298fb4eda2a9fc6f86d`, manual full run [39825779264](https://github.com/kburson/ai-task-manager/actions/runs/39825779264) succeeded. Its integration group 3 used actual Node 24.22.1 and passed all 90 files, establishing the bounded #2084 runtime repair. Its budget job used older Node 24.21.0 and measured checked cold p95 272.46 ms; this does not resolve the current-runtime budget failure.
+
+Automatic PR run [39825762632](https://github.com/kburson/ai-task-manager/actions/runs/39825762632) tested merge `a24df973fb9ca73d2aa24f184afa0b86351f8f91` for that exact source head. Budget job 119988509591 used Node 24.22.0 and failed checked cold p95 325.17 ms against the unchanged 320 ms working limit. The previous current-runtime diagnostic also failed; there is no retry-for-green or threshold waiver. Separate standalone [#2086](https://github.com/kburson/ai-task-manager/issues/2086) owns the bounded cache observation and current-runtime budget repair.
+
+The PR integration group jobs 1 and 2 reported job success, but their actual logs show a broken pipe in the docs-only classifier and skipped collection, execution and artifact upload. Their green job status is not successful test coverage. Only integration group 3 produced its artifact; Fast aggregate job 119990308513 correctly refused the incomplete lane with `missing shard receipt`. Artifact listing confirmed the missing groups. The existing classifier pipes a large filename list to an early-exiting `grep -q` under `pipefail`, allowing the producer's broken-pipe failure to select the docs-only branch. Separate standalone [#2087](https://github.com/kburson/ai-task-manager/issues/2087) tracks that source-supported diagnosis and requires offline behavioral regression before repair. The aggregate validator will remain strict. Other successful worker statuses do not waive the failed Fast aggregate.
+
+CodeQL analysis jobs succeeded, while the separate Advanced Security check 119988792454 failed with two high alerts, 57 and 58, under `refs/pull/2081/head` at the exact source head. Both report `js/incomplete-multi-character-sanitization` at the two diagnostic-label cleanup sites in `body-invariants.mjs`. A bounded actual-finder probe showed comment removal joining fragments into a new hidden delimiter. Standalone [#2085](https://github.com/kburson/ai-task-manager/issues/2085) owns that repair; no alert dismissal or security configuration change is authorized.
+
+All four prerequisites remain outside the direct 32-child roster. Bootstrap metadata may proceed independently, while product implementation remains sequential: #2085, #2086, then #2087. Final integration must pass full exact-head CI and every applicable PR check before any native Test. Manual success alone does not satisfy that requirement. Exactly 18 direct children remain natively Done.
+
+Four wrapped shell attempts to capture the current full job logs and security annotations to local scratch files were refused before execution as `WRITE_OTHER`. No files were written, no alternate writer was tried, and no local archive of those full logs is claimed. Their originals remain available through GitHub and the tool records. This limitation differs from the previously verified original test-artifact ZIP archive above.
+
+The native #2085 bootstrap initially recorded human Plan-approval provenance although no human approval occurred: the worker omitted explicit `TT_FULL_AUTO=1` for that command, and `auto both` did not supply it. The worker stopped before Develop. Controller authorized registered cancellation and replanning, retaining the erroneous output as history and requiring genuine Full-Auto approval/audit read-back; recovery is not yet claimed complete. The fresh #2086 issue had no initial recorded state despite verified live Backlog. Registered `reconcile accept-live` subsequently completed with an audit and no board move; bootstrap remains separate from implementation acceptance.
+
+## Native binding recovery without an override
+
+The later #2085 bootstrap recovery completed through registered cancellation,
+replanning, duplicate narrative cleanup preserving both existing owned markers,
+and genuine Full-Auto approval. Its complete implementation record retains that
+history. The prior paragraph describes the earlier checkpoint, not its final
+bootstrap state.
+
+Comparison with waves 1–9 found an existing routing hazard, already documented
+in the wave-4 handoff. Waves 5–7 used serial work in the owner's actual app
+checkout; waves 8–9 used separate implementation bindings and serialized owner
+acceptance. In the failed #2085 commit sequence, the tool's requested working
+directory controlled CLI execution, while PreToolUse still observed this chat's
+b187 app checkout and parent session. An ordinary worker commit therefore saw
+an empty parent index; explicit Git directory selection then encountered foreign
+binding enforcement. Changing a shell directory did not relocate the app chat.
+The cwd resolver and Codex hook registrations are unchanged from the accepted
+execution-plan and deadline-prerequisite baselines. This is not evidence that all
+guard code was unchanged, or proof of the underlying bridge transport defect.
+
+The controller then recreated that hazard by binding this chat to #2085 in the
+sibling checkout. The unchanged candidate committed successfully as
+`505fefbf3b35c3aa1f40cde93c28115ee197b27b`, but subsequent native lifecycle
+commands were refused because the hook still observed b187. No foreign-worktree
+override was used. The earlier topology exception did not authorize these
+operations. All worktrees, branches, source and evidence were preserved.
+
+The human ran native commit-trace and Stop in the recorded #2085 checkout for
+this same existing actor, without an override. The Stop receipt reports Unknown
+active time, wall 37 minutes and 817 words. Independent read-back confirmed its
+canonical commit ledger comment 6349597930 contains the exact candidate SHA,
+branch and checkout, and its occupancy claim is absent.
+
+Native Start then genuinely resumed #2039 as orchestrator in the actual b187
+checkout on `codex/2039-draft`, generation
+`f604996a-22fe-4df7-bb35-5ff7977daaa3`, entry
+`2026-10-22T19:38:25.585Z`. Fresh binding and actor read-back confirmed the
+agreement. Fresh Explain returned typed blocked for unfinished epic readiness
+and decomposition completion, with no root advancement attempted. This repairs
+the active native binding; it does not claim the tool transport itself changed.
+Future work must align native ownership with the actual app checkout rather
+than recreating a controller binding to a sibling path.
+
+Fresh independent GPT-6.1 Sol / medium review accepted the bounded #2085 source
+with no findings. The complete response, every controller disposition and its
+verification limits are retained in the issue's round-1 review document. All ten
+compressed verification outputs independently match both their compressed and
+decompressed sizes and hashes. The unchanged candidate was ordinarily merged
+into the epic. Security resolution, full applicable integrated-head CI and native
+acceptance remain pending; exactly 18 direct children remain Done.
+
+## Verified serial continuation in the actual owner checkout
+
+The native repair was exercised beyond restoring the root binding. Original #2086
+and #2087 workers genuinely resumed and stopped to release their own
+claims, preserving their worktrees, branches and untracked bootstrap reports.
+The owner used ordinary native Start with confirmed relocation in actual b187,
+role agent, before each initial implementation. Native binding, actor, occupancy
+and durable issue location agreed with the app checkout. Both ordinary source
+commits and native commit-trace succeeded without an override. Native Stop then
+returned the owner to root orchestration. No unbound worker borrowed another
+session identity, and no tool transport patch is claimed.
+
+The #2086 source candidate `338ee76f99e4e7f782f64a5d5b79c2642dc37189`
+received fresh independent Sol / medium approval with no Critical or Important
+findings. Seven initial regressions observed RED, then all 37 covering tests,
+997 fast files, 56 slow files, full lint and format passed. All 16 captured
+outputs, including an unsuccessful conservation-fixture trial, match committed
+compressed/raw hashes. Commit `ef671d111c6f2352976fee103d08cca50549c512`
+retains its full review and evidence. The change reuses only the internally
+obtained first cold baseline; caller selections, retries and final checks retain
+fresh authority. Only the budget job's current Node 24 setup flag changed.
+
+The #2087 candidate `7a88fea116d768aebc1eb051f8cfd2ab90e90325` also received
+fresh independent Sol / medium approval with no Critical or Important findings.
+Its actual-workflow-shell RED reproduced false docs-only classification for a
+large code-first list; all 12 focused cases and 998 fast files then passed, with
+full final lint and format. Nine actual outputs, including failed import and
+quality trials, match committed compressed/raw hashes. Its one production line
+feeds grep directly and preserves the filename expression, labels, matrix and
+strict receipt gates. Full raw review and all dispositions are retained.
+
+Both reviews retain the existing line-cap and test-reach advisories for final
+whole-branch review. They are not new source regressions, and successful lint
+is not described as pristine output. All four prerequisites remain outside the
+32 direct children. Exactly 18 children remain Done; no pending story or root
+acceptance has advanced.
+
+Native root Start 69594 returned actual exit zero, resuming #2039 as orchestrator
+in b187 on `codex/2039-draft`, generation
+`b48a2d74-50fb-4b69-8719-fc748c1a4552`, entry
+`2026-10-22T20:16:04.462Z`. Independent read-back confirms its matching active
+binding/actor/claim and no #2085, #2086 or #2087 claim. Full combined exact-head
+CI, actual current patched Node 24 budget, all required group artifacts, CodeQL
+and every applicable PR check remain pending before native Test.

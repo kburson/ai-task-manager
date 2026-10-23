@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' stop Task21 scoped R2 accepted; final handoff for controller integration and settled-source gates
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+Stopped #2065: +Unknown active min (wall 30), +428 words. Use "/task resume <N>" to return to it later.

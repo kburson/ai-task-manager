@@ -1,0 +1,14 @@
+{
+  "cwd": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+  "outerProjectRoot": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+  "selectedAlias": "AI_TASK_MANAGER_PROJECT_DIR",
+  "projectRoot": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+  "mainRoot": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager",
+  "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+  "binding": {
+    "issueNumber": 2065,
+    "worktreePath": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+    "worktreeBranch": "feature/child/2065",
+    "kanbanState": "develop"
+  }
+}

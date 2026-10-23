@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { estimationCommandArgs, estimationHookRefusal } from './lib/estimation/runtime-adapter.mjs';
 // @story #1990
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
@@ -460,6 +461,22 @@ async function runHookUnchecked(payload, deps = {}) {
       reason: '[task-tracker] invalid native hook session identity.',
     };
   const toolName = payload?.tool_name;
+  if (toolName === 'Bash') {
+    const args = estimationCommandArgs(payload?.tool_input?.command);
+    if (args) {
+      let cfg = deps.cfg;
+      if (!cfg) {
+        try {
+          const invocation = resolveInvocationDirectory(payload);
+          const root = readWorktreeIdentity({ projectDir: invocation }).worktreePath;
+          cfg = loadConfig({ projectDir: root });
+        } catch {
+          cfg = null;
+        }
+      }
+      return estimationHookRefusal({ cfg, args });
+    }
+  }
   if (!GATED_TOOLS.has(toolName)) return { decision: 'allow', reason: 'tool-not-gated' };
 
   let invocationDir;

@@ -1,7 +1,12 @@
 // @story #1671
+// @story #2084
 
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const MODULE_FILE = fileURLToPath(import.meta.url);
+const MODULE_PACKAGE_ROOT = path.dirname(path.dirname(MODULE_FILE));
 
 const SHIPPED_ROOT_FILES = new Set(['docs/README.md', 'docs/QUICKSTART.md', 'docs/DESIGN.md']);
 
@@ -85,7 +90,13 @@ export function resolveDocumentationReference(reference, { packageRoot } = {}) {
   let root;
   let resolved;
   try {
-    root = realpathSync(packageRoot);
+    // The running module file is readable even when its parent directory is not.
+    // Only its exact package root can use this canonical file-derived boundary;
+    // arbitrary roots and aliases still require their own directory permission.
+    root =
+      packageRoot === MODULE_PACKAGE_ROOT
+        ? path.dirname(path.dirname(realpathSync(MODULE_FILE)))
+        : realpathSync(packageRoot);
     resolved = realpathSync(path.join(root, relativePath));
   } catch {
     return refuse('documentation-path-missing');

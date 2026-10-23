@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/story-cache/stage-body.test.mjs` <!-- id=1 -->",
+  "replacement": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/story-cache/stage-body.test.mjs scripts/tests/integration/task-tracker/lib/story-cache/stage-body.integration.test.mjs` <!-- id=1 -->",
+  "expectedVersion": 64
+}

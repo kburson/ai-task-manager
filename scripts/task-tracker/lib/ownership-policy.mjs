@@ -80,3 +80,21 @@ export function isInFlightState(state) {
       .toLowerCase()
   );
 }
+
+// @story #2042
+export function cacheWriterOwnershipDecision({ assignees, currentUser } = {}) {
+  const user = canonicalLogin(currentUser);
+  const owners = canonicalLogins(assignees);
+  const login = (v) => /^[a-z0-9](?:[a-z0-9-]{0,38})$/.test(v);
+  if (
+    !login(user) ||
+    !Array.isArray(assignees) ||
+    owners.length !== assignees.length ||
+    owners.some((v) => !login(v))
+  )
+    return verdict('ownership-unverifiable', { currentUser: user, owners });
+  if (owners.length === 0) return verdict('assignment-required', { currentUser: user, owners });
+  if (owners.length !== 1) return verdict('multiple-owners', { currentUser: user, owners });
+  if (owners[0] !== user) return verdict('foreign-owner', { currentUser: user, owners });
+  return verdict('owned-by-session', { currentUser: user, owners, ok: true });
+}

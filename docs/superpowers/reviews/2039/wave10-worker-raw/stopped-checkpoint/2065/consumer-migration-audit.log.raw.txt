@@ -1,0 +1,41 @@
+✖ completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs (68.31075ms)
+✔ default close runtime builds and read-backs the frozen forecast outcome before Done (26.350834ms)
+✔ close rejects a ready forecast that a later active forecast superseded (1.885875ms)
+✔ default close runtime emits a child-referencing epic outcome without using a legacy parent forecast (0.939208ms)
+✖ retained local calculation converges board, body, history, forecast and ready marker through publication authority (6.953708ms)
+✔ production Plan projection paginates raw comments so an older Refine baseline remains readable (1.261083ms)
+✔ a new Plan process reuses an equivalent active forecast left before the ready marker (4.196583ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 5
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 787.053375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:109:1
+✖ completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs (68.31075ms)
+  TypeError: forecast-current:schema
+      at requireCurrentSchema (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-legacy.mjs:12:51)
+      at applyPlanEstimateAuthorityUnlocked (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:114:14)
+      at applyPlanEstimateAuthority (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:144:10)
+      at Object.applyAuthority (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:148:9)
+      at executeAdaptivePlanEstimate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:63:15)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:128:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+
+test at scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:454:1
+✖ retained local calculation converges board, body, history, forecast and ready marker through publication authority (6.953708ms)
+  TypeError: forecast-current:schema
+      at requireCurrentSchema (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-legacy.mjs:12:51)
+      at applyPlanEstimateAuthorityUnlocked (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:114:14)
+      at applyPlanEstimateAuthority (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:144:10)
+      at Object.applyAuthority (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/runtime-adapter.mjs:705:83)
+      at executeAdaptivePlanEstimate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs:63:15)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs:607:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

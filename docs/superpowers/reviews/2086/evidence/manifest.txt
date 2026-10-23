@@ -1,0 +1,85 @@
+Issue 2086 actual captured verification output
+Node 26.8.1 Darwin; source frozen across tested product inputs and candidate 338ee76f99e4e7f782f64a5d5b79c2642dc37189.
+RED/first GREEN precommit HEAD 6a659ba586419bcf9f8a4181b6e3dfa05d54f2c2; no product changes followed initial GREEN.
+green-final-vc1.log is the disclosed fixture setup failure, not product RED.
+Slow output added only after actual exit zero; source and tests unchanged during the run.
+
+red.log.gz
+exit=1 raw_bytes=6711 gzip_bytes=954
+raw_sha256=a326fcb3a817e35960cfb2d664adea8b055a3738346e59d162c0956a37e9dfe8
+gzip_sha256=a3fa13c973248431e2045916ad5f853eb4a8f087114dc550767a5234d72b9ef3
+
+green-vc1.log.gz
+exit=0 raw_bytes=3430 gzip_bytes=1470
+raw_sha256=053d7c76e58116ea21dd61893b606c2a1443a08f2a112a40c08274e93153acbb
+gzip_sha256=9ee126dd94ad806b29eed14732c5627bd14f9af6388765a97a548ef35db83036
+
+green-final-vc1.log.gz
+exit=1 raw_bytes=4918 gzip_bytes=2058
+raw_sha256=21450a34a8d6d7fba7e40e30c67dd02262df729a3ce0f5feaecc3ca9c1ea84e4
+gzip_sha256=8f52f0979094cc17bce0b08df40ee3447f29fc17b04d29448148fb38047bfc3c
+
+green-final2-vc1.log.gz
+exit=0 raw_bytes=3522 gzip_bytes=1500
+raw_sha256=44bdfb0ebeed3ef8f15cfcbdaa5126b5d963e5a5b69226460d785a9c1b1ae050
+gzip_sha256=69fe290cbd64cb4401991a9a1baaad4ca439798cedeb51bf59ef7e3f13a819d2
+
+fast.log.gz
+exit=0 raw_bytes=87622 gzip_bytes=11817
+raw_sha256=f2570ba6fe9ce5326abe4a8da1548ca96d0782d6fe50fe395eb282b3f2773994
+gzip_sha256=b6c23f2dd2a3695463bc3f9bad5adbe2b673fc950617f7f4481d58fa4a2ce1ec
+
+format.log.gz
+exit=0 raw_bytes=159 gzip_bytes=137
+raw_sha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+gzip_sha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+lint.log.gz
+exit=0 raw_bytes=26461 gzip_bytes=3648
+raw_sha256=aa3f5b06f74a9b1066015f09e983e31f4dd61739af7f34df429b6a3e1d02adf7
+gzip_sha256=25053087729919a598bceb5ced91e5045ae0fac45a92b51a774693cf04cee581
+
+final-eslint.log.gz
+exit=0 raw_bytes=178 gzip_bytes=144
+raw_sha256=512a48737528e5ffdbc1c187fd438c3a6ba2e8ceadb71f2af9ee28d56b44d5c0
+gzip_sha256=0be4e455f33033faf29227ac9d8511ebfce35e7a6ef0d9277f0c13cb3daffba3
+
+final2-eslint.log.gz
+exit=0 raw_bytes=178 gzip_bytes=144
+raw_sha256=512a48737528e5ffdbc1c187fd438c3a6ba2e8ceadb71f2af9ee28d56b44d5c0
+gzip_sha256=0be4e455f33033faf29227ac9d8511ebfce35e7a6ef0d9277f0c13cb3daffba3
+
+final-format.log.gz
+exit=0 raw_bytes=343 gzip_bytes=252
+raw_sha256=500ce29aefbf5d45715064cb268ac2c4da4b81bd9263998dcd84cd8678f30e88
+gzip_sha256=79e0fd51f77ce9fafd85473f69fa3004c8f050ff6dd5a2ddc681185cd6040964
+
+final-spell.log.gz
+exit=0 raw_bytes=310 gzip_bytes=235
+raw_sha256=ef3926b025fc696441bed5da81d28046f020ef1959afc478a4e8eb0e4fad203c
+gzip_sha256=c462b24e996c4e1226391f4104986950b919af6b8c50fd670766870db720632d
+
+final-markdown.log.gz
+exit=0 raw_bytes=1852 gzip_bytes=570
+raw_sha256=bfadfc2a45cf66b9db350177252011d98c463fb74bbe4df38f1a6e09f2d25251
+gzip_sha256=d02825a1dde305c262c25415b7f8d36163dc4ff0ab0970c82703c62bc7c8f5f8
+
+report-spell.log.gz
+exit=0 raw_bytes=206 gzip_bytes=177
+raw_sha256=d17c9352d7c94f5f5e7b1460ce5d9d928b59dd9eb705c45d5017da3991604109
+gzip_sha256=1d0ca4005aaaa96bbe657a78c9c562ae0fbb2b2a6a5ea3997b1d2e67c914b1e4
+
+review-spell.log.gz
+exit=0 raw_bytes=206 gzip_bytes=176
+raw_sha256=42cbbfbd0b6ded69f180554a36e8ba169cc353e973f843e47fff523b7bca99d6
+gzip_sha256=515d65d724a054b02d5d6e6df364e02bb8a3761241eb8827968a3a5331e0d372
+
+review-markdown.log.gz
+exit=0 raw_bytes=1852 gzip_bytes=567
+raw_sha256=15b09608480322c2769a669e6ba3dd323c0d5a2a92ddcf5234986ffc07b12605
+gzip_sha256=b11cd2b9acf394fedec3eff58de563e3f495837c17dbe7755f366f611eaba199
+
+slow.log.gz
+exit=0 raw_bytes=5299 gzip_bytes=1238
+raw_sha256=5e35c9e9c7c62f19e4d46cdabfde36034d78fe889c6ab223f6ee8172198d26c4
+gzip_sha256=f122b2706e7c3636e382ff44b111ebd70eb2fd454a49bf212dc1bf140fa2291a

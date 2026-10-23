@@ -1,3 +1,5 @@
+// @story #2039 #2065
+import { historicalForecastEnvelope } from '../../../helpers/task-2065-forecast-fixture.mjs';
 import { readRegisteredEstimateEffect } from '../../../../task-tracker/lib/decomposition-writer-registry.mjs';
 import { upsertPlannedEstimate } from '../../../../task-tracker/lib/refine-estimate-comment.mjs';
 import { publishFieldEstimateRevision } from '../../../../task-tracker/lib/decomposition-field-writer.mjs';
@@ -17,10 +19,7 @@ import test from 'node:test';
 import { runCancelPlan } from '../../../../task-tracker/verbs/cancel-plan.mjs';
 import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { FORECAST_SCHEMA } from '../../../../task-tracker/lib/estimation/forecast-record.mjs';
-import {
-  createAitmRecordEnvelope,
-  renderAitmRecord,
-} from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
+import { renderAitmRecord } from '../../../../task-tracker/lib/github-records/record-envelope.mjs';
 const TS = '2026-08-12T12:00:00.000Z';
 
 export function cancellationHarness({
@@ -114,7 +113,7 @@ export function cancellationHarness({
       supersedesForecastRecordId: null,
     };
     forecastPayload = payload;
-    const envelope = createAitmRecordEnvelope({
+    const envelope = historicalForecastEnvelope({
       recordType: 'estimation-forecast',
       repository: cfg.repo,
       issue: 1987,
@@ -280,7 +279,7 @@ export function cancellationHarness({
   };
   return {
     replaceForecast: (recordId) => {
-      const envelope = createAitmRecordEnvelope({
+      const envelope = historicalForecastEnvelope({
         recordType: 'estimation-forecast',
         repository: cfg.repo,
         issue: 1987,
@@ -646,3 +645,5 @@ export function registerCancellationPublicationCases() {
     assert.equal(readDecompositionRecords(f.body).publication, null);
   });
 }
+
+// Historical transport fixture: validation uses native legacy render/parse, never new publication.

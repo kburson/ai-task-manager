@@ -1,3 +1,4 @@
+import { estimationDispatchDecision } from './estimation/runtime-adapter.mjs';
 // Shared verb preflight (#208, refactored in #218) — bind-match + live-state
 // reconciliation.
 //
@@ -115,6 +116,8 @@ export async function runPreflight({
   cfg,
   ownershipManagement = false,
   ownershipOnly = false,
+  verb,
+  args = process.argv.slice(2),
   deps = {},
 } = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
@@ -141,6 +144,9 @@ export async function runPreflight({
       issueNumber: targetIssue || activeIssue,
     };
   }
+
+  const estimation = estimationDispatchDecision({ cfg, verb, args });
+  if (estimation) return { ok: false, code: 15, kind: 'estimation-dispatch-stopped', estimation };
 
   const issueForReconcile = targetIssue || activeIssue;
   if (!issueForReconcile) return { ok: true, stateAfter: stateBefore, changed: false };
@@ -284,6 +290,7 @@ export async function preflightVerb({
   target,
   cfg,
   verb = 'verb',
+  args = process.argv.slice(2),
   ownershipManagement = false,
   ownershipOnly = false,
   deps = {},
@@ -294,6 +301,8 @@ export async function preflightVerb({
     cfg,
     ownershipManagement,
     ownershipOnly,
+    verb,
+    args,
     deps,
   });
   if (verdict.ok) {
@@ -302,6 +311,11 @@ export async function preflightVerb({
   }
 
   switch (verdict.kind) {
+    case 'estimation-dispatch-stopped':
+      throw Object.assign(
+        new Error(`Estimation ${verdict.estimation.status}: ${verdict.estimation.reason}`),
+        { code: verdict.kind, ...verdict.estimation }
+      );
     case 'migration-freeze': {
       process.stdout.write('PROMPT_REQUIRED: ready-for-plan-migration-freeze\n');
       process.stderr.write(

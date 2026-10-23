@@ -1,0 +1,16 @@
+
+added 319 packages, and audited 320 packages in 2s
+
+102 packages are looking for funding
+  run `npm fund` for details
+
+14 vulnerabilities (3 low, 5 moderate, 6 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+npm warn install-scripts 1 package had install scripts blocked because they are not covered by allowScripts:
+npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.

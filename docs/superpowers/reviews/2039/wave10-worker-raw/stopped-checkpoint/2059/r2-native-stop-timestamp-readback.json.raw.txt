@@ -1,0 +1,8 @@
+{
+  "observedAt": "2026-10-22T14:28:30.093Z",
+  "status": "found",
+  "error": null,
+  "workerStopRows": [
+    "| 2026-10-22 09:26:31 -05:00 | stop | Unknown | Unknown | 868 | 943 | CODE_COMPLETE #2059; independent R2 accepted; release worker for parent integration | 61,127 | <!-- aitm-actor:v1 key=a795156a7f2c665003df0663cad0d34b2c48ba8adfc74044377821684210c21e --> <!-- aitm-engagement:v1 start=1792675619122 end=1792679191573 active=unknown wstart=75 wend=943 fstart=10187 fend=61127 -->"
+  ]
+}

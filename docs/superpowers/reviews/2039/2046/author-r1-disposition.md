@@ -1,0 +1,39 @@
+# #2046 R1 author disposition
+
+Reviewer report is preserved verbatim in `reviewer-r1-review.md`. Reviewed source was `675e2f3a8ceb4b782489fc20c94318623958ce10`, against baseline `c4fa044b6cb27130966ab759be44793e6c119557`. This disposition records technical decisions and evidence; it establishes no lifecycle approval or delivery.
+
+## Important finding
+
+**Accepted P1: calculation payloads were not bound to retained input bytes.** Reproduced with four actual failing tests: changed human implementation coefficient, changed AI implementation coefficient, changed comparable landscape under unchanged record IDs, and missing raw evidence on the v3 model path. The existing 31 tests still passed; all four new tests failed with Missing expected exception. Raw RED: `.superpowers/sdd/2026-10-20-2039-active-child-execution-plan/task-19-r1-red.log`.
+
+The builder now requires a raw evidence bundle for the opt-in v3 calculation path, freshly validates it with accepted `validateLocalEvidence`, and compares the actual calculation rubric payload plus the selected comparable payloads against the retained active records before calculation. Comparison uses complete canonical payloads, not just IDs, versions, confidence or cohort metadata. Existing allowlist selection semantics remain intact; unselected outcomes do not enter arithmetic. The post-calculation strict snapshot/manifest validation remains. This is input validation rather than a replay engine. Structural snapshot-only validation remains supported by `validateForecastProvenance`, while a v3 calculation cannot claim retained inputs without supplying those bytes. Focused GREEN: 35/35, retained in `task-19-r1-green.log`.
+
+## All eight considered-but-declined boundaries
+
+1. **Default v2 output — ruling: keep.** Existing callers and the accepted pure runtime continue to produce v2; the bounded later writer/legacy slice owns coordinated activation. The new opt-in v3 calculation is verified independently. Cost if wrong: the later migration must change the explicit call path; current legacy callers remain compatible.
+2. **Forecast-record re-exports — ruling: keep unchanged.** No public export was removed or extracted. The focused module has its own v3 schema/validator, while existing forecast-record exports retain their behavior. Cost if wrong: later consumers need an explicit focused-module import, rather than silently receiving altered validation.
+3. **Raw evidence for every structural validation — ruling: do not require.** A snapshot can be inspected structurally without raw payloads. Repository expectations require retained evidence, and the repaired v3 builder now also requires it to bind actual calculation inputs. No structural-validation result is a replay or lifecycle grant. Cost if wrong: a caller confusing structural validation with retained replay must be corrected at its owning boundary.
+4. **Similarity ranking versus manifest order — ruling: preserve each order.** Comparable weights retain similarity ordering; the immutable manifest retains its input order. Correlation checks exact selected identity pairs and refuses duplicates, without rewriting either order. Cost if wrong: a future explicit ordered-correlation contract would require a versioned migration.
+5. **Snapshot-only current host/configuration — ruling: do not invent fields.** The accepted predecessor snapshot omits host/configuration. Current selection stays at the retained-input/reader boundary; the manifest digest binds the retained identity, and explicit repository checks compare retained evidence. Cost if wrong: callers omitting their current selection cannot claim it was checked by structural inspection.
+6. **General output-number replay — ruling: keep out of this slice.** The repaired builder binds actual complete payloads before calculation. The validator checks semantic numeric invariants but does not replay arbitrary externally supplied forecasts. Cost if wrong: a future replay capability needs explicit model/plan-input selection and its own tests.
+7. **Blocking on baseline lint diagnostics — ruling: retain diagnostics and report them.** Existing soft line-cap notices and 30 baselined reach offenders are acknowledged; the R1 baseline had zero new reach offenders. No cap, baseline, policy or diagnostic was suppressed. Cost if wrong: a newly introduced diagnostic must be separately attributed by the rerun, rather than dismissed as baseline.
+8. **Broad tests/caller crawl — ruling: keep review repair targeted.** The defect is demonstrated by actual builder inputs, so no unrelated caller migration or repository crawl was added. Focused meaningful regressions and the full fast suite are rerun because source changed; these are verification, not additional product scope. Cost if wrong: unexercised independent boundaries remain for their owning slices and aggregate CI.
+
+## Minor baseline diagnostics
+
+Accepted the observation that the prior lint output was not pristine. It contained soft line-cap notices and 30 pre-existing reach baselines with zero new offenders. Exit zero is reported as a passing lint command with those diagnostics, not as an absence of diagnostic output. No cleanup or suppression is part of this fix.
+
+## Every cannot-verify limitation
+
+1. **Chronology/exact process exit codes from files alone:** accepted. The reviewer cannot recover tool chronology or exact process termination solely from retained text. The author observed command completion in this worker and retains RED/GREEN and subsequent verification logs; that does not convert recorded logs into independent chronology attestation.
+2. **Slow suite, integrated CI, native Test/Review/Close, publication/delivery:** accepted. Full slow-suite and exact integrated-head CI remain parent serialization duties. This child technical fix establishes no approval, native state transition beyond the existing Develop admission, publication authority or delivery.
+3. **Native admission/pause/binding/source freeze/cleanliness:** accepted as a review-scope limitation. The author verified native Start and correct Develop binding before edits; final Git and registered Stop checks will be reported separately to the parent. Reviewer source inspection does not independently attest those states.
+4. **Predecessor host/repository/ancestry fixtures:** accepted. This repair reuses unchanged local-evidence validation; it does not claim that R1 executed every predecessor fixture. Targeted regressions cover the actual current input mismatch, and parent aggregate verification retains broader predecessor obligations.
+
+## Other review scope evidence
+
+The supplied report explicitly distinguishes inspected source from rerun tests, records the initial frozen-fixture probe failure and corrected cloned probe, and identifies prior RED/GREEN/fast/format evidence. Preserve those distinctions: the author does not turn a reviewer read into a test run or a prior log into a new integrated-head result. The raw report's strengths are observations about the reviewed source and need no product edits. The P1 repair is the only product behavior change in this round.
+
+## Repair verification
+
+Focused verifier passed 35/35. Meaningful forecast/model/runtime/Plan authority/package regression set passed 111/111. Full `npm test` rerun passed all 990 fast files (951 pure unit, 39 direct subprocess; aggregate 87.2s). Full lint and format commands completed with exit zero. Lint retained soft line-cap notices and 30 existing reach baselines, with zero new reach offenders. `git diff --check` passed. Raw outputs are retained in the ignored plan workspace as `task-19-r1-red.log`, `task-19-r1-green.log`, `task-19-r1-regressions.log`, `task-19-r1-npm-test.log`, `task-19-r1-lint.log` and `task-19-r1-format.log`. No assertion is made here about full slow or integrated-head CI.

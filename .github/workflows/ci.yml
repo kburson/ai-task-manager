@@ -88,6 +88,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          check-latest: true
           cache: npm
       - run: npm ci
       - name: Measure five fresh-process cache cases
@@ -118,13 +119,26 @@ jobs:
       skip_tests: ${{ github.event_name == 'pull_request' && (steps.scope.outputs.docs_only == 'true' || contains(github.event.pull_request.labels.*.name, 'docs-only')) }}
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
+    # #2088: bootstrap fixtures need an ordinary host without executable Git
+    # filters. Keep production refusals; isolate the complete test collection.
+    container: node:24-trixie
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Prepare clean container host tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends gh jq
+          git config --show-origin --name-only --list
       - uses: actions/checkout@v5
         with:
           # The docs-only classifier resolves `git diff trunk...HEAD`. Stacked
           # epic-child PRs need ancestry beyond the merge ref's direct parents
           # to discover that merge base, so the Fast checkout is unshallow.
           fetch-depth: 0
+      - name: Align checked out workspace ownership with container user
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
       # The capture source can become unreachable after squash delivery. Fetch
       # its exact manifest identity without rewriting archived bytes or hashes.
       - name: Prepare immutable guidance capture source (#1876)
@@ -147,6 +161,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          check-latest: true
       - run: npm ci
       # npm ci caches tarballs, but offline consumer installs also need registry
       # metadata. Seed it explicitly instead of depending on a warm CI cache.
@@ -193,7 +208,7 @@ jobs:
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$files" | grep -Eqv '^(docs/|.+\.md$|\.gitignore$)'; then
+          if grep -Eqv '^(docs/|.+\.md$|\.gitignore$)' <<< "$files"; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
           else
             echo "docs_only=true" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,7 @@
+{
+  "head": "94beaeb74170f67db827f04475e68028dfaa9c09",
+  "tree": "c6e5769b60c5ab905e4b645744dfa04ae544da69",
+  "branch": "feature/child/2065",
+  "status": "",
+  "inventorySha256": "dc465668dcb296164c95be1305a2038ea15085d45758d574d279a1226762960d"
+}
