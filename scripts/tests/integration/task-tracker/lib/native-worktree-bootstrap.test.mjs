@@ -66,7 +66,6 @@ function fixture() {
   git(parent, 'worktree', 'add', '--detach', root, 'HEAD');
   const env = Object.fromEntries(
     [
-      'PATH',
       'HOME',
       'USER',
       'LOGNAME',
@@ -83,7 +82,21 @@ function fixture() {
       .filter((key) => process.env[key] !== undefined)
       .map((key) => [key, process.env[key]])
   );
-  Object.assign(env, { CODEX_THREAD_ID: sid, CODEX_SESSION_ID: sid });
+  // The fixture supplies trusted host tools; native lifecycle capture can add
+  // a project-local gh shim to its caller PATH, which production must refuse.
+  Object.assign(env, {
+    PATH: [
+      path.dirname(process.execPath),
+      '/opt/homebrew/bin',
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+    ].join(path.delimiter),
+    CODEX_THREAD_ID: sid,
+    CODEX_SESSION_ID: sid,
+  });
   for (const key of [
     'AI_TASK_MANAGER_SESSION_ID',
     'AI_TASK_MANAGER_PROJECT_DIR',
