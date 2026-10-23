@@ -213,7 +213,6 @@ blocking findings and independently confirmed YAML structure, ownership scope
 and all four matrix groups. Exact-head CI and genuine worker proof remain
 required.
 
-
 ## Native default hooks directory correction
 
 The selected fresh app-owned worker is chat
@@ -243,7 +242,6 @@ without blocking findings. Exact committed-source verification, CI and a fresh
 genuine worker setup/binding proof remain required. The failed worker remains
 preserved. Follow-up executor observations with missing Codex identity keys are
 unresolved; strict CLI identity checks were not weakened or given a fallback.
-
 
 A later read-only follow-up in the same worker separately queried each native
 identity key: both returned the actual worker chat ID with exit 0. This confirms
