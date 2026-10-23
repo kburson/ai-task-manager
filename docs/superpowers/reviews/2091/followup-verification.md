@@ -21,3 +21,11 @@ The canonical slow validation is green. The previous red slow invocations remain
 ## Artifact review ownership
 
 The root dispatched its own fresh GPT-6.1 Sol / medium committed-artifact reviewer and directed this worker to avoid a redundant review. A worker artifact reviewer had just been launched before that direction arrived; it was interrupted without a verdict. No worker artifact acceptance is claimed. Root will review the final committed follow-up bytes before native acceptance, genuine Stop/release and source adoption.
+
+## Root review limit and minor correction
+
+The original telemetry-for-all-offline-commands wording was a historical mistaken root instruction. The canonical bare correction required no ambient environment change. Both original red invocations and all earlier committed claims remain preserved.
+
+Root's initial independent audit accepted the original committed source and artifact consistency with no source correctness or integrity findings. Its review checked 42/42 original committed gzip entries, hashes, byte counts, timestamps and inventory. It cannot independently authenticate this worker's foreign local originals; it can verify committed manifest consistency. The worker retains those originals locally, and genuine command origins remain in this chat transcript. No cryptographic attestation is claimed.
+
+The audit's minor plan-checkbox correction was applied: already-completed implementation verification and source/evidence commit steps are checked and described as implementation completion only. This does not claim native acceptance. Root's final artifact follow-up against the final committed bytes is still required.
