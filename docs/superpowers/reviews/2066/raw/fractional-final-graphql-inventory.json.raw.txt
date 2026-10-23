@@ -1,0 +1,24 @@
+{
+  "sites": [
+    {
+      "schemaVersion": "aitm.graphql-usage.inventory/v1",
+      "source": "scripts/task-tracker/lib/story-cache/provider-adapters.mjs",
+      "line": 121,
+      "classification": "gh-api-graphql",
+      "reason": "explicit GraphQL CLI or shared gql wrapper",
+      "coverage": "planned"
+    }
+  ],
+  "differences": [
+    {
+      "key": "scripts/task-tracker/lib/story-cache/provider-adapters.mjs|gh-api-graphql|planned",
+      "expected": 0,
+      "actual": 1
+    },
+    {
+      "site": "scripts/task-tracker/lib/story-cache/provider-adapters.mjs|121|gh-api-graphql|planned",
+      "expected": false,
+      "actual": true
+    }
+  ]
+}

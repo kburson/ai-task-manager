@@ -1,0 +1,35 @@
+✔ incomplete observation refuses before dependency access or dispatch (2.191458ms)
+✔ publishes each frozen resource once after durable dispatching and checkpoints exact results (1509.060167ms)
+✔ full target preflight retains equal revision with different bytes without mutation (450.440875ms)
+✔ full target preflight retains comment deletion without mutation (396.621334ms)
+✔ full target preflight retains comment addition without mutation (404.122916ms)
+✔ full target preflight retains ownership drift without mutation (398.680125ms)
+✔ full target preflight retains title drift without mutation (417.4425ms)
+✔ altered frozen candidates or unverified payloads cannot reach transport (348.849417ms)
+✔ unregistered claim and wrong actual session refuse before dispatch (312.135542ms)
+✔ persistence failure at commit 1 stops subsequent writes and replay (450.671333ms)
+✔ persistence failure at commit 2 stops subsequent writes and replay (447.367792ms)
+✔ persistence failure at commit 3 stops subsequent writes and replay (644.034208ms)
+✔ an incomplete mutation response uses one targeted readback (891.103167ms)
+✔ timeout with delayed write never triggers a second apply (675.722625ms)
+✔ timeout with landed write never triggers a second apply (822.86ms)
+✔ readback changed bytes or wrong returned node ID remain uncertain and stop dependencies (559.776666ms)
+✔ native registry drift after provider dispatch stops further effects and preserves dispatching (808.975541ms)
+✔ provider adapters dispatch exact native resource mutations without retry or invented field confirmation (0.93425ms)
+✔ new comment ID is uniquely verified and persisted before exact final-body slot dispatch (1252.994333ms)
+✔ creation missing result remains uncertain without second creation (925.42175ms)
+✔ creation duplicate purpose remains uncertain without second creation (894.2825ms)
+✔ realized native body validation refusal preserves confirmed prerequisites and prevents issue write (588.853625ms)
+✔ default GraphQL transport serializes fractional NUMBER values as JSON numbers (1.761ms)
+✔ a second creation cannot reuse an already confirmed new provider ID (1397.629375ms)
+✔ creation readback cannot hide external inventory deletion (1.024083ms)
+✔ creation readback cannot hide external inventory addition (0.48075ms)
+✔ creation readback cannot hide external inventory changed bytes (0.412417ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14730.290125

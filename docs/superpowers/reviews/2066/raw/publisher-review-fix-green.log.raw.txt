@@ -1,0 +1,35 @@
+✔ incomplete observation refuses before dependency access or dispatch (1.828959ms)
+✔ publishes each frozen resource once after durable dispatching and checkpoints exact results (1531.652708ms)
+✔ full target preflight retains equal revision with different bytes without mutation (467.236416ms)
+✔ full target preflight retains comment deletion without mutation (444.079375ms)
+✔ full target preflight retains comment addition without mutation (468.920458ms)
+✔ full target preflight retains ownership drift without mutation (483.000041ms)
+✔ full target preflight retains title drift without mutation (478.261625ms)
+✔ altered frozen candidates or unverified payloads cannot reach transport (379.76725ms)
+✔ unregistered claim and wrong actual session refuse before dispatch (308.306917ms)
+✔ persistence failure at commit 1 stops subsequent writes and replay (356.47425ms)
+✔ persistence failure at commit 2 stops subsequent writes and replay (733.506208ms)
+✔ persistence failure at commit 3 stops subsequent writes and replay (695.439ms)
+✔ an incomplete mutation response uses one targeted readback (1025.518416ms)
+✔ timeout with delayed write never triggers a second apply (868.811542ms)
+✔ timeout with landed write never triggers a second apply (1091.66475ms)
+✔ readback changed bytes or wrong returned node ID remain uncertain and stop dependencies (784.903791ms)
+✔ native registry drift after provider dispatch stops further effects and preserves dispatching (649.957042ms)
+✔ provider adapters dispatch exact native resource mutations without retry or invented field confirmation (1.244709ms)
+✔ new comment ID is uniquely verified and persisted before exact final-body slot dispatch (1859.070166ms)
+✔ creation missing result remains uncertain without second creation (4919.056625ms)
+✔ creation duplicate purpose remains uncertain without second creation (1035.48325ms)
+✔ realized native body validation refusal preserves confirmed prerequisites and prevents issue write (614.84075ms)
+✔ default GraphQL transport retains numeric field variable types (2.703834ms)
+✔ a second creation cannot reuse an already confirmed new provider ID (1297.390333ms)
+✔ creation readback cannot hide external inventory deletion (0.995875ms)
+✔ creation readback cannot hide external inventory addition (0.687209ms)
+✔ creation readback cannot hide external inventory changed bytes (0.465917ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20632.050042

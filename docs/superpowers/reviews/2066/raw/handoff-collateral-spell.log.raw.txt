@@ -1,0 +1,7 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'cspell' --no-progress docs/superpowers/reviews/2066/README.md docs/superpowers/reviews/2066/root-review-response.md
+docs/superpowers/reviews/2066/README.md:60:32 - Unknown word (fcdf)
+docs/superpowers/reviews/2066/README.md:62:72 - Unknown word (fcdf)
+docs/superpowers/reviews/2066/README.md:62:98 - Unknown word (fcdf)
+docs/superpowers/reviews/2066/root-review-response.md:13:238 - Unknown word (fcdf)
+CSpell: Files checked: 2, Issues found: 4 in 2 files.

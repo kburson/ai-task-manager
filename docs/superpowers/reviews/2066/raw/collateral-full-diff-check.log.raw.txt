@@ -1,0 +1,105 @@
+docs/superpowers/reviews/2066/raw/baseline-fast.log.raw.txt:1050: new blank line at EOF.
+docs/superpowers/reviews/2066/raw/final-fast.log.raw.txt:1074: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/final-fast.log.raw.txt:1088: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/final-fast.log.raw.txt:1103: new blank line at EOF.
+docs/superpowers/reviews/2066/raw/fractional-final-fast.log.raw.txt:1074: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/fractional-final-fast.log.raw.txt:1088: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/fractional-final-fast.log.raw.txt:1103: new blank line at EOF.
+docs/superpowers/reviews/2066/raw/fractional-number-red.log.raw.txt:17: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/fractional-number-red.log.raw.txt:25: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:87: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:90: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:93: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:96: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:99: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:102: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:105: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:108: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:112: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:119: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:130: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:145: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:165: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:168: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/gh-api-help.log.raw.txt:176: new blank line at EOF.
+docs/superpowers/reviews/2066/raw/new-id-reuse-red.log.raw.txt:19: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/new-id-reuse-red.log.raw.txt:22: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/post-review-fast.log.raw.txt:1074: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/post-review-fast.log.raw.txt:1088: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/post-review-fast.log.raw.txt:1103: new blank line at EOF.
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:25: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:30: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:38: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:41: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:61: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:64: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:84: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:87: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:107: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:110: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:130: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:133: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:153: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:156: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:176: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:179: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:199: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:204: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:212: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:215: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:232: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:237: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:245: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/publisher-red.log.raw.txt:248: trailing whitespace.
++    
+docs/superpowers/reviews/2066/raw/typed-transport-red.log.raw.txt:16: trailing whitespace.
++  
+docs/superpowers/reviews/2066/raw/typed-transport-red.log.raw.txt:18: trailing whitespace.
++  
