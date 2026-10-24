@@ -1,0 +1,168 @@
+# Review package: 8b7ba7f1a7ab6beec5b03ec175da5419ea05666e..d529907862cce16d14114250f3cef34f7d8ad255
+
+## Commits
+d5299078 style(book): add page headers and footers
+
+## Files changed
+ docs/articles/assets/book/chapter-openers.tex      | 24 +++++++++++++++++++---
+ scripts/articles/lib/book/manuscript.mjs           |  2 +-
+ .../unit/articles/lib/book/manuscript.test.mjs     |  2 ++
+ .../tests/unit/articles/lib/book/render.test.mjs   | 22 ++++++++++++++------
+ 4 files changed, 40 insertions(+), 10 deletions(-)
+
+## Diff
+diff --git a/docs/articles/assets/book/chapter-openers.tex b/docs/articles/assets/book/chapter-openers.tex
+index 51e08cd2..b33e8c3c 100644
+--- a/docs/articles/assets/book/chapter-openers.tex
++++ b/docs/articles/assets/book/chapter-openers.tex
+@@ -1,27 +1,45 @@
+ % Pandoc's --include-in-header replaces book.json's header-includes instead of
+ % appending to them, so this selected header must retain the index setup too.
+ \usepackage{makeidx}
+ \makeindex
+ \usepackage{adjustbox}
++\usepackage{fancyhdr}
++
++\newcommand{\bookchapterheader}{%
++  \ifnum\value{chapter}>0 Chapter \thechapter\fi
++}
++
++\pagestyle{fancy}
++\fancyhf{}
++\fancyhead[L]{\bookchapterheader}
++\fancyfoot[R]{\thepage}
++\renewcommand{\headrulewidth}{0pt}
++\renewcommand{\footrulewidth}{0pt}
++
++\fancypagestyle{plain}{%
++  \fancyhf{}%
++  \fancyhead[L]{\bookchapterheader}%
++  \fancyfoot[R]{\thepage}%
++  \renewcommand{\headrulewidth}{0pt}%
++  \renewcommand{\footrulewidth}{0pt}%
++}
+ 
+ \newcommand{\bookchapter}[3]{%
+   \clearpage
+   \refstepcounter{chapter}%
+   \phantomsection
+   \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#2}%
+   \markboth{#2}{#2}%
+   \thispagestyle{plain}%
+   \noindent
+-  \begin{adjustbox}{min size={\textwidth}{0.2\paperheight},Clip={.5\width-.5\textwidth} {.5\height-.1\paperheight} {.5\width-.5\textwidth} {.5\height-.1\paperheight},center}
++  \begin{adjustbox}{max width=\textwidth,center}
+     \includegraphics{#1}%
+   \end{adjustbox}
+   \par\nobreak\vspace{1.4em}
+   \begin{center}
+-    {\large\scshape Chapter \thechapter\par}
+-    \vspace{0.7em}
+     {\huge\bfseries #2\par}
+     \vspace{0.7em}
+     {\large\itshape #3\par}
+   \end{center}
+   \par\vspace{1.4em}\noindent
+ }
+diff --git a/scripts/articles/lib/book/manuscript.mjs b/scripts/articles/lib/book/manuscript.mjs
+index 65ef5ab7..f62ecad1 100644
+--- a/scripts/articles/lib/book/manuscript.mjs
++++ b/scripts/articles/lib/book/manuscript.mjs
+@@ -175,21 +175,21 @@ function convertOutsideFences(resolved, { ctx, shift }) {
+ 
+ /**
+  * A copyright page for the PDF. `book.json`'s `rights` is EPUB metadata and
+  * pandoc's LaTeX template ignores it entirely, so the page has to be emitted
+  * into the manuscript itself.
+  */
+ function copyrightPage(metadata) {
+   const rights = metadata.rights;
+   if (!rights) return [];
+   return [
+-    '\\thispagestyle{empty}',
++    '\\thispagestyle{plain}',
+     '',
+     '\\vspace*{\\fill}',
+     '',
+     `\\noindent ${rights}`,
+     '',
+     '\\vspace*{\\fill}',
+     '',
+     '\\clearpage',
+     '',
+   ];
+diff --git a/scripts/tests/unit/articles/lib/book/manuscript.test.mjs b/scripts/tests/unit/articles/lib/book/manuscript.test.mjs
+index 8a8e5c9a..477ddba4 100644
+--- a/scripts/tests/unit/articles/lib/book/manuscript.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/manuscript.test.mjs
+@@ -209,20 +209,22 @@ test('the pdf wraps front matter so the introduction does not consume chapter 1'
+ 
+ test('the pdf carries a copyright page built from book.json rights', async () => {
+   const { root, articlesDir, bookDir } = await fixture();
+   try {
+     await writeFile(
+       path.join(bookDir, 'book.json'),
+       JSON.stringify({ title: 'The Book', author: ['A. Author'], rights: 'Copyright 2026 A.' })
+     );
+     const pdf = await buildManuscript({ articlesDir, bookDir, target: 'pdf' });
+     assert.match(pdf.markdown, /\\noindent Copyright 2026 A\./);
++    assert.match(pdf.markdown, /\\thispagestyle\{plain\}/);
++    assert.equal(pdf.markdown.includes('\\thispagestyle{empty}'), false);
+     assert.ok(
+       pdf.markdown.indexOf('\\noindent Copyright 2026 A.') < pdf.markdown.indexOf('# Introduction'),
+       'the copyright page sits inside the front matter'
+     );
+ 
+     const epub = await buildManuscript({ articlesDir, bookDir, target: 'epub' });
+     assert.equal(epub.markdown.includes('\\noindent'), false, 'no latex in the epub manuscript');
+   } finally {
+     await rm(root, { recursive: true, force: true });
+   }
+diff --git a/scripts/tests/unit/articles/lib/book/render.test.mjs b/scripts/tests/unit/articles/lib/book/render.test.mjs
+index b47e77bf..2bfaba40 100644
+--- a/scripts/tests/unit/articles/lib/book/render.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/render.test.mjs
+@@ -46,27 +46,37 @@ test('pandocArgs maps top-level headings to chapters and loads the metadata file
+ });
+ 
+ test('the explicit PDF header keeps index setup that pandoc header inclusion replaces', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+   assert.match(header, /\\usepackage\{makeidx\}/);
+   assert.match(header, /\\makeindex/);
+   assert.match(header, /\\usepackage\{adjustbox\}/);
+   assert.match(header, /\\newcommand\{\\bookchapter\}/);
+ });
+ 
+-test('the PDF center crop trims equal overflow from opposite edges', () => {
++test('the PDF chapter image is proportional and never clipped', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+-  assert.ok(
+-    header.includes(
+-      'Clip={.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight} {.5\\width-.5\\textwidth} {.5\\height-.1\\paperheight}'
+-    )
+-  );
++  assert.match(header, /\\begin\{adjustbox\}\{max width=\{?\\textwidth\}?,center\}/);
++  assert.doesNotMatch(header, /Clip=/);
++  assert.doesNotMatch(header, /min size=/);
++  assert.doesNotMatch(header, /\\large\\scshape Chapter \\thechapter/);
++});
++
++test('the PDF page styles put chapter numbers left and page numbers right', () => {
++  const header = readFileSync(CHAPTER_HEADER, 'utf8');
++  assert.match(header, /\\usepackage\{fancyhdr\}/);
++  assert.match(header, /\\fancyhead\[L\]\{\\bookchapterheader\}/);
++  assert.match(header, /\\fancyfoot\[R\]\{\\thepage\}/);
++  assert.match(header, /\\fancypagestyle\{plain\}/);
++  assert.match(header, /\\ifnum\\value\{chapter\}>0 Chapter \\thechapter\\fi/);
++  assert.match(header, /\\renewcommand\{\\headrulewidth\}\{0pt\}/);
++  assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
+ });
+ 
+ test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
+   const css = readFileSync(BOOK_CSS, 'utf8');
+   assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);
+ });
+ 
+ test('pandocArgs emits epub and html directly', () => {
+   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
+   const epub = pandocArgs({ ...base, target: 'epub' });

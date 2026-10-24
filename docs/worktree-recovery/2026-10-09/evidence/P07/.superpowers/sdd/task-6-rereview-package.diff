@@ -1,0 +1,425 @@
+# Review package: ed61f9fbb40fd19d3cdb84d43f93f55503efd629..5d316639d7fd453ae78b502eb693c7f4a791e464
+
+## Commits
+5d316639 chore(book): register layout vocabulary
+36abf605 docs(book): document polished layout toolchain
+
+## Files changed
+ cspell-dictionary.txt                              | 28 ++++++++++++++++++++++
+ docs/articles/book-publishing-guide.md             | 13 ++++++++--
+ scripts/articles/lib/book/render.mjs               |  1 +
+ scripts/articles/lib/book/toolchain.mjs            |  1 +
+ .../unit/articles/lib/book/toolchain.test.mjs      |  9 +++----
+ 5 files changed, 46 insertions(+), 6 deletions(-)
+
+## Diff
+diff --git a/cspell-dictionary.txt b/cspell-dictionary.txt
+index fbee7dde..197b053a 100644
+--- a/cspell-dictionary.txt
++++ b/cspell-dictionary.txt
+@@ -21,27 +21,30 @@ backcompat
+ backmatter
+ backpointer
+ Backpointer
+ Backpressure
+ backtest
+ backtests
+ backticked
+ baselined
+ basenames
+ basictex
++bfseries
+ behaviour
+ Behaviour
+ bindingless
+ blockquotes
+ Boehm
+ Boehm's
+ bookchapter
++bookchapterheader
++booksubtitle
+ booktabs
+ Bossavit
+ bottlenecked
+ boundaried
+ burson
+ Burson
+ bypassable
+ callsite
+ callsites
+ cands
+@@ -96,45 +99,56 @@ dogfooding
+ Dogfooding
+ drai
+ dupguard
+ duplicative
+ dwords
+ empts
+ ensp
+ entrancy
+ Erlikh
+ etoolbox
++fancyfoot
++fancyhdr
++fancyhead
++fancypagestyle
+ fancyvrb
+ fanin
+ fanout
+ Flesch
+ fontsize
+ fontspec
+ Foote
+ footgun
+ footnotehyper
++footrulewidth
+ forgeable
+ Forrester
+ frontmatter
+ gitdir
+ greppable
+ gridline
++headheight
++headrulewidth
+ Heredocs
+ hidekazu
+ HJKMNP
+ HOABCEY
+ hotspots
+ Hotspots
+ hyperref
++hypertexnames
+ idempotently
++ifnum
+ igate
++IHDR
+ incentivized
++includegraphics
+ inlines
+ inprocess
+ inspectable
+ interceptable
+ ismain
+ issuecomment
+ jaccard
+ journaled
+ jqlang
+ Junlin
+@@ -147,22 +161,24 @@ Kiro
+ klass
+ konishi
+ kpburson
+ laned
+ latexmk
+ linkcolor
+ Liskov
+ lstat
+ mainfont
+ mainmatter
++makebox
+ makeidx
+ makeindex
++maketitle
+ Manushree
+ markerlint
+ menlo
+ metachar
+ metacharacter
+ metacharacters
+ metachars
+ METR
+ misattributed
+ misconfig
+@@ -200,22 +216,24 @@ offtrunk
+ OFFTRUNK
+ oneline
+ oneside
+ OOPSLA
+ otplib
+ overbroad
+ Overclaiming
+ overexplaining
+ overinterpreted
+ pagebreak
++pageanchor
+ Palatino
+ pandoc
++pandocbounded
+ paperheight
+ papersize
+ parskip
+ pasteable
+ paydown
+ paywalled
+ pexec
+ pipefail
+ pkg
+ PLOS
+@@ -226,20 +244,21 @@ preflighted
+ preflights
+ prefs
+ pretick
+ Pretick
+ printindex
+ prio
+ Procfile
+ procs
+ promptware
+ proofless
++providecommand
+ pushback
+ PVTF
+ PVTI
+ PVTO
+ PVTSSF
+ pytest
+ quotepath
+ Qwik
+ RDBMS
+ readback
+@@ -254,20 +273,21 @@ recognisable
+ recognises
+ redelegated
+ redirections
+ Redirections
+ redispatch
+ reengagement
+ Reengagement
+ reengagements
+ Reengagements
+ reentrancy
++renewcommand
+ reeval
+ Reeval
+ REEVAL
+ refcounted
+ refetched
+ reflowable
+ regenerable
+ Reincludes
+ relane
+ relanes
+@@ -281,25 +301,28 @@ rescan
+ rescanning
+ retargeted
+ rmdirs
+ rollups
+ Rovo
+ Sadowski
+ sandboxed
+ Sandboxed
+ Sayagh
+ scriptable
++scshape
+ SDLC
+ Segoe
++selectfont
+ Sendbird
+ sess
+ setcounter
++setlength
+ shellcheck
+ sidechain
+ Sidechain
+ Skank
+ spawnable
+ speccing
+ splitcmd
+ stampable
+ Stampable
+ STAMPABLE
+@@ -319,26 +342,30 @@ subshell
+ Swiftorial
+ symlink
+ tangoes
+ testless
+ testmon
+ texlive
+ texprobe
+ textasciicircum
+ textasciitilde
+ textbackslash
++textheight
+ textless
+ textwidth
++thechapter
++thepage
+ Therac
+ thispagestyle
+ Thoughtworks
+ throughline
++titlepage
+ tlmgr
+ tocdepth
+ TOCTOU
+ toggleable
+ tombstoned
+ toplevel
+ TOTP
+ touchpoint
+ Troynikov
+ Tumma
+@@ -405,15 +432,16 @@ workstreams
+ worktree
+ Worktree
+ WORKTREE
+ worktree's
+ worktreeinclude
+ worktrees
+ Worktrees
+ xcolor
+ xcresult
+ xelatex
++xlink
+ Xuezhi
+ xurl
+ Yoder
+ zxcvbn
+ Zylos
+diff --git a/docs/articles/book-publishing-guide.md b/docs/articles/book-publishing-guide.md
+index f4655f6f..3d059e58 100644
+--- a/docs/articles/book-publishing-guide.md
++++ b/docs/articles/book-publishing-guide.md
+@@ -50,20 +50,23 @@ before it does anything else, so markers can never reach a published article.
+ 
+ Run `npm run lint:book-markers` to check markers without rendering anything. It
+ also runs as part of `npm run lint`.
+ 
+ ## Metadata
+ 
+ Everything the articles do not contain lives in `assets/book/`:
+ 
+ - `book.json` — title, author, copyright, paper size, fonts, margins. Pandoc
+   reads it directly as a metadata file.
++- `title-page.png` — replaceable title-page artwork. It is staged under the same
++  name for every rendered target; replacing it requires no code or metadata
++  change.
+ - `introduction.md` — the book's introduction.
+ - `glossary.md` — one `##` per term, optional `_Aliases:_` and `_See also:_`
+   lines, then the definition. Renders as Appendix A and drives the index.
+ - `fragments/` — book-only prose spliced in by `book:include`.
+ 
+ ## Toolchain
+ 
+ Pandoc renders every target. LaTeX renders only the PDF, so the second half of
+ this list is needed only if you want a PDF.
+ 
+@@ -71,22 +74,28 @@ this list is needed only if you want a PDF.
+ brew install pandoc
+ brew install --cask basictex
+ sudo tlmgr update --self
+ sudo tlmgr install latexmk
+ npm run doctor:book
+ ```
+ 
+ `doctor:book` always checks pandoc. It checks the LaTeX binaries and compiles a
+ one-line probe per LaTeX package only when the pdf target is in play, printing a
+ single `tlmgr install ...` line naming whatever is missing. Run it until it is
+-quiet. That probe includes `adjustbox`, which the image-led chapter opener uses
+-to preserve aspect ratio while center-cropping artwork to its printable frame.
++quiet. The probe includes `adjustbox`, which keeps title and chapter artwork
++complete and proportional, and `fancyhdr`, which provides the left chapter
++header and right page-number footer.
++
++The PDF renderer centers body Mermaid images and limits them to the printable
++width and 70 percent of text height. HTML and EPUB apply the equivalent content
++width and viewport-height bounds. These presentation rules do not change the
++authoritative Mermaid source or generated PNG bytes.
+ 
+ PDF citations remain same-page footnotes: each note appears at the bottom of the
+ physical page containing its citation marker. HTML and EPUB keep Pandoc's linked
+ notes because reflowable editions have no stable physical page boundary.
+ 
+ On a machine that only wants EPUB or HTML, name those targets and the doctor
+ will not mention LaTeX at all:
+ 
+ ```bash
+ npm run doctor:book -- --target epub --target html
+diff --git a/scripts/articles/lib/book/render.mjs b/scripts/articles/lib/book/render.mjs
+index 40d3a5b1..5da1a431 100644
+--- a/scripts/articles/lib/book/render.mjs
++++ b/scripts/articles/lib/book/render.mjs
+@@ -192,20 +192,21 @@ function readCommand(command, args, { cwd } = {}) {
+ 
+ async function listZipEntries(epubPath) {
+   const [namesOutput, modesOutput] = await Promise.all([
+     readCommand('unzip', ['-Z1', epubPath]),
+     readCommand('unzip', ['-Z', '-l', epubPath]),
+   ]);
+   return {
+     names: namesOutput.split('\n').filter(Boolean),
+     modes: modesOutput
+       .split('\n')
++      // cspell:ignore dlcbps
+       .filter((line) => /^[-dlcbps?]/.test(line))
+       .map((line) => line[0]),
+   };
+ }
+ 
+ export async function injectEpubTitleBanner(
+   epubPath,
+   { run = runCommand, listEntries = listZipEntries } = {}
+ ) {
+   const targetPath = path.resolve(epubPath);
+diff --git a/scripts/articles/lib/book/toolchain.mjs b/scripts/articles/lib/book/toolchain.mjs
+index 2541c642..9d673ea9 100644
+--- a/scripts/articles/lib/book/toolchain.mjs
++++ b/scripts/articles/lib/book/toolchain.mjs
+@@ -36,20 +36,21 @@ export const PROBE_PACKAGES = [
+   'booktabs',
+   'etoolbox',
+   'footnotehyper',
+   'upquote',
+   'fancyvrb',
+   'parskip',
+   'xurl',
+   'bookmark',
+   'makeidx',
+   'adjustbox',
++  'fancyhdr',
+ ];
+ 
+ export function probeDocument(pkg) {
+   return `\\documentclass{book}\n\\usepackage{${pkg}}\n\\begin{document}probe\\end{document}\n`;
+ }
+ 
+ export function tlmgrHint(missingPackages) {
+   if (missingPackages.length === 0) return null;
+   return `sudo tlmgr install ${missingPackages.join(' ')}`;
+ }
+diff --git a/scripts/tests/unit/articles/lib/book/toolchain.test.mjs b/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
+index c9edb0b6..c6451685 100644
+--- a/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
+@@ -92,26 +92,27 @@ test('doctor reports missing binaries and skips probing', async () => {
+ test('doctor reports missing packages with a tlmgr hint', async () => {
+   const result = await doctor({
+     runBinary: async () => true,
+     runProbe: async (pkg) => pkg !== 'makeidx',
+   });
+   assert.deepEqual(result.missingPackages, ['makeidx']);
+   assert.equal(result.hint, 'sudo tlmgr install makeidx');
+   assert.equal(result.ok, false);
+ });
+ 
+-test('doctor names a missing chapter-opener package in its pasteable hint', async () => {
++test('doctor names a missing page-style package in its pasteable hint', async () => {
+   const result = await doctor({
+     runBinary: async () => true,
+-    runProbe: async (pkg) => pkg !== 'adjustbox',
++    runProbe: async (pkg) => pkg !== 'fancyhdr',
+   });
+-  assert.deepEqual(result.missingPackages, ['adjustbox']);
+-  assert.equal(result.hint, 'sudo tlmgr install adjustbox');
++  assert.deepEqual(result.missingPackages, ['fancyhdr']);
++  assert.equal(result.hint, 'sudo tlmgr install fancyhdr');
+ });
+ 
+ test('the probe list covers what the pandoc book template needs', () => {
+   for (const required of ['fontspec', 'unicode-math', 'hyperref', 'geometry', 'makeidx']) {
+     assert.ok(PROBE_PACKAGES.includes(required), `missing ${required}`);
+   }
+   assert.ok(PROBE_PACKAGES.includes('adjustbox'));
++  assert.ok(PROBE_PACKAGES.includes('fancyhdr'));
+   assert.deepEqual(REQUIRED_BINARIES, ['pandoc', 'xelatex', 'latexmk', 'makeindex']);
+ });

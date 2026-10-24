@@ -1,0 +1,842 @@
+# Review package: da60e4176e2b070a95aed52708baf303651fa29b..01d368d5c149641d94ab7ab079e6ea4eb88dd4fa
+
+## Commits
+01d368d5 feat(test-corpus): hydrate historical retirements
+
+## Files changed
+ scripts/tests/lib/frozen-test-retirements.mjs      | 358 +++++++++++++++++++++
+ .../unit/meta/frozen-test-retirements.test.mjs     | 354 +++++++++++++++++++-
+ 2 files changed, 711 insertions(+), 1 deletion(-)
+
+## Diff
+diff --git a/scripts/tests/lib/frozen-test-retirements.mjs b/scripts/tests/lib/frozen-test-retirements.mjs
+index d22cbcb5..21951aac 100644
+--- a/scripts/tests/lib/frozen-test-retirements.mjs
++++ b/scripts/tests/lib/frozen-test-retirements.mjs
+@@ -1,21 +1,24 @@
+ // @chore
++import { execFileSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
+ import { existsSync, readFileSync, readdirSync } from 'node:fs';
+ import path from 'node:path';
+ 
+ import { parseCanonicalTestPath } from '../../task-tracker/lib/test-lanes.mjs';
+ 
+ export const FROZEN_RETIREMENT_ROOT = 'scripts/tests/fixtures/test-corpus-frozen-retirements';
+ export const TEMPORARY_RETIREMENT_EVIDENCE_ROOT = 'docs/evidence/temporary-test-retirements';
+ 
+ const RECEIPT_KEYS = ['evidence', 'lastLiveSha256', 'path', 'reason', 'schema'];
+ const SHA256_RE = /^[a-f0-9]{64}$/;
++const FETCH_CANONICAL_HISTORY = 'fetch complete canonical history for origin/trunk and retry';
+ 
+ function comparePosix(left, right) {
+   if (left < right) return -1;
+   if (left > right) return 1;
+   return 0;
+ }
+ 
+ function posixRelative(projectRoot, absolutePath) {
+   return path.relative(projectRoot, absolutePath).split(path.sep).join('/');
+ }
+@@ -82,20 +85,316 @@ function validEvidencePath(evidence) {
+ 
+ export function retirementReceiptPathForTestPath(testPath) {
+   const normalized = normalizeRepositoryPath(testPath);
+   const parsed = normalized && parseCanonicalTestPath(normalized);
+   if (!parsed || normalized !== testPath.replaceAll('\\', '/')) {
+     throw new TypeError(`frozen-test-retirements: noncanonical test path: ${testPath}`);
+   }
+   return `${FROZEN_RETIREMENT_ROOT}/${parsed.lane}/${parsed.relative}.json`;
+ }
+ 
++function defaultGit(projectRoot, args) {
++  return execFileSync('git', args, {
++    cwd: projectRoot,
++    encoding: 'utf8',
++    stdio: ['ignore', 'pipe', 'pipe'],
++  });
++}
++
++function historicalError(message) {
++  return new Error(`frozen-test-retirements: ${message}`);
++}
++
++function gitOutput(runGit, args) {
++  return String(runGit(args)).trim();
++}
++
++function gitSucceeds(runGit, args) {
++  try {
++    gitOutput(runGit, args);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++function splitLines(output) {
++  return output ? output.split('\n').filter(Boolean) : [];
++}
++
++function requireCanonicalHistory(runGit, receiptFile) {
++  let shallow;
++  try {
++    shallow = gitOutput(runGit, ['rev-parse', '--is-shallow-repository']);
++  } catch {
++    throw historicalError(
++      `cannot inspect canonical history for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++    );
++  }
++  if (shallow !== 'false') {
++    throw historicalError(
++      `canonical history is shallow for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++    );
++  }
++  if (!gitSucceeds(runGit, ['rev-parse', '--verify', 'origin/trunk^{commit}'])) {
++    throw historicalError(
++      `canonical ref origin/trunk is unavailable for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++    );
++  }
++}
++
++function relevantCanonicalCommits(runGit, receiptFile, testPath) {
++  try {
++    return splitLines(
++      gitOutput(runGit, ['rev-list', '--full-history', 'origin/trunk', '--', receiptFile, testPath])
++    );
++  } catch {
++    throw historicalError(
++      `canonical commits are incomplete for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++    );
++  }
++}
++
++function directParents(runGit, commit, receiptFile) {
++  let ancestry;
++  try {
++    ancestry = gitOutput(runGit, ['rev-list', '--parents', '-n', '1', commit]);
++  } catch {
++    throw historicalError(
++      `canonical commit ancestry is incomplete for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++    );
++  }
++  return ancestry.split(' ').slice(1);
++}
++
++function treeHasPath(runGit, commit, repositoryPath) {
++  return gitSucceeds(runGit, ['cat-file', '-e', `${commit}:${repositoryPath}`]);
++}
++
++function showTreePath(runGit, commit, repositoryPath) {
++  return String(runGit(['show', `${commit}:${repositoryPath}`]));
++}
++
++function treeBlobOid(runGit, commit, repositoryPath) {
++  let entry;
++  try {
++    entry = gitOutput(runGit, ['ls-tree', commit, '--', repositoryPath]);
++  } catch {
++    return { present: false, historyMissing: true };
++  }
++  if (!entry) return { present: false, historyMissing: false };
++  const match = /^\d+\s+blob\s+([a-f0-9]+)\t/.exec(entry);
++  return match
++    ? { present: true, historyMissing: false, oid: match[1] }
++    : { present: false, historyMissing: true };
++}
++
++function normalizeHistoricalReceipt(receipt, testPath, receiptFile) {
++  if (!isExactReceipt(receipt)) {
++    throw historicalError(
++      `historical receipt keys must equal evidence, lastLiveSha256, path, reason, schema: ${receiptFile}`
++    );
++  }
++  if (!Number.isInteger(receipt.schema) || receipt.schema !== 1) {
++    throw historicalError(`historical receipt schema must be integer 1: ${receiptFile}`);
++  }
++  const declaredTestPath = normalizeRepositoryPath(receipt.path);
++  if (
++    !declaredTestPath ||
++    !parseCanonicalTestPath(declaredTestPath) ||
++    declaredTestPath !== receipt.path.replaceAll('\\', '/') ||
++    declaredTestPath !== testPath
++  ) {
++    throw historicalError(`historical receipt does not declare ${testPath}: ${receiptFile}`);
++  }
++  if (retirementReceiptPathForTestPath(declaredTestPath) !== receiptFile) {
++    throw historicalError(`historical receipt is not at its deterministic path: ${receiptFile}`);
++  }
++  if (typeof receipt.reason !== 'string' || !/[.!?]$/.test(receipt.reason.trim())) {
++    throw historicalError(`historical receipt reason must be a non-empty sentence: ${receiptFile}`);
++  }
++  if (typeof receipt.lastLiveSha256 !== 'string' || !SHA256_RE.test(receipt.lastLiveSha256)) {
++    throw historicalError(`historical receipt has an invalid lastLiveSha256: ${receiptFile}`);
++  }
++  const evidenceFile = validEvidencePath(receipt.evidence);
++  if (!evidenceFile) {
++    throw historicalError(`historical receipt has an invalid evidence path: ${receiptFile}`);
++  }
++  return {
++    receiptFile,
++    evidenceFile,
++    source: 'historical',
++    schema: receipt.schema,
++    path: declaredTestPath,
++    reason: receipt.reason,
++    lastLiveSha256: receipt.lastLiveSha256,
++    evidence: evidenceFile,
++  };
++}
++
++function hasReachableGraduation(runGit, deliveryCommit, receiptFile) {
++  let receiptCommits;
++  try {
++    receiptCommits = splitLines(
++      gitOutput(runGit, ['rev-list', '--full-history', 'origin/trunk', '--', receiptFile])
++    );
++  } catch {
++    return false;
++  }
++  for (const commit of receiptCommits) {
++    if (!gitSucceeds(runGit, ['merge-base', '--is-ancestor', deliveryCommit, commit])) continue;
++    if (treeHasPath(runGit, commit, receiptFile)) continue;
++    const parents = directParents(runGit, commit, receiptFile);
++    if (
++      parents.some(
++        (parent) =>
++          gitSucceeds(runGit, ['merge-base', '--is-ancestor', deliveryCommit, parent]) &&
++          treeHasPath(runGit, parent, receiptFile)
++      )
++    ) {
++      return true;
++    }
++  }
++  return false;
++}
++
++/**
++ * Hydrates one graduated receipt exclusively from complete origin/trunk history.
++ */
++export function hydrateHistoricalFrozenRetirement({
++  projectRoot,
++  testPath,
++  receiptFile = retirementReceiptPathForTestPath(testPath),
++  git: gitOverride,
++} = {}) {
++  const normalizedTestPath = normalizeRepositoryPath(testPath);
++  if (
++    !normalizedTestPath ||
++    !parseCanonicalTestPath(normalizedTestPath) ||
++    normalizedTestPath !== testPath.replaceAll('\\', '/')
++  ) {
++    throw historicalError(`noncanonical historical test path: ${String(testPath)}`);
++  }
++  const expectedReceiptFile = retirementReceiptPathForTestPath(normalizedTestPath);
++  if (receiptFile !== expectedReceiptFile) {
++    throw historicalError(
++      `historical receipt path must be deterministic: expected ${expectedReceiptFile}`
++    );
++  }
++
++  const runGit = gitOverride || ((args) => defaultGit(projectRoot, args));
++  requireCanonicalHistory(runGit, receiptFile);
++  const commits = relevantCanonicalCommits(runGit, receiptFile, normalizedTestPath);
++  const deliveryCandidates = [];
++  let digestMismatch = null;
++  let missingEvidence = false;
++  let missingParentBlob = false;
++  let malformedReceiptError = null;
++
++  for (const commit of commits) {
++    if (!gitSucceeds(runGit, ['cat-file', '-e', `${commit}^{commit}`])) {
++      throw historicalError(
++        `canonical commit is missing for ${receiptFile}; ${FETCH_CANONICAL_HISTORY}`
++      );
++    }
++    if (!gitSucceeds(runGit, ['merge-base', '--is-ancestor', commit, 'origin/trunk'])) continue;
++    if (!treeHasPath(runGit, commit, receiptFile)) continue;
++    if (treeHasPath(runGit, commit, normalizedTestPath)) continue;
++
++    let receipt;
++    try {
++      receipt = JSON.parse(showTreePath(runGit, commit, receiptFile));
++    } catch (error) {
++      malformedReceiptError = historicalError(
++        `invalid historical receipt at ${receiptFile}: ${error.message}`
++      );
++      continue;
++    }
++
++    let normalizedReceipt;
++    try {
++      normalizedReceipt = normalizeHistoricalReceipt(receipt, normalizedTestPath, receiptFile);
++    } catch (error) {
++      malformedReceiptError = error;
++      continue;
++    }
++    if (!treeHasPath(runGit, commit, normalizedReceipt.evidenceFile)) {
++      missingEvidence = true;
++      continue;
++    }
++
++    let foundLiveParent = false;
++    let foundMatchingParent = false;
++    for (const parent of directParents(runGit, commit, receiptFile)) {
++      const entry = treeBlobOid(runGit, parent, normalizedTestPath);
++      if (entry.historyMissing) {
++        missingParentBlob = true;
++        continue;
++      }
++      if (!entry.present) continue;
++      foundLiveParent = true;
++      if (!gitSucceeds(runGit, ['cat-file', '-e', `${parent}:${normalizedTestPath}`])) {
++        missingParentBlob = true;
++        continue;
++      }
++      let parentBytes;
++      try {
++        parentBytes = showTreePath(runGit, parent, normalizedTestPath);
++      } catch {
++        missingParentBlob = true;
++        continue;
++      }
++      const digest = createHash('sha256').update(parentBytes).digest('hex');
++      if (digest === normalizedReceipt.lastLiveSha256) {
++        foundMatchingParent = true;
++        break;
++      }
++    }
++    if (!foundMatchingParent) {
++      if (foundLiveParent) {
++        digestMismatch = {
++          testPath: normalizedTestPath,
++          expectedDigest: normalizedReceipt.lastLiveSha256,
++        };
++      }
++      continue;
++    }
++    deliveryCandidates.push({ commit, retirement: normalizedReceipt });
++  }
++
++  for (const candidate of deliveryCandidates) {
++    if (hasReachableGraduation(runGit, candidate.commit, receiptFile)) {
++      return candidate.retirement;
++    }
++  }
++  if (deliveryCandidates.length > 0) {
++    throw historicalError(`receipt graduation is not reachable for ${receiptFile}`);
++  }
++  if (missingParentBlob) {
++    throw historicalError(`required parent blob is missing for ${receiptFile}`);
++  }
++  if (missingEvidence) {
++    throw historicalError(
++      `historical evidence is missing from the receipt tree for ${receiptFile}`
++    );
++  }
++  if (digestMismatch) {
++    throw historicalError(
++      `test ${digestMismatch.testPath} does not match expected digest ${digestMismatch.expectedDigest}`
++    );
++  }
++  if (malformedReceiptError) throw malformedReceiptError;
++  throw historicalError(
++    `origin/trunk history does not contain a delivered retirement at ${receiptFile}`
++  );
++}
++
+ /**
+  * Loads and validates active frozen-retirement receipts without allowing one
+  * malformed file to hide other repair targets.
+  */
+ export function loadActiveFrozenRetirements({
+   projectRoot,
+   finalizedFrozenPaths = [],
+   postSnapshotRecordPaths = [],
+   liveDiscoveredPaths = [],
+ } = {}) {
+@@ -238,10 +537,69 @@ export function loadActiveFrozenRetirements({
+     );
+   });
+   const retirements = candidates
+     .filter(
+       ({ normalizedReceipt, isMisplaced, overlapsLiveTest }) =>
+         declarationCounts.get(normalizedReceipt.path) === 1 && !isMisplaced && !overlapsLiveTest
+     )
+     .map(({ normalizedReceipt }) => normalizedReceipt);
+   return { retirements, errors, misplacedReceipts, rootPresent: true };
+ }
++
++/**
++ * Combines current-tree receipts with graduated receipts proved by canonical
++ * origin/trunk history. Historical inspection is reserved for frozen paths
++ * that are absent from both live discovery and active receipt authority.
++ */
++export function loadFrozenRetirements(options = {}) {
++  const {
++    projectRoot,
++    finalizedFrozenPaths = [],
++    postSnapshotRecordPaths = [],
++    liveDiscoveredPaths = [],
++    git,
++  } = options;
++  const active = loadActiveFrozenRetirements({
++    projectRoot,
++    finalizedFrozenPaths,
++    postSnapshotRecordPaths,
++    liveDiscoveredPaths,
++  });
++  const retirements = [...active.retirements];
++  const errors = [...active.errors];
++  const activePaths = new Set(active.retirements.map((retirement) => retirement.path));
++  const livePaths = normalizedPaths(liveDiscoveredPaths);
++  const postSnapshotPaths = normalizedPaths(postSnapshotRecordPaths);
++  const misplacedPaths = new Set(active.misplacedReceipts.map((receipt) => receipt.path));
++  const frozenPaths = [...normalizedPaths(finalizedFrozenPaths)].sort(comparePosix);
++
++  for (const testPath of frozenPaths) {
++    if (
++      livePaths.has(testPath) ||
++      postSnapshotPaths.has(testPath) ||
++      activePaths.has(testPath) ||
++      misplacedPaths.has(testPath)
++    ) {
++      continue;
++    }
++    const receiptFile = retirementReceiptPathForTestPath(testPath);
++    if (existsSync(path.join(projectRoot, receiptFile))) continue;
++    try {
++      retirements.push(
++        hydrateHistoricalFrozenRetirement({ projectRoot, testPath, receiptFile, git })
++      );
++    } catch (error) {
++      errors.push({ receiptFile, error: error.message });
++    }
++  }
++
++  retirements.sort((left, right) => comparePosix(left.receiptFile, right.receiptFile));
++  errors.sort((left, right) => {
++    const fileComparison = comparePosix(left.receiptFile, right.receiptFile);
++    return fileComparison || comparePosix(left.error, right.error);
++  });
++  return {
++    retirements,
++    errors,
++    misplacedReceipts: active.misplacedReceipts,
++  };
++}
+diff --git a/scripts/tests/unit/meta/frozen-test-retirements.test.mjs b/scripts/tests/unit/meta/frozen-test-retirements.test.mjs
+index 27de8ec9..b9125a8d 100644
+--- a/scripts/tests/unit/meta/frozen-test-retirements.test.mjs
++++ b/scripts/tests/unit/meta/frozen-test-retirements.test.mjs
+@@ -1,25 +1,36 @@
+ // @chore
+ import assert from 'node:assert/strict';
+-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
++import { execFileSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
++import { pathToFileURL } from 'node:url';
+ import { test } from 'node:test';
+ 
+ import {
+   FROZEN_RETIREMENT_ROOT,
++  hydrateHistoricalFrozenRetirement,
+   loadActiveFrozenRetirements,
++  loadFrozenRetirements,
+   retirementReceiptPathForTestPath,
+   TEMPORARY_RETIREMENT_EVIDENCE_ROOT,
+ } from '../../lib/frozen-test-retirements.mjs';
+ import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
+ 
+ const SHA256 = 'a'.repeat(64);
++const GIT_TEST_IDENTITY = {
++  GIT_AUTHOR_NAME: 'aitm-test',
++  GIT_AUTHOR_EMAIL: 'aitm-test@example.com',
++  GIT_COMMITTER_NAME: 'aitm-test',
++  GIT_COMMITTER_EMAIL: 'aitm-test@example.com',
++};
+ 
+ function writeFixture(projectRoot, repositoryPath, value) {
+   const absolutePath = path.join(projectRoot, repositoryPath);
+   mkdirSync(path.dirname(absolutePath), { recursive: true });
+   writeFileSync(
+     absolutePath,
+     typeof value === 'string' ? value : `${JSON.stringify(value, null, 2)}\n`
+   );
+ }
+ 
+@@ -49,20 +60,103 @@ function load(
+ function writeReceipt(projectRoot, testPath, receipt = receiptFor(testPath), receiptFile) {
+   const file = receiptFile || retirementReceiptPathForTestPath(testPath);
+   writeFixture(projectRoot, file, receipt);
+   return file;
+ }
+ 
+ function writeEvidence(projectRoot, evidence) {
+   writeFixture(projectRoot, evidence, '# Temporary retirement evidence\n');
+ }
+ 
++function git(projectRoot, args) {
++  return execFileSync('git', args, {
++    cwd: projectRoot,
++    encoding: 'utf8',
++    env: { ...process.env, ...GIT_TEST_IDENTITY },
++    stdio: ['ignore', 'pipe', 'pipe'],
++  }).trim();
++}
++
++function commitAll(projectRoot, message) {
++  git(projectRoot, ['add', '--all', '--force']);
++  git(projectRoot, ['commit', '--quiet', '--no-verify', '-m', message]);
++  return git(projectRoot, ['rev-parse', 'HEAD']);
++}
++
++function pushTrunk(projectRoot) {
++  git(projectRoot, ['push', '--quiet', 'origin', 'trunk']);
++  git(projectRoot, ['fetch', '--quiet', 'origin', 'trunk']);
++}
++
++function createHistoryRepository(prefix, testContents = '// frozen test before retirement\n') {
++  const projectRoot = mkdtempProjectIsolated(prefix);
++  const originRoot = `${projectRoot}-origin.git`;
++  mkdirSync(originRoot);
++  git(originRoot, ['init', '--quiet', '--bare', '--initial-branch=trunk']);
++  git(projectRoot, ['remote', 'add', 'origin', originRoot]);
++
++  const testPath = 'scripts/tests/unit/articles/historical.test.mjs';
++  writeFixture(projectRoot, testPath, testContents);
++  commitAll(projectRoot, 'add frozen test');
++  pushTrunk(projectRoot);
++
++  return {
++    projectRoot,
++    originRoot,
++    testContents,
++    testPath,
++    receiptFile: retirementReceiptPathForTestPath(testPath),
++    evidenceFile: `${TEMPORARY_RETIREMENT_EVIDENCE_ROOT}/historical.md`,
++    digest: createHash('sha256').update(testContents).digest('hex'),
++  };
++}
++
++function addRetirementTree(history, overrides = {}, { evidence = true } = {}) {
++  rmSync(path.join(history.projectRoot, history.testPath));
++  const receipt = receiptFor(history.testPath, {
++    lastLiveSha256: history.digest,
++    evidence: history.evidenceFile,
++    ...overrides,
++  });
++  writeReceipt(history.projectRoot, history.testPath, receipt);
++  if (evidence) writeEvidence(history.projectRoot, receipt.evidence);
++  return receipt;
++}
++
++function graduateRetirement(history, { removeEvidence = true } = {}) {
++  rmSync(path.join(history.projectRoot, history.receiptFile));
++  if (removeEvidence && existsSync(path.join(history.projectRoot, history.evidenceFile))) {
++    rmSync(path.join(history.projectRoot, history.evidenceFile));
++  }
++  const commit = commitAll(history.projectRoot, 'graduate frozen retirement receipt');
++  pushTrunk(history.projectRoot);
++  return commit;
++}
++
++function hydrate(history, overrides = {}) {
++  return hydrateHistoricalFrozenRetirement({
++    projectRoot: history.projectRoot,
++    testPath: history.testPath,
++    receiptFile: history.receiptFile,
++    ...overrides,
++  });
++}
++
++function assertHistoricalRetirement(retirement, history, receipt) {
++  assert.deepEqual(retirement, {
++    receiptFile: history.receiptFile,
++    evidenceFile: history.evidenceFile,
++    source: 'historical',
++    ...receipt,
++  });
++}
++
+ test('maps canonical frozen test paths to deterministic retirement receipts', () => {
+   assert.equal(
+     retirementReceiptPathForTestPath('scripts/tests/unit/articles/publish-articles.test.mjs'),
+     'scripts/tests/fixtures/test-corpus-frozen-retirements/unit/articles/publish-articles.test.mjs.json'
+   );
+   assert.throws(
+     () => retirementReceiptPathForTestPath('scripts/tests/unit/articles/../publish.test.mjs'),
+     /noncanonical test path/
+   );
+   assert.throws(
+@@ -374,10 +468,268 @@ test('returns an absent receipt root without errors and recognizes an existing r
+     misplacedReceipts: [],
+     rootPresent: false,
+   });
+ 
+   const presentRoot = mkdtempProjectIsolated('frozen-retirements-root-present-');
+   mkdirSync(path.join(presentRoot, FROZEN_RETIREMENT_ROOT), { recursive: true });
+   const loaded = load(presentRoot);
+   assert.equal(loaded.rootPresent, true);
+   assert.equal(existsSync(path.join(presentRoot, FROZEN_RETIREMENT_ROOT)), true);
+ });
++
++test('combines an active receipt without invoking historical Git inspection', () => {
++  const projectRoot = mkdtempProjectIsolated('frozen-retirements-active-combined-');
++  const testPath = 'scripts/tests/unit/articles/active-combined.test.mjs';
++  const receipt = receiptFor(testPath);
++  const receiptFile = writeReceipt(projectRoot, testPath, receipt);
++  writeEvidence(projectRoot, receipt.evidence);
++  let gitCalls = 0;
++
++  const loaded = loadFrozenRetirements({
++    projectRoot,
++    finalizedFrozenPaths: [testPath],
++    git() {
++      gitCalls += 1;
++      throw new Error('historical Git inspection must not run for an active receipt');
++    },
++  });
++
++  assert.equal(gitCalls, 0);
++  assert.deepEqual(loaded, {
++    retirements: [
++      {
++        receiptFile,
++        evidenceFile: receipt.evidence,
++        source: 'active',
++        ...receipt,
++      },
++    ],
++    errors: [],
++    misplacedReceipts: [],
++  });
++});
++
++test('hydrates a graduated fast-forward delivery from origin/trunk', () => {
++  const history = createHistoryRepository('frozen-retirements-history-ff-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  const receipt = addRetirementTree(history);
++  commitAll(history.projectRoot, 'retire frozen test on feature');
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  git(history.projectRoot, ['merge', '--quiet', '--ff-only', 'feature/retire']);
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++
++  assertHistoricalRetirement(hydrate(history), history, receipt);
++});
++
++test('hydrates a graduated rebased delivery from origin/trunk', () => {
++  const history = createHistoryRepository('frozen-retirements-history-rebase-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  const receipt = addRetirementTree(history);
++  commitAll(history.projectRoot, 'retire frozen test before rebase');
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  writeFixture(history.projectRoot, 'canonical-trunk-change.txt', 'canonical trunk change\n');
++  commitAll(history.projectRoot, 'advance canonical trunk');
++  pushTrunk(history.projectRoot);
++  git(history.projectRoot, ['checkout', '--quiet', 'feature/retire']);
++  git(history.projectRoot, ['rebase', '--quiet', 'trunk']);
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  git(history.projectRoot, ['merge', '--quiet', '--ff-only', 'feature/retire']);
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++
++  assertHistoricalRetirement(hydrate(history), history, receipt);
++});
++
++test('hydrates a squash-shaped delivery without trusting the unreachable feature commit', () => {
++  const history = createHistoryRepository('frozen-retirements-history-squash-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  const receipt = addRetirementTree(history);
++  const featureCommit = commitAll(history.projectRoot, 'feature retirement commit');
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  git(history.projectRoot, ['merge', '--quiet', '--squash', 'feature/retire']);
++  commitAll(history.projectRoot, 'squash-deliver frozen retirement');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++
++  assert.throws(() =>
++    git(history.projectRoot, ['merge-base', '--is-ancestor', featureCommit, 'origin/trunk'])
++  );
++  assertHistoricalRetirement(hydrate(history), history, receipt);
++});
++
++test('hydrates a merge result whose live parent contains the pre-deletion blob', () => {
++  const history = createHistoryRepository('frozen-retirements-history-merge-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  const receipt = addRetirementTree(history, {}, { evidence: false });
++  commitAll(history.projectRoot, 'prepare retirement without evidence');
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  writeFixture(history.projectRoot, 'canonical-trunk-change.txt', 'canonical trunk change\n');
++  commitAll(history.projectRoot, 'advance trunk before merge');
++  pushTrunk(history.projectRoot);
++  git(history.projectRoot, ['merge', '--quiet', '--no-ff', '--no-commit', 'feature/retire']);
++  writeEvidence(history.projectRoot, history.evidenceFile);
++  const mergeCommit = commitAll(history.projectRoot, 'merge retirement with evidence');
++  assert.equal(
++    git(history.projectRoot, ['rev-list', '--parents', '-n', '1', mergeCommit]).split(' ').length,
++    3
++  );
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++
++  assertHistoricalRetirement(hydrate(history), history, receipt);
++});
++
++test('combines a graduated receipt deleted with its evidence in later canonical history', () => {
++  const history = createHistoryRepository('frozen-retirements-history-graduated-');
++  const receipt = addRetirementTree(history);
++  commitAll(history.projectRoot, 'deliver frozen retirement');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++  assert.equal(existsSync(path.join(history.projectRoot, history.receiptFile)), false);
++  assert.equal(existsSync(path.join(history.projectRoot, history.evidenceFile)), false);
++
++  assert.deepEqual(
++    loadFrozenRetirements({
++      projectRoot: history.projectRoot,
++      finalizedFrozenPaths: [history.testPath],
++      liveDiscoveredPaths: [],
++    }),
++    {
++      retirements: [
++        {
++          receiptFile: history.receiptFile,
++          evidenceFile: history.evidenceFile,
++          source: 'historical',
++          ...receipt,
++        },
++      ],
++      errors: [],
++      misplacedReceipts: [],
++    }
++  );
++});
++
++test('rejects a complete retirement chain that exists only on an undelivered feature branch', () => {
++  const history = createHistoryRepository('frozen-retirements-history-undelivered-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  addRetirementTree(history);
++  commitAll(history.projectRoot, 'undelivered feature receipt');
++  rmSync(path.join(history.projectRoot, history.receiptFile));
++  rmSync(path.join(history.projectRoot, history.evidenceFile));
++  commitAll(history.projectRoot, 'undelivered feature graduation');
++
++  assert.throws(
++    () => hydrate(history),
++    new RegExp(`origin/trunk history.*${history.receiptFile.replaceAll('.', '\\.')}`)
++  );
++});
++
++test('rejects a receipt digest that differs from every live merge parent blob', () => {
++  const history = createHistoryRepository('frozen-retirements-history-digest-');
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/retire']);
++  writeFixture(history.projectRoot, history.testPath, '// feature parent test bytes\n');
++  commitAll(history.projectRoot, 'change test on feature parent');
++  git(history.projectRoot, ['checkout', '--quiet', 'trunk']);
++  writeFixture(history.projectRoot, 'canonical-trunk-change.txt', 'canonical trunk change\n');
++  commitAll(history.projectRoot, 'advance trunk parent');
++  git(history.projectRoot, ['merge', '--quiet', '--no-ff', '--no-commit', 'feature/retire']);
++  const expectedDigest = 'b'.repeat(64);
++  addRetirementTree(history, { lastLiveSha256: expectedDigest });
++  commitAll(history.projectRoot, 'merge retirement with mismatched digest');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++
++  assert.throws(
++    () => hydrate(history),
++    new RegExp(`${history.testPath.replaceAll('.', '\\.')}.*${expectedDigest}`)
++  );
++});
++
++test('rejects canonical receipt history when evidence is absent from the receipt tree', () => {
++  const history = createHistoryRepository('frozen-retirements-history-no-evidence-');
++  addRetirementTree(history, {}, { evidence: false });
++  commitAll(history.projectRoot, 'deliver receipt without evidence');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history, { removeEvidence: false });
++
++  assert.throws(
++    () => hydrate(history),
++    new RegExp(`evidence.*${history.receiptFile.replaceAll('.', '\\.')}`)
++  );
++});
++
++test('rejects a delivered receipt whose graduation deletion is not reachable from origin/trunk', () => {
++  const history = createHistoryRepository('frozen-retirements-history-no-graduation-');
++  addRetirementTree(history);
++  commitAll(history.projectRoot, 'deliver active receipt');
++  pushTrunk(history.projectRoot);
++  git(history.projectRoot, ['checkout', '--quiet', '-b', 'feature/graduation']);
++  rmSync(path.join(history.projectRoot, history.receiptFile));
++  rmSync(path.join(history.projectRoot, history.evidenceFile));
++  commitAll(history.projectRoot, 'graduate only on feature branch');
++
++  assert.throws(
++    () => hydrate(history),
++    new RegExp(`graduation.*${history.receiptFile.replaceAll('.', '\\.')}`)
++  );
++});
++
++test('fails closed with fetch guidance when origin/trunk is absent', () => {
++  const history = createHistoryRepository('frozen-retirements-history-no-origin-trunk-');
++  git(history.projectRoot, ['remote', 'remove', 'origin']);
++
++  assert.throws(
++    () => hydrate(history),
++    /fetch complete canonical history for origin\/trunk and retry/
++  );
++});
++
++test('fails closed with fetch guidance in a shallow repository', () => {
++  const history = createHistoryRepository('frozen-retirements-history-shallow-source-');
++  addRetirementTree(history);
++  commitAll(history.projectRoot, 'deliver receipt before shallow clone');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++  const container = mkdtempProjectIsolated('frozen-retirements-history-shallow-clone-');
++  const shallowRoot = path.join(container, 'clone');
++  git(container, [
++    'clone',
++    '--quiet',
++    '--depth',
++    '1',
++    '--branch',
++    'trunk',
++    pathToFileURL(history.originRoot).href,
++    shallowRoot,
++  ]);
++  assert.equal(git(shallowRoot, ['rev-parse', '--is-shallow-repository']), 'true');
++
++  assert.throws(
++    () => hydrate({ ...history, projectRoot: shallowRoot }),
++    /fetch complete canonical history for origin\/trunk and retry/
++  );
++});
++
++test('fails closed and names the receipt when a required parent blob is missing', () => {
++  const history = createHistoryRepository('frozen-retirements-history-missing-blob-');
++  addRetirementTree(history);
++  const deliveryCommit = commitAll(history.projectRoot, 'deliver receipt before blob loss');
++  pushTrunk(history.projectRoot);
++  graduateRetirement(history);
++  const parentCommit = git(history.projectRoot, ['rev-parse', `${deliveryCommit}^`]);
++  const blob = git(history.projectRoot, ['rev-parse', `${parentCommit}:${history.testPath}`]);
++  const looseBlob = path.join(
++    history.projectRoot,
++    '.git',
++    'objects',
++    blob.slice(0, 2),
++    blob.slice(2)
++  );
++  assert.equal(existsSync(looseBlob), true);
++  rmSync(looseBlob);
++
++  assert.throws(
++    () => hydrate(history),
++    new RegExp(`parent blob.*${history.receiptFile.replaceAll('.', '\\.')}`)
++  );
++});
