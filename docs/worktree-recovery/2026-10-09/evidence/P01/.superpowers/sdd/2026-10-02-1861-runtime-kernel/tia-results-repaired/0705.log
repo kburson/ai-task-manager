@@ -1,0 +1,12 @@
+✔ migration coverage reuses the genuine same-actor span without adding or posting work (4.331416ms)
+✔ a different actor cannot cover migration and an open ordinary span remains pending (0.333625ms)
+✔ unknown interruption, absent original attribution and conflicting issue claims never become zero or confirmed (0.173ms)
+✔ canonical unavailable, wrong-issue and malformed timing evidence stay pending with explicit reasons (0.415167ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.774583

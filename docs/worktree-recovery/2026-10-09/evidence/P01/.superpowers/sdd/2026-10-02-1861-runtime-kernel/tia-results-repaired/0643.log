@@ -1,0 +1,28 @@
+✔ emitPhasePairRows: SKIP_NETWORK short-circuits before any emission (0.74175ms)
+✔ emitPhasePairRows: demote emits a `demoted:<target>` row then the <next>:enter row (1.409ms)
+✔ emitPhasePairRows: forward move emits <prev>:complete then <next>:enter (0.134ms)
+✔ emitPhasePairRows leaves shared lifecycle words neutral instead of borrowing actor cursors (0.145625ms)
+✔ emitPhasePairRows keeps row-sec trailing when it adds transition identity (0.561166ms)
+✔ shared phase facts do not project unavailable actor observations as their own work (0.097792ms)
+✔ emitPhasePairRows: move to done emits a single done.complete row (0.099375ms)
+✔ emitPhasePairRows: a throwing helper is swallowed (best-effort) (0.396584ms)
+✔ emitFullAutoReviewAudit: non-done move short-circuits (0.146417ms)
+✔ emitFullAutoReviewAudit: full-auto posts the audit comment (35.787542ms)
+✔ emitFullAutoReviewAudit: human-reviewer stamps a marker via ctx.gh (17.122875ms)
+✔ emitFullAutoReviewAudit: a throwing pexec is swallowed (0.204667ms)
+✔ emitOutOfBandAudit: no reason short-circuits (0.094917ms)
+✔ out-of-band lifecycle audit never converts another actor gap or cursor into engagement (0.190083ms)
+✔ emitOutOfBandAudit: full path posts the audit comment and a timing row (0.086417ms)
+✔ emitOutOfBandAudit: comment-throw and timing-throw are both swallowed (0.104291ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.953334
+[move-state] #10: phase-pair emission failed: buildRow boom
+[human-reviewer-audit:info] #10: posted full-auto audit comment (no human reviewer)
+[human-reviewer-audit:info] #10: stamped human-reviewer marker (alice)
+[human-reviewer-audit] #10: enforcement failed: gh view down

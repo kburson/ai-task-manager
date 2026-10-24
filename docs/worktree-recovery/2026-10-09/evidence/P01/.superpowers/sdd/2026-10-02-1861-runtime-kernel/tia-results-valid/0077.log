@@ -1,0 +1,38 @@
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (6.48775ms)
+  ✔ direct Test self-rerun from Test (1.121209ms)
+  ✔ Promote from Develop (0.908542ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (9.099792ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.317708ms)
+✔ Review-state Test request is not advertised as runnable (0.684542ms)
+✔ Test entry needs an explicit project directory for command and provider authority (0.777042ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.592084ms)
+✔ Test explanation reports missing Verification Commands without effects (1.01825ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.9935ms)
+✔ Test entry aggregates independent binding and declaration blockers (0.785708ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.54825ms)
+  ✔ session binding (1.133583ms)
+  ✔ claimed receipt (0.655125ms)
+✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (2.580833ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.58775ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.266791ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.417333ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.614417ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.456125ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (699.189291ms)
+✔ Test entry retains registered guard warnings while remaining blocked (0.625667ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.47725ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (3.161583ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (0.695833ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (0.674584ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.06825ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.098542ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 728.193167

@@ -1,0 +1,35 @@
+✔ INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set (0.75725ms)
+✔ resident-action ledger advance is narrow and phase monotonic (1.780667ms)
+✔ resident-action waiver is terminal for an attempt and may be retried on a later attempt (0.959708ms)
+✔ same-visit spill to inline is refused but new-visit reset is permitted (0.275ms)
+✔ same-visit inline to spill and spill to spill are permitted (0.173625ms)
+✔ inline marker and final-body limits accept the boundary and refuse overflow (0.361125ms)
+✔ findLostMarkers treats the advancing ledger marker as presence-only (1.859583ms)
+✔ findLostMarkers returns empty list when next preserves all markers (0.259042ms)
+✔ findLostMarkers reports no loss when last-known-state pair collapses to the new single marker (#378) (0.1005ms)
+✔ findLostMarkers still reports loss when the new single last-known-state marker is dropped entirely (#378) (0.265958ms)
+✔ findLostMarkers reports a single-kind marker by name when dropped (0.098708ms)
+✔ findLostMarkers protects the durable epic orchestration plan (0.078041ms)
+✔ findLostMarkers reports each lost aitm-entered-<stage> individually (0.086417ms)
+✔ #1206: historical second-stage marker bytes remain append-only audit residue (0.481292ms)
+✔ findLostMarkers reports multiple single-kind markers when several drop (0.112083ms)
+✔ findLostMarkers tolerates empty/null base/next without throwing (0.069958ms)
+✔ findLostMarkers ignores markers that were never in base (0.070917ms)
+✔ findNewMalformedVerifiedCmds flags a newly-introduced malformed declaration (0.323208ms)
+✔ findNewMalformedVerifiedCmds passes a newly-introduced well-formed declaration (0.118875ms)
+✔ findNewMalformedVerifiedCmds does not flag a pre-existing malformed declaration (0.043875ms)
+✔ findAcsWithoutVerifierOrInvalidTag flags a {tbd}-sentinel verifier as malformed-verifier (0.607584ms)
+✔ findAcsWithoutVerifierOrInvalidTag distinguishes malformed-verifier from no-verifier and test-all-verifier (0.264291ms)
+✔ findAcsWithoutVerifierOrInvalidTag classifies a #670-shaped verifier-less AC as no-verifier (0.052666ms)
+✔ findAcsWithoutVerifierOrInvalidTag honors the invalid — non-demonstrable opt-out over a sentinel verifier (0.4195ms)
+✔ findAcsWithoutVerifierOrInvalidTag treats aitm-ac-waived as a valid opt-out (0.039875ms)
+✔ findAcsWithoutVerifierOrInvalidTag still passes verified-cmd and invalid-tag ACs (no regression) (0.443083ms)
+✔ reviewed Scope policy is protected as an invariant; pointer remains distinct from execution proof (0.044667ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.861125

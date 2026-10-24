@@ -1,0 +1,19 @@
+✔ AC1 — a bracket-free phase reports activeSec == span, idleSec == 0 (1.442458ms)
+✔ AC1 — a pause→resume bracket inside a span is idle, not active (0.314041ms)
+✔ AC1 — active-time.mjs re-exports the same calculator (0.062417ms)
+✔ AC2 — multi-phase totals sum per phase; between-phase gap excluded (0.174667ms)
+✔ AC2 — a demote re-entry accumulates under the same phase key (0.1575ms)
+✔ #1211 — historical second-stage timing rows retain canonical phase totals (0.566459ms)
+✔ AC2 — rollupTotals derives totals from spans, not per-row sums (0.70325ms)
+✔ AC3 — the board-fed rollup total equals the span calculator output (0.327167ms)
+✔ AC4 — a log with legacy idle/active-work rows totals the same as healed (0.184875ms)
+✔ AC5 — the read-side calculator has no branch keyed on idle/active-work (0.977708ms)
+✔ AC5 — rollupTotals has no branch keyed on idle/active-work either (0.327791ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.526792

@@ -1,0 +1,37 @@
+✔ neither template is git-ignored (9.583708ms)
+✔ both templates are tracked in git (8.563416ms)
+✖ a fresh worktree from HEAD carries both templates with no seeding step (29.008542ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.254833
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs:60:1
+✖ a fresh worktree from HEAD carries both templates with no seeding step (29.008542ms)
+  AssertionError [ERR_ASSERTION]: git worktree add failed:
+  Preparing worktree (detached HEAD 171c7d93)
+  fatal: could not create directory of '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.git/worktrees/aitm-tracked-templates-qPatjU': Operation not permitted
+  
+  
+  128 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs:69:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 128,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

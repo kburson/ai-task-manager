@@ -1,0 +1,12 @@
+close-converge-audit-emission.test.mjs: defined
+✔ Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1) (324.37ms)
+✔ Case B — converge with no approval marker WITHHOLDS review:approved, still emits issue:wrap (#801 AC2) (316.217084ms)
+✔ Case C — converge is idempotent when the pair already exists (#801 AC3) (308.928ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 957.147416

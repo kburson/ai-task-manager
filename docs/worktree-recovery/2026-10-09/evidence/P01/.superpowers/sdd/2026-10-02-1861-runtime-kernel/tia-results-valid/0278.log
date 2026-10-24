@@ -1,0 +1,14 @@
+✔ real default pexec refuses gh with the call site, argv, and offline-double guidance (1.214583ms)
+✔ real default callback, promisified execFile, and spawn refuse before spawning (0.324625ms)
+✔ injected client properties remain authoritative under the test signal (0.489417ms)
+✔ a declared PATH double remains authoritative under the test signal (227.021541ms)
+✔ a declared ambient double cannot authorize a different per-call PATH binary (25.971083ms)
+✔ signal-unset defaults preserve real child-process behavior on every surface (210.471667ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 468.241958

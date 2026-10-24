@@ -1,0 +1,19 @@
+✔ walker returns exactly the lines newly carrying an execution-proof marker (1.265042ms)
+✔ walker flags an aitm-dod-evidence introduction (0.106375ms)
+✔ walker ignores a declaration-only cmd marker (intent, not proof) (0.428875ms)
+✔ walker does not re-flag a proof line carried through unchanged (0.083667ms)
+✔ walker does not flag ticking a box on a line that ALREADY carried proof (0.076125ms)
+✔ walker flags a second copy of an already-present proof line (0.085458ms)
+✔ FabricatedProofError is re-exported from both modules (same class) (0.056542ms)
+✔ mutateIssueBody throws FabricatedProofError when proof is introduced without evidenceStamp (1.817333ms)
+✔ mutateIssueBody permits the same introduction when evidenceStamp: true (1.034125ms)
+✔ mutateIssueBody allows a non-proof edit without evidenceStamp (0.247125ms)
+✔ mutateIssueBody does not fire on a declaration-only cmd introduction (0.187125ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.536083

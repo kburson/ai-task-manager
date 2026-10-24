@@ -1,0 +1,15 @@
+✔ guard accepts develop→test when dod-verified marker is present (0.670583ms)
+✔ guard refuses develop→test when dod-verified marker is absent (0.234041ms)
+✔ guard fails open for non-test target transitions (0.065792ms)
+✔ guard fails open when ctx.body is not a string (0.0575ms)
+✔ guard id is stable (0.056208ms)
+✔ guard parity: identical ctx from /task test path and promote alias path yields identical verdict (0.454458ms)
+✔ legacy sandbox guard is replaced by the Develop receipt guard (23.806792ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30.516667

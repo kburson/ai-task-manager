@@ -1,0 +1,12 @@
+✔ Develop owns exact-head implementation verification as a resident action (0.775917ms)
+✔ Develop verification runs the finalizer and persists its receipt (0.21425ms)
+✔ Develop verification accepts project-provider required classifications at exact head (1.892291ms)
+✔ Develop verification rejects malformed project-provider required classifications (0.25175ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.875125

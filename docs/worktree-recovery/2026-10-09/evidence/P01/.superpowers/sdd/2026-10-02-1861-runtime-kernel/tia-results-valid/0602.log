@@ -1,0 +1,30 @@
+✔ strict UTF-8 decoding rejects malformed byte sequences before YAML parsing (1.409708ms)
+✔ position index counts UTF-16 code units after emoji and normalizes CRLF and lone CR (0.371ms)
+✔ event parser retains raw nested field ranges independently of decoded scalar values (1.937542ms)
+✔ event parser rejects duplicate mapping keys before construction loses the first value (0.213292ms)
+✔ event parser rejects anchors, aliases, tags, and quoted or plain merge keys (0.389542ms)
+✔ quoted field ranges include raw quotes after a folded block scalar (0.342834ms)
+✔ validator reports independent unknown fields with exact UTF-16 field positions (1.371375ms)
+✔ validator rejects duplicate IDs and unregistered agent operations without dropping either error (0.447292ms)
+✔ value-level diagnostics use raw instruction-key and binding-value positions (33.879833ms)
+✔ an instruction cannot query or execute a registered action outside its entry binding (21.5905ms)
+✔ documentation references resolve shipped paths and reject traversal (3.809958ms)
+✔ validator checks registry bindings, typed examples and documentation anchors independently (2.174584ms)
+✔ source byte limit is checked before a syntactically malformed oversized document is parsed (2.16175ms)
+✔ five fingerprints isolate agent, human, semantic and raw-file edits (1.149833ms)
+✔ packaged seed validates offline with all core IDs, five digests and catalog headroom (15.813791ms)
+✔ packaged genesis provenance names the empty v1 semantic baseline rather than a placeholder (10.377625ms)
+✔ parser, schema and seed are in the published production package contract (0.7415ms)
+✔ active source profile refuses an untracked or misplaced override while candidate stays inspectable (32.354708ms)
+✔ fatal source diagnostics retain the requested source profile (0.167875ms)
+✔ duplicate registered bindings are rejected even though both references resolve (10.051083ms)
+✔ field and proxy budgets emit independent limit diagnostics (1.844583ms)
+✔ each structural limit rejects its limit-plus-one catalog (399.951334ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 547.90225

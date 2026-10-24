@@ -1,0 +1,29 @@
+coverage-heal-refine-entry-marker.test.mjs: ok
+✔ needsBackfill: later marker present but refine-entry missing → true (1.414375ms)
+✔ needsBackfill: refine-entry + later but no audit → true (audit-only) (0.205917ms)
+✔ needsBackfill: refine-entry + later + audit → false (clean) (0.085583ms)
+✔ needsBackfill: refine-entry only, no later stage → false (0.065458ms)
+✔ needsBackfill: empty body → false (0.059042ms)
+✔ needsBackfill: new-grammar audit marker satisfies the audit check (0.082542ms)
+✔ fetchOpenIssues: maps gh json to string numbers (0.570042ms)
+✔ fetchIssue: parses gh view json (0.094125ms)
+✔ writeBody: writes tmp, invokes gh edit --body-file, unlinks (0.169375ms)
+✔ writeBody: unlink failure is swallowed (best-effort cleanup) (0.183917ms)
+✔ postComment: shells gh issue comment --body (0.126458ms)
+✔ healOne: skip when body clean (entry+later+audit) (0.180375ms)
+✔ healOne: plan (dry-run) entry+audit mode uses createdAt (0.151333ms)
+✔ healOne: plan (dry-run) audit-only mode reuses existing entry ts (0.087333ms)
+✔ healOne: apply entry+audit writes body + posts comment (0.611792ms)
+✔ healOne: apply audit-only posts the audit-marker comment (0.143667ms)
+✔ main: single-issue dry-run prints "would backfill" plan line (0.27625ms)
+✔ main: apply prints backfilled + skip lines, no dry-run footer (0.126083ms)
+✔ main: healOne throw is captured as an error line on stderr (0.095875ms)
+✔ main: no issue args → scans open issues via fetchOpenIssues (0.076791ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.167

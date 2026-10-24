@@ -1,0 +1,34 @@
+✔ waived v2 intent has exact scope and cannot project as an ordinary v1 intent (5.447708ms)
+✔ a second intent ID cannot consume the same waiver operation (1.195416ms)
+✔ waived v3 receipt selection is explicit and preserves immutable provenance (2.677167ms)
+✔ builders produce exact versioned schemas, hashes, and deeply frozen values (0.272917ms)
+✔ #1619: warning-bearing receipts use exact v2 bytes while warning-free receipts stay v1 (0.813542ms)
+✔ #1619: receipt v2 refuses malformed warning data and divergent warning receipts (0.77ms)
+✔ external recovery intent retains strict observed history bytes without provider correlation (0.215834ms)
+✔ intent and receipt records round trip every supported merge method (0.736458ms)
+✔ intent and receipt records reject merge methods outside the supported set (0.233291ms)
+✔ comments contain one canonical marker and preserve authoritative server metadata (0.394458ms)
+✔ intent comments round trip when bounded payload strings contain delivery marker names (0.256333ms)
+✔ receipt comments round trip when bounded payload strings contain delivery marker names (0.130042ms)
+✔ intent comments reject a second inline hidden delivery marker (0.21325ms)
+✔ receipt comments reject a second inline hidden delivery marker (0.176417ms)
+✔ builders reject extra keys, malformed identities, unbounded strings, and invalid SHAs (1.465625ms)
+✔ repository names accept the normal form and reject more than 256 UTF-8 bytes (0.493458ms)
+✔ parser rejects malformed marker-like comments and noncanonical record bytes (0.390333ms)
+✔ parser enforces repository, issue, PR, exact record keys, and server createdAt correlation (0.607375ms)
+✔ transaction parser ignores only a fully valid historical PR record (0.705708ms)
+✔ projection computes superseded effective state and the live matching receipt (0.623208ms)
+✔ projection rejects duplicate IDs, missing links, cycles, forks, and multiple live tips (1.6355ms)
+✔ projection rejects a replacement that names an intent appearing later in comment order (0.541416ms)
+✔ projection rejects same-key divergent authorized bytes (0.45425ms)
+✔ projection rejects orphaned, mismatched, duplicate, and conflicting receipts (1.06725ms)
+✔ receipt authority follows comment order while retaining superseded-intent receipts (0.710042ms)
+✔ generic delivery waiver schema is explicit and never inferred from attribution fields (0.2785ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.507875

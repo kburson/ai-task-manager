@@ -1,0 +1,79 @@
+✖ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (761.358834ms)
+✖ promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710) (129.097083ms)
+✖ promote: exit-0 close that moves board to done still reports promoted (#710) (144.140625ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1037.996875
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:178:1
+✖ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (761.358834ms)
+  AssertionError [ERR_ASSERTION]: expected exit 5, got 1. stderr:
+  file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+    throw new RuntimeRootError(code, message);
+          ^
+  
+  RuntimeRootError: Ambiguous Git root observation
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at observeGitIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:84:32)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:146:23)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:124:10)
+      at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/runtime.mjs:314:22)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/task-tracker.mjs:488:17 {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+  
+  Node.js v26.8.1
+  
+  
+  1 !== 5
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:184:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:194:1
+✖ promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710) (129.097083ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:197:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:213:1
+✖ promote: exit-0 close that moves board to done still reports promoted (#710) (144.140625ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:216:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }

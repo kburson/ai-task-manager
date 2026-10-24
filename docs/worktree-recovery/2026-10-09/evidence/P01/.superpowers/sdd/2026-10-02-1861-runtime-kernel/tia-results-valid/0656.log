@@ -1,0 +1,17 @@
+✔ derives blocked, ready, and fail-closed unknown projections (0.902084ms)
+✔ projects BLOCKED for unfinished dependencies (0.332709ms)
+✔ requires BLOCKED before failing closed on unknown or unreadable dependency evidence (0.516292ms)
+✔ clears BLOCKED after every dependency is Done and is idempotent when already clear (0.157917ms)
+✔ preserves every terminal disposition without dependency or field mutation (0.156375ms)
+✔ loads native dependencies and AITM Status when no observation is supplied (0.279ms)
+✔ refuses unexpected non-terminal values before mutation (0.092667ms)
+✔ reports stable categories for missing field, item, option, and mutation failures (0.360084ms)
+✔ requires exact readback after write and clear (0.183875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.414708

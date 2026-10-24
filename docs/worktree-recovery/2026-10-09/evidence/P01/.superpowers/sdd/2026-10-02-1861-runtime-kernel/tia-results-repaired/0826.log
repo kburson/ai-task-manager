@@ -1,0 +1,13 @@
+close-strip-labels.test.mjs: ok
+✔ closeLabelRemoveArgs builds the expected gh args (1.278208ms)
+✔ convergence close-issue path strips only ToDo after gh close (596.327834ms)
+✔ main close path strips only ToDo after gh close (333.40075ms)
+✔ label-strip failure leaves close incomplete for a truthful retry (327.343208ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1264.53825

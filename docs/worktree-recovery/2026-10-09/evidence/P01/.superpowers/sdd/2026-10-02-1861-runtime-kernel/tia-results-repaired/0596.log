@@ -1,0 +1,25 @@
+▶ guard-bootstrap: entry-field adapter registration
+  ✔ the obsolete pre-refine Priority adapter is not registered (0.703208ms)
+  ✔ planEntryFieldsBody and planEntryFieldsBoard are registered at refine.exit (0.114458ms)
+  ✔ re-bootstrap is idempotent (0.068625ms)
+✔ guard-bootstrap: entry-field adapter registration (1.718792ms)
+▶ refineEntryFieldsPriority adapter
+  ✔ refuses on missing Priority and joins blockers into reason (0.218041ms)
+  ✔ passes on Priority present (0.106875ms)
+  ✔ refuses with a structured reason when ctx is malformed (0.849459ms)
+✔ refineEntryFieldsPriority adapter (1.307ms)
+▶ planEntryFieldsBody adapter
+  ✔ returns refinementPlan as derived data on success (2.527334ms)
+  ✔ joins multiple blockers with "; " when underlying gate refuses (0.995542ms)
+✔ planEntryFieldsBody adapter (4.1755ms)
+▶ planEntryFieldsBoard adapter
+  ✔ refuses on missing Rank and joins blockers (3.439958ms)
+✔ planEntryFieldsBoard adapter (4.171292ms)
+ℹ tests 9
+ℹ suites 4
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.39225

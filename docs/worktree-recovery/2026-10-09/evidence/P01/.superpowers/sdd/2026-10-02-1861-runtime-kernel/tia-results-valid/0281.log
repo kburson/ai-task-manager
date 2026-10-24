@@ -1,0 +1,12 @@
+✔ extractShas pulls payloads verbatim, without validation (0.955291ms)
+✔ isAncestor classifies a non-hex value as unknown-sha without executing it (29.984041ms)
+✔ isAncestor rejects shell metacharacters and other non-hex inputs (0.267834ms)
+✔ isAncestor accepts a well-formed hex SHA and runs git against it (12.297541ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47.535459

@@ -1,0 +1,101 @@
+✖ terminal ledger persists atomically at the main fleet authority path (222.76325ms)
+✔ malformed terminal entries fail closed instead of reviving a binding (99.082708ms)
+✔ terminal authority refuses a fallback linked-worktree anchor (0.249042ms)
+✔ terminal timestamp closes only records that were bound before it (0.293834ms)
+✖ terminal release observation accepts the ledger unless a newer binding exists (0.2195ms)
+✔ terminal release resume reuses original ledger authority and clears only stale residue (0.323833ms)
+✖ closed candidate loses to a live binding even when the closed record is newer (0.23325ms)
+✖ a closed-only candidate set resolves to null (0.114542ms)
+✔ release marks terminal authority then clears every matching worktree only (0.458458ms)
+✔ release CAS preserves a concurrent rebind to another issue or a reopened issue (0.142375ms)
+✖ clearing live B cannot resurrect terminal A (0.092792ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 6
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 327.525042
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:28:1
+✖ terminal ledger persists atomically at the main fleet authority path (222.76325ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:99:3)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:116:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at markClosedBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:100:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:31:3)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:86:1
+✖ terminal release observation accepts the ledger unless a newer binding exists (0.2195ms)
+  RuntimeRootError: Project root does not exist: /repo
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at sharedRuntimeStore (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:146:20)
+      at occupancyPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:266:20)
+      at inspectTerminalIssueBindingRelease (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/worktree-binding-lifecycle.mjs:257:62)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:100:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:230:1
+✖ closed candidate loses to a live binding even when the closed record is newer (0.23325ms)
+  RuntimeRootError: Project root does not exist: /repo
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at sharedRuntimeStore (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:146:20)
+      at fleetPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:254:20)
+      at fleetRegistryPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:29:10)
+      at resolveCurrentSessionWorktreeBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/worktree-binding-guard.mjs:160:27)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:244:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:256:1
+✖ a closed-only candidate set resolves to null (0.114542ms)
+  RuntimeRootError: Project root does not exist: /repo
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at sharedRuntimeStore (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:146:20)
+      at fleetPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:254:20)
+      at fleetRegistryPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:29:10)
+      at resolveCurrentSessionWorktreeBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/worktree-binding-guard.mjs:160:27)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:265:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:340:1
+✖ clearing live B cannot resurrect terminal A (0.092792ms)
+  RuntimeRootError: Project root does not exist: /repo
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+      at sharedRuntimeStore (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:146:20)
+      at fleetPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:254:20)
+      at fleetRegistryPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:29:10)
+      at resolveCurrentSessionWorktreeBinding (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/worktree-binding-guard.mjs:160:27)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs:351:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }

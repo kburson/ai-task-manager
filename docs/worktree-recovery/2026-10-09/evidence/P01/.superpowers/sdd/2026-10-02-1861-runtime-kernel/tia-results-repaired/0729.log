@@ -1,0 +1,21 @@
+✔ the production lifecycle keeps eight states and canonically names Ready for Planning (1.525917ms)
+✔ the factory machine projects navigation only through lifecycle policy (0.141917ms)
+✔ the baseline names the canonical eight states in production order (0.070792ms)
+✔ all three lifecycle projections explicitly cover all 64 ordered pairs (0.120292ms)
+✔ the executable matrix matches pre-refactor transition validation for every pair (0.448375ms)
+✔ the entry-history matrix matches the current marker-history edge set (0.133083ms)
+✔ the timing-history matrix matches the current strict timing walk (2.428917ms)
+✔ same-state requests are executable no-ops but remain valid history rows (0.100125ms)
+✔ reverse and history-only distinctions remain explicit (0.088875ms)
+✔ action eligibility and delegation match current verb exports (0.138417ms)
+✔ refine entry and self-run policy match injected production behavior (2.41125ms)
+✔ bootstrap policy resolves live state and refuses a missing board item (5.407167ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.823125
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.

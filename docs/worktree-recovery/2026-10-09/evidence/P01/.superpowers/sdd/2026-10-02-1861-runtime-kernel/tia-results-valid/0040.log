@@ -1,0 +1,11 @@
+✔ observer is read-only and distinguishes modified, untracked, and unsafe artifacts (185.28025ms)
+✔ observer classifies a cyclic parent symlink as unsafe instead of missing (17.236916ms)
+✔ observer accepts a healthy relative symlink to the declared in-project package target (39.259167ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 260.954959

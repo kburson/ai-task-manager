@@ -1,0 +1,22 @@
+coverage-stamp-start-time.test.mjs: defined
+✔ stampStartTime: missing cfg throws (0.939208ms)
+✔ stampStartTime: missing issueNumber throws (0.1325ms)
+✔ stampStartTime: no Start-time field configured → skipped (0.282292ms)
+✔ stampStartTime: resolveItem rejects → error (0.123166ms)
+✔ stampStartTime: no project item → skipped (0.079834ms)
+✔ stampStartTime: existing non-empty value → idempotent (0.108583ms)
+✔ stampStartTime: blank existing value falls through to a fresh stamp (1.168167ms)
+✔ stampStartTime: writeField resolves → stamped with formatted value (0.265375ms)
+✔ stampStartTime: writeField rejects → error (0.151708ms)
+✔ defaultResolveItem: returns the node matching cfg.projectId (0.186833ms)
+✔ defaultResolveItem: no matching project → null (0.093833ms)
+✔ defaultResolveItem: empty / missing nodes → null (0.064917ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.915208
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.

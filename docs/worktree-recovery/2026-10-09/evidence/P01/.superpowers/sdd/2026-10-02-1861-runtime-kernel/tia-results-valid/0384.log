@@ -1,0 +1,10 @@
+✔ resolveAssignee: explicit --assignee returns the login (0.450958ms)
+✔ resolveAssignee: no/empty --assignee returns null (unassigned) (0.067541ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3.65175

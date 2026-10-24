@@ -1,0 +1,27 @@
+✔ parseFromCommentArg: raw numeric id (0.558083ms)
+✔ parseFromCommentArg: hash-prefixed form (0.130167ms)
+✔ parseFromCommentArg: full URL (0.070666ms)
+✔ parseFromCommentArg: refuses gibberish (0.201666ms)
+✔ parseFromCommentArg: refuses null (0.0575ms)
+✔ stripLeadingDeepDiveHeading: strips `## Plan Deep-Dive Analysis` (0.134208ms)
+✔ stripLeadingDeepDiveHeading: strips `## Deep-Dive Analysis (2026-06-06)` (0.101541ms)
+✔ stripLeadingDeepDiveHeading: preserves subordinate ### headings (0.055958ms)
+✔ stripLeadingDeepDiveHeading: no-op when no leading heading (0.053834ms)
+✔ mirrorDeepDiveFromComment: happy path mirrors comment + stamps both markers (1.7815ms)
+✔ mirrorDeepDiveFromComment: no-op when markers + back-pointer already present (0.333083ms)
+✔ mirrorDeepDiveFromComment: refuses when hand-authored inline deep dive lacks back-pointer (0.214667ms)
+✔ mirrorDeepDiveFromComment: comment with leading heading produces single canonical heading (0.242667ms)
+✔ mirrorDeepDiveFromComment: back-pointer line matches spec format (0.103083ms)
+✔ mirrorDeepDiveFromComment: refuses when comment body is empty (0.052084ms)
+✔ repairDeepDivePlacementBody relocates a wrapped legacy block byte-for-byte (1.48625ms)
+✔ repairDeepDivePlacementBody relocates an unwrapped block after the fields trailer (0.213416ms)
+✔ repairDeepDivePlacementBody is a no-op for an already-canonical block (0.067875ms)
+✔ repairDeepDivePlacementBody refuses ambiguous and malformed layouts (0.173ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.823667

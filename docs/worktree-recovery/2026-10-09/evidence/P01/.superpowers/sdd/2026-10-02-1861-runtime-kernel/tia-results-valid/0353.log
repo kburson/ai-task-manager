@@ -1,0 +1,11 @@
+✔ a stale finalize row is clamped forward to the log tail, not appended behind it (14.207042ms)
+✔ the clamped body is monotonic-by-timestamp — V3 reports no out-of-order (1.404917ms)
+✔ an in-order live row is a no-op — its timestamp is left untouched (0.219125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.110417

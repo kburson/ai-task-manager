@@ -1,0 +1,102 @@
+✔ runPromote: throws without issueNumber or cfg (1.250209ms)
+✔ runPromote: assertBound is invoked and may throw (0.200084ms)
+✔ runPromote: refine→R4P promoted via direct move + refine-estimate hook (216.180875ms)
+✔ runPromote: consumes the final returned refinement plan without context mutation (23.602292ms)
+✔ runPromote: refine→R4P refused when refine-estimate signals missing (11.841125ms)
+✔ runPromote: refine→R4P refused when refine-exit gate returns blockers (7.718959ms)
+✔ runPromote: backlog→refine direct move (8.924333ms)
+✔ runPromote: backlog→refine stamps Start time on success (6.992917ms)
+✔ runPromote: plan→develop promoted when planned-estimate appendix present (17.012167ms)
+✔ runPromote: plan→develop refused when refine-estimate comment missing (29.06925ms)
+✔ runPromote: develop→test delegates to /task test (59.865709ms)
+✔ runPromote: develop→test refused when CODE_COMPLETE gate blocks (43.6045ms)
+✔ runPromote: test→review delegates to /task review (9.918ms)
+✔ runPromote: test→review refused when dod-verified marker missing (9.434708ms)
+✔ runPromote: review→done delegates to /task close (10.966125ms)
+✔ runPromote: terminal refusal on done (0.343625ms)
+✔ runPromote: drift refused when live ≠ recorded (0.221666ms)
+✔ runPromote: bootstrap when lastKnownState absent (10.333875ms)
+✔ runPromote: error when no recorded and no live state (0.130958ms)
+✔ runPromote: transition-failed when alias verb exits non-zero (18.705958ms)
+✔ runPromote: promoted-with-warning, markers already synced (noop repair) (13.92625ms)
+✔ runPromote: promoted-with-warning, stale marker → repair write fires (12.842959ms)
+✔ runPromote: delegate non-zero AND board drifted to non-target → transition-failed (31.279375ms)
+✔ runPromote: post-failure getLiveState throw is swallowed (16.429667ms)
+✔ runPromote: error when recorded state is unknown (0.169041ms)
+✔ spawnVerbTimeout: test → undefined, others → finite budget (0.172917ms)
+✔ verbPromote: no issue number → usage, exit 1 (0.419625ms)
+✓ #1473 promoted: backlog → refine (direct)
+✔ verbPromote: promoted → stdout, no exit (111.645458ms)
+✓ #100 promoted: refine → ready-for-plan (direct)
+  ↳ posted "### 🛠 Refine estimate" comment
+✔ verbPromote: refine→R4P promoted prints refine-estimate comment line (210.427292ms)
+✔ verbPromote: refused gate → exit 4 with BLOCKED lines (83.594375ms)
+✔ verbPromote: decomposition refusal renders blockers and exits 4 (75.383042ms)
+✔ verbPromote: drift-refused → exit 4 (64.347209ms)
+✔ verbPromote: terminal-refused → exit 4 (79.541375ms)
+✓ #1751 promoted: develop → test (/task test)
+✔ verbPromote: promoted-with-warning prints soft-warning (93.191417ms)
+✔ verbPromote: transition-failed → exits with delegate code (108.652417ms)
+✔ verbPromote: error status → exit 1 (84.082958ms)
+✔ verbPromote: runPromote throw → catch → exit 1 (65.049334ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1544.658083
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #100
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #100
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1005
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1471
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1473
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1472
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #101
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1011
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #102
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1361
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #2572
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1031
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #104
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #108
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #109
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #132
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1751
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1753
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #134
+Usage: promote #N
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1473
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #100
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1031
+
+⛔ Refusing to promote #1031 to review: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: aitm-entered-backlog
+   BLOCKED: aitm-entered-refine
+   BLOCKED: aitm-entered-plan
+   BLOCKED: aitm-entered-develop
+   BLOCKED: aitm-entered-test
+
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1134
+
+⛔ Refusing to promote #1134 to develop: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path; Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+   BLOCKED: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path
+   BLOCKED: Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+
+
+⛔ Refusing to promote #107:
+   BLOCKED: drift detected: board says "develop", task-tracker says "plan". Run `/task reconcile <accept-live|revert-to-recorded>`.
+
+
+⛔ already in done (#106); promote is forward-only.
+
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #1751
+  ⚠ delegate /task test exited 1 — board reached target; treating as soft warning.
+  ↳ marker repaired (attempts: 1)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/promote-m645eZ for #109
+promote: promote: delegate /task test exited 4; recorded state left at "develop".
+promote: promote: unknown recorded state "bogus" for #110
+promote: not bound to #9

@@ -1,0 +1,12 @@
+✔ delivery intent binds acceptance to one explicit rewritten PR and provider head (9.660667ms)
+✔ delivery verification separates accepted content from required method policy (3.524584ms)
+✔ strict intent and delivery payloads roundtrip through evidence records (3.146375ms)
+✔ v1 modules expose narrow v2 adapters without changing their existing functions (2.460917ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.16175

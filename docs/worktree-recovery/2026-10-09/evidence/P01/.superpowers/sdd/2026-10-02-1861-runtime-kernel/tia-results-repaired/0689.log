@@ -1,0 +1,28 @@
+✔ #1490: the exact completed-and-reopened shape authorizes (3.057875ms)
+✔ #1490: a recovery-backed timing-only replacement authorizes stale supersession (1.077958ms)
+✔ #1490: recovery-backed stale supersession fails closed on contradictory evidence (1.011375ms)
+✔ #1490: a partial or reordered terminal sequence refuses (0.84225ms)
+✔ #1490: a malformed transaction refuses (0.432792ms)
+✔ #1490: an identical old and new accepted SHA refuses (0.209291ms)
+✔ #1490: every contradictory live state refuses (2.008833ms)
+✔ #1490: the historical bundle must correlate PR, intent, and receipt (1.990417ms)
+✔ #1490: current delivery evidence must be gate-resolved, not asserted (2.087916ms)
+✔ #1490: the recovery record captures both transactions, SHAs, and authorities (0.912417ms)
+✔ #1490: the recovery identity is deterministic, so a retry reuses it (1.035458ms)
+✔ #1490: the replacement transaction begins with zero completed steps (1.665625ms)
+✔ #1490: replacing an already-replaced marker is an idempotent no-op (0.54375ms)
+✔ #1490: a body whose transaction is not the authorized one refuses (0.5755ms)
+✔ #1490: zero or multiple delivered-close transactions refuse (0.464458ms)
+✔ #1490: durable evidence is resolved by codec, never by substring (1.021209ms)
+✔ #1490: a retry reuses the durable replacement id rather than minting another (0.476833ms)
+✔ #1490: progress classification distinguishes both interruption points (0.645375ms)
+✔ #1490: the old transaction is rebuilt from durable evidence (0.262291ms)
+✔ #1490: a record whose intent disagrees with the authorization refuses (0.276542ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25.172291

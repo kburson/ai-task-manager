@@ -1,0 +1,28 @@
+✔ Incorporated authorization binds #1403 to its approved carrier-only ledger row (1.15325ms)
+✔ Incorporated refuses any owner other than #1381 and any missing approved row (0.248584ms)
+✔ PR #1404 is carrier evidence, never an ordinary delivery receipt (0.180333ms)
+✔ malformed delivery claims prove conflict, not receipt absence (0.492792ms)
+✔ an exact-head delivery receipt is positively detected and duplicate receipt history conflicts (4.233042ms)
+✔ an exact-head receipt on a superseded intent is present and multiple exact receipts conflict (1.358584ms)
+✔ a complete issue-local receipt on another PR is present, never filtered as absent (0.43ms)
+✔ missing accepted Review or Agent Review evidence refuses even when the carrier is merged (0.08975ms)
+✔ missing current human or Full-Auto review standing refuses the accepted carrier SHA (0.116542ms)
+✔ a closed issue needs a durable close transaction and COMPLETED reason (0.256375ms)
+✔ legacy blocker carriers do not participate in Incorporated authorization (0.125667ms)
+✔ first Incorporated close mutates in the governed order and creates no delivery receipt (5.010959ms)
+✔ retry adopts the issue-local record and converges only missing terminal effects (2.703125ms)
+✔ fully converged retry is a no-op (0.45225ms)
+✔ durable checkpoints adopt completed live effects while running the uncheckpointed suffix (1.9515ms)
+✔ partial and completed checkpoints preserve exact review authority for policy-free retries (0.371042ms)
+✔ a durable transaction never overwrites contradictory terminal disposition (0.221416ms)
+✔ a conflicting issue-local Incorporated record refuses before terminal mutation (0.118667ms)
+✔ an orphan close checkpoint refuses before appending an Incorporated record (0.111541ms)
+✔ invalid, discarded, pending, or retained timing refuses before terminal writes (1.616834ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25.606875
