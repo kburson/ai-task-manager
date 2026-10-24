@@ -91,8 +91,11 @@ export function issueLockToken(issue) {
 const heldContext = new AsyncLocalStorage();
 // Opaque in-process owner identity; inherited environment tokens cannot mint it.
 const ownerContext = new AsyncLocalStorage();
+// Detached async descendants can outlive the physical owning frame.
+const activeOwners = new WeakSet();
 export function currentIssueLockOwner(issue) {
-  return ownerContext.getStore()?.get(issueLockToken(issue)) ?? null;
+  const owner = ownerContext.getStore()?.get(issueLockToken(issue));
+  return owner && activeOwners.has(owner) ? owner : null;
 }
 
 // Tokens this process itself published into the env, refcounted. Their presence
@@ -102,12 +105,12 @@ const selfPublished = new Map();
 
 function heldHere(token) {
   const store = heldContext.getStore();
-  return store ? store.has(token) : false;
+  return Boolean(store?.has(token) && currentIssueLockOwner(token));
 }
 
 function anyHeldHere() {
   const store = heldContext.getStore();
-  return Boolean(store && store.size > 0);
+  return Boolean(store && [...store].some(heldHere));
 }
 
 // Shared predicate for every reader of the re-entrancy signal. Callers outside
@@ -361,14 +364,19 @@ export async function withIssueLock(opts, fn) {
   const nextHeld = new Set(inherited || []);
   nextHeld.add(token);
 
+  const ownership = Object.freeze({
+    issue: token,
+    projDir,
+    sessionId,
+    token: randomBytes(16).toString('hex'),
+  });
+  activeOwners.add(ownership);
   try {
     const owners = new Map(ownerContext.getStore() ?? []);
-    owners.set(
-      token,
-      Object.freeze({ issue: token, projDir, token: randomBytes(16).toString('hex') })
-    );
+    owners.set(token, ownership);
     return await ownerContext.run(owners, () => heldContext.run(nextHeld, fn));
   } finally {
+    activeOwners.delete(ownership);
     const depth = (selfPublished.get(token) || 1) - 1;
     if (depth <= 0) selfPublished.delete(token);
     else selfPublished.set(token, depth);

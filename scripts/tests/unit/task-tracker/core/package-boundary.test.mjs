@@ -141,7 +141,8 @@ function repoRoot() {
 // #1692 ships the four install-contract/manifest runtime modules consumed by
 // the installer. The doctor observer/CLI additions and their explicit package
 // assertions remain owned by the later child.
-const ENTRY_CEILING = 788;
+// #2090 ships exactly twelve completed cache dependencies; tests remain excluded.
+const ENTRY_CEILING = 800;
 
 let packedFileCache = null;
 function packedFiles() {
@@ -486,6 +487,26 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     `packed entry count ${files.length} exceeds ceiling ${effectiveCeiling}; ` +
       `the package surface grew — confirm intentional and raise the ceiling, or prune.`
   );
+});
+
+// @story #2090
+test('package-boundary: isolated timing candidate dependencies ship together', () => {
+  const files = new Set(packedFiles());
+  for (const required of [
+    'scripts/task-tracker/lib/story-cache/native-observation.mjs',
+    'scripts/task-tracker/lib/story-cache/manifest.mjs',
+    'scripts/task-tracker/lib/story-cache/store.mjs',
+    'scripts/task-tracker/lib/story-cache/timing-events.mjs',
+    'scripts/task-tracker/lib/story-cache/writer-claim.mjs',
+    'scripts/task-tracker/lib/story-cache/writer-claim-shape.mjs',
+    'scripts/task-tracker/lib/story-cache/writer-registry.mjs',
+    'scripts/task-tracker/lib/story-cache/writer-handoff-io.mjs',
+    'scripts/task-tracker/lib/story-cache/writer-handoff-bytes.mjs',
+    'scripts/task-tracker/lib/story-cache/timing-stage.mjs',
+    'scripts/task-tracker/lib/story-cache/timing-candidate.mjs',
+    'scripts/task-tracker/lib/story-cache/snapshot-reader.mjs',
+  ])
+    assert.ok(files.has(required), required);
 });
 
 test('package-boundary: development-only context calibration is not shipped', () => {
