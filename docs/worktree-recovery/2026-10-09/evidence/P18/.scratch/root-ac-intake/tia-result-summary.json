@@ -1,0 +1,18 @@
+{
+  "receipt": ".scratch/root-ac-intake/run-1791299721448.json",
+  "command": [
+    "node",
+    "scripts/maintenance/verify-affected-or-cloud.mjs"
+  ],
+  "start": "2026-10-06T15:02:01.424Z",
+  "end": "2026-10-06T15:15:21.448Z",
+  "elapsedSeconds": 800.024,
+  "exitCode": null,
+  "error": "spawnSync node ETIMEDOUT",
+  "stdoutBytes": 647112,
+  "stderr": "",
+  "failures": [
+    "Error: stale evidence"
+  ],
+  "tail": "✔ demote: test→develop landed write carries develop marker (#295 closure semantics) (0.139667ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 147.2185\n✔ runDemote hard-refuses with no --rework (from review) (0.70325ms)\n✔ runDemote hard-refuses with no --rework (from test) (0.092167ms)\n✔ runDemote treats a whitespace-only --rework as absent (0.067708ms)\n✔ runDemote with a real --rework from a legal source demotes and threads the reason (0.518625ms)\n✔ runDemote still refuses an illegal source even with --rework (0.185875ms)\n✔ defaultRunMoveState appends --demote and --demote-reason when a reason is present (0.30725ms)\n✔ defaultRunMoveState omits --demote-reason when the reason is blank (0.159ms)\n✔ parseArgs extracts issue number and --rework in both forms (0.441292ms)\n✔ #932 demote-strips-VC-evidence: uncheck + drop run-props, keep declaration (0.981667ms)\n✔ #932 demote-preserves-protected: no invariant marker is lost (1.423958ms)\n✔ #932 re-promote-restamps-new-sha: stripped item re-stamps against the new HEAD, not the old (0.2465ms)\n✔ #932 demote-with-nothing-to-strip: a body with only declarations is a safe no-op (0.087333ms)\n✔ #1557 compatibility repair accepts only the exact valid stranded provenance tuple (0.878792ms)\n✔ #932 runDemote wires invalidateEvidence into the state-recording mutate and reports it (1.785167ms)\n✔ #848 AC6: demote LEGAL_FROM/DEMOTE_TARGET unchanged by the park addition (0.107ms)\nℹ tests 15\nℹ suites 0\nℹ pass 15\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 155.121833\n✔ Develop owns exact-head implementation verification as a resident action (0.69525ms)\n✔ Develop verification runs the finalizer and persists its receipt (0.177208ms)\n✔ Develop verification accepts project-provider required classifications at exact head (2.156167ms)\n✔ Develop verification rejects malformed project-provider required classifications (0.228625ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 94.190541\n"
+}

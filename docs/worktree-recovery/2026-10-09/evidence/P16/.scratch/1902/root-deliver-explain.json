@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1902,\"actionId\":\"deliver\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.deliver\",\"digest\":\"sha256:376fe05bee0f8340fa5506186f59e564feb6142d635370f18b28849bef5a9125\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"deliver\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"deliver\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1902 --action deliver --json\n"
+  ],
+  "pid": 39234,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1902,\"actionId\":\"deliver\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.deliver\",\"digest\":\"sha256:376fe05bee0f8340fa5506186f59e564feb6142d635370f18b28849bef5a9125\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"deliver\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"deliver\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1902 --action deliver --json\n"
+}

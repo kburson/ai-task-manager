@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-10-06T15:18:53.611Z",
+  "knownOwnPids": [
+    42273,
+    53873,
+    53875,
+    53901
+  ],
+  "sourceObservation": ".scratch/root-ac-intake/tia-descendant-observation.json",
+  "command": [
+    "ps",
+    "-p",
+    "42273,53873,53875,53901",
+    "-o",
+    "pid=,ppid=,etime=,stat=,comm="
+  ],
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "",
+  "allKnownEnded": true
+}
