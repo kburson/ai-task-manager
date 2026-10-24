@@ -277,3 +277,7 @@ export function setTaskStatus(projectDir, issueRef, status) {
     writeFleet(rPath, fleet);
   });
 }
+
+// #2056: persistent cache ownership is separate from the expiring observational fleet.
+// These APIs never put story content or ownership authority in fleet JSON.
+export { registerStoryWriter, resolveStoryWriter } from './lib/story-cache/writer-registry.mjs';
