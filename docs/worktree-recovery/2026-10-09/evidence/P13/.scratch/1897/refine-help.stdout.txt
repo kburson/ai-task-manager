@@ -1,0 +1,47 @@
+/task refine — Start active Refine WIP from Backlog, or complete current Refine work into Ready for Planning.
+
+  Purpose: Start active Refine WIP from Backlog, or complete current Refine work into Ready for Planning.
+  Usage:  /task refine <N> --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --reason <text>
+
+  Arguments:
+    <N>
+        Issue number to refine.
+    --size <XS|S|M|L|XL>
+        T-shirt size (required)
+    --estimate <hours>
+        estimate in hours (required)
+    --priority <p0|p1|p2>
+        priority (required)
+    --reason <text>
+        refinement rationale (required)
+    --rank <n>
+        optional board Rank
+    --labels <name[,name...]>
+        optional comma-separated labels to add
+
+  Preconditions:
+    The issue must exist in Backlog or Refine; size, estimate, priority, and reason are required; assignee and drift checks must pass.
+
+  Effects:
+    From Backlog, writes refinement fields and enters active Refine WIP without completion evidence.
+    From Refine, writes a current refinement snapshot and advances one edge to Ready for Planning.
+
+  Output:
+    Prints the applied fields, rationale marker, transition result, or refusal prompt.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  a required flag is missing or malformed
+    4  gate refused the transition (blockers printed); state unchanged
+    7  target differs from the active issue binding
+    9  live board state differs from the recorded state marker
+    10  issue assignee is mismatched, absent, or unverifiable
+
+  Examples:
+    /task refine 667 --size L --estimate 6 --priority p2 --reason "per-verb help rework"
+
+  Related:
+    shelve
+    plan
+    promote

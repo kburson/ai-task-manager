@@ -1,0 +1,51 @@
+heal-timing-log-command.test.mjs: ok
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+2 !== undefined
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs:249:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 2,
+  expected: undefined,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.20.0
+✖ scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs (172.215292ms)
+✔ continuous nine-hour session is repaired without changing original rows or actor accounting (9.153ms)
+✔ continuity recovery refuses wrong session before writing (1.136166ms)
+✔ continuity recovery refuses duplicate metadata before writing (0.727542ms)
+✔ continuity recovery refuses unexplained gap before writing (0.740209ms)
+✔ continuity recovery refuses real terminal before writing (0.657667ms)
+✔ continuity recovery refuses user interruption before writing (1.280417ms)
+✔ continuity recovery refuses nonmonotonic before writing (1.055ms)
+✔ continuity recovery refuses malformed timestamp before writing (0.643667ms)
+✔ continuity recovery refuses truncated evidence before writing (0.637666ms)
+✔ apply requires dry-run source, comment and transcript identities (1.595333ms)
+✔ canonical source or completed transcript drift refuses before mutation (2.236333ms)
+✔ unexplained gaps and general backdating remain forbidden (0.333ms)
+✔ concurrent canonical or transcript change is refused under the apply boundary (5.292042ms)
+✔ append-only events beyond the completed window preserve the accepted evidence (3.325917ms)
+✔ remote readback failure cannot report a healed log (4.090083ms)
+✔ ambiguous timing actor windows refuse rather than inventing observations (0.469667ms)
+✔ late insertion of historical transcript records cannot escape the pinned prefix (0.47325ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 17
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 233.895708
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs:1:1
+✖ scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs (172.215292ms)
+  'test failed'

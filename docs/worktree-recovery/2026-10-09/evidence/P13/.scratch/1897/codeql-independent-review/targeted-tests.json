@@ -1,0 +1,14 @@
+{
+  "bin": "node",
+  "args": [
+    "--test",
+    "--test-name-pattern=HTML alternate end",
+    "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T23:54:02.222Z",
+  "endedAt": "2026-10-05T23:54:02.351Z",
+  "status": 0,
+  "stdout": "✔ HTML alternate end in same-line comment leaves later canonical AC live (3.214375ms)\n✔ HTML alternate end in multiline comment leaves later canonical AC live (0.306875ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 84.032583\n",
+  "stderr": ""
+}

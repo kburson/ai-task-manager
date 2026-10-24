@@ -1,0 +1,2781 @@
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 1 minute ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  * Run npm run lint
+  * Memory-seed index parity (#728)
+  * Classify docs-only pull request
+  * Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  * Run npm run lint
+  * Memory-seed index parity (#728)
+  * Classify docs-only pull request
+  * Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  * Run npm run lint
+  * Memory-seed index parity (#728)
+  * Classify docs-only pull request
+  * Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* integration group 3/3 (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  * Run npm run lint
+  * Memory-seed index parity (#728)
+  * Classify docs-only pull request
+  * Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 1 minute ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* integration group 3/3 (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* integration group 3/3 (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* integration group 3/3 (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 2 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* integration group 3/3 (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 3 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 1/3 (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 3 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* unit group 1/1 (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 3 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 3 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+* slow group 1/3 (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  * Execute slow collection group
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 4 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+* Slow lane (slow tests only) (ID 112030400110)
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 4 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+* Slow lane (slow tests only) (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  * Run npm ci
+  * Run actions/download-artifact@v5
+  * Validate complete disjoint slow coverage
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 4 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+✓ Slow lane (slow tests only) in 21s (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint slow coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 4 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+✓ Slow lane (slow tests only) in 21s (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint slow coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 5 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* integration group 2/3 (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  * Execute collection group
+  * Preserve group results, including failures
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+✓ Slow lane (slow tests only) in 21s (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint slow coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+Refreshing run status every 15 seconds. Press Ctrl+C to quit.
+
+* codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 5 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 2/3 in 5m19s (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+✓ Slow lane (slow tests only) in 21s (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint slow coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+* Fast lane (format, lint, unit + integration) (ID 112030788638)
+  ✓ Set up job
+  ✓ Require every quality and test group to pass
+  ✓ Run actions/checkout@v5
+  * Run actions/setup-node@v5
+  * Run npm ci
+  * Run actions/download-artifact@v5
+  * Run actions/download-artifact@v5
+  * Validate complete disjoint lane coverage
+  * Run actions/upload-artifact@v4
+  * Post Run actions/setup-node@v5
+  * Post Run actions/checkout@v5
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+✓ codex/1897-canonical-ac CI kburson/ai-task-manager#1898 · 37388940888
+Triggered via pull_request about 5 minutes ago
+
+JOBS
+✓ Guidance cache runtime budget in 30s (ID 112029127453)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Measure five fresh-process cache cases
+  ✓ Enforce CI-derived budget with 20 percent headroom
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 2/3 in 1m33s (ID 112029127646)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 3/3 in 1m7s (ID 112029127705)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 2/3 in 5m19s (ID 112029127721)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ slow group 1/3 in 4m3s (ID 112029127760)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare complete collection plan
+  ✓ Execute slow collection group
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 12.0.2 / Node 26 pack compatibility in 53s (ID 112029127766)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@12.0.2"
+  ✓ Run test "$(npm --version)" = "12.0.2"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 1/3 in 3m15s (ID 112029127771)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ npm 11.8.0 / Node 24 pack compatibility in 29s (ID 112029127790)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm install --global "npm@11.8.0"
+  ✓ Run test "$(npm --version)" = "11.8.0"
+  ✓ Run npm ci
+  ✓ npm pack report compatibility tests
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ unit group 1/1 in 3m17s (ID 112029127820)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ integration group 3/3 in 2m53s (ID 112029128008)
+  ✓ Set up job
+  ✓ Run actions/checkout@v5
+  ✓ Prepare immutable guidance capture source (#1876)
+  ✓ Materialize local trunk ref for real-git tests (#745)
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Prepare runtime dependency cache for offline package tests
+  ✓ Run npm run format:check
+  ✓ Run npm run lint
+  ✓ Memory-seed index parity (#728)
+  ✓ Classify docs-only pull request
+  ✓ Prepare complete collection plan
+  ✓ Execute collection group
+  ✓ Preserve group results, including failures
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+- Guidance publication gate in 0s (ID 112029129023)
+✓ Slow lane (slow tests only) in 21s (ID 112030400110)
+  ✓ Set up job
+  ✓ Require all slow groups to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint slow coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+✓ Fast lane (format, lint, unit + integration) in 18s (ID 112030788638)
+  ✓ Set up job
+  ✓ Require every quality and test group to pass
+  ✓ Run actions/checkout@v5
+  ✓ Run actions/setup-node@v5
+  ✓ Run npm ci
+  ✓ Run actions/download-artifact@v5
+  ✓ Run actions/download-artifact@v5
+  ✓ Validate complete disjoint lane coverage
+  ✓ Run actions/upload-artifact@v4
+  ✓ Post Run actions/setup-node@v5
+  ✓ Post Run actions/checkout@v5
+  ✓ Complete job
+
+ANNOTATIONS
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Guidance cache runtime budget: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 2/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 2/3: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+slow group 3/3: .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+slow group 3/3: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 12.0.2 / Node 26 pack compatibility: .github#1
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+npm 11.8.0 / Node 24 pack compatibility: .github#1
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/download-artifact@v5, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Fast lane (format, lint, unit + integration): .github#2
+
+- "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+Fast lane (format, lint, unit + integration): .github#1
+

@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --write docs/superpowers/plans/2026-10-05-1897-canonical-ac-heading.md

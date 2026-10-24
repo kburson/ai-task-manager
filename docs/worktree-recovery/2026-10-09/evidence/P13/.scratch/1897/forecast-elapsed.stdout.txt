@@ -1,0 +1,1 @@
+34025 33950       02:30 /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/task-tracker/task-tracker.mjs plan-estimate 1897 --evidence-file .scratch/1897/plan-estimation-input.json

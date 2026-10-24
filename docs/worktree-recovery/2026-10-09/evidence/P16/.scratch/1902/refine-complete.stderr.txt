@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' refine 1902 --size XS --estimate 2 --priority p0 --rank 1 --reason Deep dive posted/mirrored; source plan and seven-question semantic review cover the single ancestry guard, real Git topology regression and retained divergent/failure safeguards.

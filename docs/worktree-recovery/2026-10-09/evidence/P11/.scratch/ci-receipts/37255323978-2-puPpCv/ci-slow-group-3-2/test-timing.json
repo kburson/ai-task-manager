@@ -1,0 +1,187 @@
+{
+  "schema": 5,
+  "generatedAt": "2026-10-05T02:35:33.743Z",
+  "lane": "slow",
+  "command": "node scripts/run-tests.mjs --lane slow --shard 3/3",
+  "commit": "93fbfcf788bc282caf85650bbdc7fd1fdf5e352d",
+  "runnerProfile": {
+    "label": "GitHub Actions 1000139723",
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "24.21.0",
+    "logicalCpuCount": 4
+  },
+  "discoveryInventory": [
+    "scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs",
+    "scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs",
+    "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs",
+    "scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+    "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+    "scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs",
+    "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+    "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs"
+  ],
+  "count": 18,
+  "elapsed": {
+    "runnerMs": 215295,
+    "poolMs": 0.1,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 173337.2,
+    "serialMs": 41957.5
+  },
+  "sums": {
+    "fileWallMs": 215294.3,
+    "inProcessMs": 196217.8,
+    "estimatedSpawnIoMs": 19076.5
+  },
+  "pareto": {
+    "p50": 1,
+    "p80": 1
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 7,
+    "slowBucketFiles": 18,
+    "slowBucketStillSlow": 7,
+    "slowBucketNowFast": 11,
+    "fastLaneOverThreshold": 0,
+    "demotionCandidates": [
+      "scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+      "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+      "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs"
+    ],
+    "promotionCandidates": []
+  },
+  "files": {
+    "scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs",
+      "wallMs": 63.4,
+      "inProcMs": 22,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs",
+      "wallMs": 3680.2,
+      "inProcMs": 3638.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs",
+      "wallMs": 6392.3,
+      "inProcMs": 6330.8,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs",
+      "wallMs": 3457.5,
+      "inProcMs": 3400.1,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+      "wallMs": 975.1,
+      "inProcMs": 909.1,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+      "wallMs": 173337.1,
+      "inProcMs": 173260.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+      "wallMs": 517,
+      "inProcMs": 461.4,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs",
+      "wallMs": 310.8,
+      "inProcMs": 226.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+      "wallMs": 1594.6,
+      "inProcMs": 1350.3,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+      "wallMs": 11671.7,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs",
+      "wallMs": 150.6,
+      "inProcMs": 92.2,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs",
+      "wallMs": 5406.1,
+      "inProcMs": 5348.9,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs",
+      "wallMs": 4256,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+      "wallMs": 1539.9,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+      "wallMs": 485.1,
+      "inProcMs": 424,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs",
+      "wallMs": 208.5,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+      "wallMs": 969.3,
+      "inProcMs": 754.2,
+      "status": 0
+    },
+    "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs": {
+      "label": "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
+      "wallMs": 279.2,
+      "inProcMs": null,
+      "status": 0
+    }
+  },
+  "shard": {
+    "index": 3,
+    "total": 3
+  }
+}

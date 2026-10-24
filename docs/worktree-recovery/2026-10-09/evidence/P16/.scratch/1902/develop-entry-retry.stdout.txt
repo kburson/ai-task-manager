@@ -1,0 +1,9 @@
+✓ Issue #1902 moved to: develop
+✓ move #1902 plan→develop complete
+  exit flush  : plan row closed (verified)
+  entry stamp : aitm-entered-develop present (verified)
+  entry row   : develop row opened (verified)
+  status      : Status == Develop (verified)
+  sentinel    : aitm-move-complete state=develop (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #1902 promoted: plan → develop (direct)

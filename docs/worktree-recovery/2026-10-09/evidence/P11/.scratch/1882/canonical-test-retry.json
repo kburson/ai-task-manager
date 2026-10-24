@@ -1,0 +1,28 @@
+{
+  "schema": "issue1882.execution/v1",
+  "runId": "52d8ad96-ce41-4154-b431-30c369d8f489",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1882,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "bin/aitm.mjs",
+    "promote",
+    "1882"
+  ],
+  "sourceCommit": "482a7ace68070d628050952bce8c61eba5c9435f",
+  "dirtyPaths": [],
+  "dirtyDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T00:55:54.528Z",
+  "stdout": ".scratch/1882/canonical-test-retry.log",
+  "finishedAt": "2026-10-05T00:59:48.789Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "0871370f8b3c3531221c336d63b81cf244731c1492589d86edff058d2bf3cedc"
+}

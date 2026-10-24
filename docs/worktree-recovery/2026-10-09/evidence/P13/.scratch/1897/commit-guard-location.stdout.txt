@@ -1,0 +1,14 @@
+scripts/task-tracker/bash-guard.mjs:474:          'Refusing bare git commit: exclusive ownership cannot be verified because the editor-supplied final message is unavailable before commit.\n' +
+scripts/task-tracker/bash-guard.mjs:497:          `Refusing git commit: could not verify exclusive ownership of #${issueNumber} (${error?.message || String(error)}).\n` +
+scripts/task-tracker/bash-guard.mjs:498:            `  Attributed development commits fail closed when ownership is unreadable.\n` +
+scripts/task-tracker/source-edit-gate.mjs:358:// Cold path: fetch state, markers, and exclusive ownership via `gh`.
+scripts/task-tracker/verbs/pull-next.mjs:417:    message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against ${planningBase}, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
+scripts/task-tracker/lib/gh-edit-guard.mjs:660:        `\`npx aitm unassign${issueNumber ? ` ${issueNumber}` : ''}\`) so exclusive ownership is locked, audited, and verified.`,
+scripts/task-tracker/lib/plan-exit-ownership-guard.mjs:114:      `plan-develop-claim-ambiguous: final ownership is unreadable (${error?.message || String(error)})`
+scripts/task-tracker/lib/assignee-guard.mjs:1:// #219 / #1212 — Lifecycle-aware exclusive ownership adapter for governed
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:93:      assert.match(payload.reason, /exclusive ownership|ownership is foreign-owner/i);
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:169:    assert.match(payload.reason, /exclusive ownership|ownership is foreign-owner/i);
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:178:      /exclusive ownership|ownership is foreign-owner/i
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:191:      /exclusive ownership|ownership is foreign-owner/i
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:200:      /exclusive ownership|ownership is foreign-owner/i
+scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:213:      /exclusive ownership|ownership is foreign-owner/i

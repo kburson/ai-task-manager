@@ -1,0 +1,1 @@
+[task-tracker] ✓ Checked "Native fresh start, same-issue active rebind, paused resume and real issue switch persist the exact successful occupancy generation in the owning per-session binding; load/save retains it without shared-ledger leakage." on #1889

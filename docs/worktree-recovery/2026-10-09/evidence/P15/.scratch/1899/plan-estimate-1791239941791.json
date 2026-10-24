@@ -1,0 +1,15 @@
+{
+  "cmd": "npx",
+  "args": [
+    "aitm",
+    "plan-estimate",
+    "1899",
+    "--evidence-file",
+    ".scratch/1899/plan-estimation-input.json"
+  ],
+  "startedAt": "2026-10-05T22:36:09.288Z",
+  "endedAt": "2026-10-05T22:39:01.791Z",
+  "status": 0,
+  "stdout": "[task-tracker] ✓ #1899 Plan estimate authority converged; forecast 01M473GBGE0SK1BHX2E0T1FXYP\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan-estimate 1899 --evidence-file .scratch/1899/plan-estimation-input.json\n"
+}

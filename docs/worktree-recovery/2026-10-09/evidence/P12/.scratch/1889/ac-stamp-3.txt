@@ -1,0 +1,4 @@
+[task-tracker] ac-stamp on #1889: running 2 verifier(s) for AC "A real native parent bind supplies the generation required by rank-wave preparation, while missing, foreign and mismatched generations remain refused; installed-package coverage does not use manually manufactured parent state."…
+  ✓ node --test scripts/tests/unit/task-tracker/verbs/resume-binding-generation.test.mjs scripts/tests/unit/task-tracker/verbs/switch-binding-generation.test.mjs scripts/tests/unit/task-tracker/state-binding-generation.test.mjs (exit=0)
+  ✓ node --test scripts/tests/integration/task-tracker/lib/native-bind-rank-wave.test.mjs (exit=0)
+[task-tracker] ✓ ac-stamp on #1889: run-props (key=5f842b7a) upserted onto the AC line's aitm-verified marker (sha=9d129f9a).

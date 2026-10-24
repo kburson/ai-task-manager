@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "\nSeven-question semantic review:",
+  "replacement": "\n### Semantic Review\n\nSeven-question semantic review:"
+}

@@ -1,0 +1,12 @@
+from pathlib import Path
+p=Path('scripts/task-tracker/merge-back.mjs')
+s=p.read_text().replace('<child#> <worktree-path>\n','<child#> <worktree-path> [--preserve-worktree]\n')
+s=s.replace('  // 1. Opportunistic epic sync (skip when already current).','  deps.assertIntegrationCheckout?.();\n\n  // 1. Opportunistic epic sync (skip when already current).')
+s=s.replace("  // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).", "  // Pin the rebased commit so branch movement cannot integrate unverified code.\n  const verifiedHead = deps.currentWorktreeHead?.();\n\n  // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).")
+s=s.replace("  // 4. Fast-forward-only merge into the epic.\n  git(['checkout', epicBranch]);\n  git(['merge', '--ff-only', childBranch]);", "  if (verifiedHead && deps.currentWorktreeHead() !== verifiedHead) {\n    throw new Error('merge-back: verified HEAD changed; refusing parent integration');\n  }\n  deps.assertIntegrationCheckout?.();\n\n  // 4. Fast-forward-only merge into the epic at the exact verified commit.\n  git(['checkout', epicBranch]);\n  git(['merge', '--ff-only', verifiedHead || childBranch]);")
+p.write_text(s)
+p=Path('scripts/task-tracker/lib/merge-back-cli.mjs');s=p.read_text()
+s=s.replace('  if (parent.worktreePath) {\n    const common', '  const assertIntegrationCheckout = () => {\n    if (!parent.worktreePath) return;\n    const common')
+s=s.replace("    if (parentGit(['status', '--porcelain'])) throw new Error('merge-back: parent checkout is dirty');\n  }", "    if (parentGit(['status', '--porcelain'])) throw new Error('merge-back: parent checkout is dirty');\n  };\n  assertIntegrationCheckout();")
+s=s.replace('trunk, runTests,', "trunk, runTests, currentWorktreeHead: () => childGit(['rev-parse', 'HEAD']), assertIntegrationCheckout,")
+p.write_text(s)

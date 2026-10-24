@@ -1,0 +1,578 @@
+scripts/task-tracker/verbs/plan-estimate.mjs
+// `plan-estimate` verb — surface the `### Planned Estimate` appendix writer.
+//
+// CLI: /task plan-estimate [#N] --planned-size <S> --planned-estimate <H>
+//        [--current-size <S>] [--current-estimate <H>] [--rationale "<text>"]
+//
+// The plan→develop gate (`planPlannedEstimateGate`, refusal
+// `planned-estimate-appendix-missing`) hard-blocks unless the
+// `### 🛠 Refine estimate` comment carries a non-empty `### Planned Estimate`
+// appendix. The only writer of that appendix was the internal
+// `appendPlannedEstimate` library function, referenced by NO verb — so a freshly
+// planned issue could not reach Develop through first-party verbs (#663). This
+// thin verb wraps `appendPlannedEstimate` (and `repopulateEmptyPlannedAppendix`
+// for the pre-#171 empty-table heal path).
+//
+// When `--current-*` is omitted, the "Refine" column is sourced from the live
+// board Size/Estimate (mirroring `inflate-estimate`), falling back to mirroring
+// the planned column when the board read is empty so `appendPlannedEstimate`'s
+// "at least one field" contract always holds. Comment-only: touches no board
+// field and no Status. Pure core: `runPlanEstimate({...})`; all I/O injectable.
+
+import { readFileSync } from 'node:fs';
+
+import {
+  appendPlannedEstimate,
+  repopulateEmptyPlannedAppendix,
+} from '../lib/refine-estimate-comment.mjs';
+import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
+import { loadProjectFieldDefs } from '../project-fields.mjs';
+import { loadState } from '../state.mjs';
+import { parsePlanEstimationInput } from '../lib/estimation/plan-input.mjs';
+import { executeAdaptivePlanEstimate } from '../lib/estimation/plan-estimate-authority.mjs';
+import { createAdaptivePlanRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
+
+// Resolve the target issue: explicit positional `#N` / `N` wins, else the bound
+// active issue. Returns a positive integer or null.
+export function resolveTargetIssue({ rest, activeIssue }) {
+  for (const tok of rest) {
+    const m = String(tok).match(/^#?(\d+)$/);
+    if (m) return Number(m[1]);
+  }
+  if (activeIssue) {
+    const m = String(activeIssue).match(/^#?(\d+)$/);
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
+
+// Strip a trailing `h`/`H` and coerce to a finite number, else null.
+function parseEstimate(v) {
+  if (v === undefined || v === null) return null;
+  const n = parseFloat(String(v).replace(/h$/i, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+// Parse `rest` into { target, planned, current, rationale }. Flags:
+// --planned-size, --planned-estimate, --current-size, --current-estimate,
+// --rationale. `planned`/`current` only carry keys that were supplied.
+export function parseArgs(rest, activeIssue) {
+  const planned = {};
+  const current = {};
+  let rationale = null;
+  let evidenceFile = null;
+  let compatibilityMode = false;
+  let adoptLegacyBaseline = false;
+  const positional = [];
+  for (let i = 0; i < rest.length; i++) {
+    const tok = rest[i];
+    switch (tok) {
+      case '--planned-size':
+        planned.size = rest[++i] ?? '';
+        break;
+      case '--planned-estimate':
+        planned.estimate = parseEstimate(rest[++i]);
+        break;
+      case '--current-size':
+        current.size = rest[++i] ?? '';
+        break;
+      case '--current-estimate':
+        current.estimate = parseEstimate(rest[++i]);
+        break;
+      case '--rationale':
+        rationale = rest[++i] ?? '';
+        break;
+      case '--evidence-file':
+        evidenceFile = rest[++i] ?? '';
+        break;
+      case '--compatibility-mode':
+        compatibilityMode = true;
+        break;
+      case '--adopt-legacy-baseline':
+        adoptLegacyBaseline = true;
+        break;
+      default:
+        positional.push(tok);
+    }
+  }
+  const target = resolveTargetIssue({ rest: positional, activeIssue });
+  return {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  };
+}
+
+async function defaultRunAdaptivePlanEstimate({
+  issueNumber,
+  evidenceFile,
+  adoptLegacyBaseline,
+  cfg,
+  deps,
+}) {
+  const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
+  const runtime =
+    deps.adaptivePlanRuntime ?? createAdaptivePlanRuntime({ cfg, deps, adoptLegacyBaseline });
+  return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps: runtime });
+}
+
+// Read the live board Size/Estimate for the "Refine" column. Best-effort:
+// returns {} on any failure or when no project is configured.
+async function readBoardCurrent({ cfg, issueNumber, deps }) {
+  if (!cfg.projectId) return {};
+  const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
+  const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
+  try {
+    const fieldDefs = fieldDefsLoader();
+    const vals = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
+    const out = {};
+    if (vals && vals.size) out.size = vals.size;
+    if (vals && typeof vals.estimate === 'number') out.estimate = vals.estimate;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function normalizeEstimateProjection(value = {}) {
+  const projection = value ?? {};
+  return {
+    ...projection,
+    ...(typeof projection.estimate === 'number'
+      ? { estimate: ceilEstimateHours(projection.estimate) }
+      : {}),
+  };
+}
+
+/**
+ * Core runner. Bootstraps (or heals) the `### Planned Estimate` appendix on the
+ * refine-estimate comment.
+ *
+ * @returns {Promise<{status:string, commentId?:number, target:number}>}
+ */
+export async function runPlanEstimate({
+  target,
+  planned,
+  current,
+  rationale,
+  evidenceFile,
+  compatibilityMode = false,
+  adoptLegacyBaseline = false,
+  cfg,
+  deps = {},
+} = {}) {
+  if (!Number.isInteger(target) || target <= 0) {
+    throw new Error('plan-estimate: no target issue (bind via /task #N or pass a positional)');
+  }
+  if (!cfg || !cfg.repo) {
+    throw new Error('plan-estimate: cfg.repo is required');
+  }
+  if (evidenceFile) {
+    const adaptive = deps.runAdaptivePlanEstimate || defaultRunAdaptivePlanEstimate;
+    return adaptive({ issueNumber: target, evidenceFile, adoptLegacyBaseline, cfg, deps });
+  }
+  if (!compatibilityMode) {
+    throw new Error('plan-estimate: legacy planned flags require explicit --compatibility-mode');
+  }
+  const hasPlanned = planned && (planned.size !== undefined || planned.estimate !== undefined);
+  if (!hasPlanned) {
+    throw new Error(
+      'plan-estimate: at least one of --planned-size / --planned-estimate is required'
+    );
+  }
+  const append = deps.appendPlannedEstimate || appendPlannedEstimate;
+  const repopulate = deps.repopulateEmptyPlannedAppendix || repopulateEmptyPlannedAppendix;
+  const effectivePlanned = normalizeEstimateProjection(planned);
+
+  // Source the "current" (Refine) column: explicit flags win; else read the
+  // board; else mirror the planned column so the "at least one field" contract
+  // always holds.
+  let effectiveCurrent = normalizeEstimateProjection(current);
+  if (!current || (current.size === undefined && current.estimate === undefined)) {
+    const board = await readBoardCurrent({ cfg, issueNumber: target, deps });
+    effectiveCurrent =
+      board.size !== undefined || board.estimate !== undefined
+        ? normalizeEstimateProjection(board)
+        : { ...effectivePlanned };
+  }
+
+  const res = await append({
+    cfg,
+    issueNumber: target,
+    planned: effectivePlanned,
+    current: effectiveCurrent,
+    rationale,
+  });
+
+  // An EMPTY (pre-#171 all-em-dash) appendix returns `duplicate` from append;
+  // heal it in place rather than leaving the gate blocked.
+  if (res?.status === 'duplicate') {
+    const healed = await repopulate({
+      cfg,
+      issueNumber: target,
+      planned: effectivePlanned,
+      current: effectiveCurrent,
+      rationale,
+    });
+    return { ...healed, target };
+  }
+  return { ...res, target };
+}
+
+export async function verbPlanEstimate(ctx) {
+  const { cfg, statePath, rest } = ctx;
+  const s = loadState(statePath);
+  const active = s.active || null;
+  const {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  } = parseArgs(rest, active);
+  if (!target) {
+    console.error(
+      'Usage: /task plan-estimate [#N] --evidence-file <path> OR --compatibility-mode ' +
+        '--planned-size <S> --planned-estimate <H>'
+    );
+    process.exit(2);
+  }
+  if (!evidenceFile && planned.size === undefined && planned.estimate === undefined) {
+    console.error('plan-estimate: --evidence-file or planned compatibility flags are required');
+    process.exit(2);
+  }
+  try {
+    const res = await runPlanEstimate({
+      target,
+      planned,
+      current,
+      rationale,
+      evidenceFile,
+      compatibilityMode,
+      adoptLegacyBaseline,
+      cfg,
+    });
+    switch (res.status) {
+      case 'appended':
+        console.log(`[task-tracker] ✓ #${target} Planned Estimate appendix written`);
+        break;
+      case 'repopulated':
+        console.log(`[task-tracker] ✓ #${target} empty Planned Estimate appendix repopulated`);
+        break;
+      case 'duplicate':
+        console.log(
+          `[task-tracker] ✓ #${target} Planned Estimate appendix already present — no change`
+        );
+        break;
+      case 'converged':
+        console.log(
+          `[task-tracker] ✓ #${target} Plan estimate authority converged; forecast ${res.forecastRecordId}`
+        );
+        break;
+      case 'no-refine-comment':
+        console.error(
+          `plan-estimate: no \`### 🛠 Refine estimate\` comment on #${target} — refine the issue first`
+        );
+        process.exit(1);
+        break;
+      default:
+        console.error(`plan-estimate: unexpected status '${res.status}' for #${target}`);
+        process.exit(1);
+    }
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+}
+
+scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs
+import { runLogicalRecordClaim } from './record-claim.mjs';
+import { validateEstimationForecast } from './forecast-record.mjs';
+
+function fail(category) {
+  throw new Error(`plan-estimate-authority:${category}`);
+}
+
+const READY_MARKER_RE =
+  /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
+
+export function readForecastReadyRecordId(body = '') {
+  return String(body).match(READY_MARKER_RE)?.[1] ?? null;
+}
+
+export function upsertForecastReadyMarker(body = '', recordId) {
+  if (typeof recordId !== 'string' || !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(recordId)) {
+    fail('ready-record-id');
+  }
+  const marker = `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`;
+  const source = String(body);
+  if (READY_MARKER_RE.test(source)) return source.replace(READY_MARKER_RE, marker);
+  const fields = source.search(/<!--\s*aitm-fields:/i);
+  if (fields >= 0)
+    return `${source.slice(0, fields).replace(/\s+$/, '')}\n\n${marker}\n\n${source.slice(fields)}`;
+  return `${source.replace(/\s+$/, '')}\n\n${marker}\n`;
+}
+
+export async function executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps = {} } = {}) {
+  for (const name of [
+    'readRefineEstimate',
+    'loadRubric',
+    'listComparableOutcomes',
+    'buildForecast',
+    'createForecastEnvelope',
+    'applyAuthority',
+  ]) {
+    if (typeof deps[name] !== 'function') fail('dependencies');
+  }
+  const refine = await deps.readRefineEstimate({ issueNumber, cfg });
+  const rubric = await deps.loadRubric({ issueNumber, cfg });
+  const comparableOutcomes = await deps.listComparableOutcomes({
+    issueNumber,
+    planInput,
+    cfg,
+  });
+  const forecast = deps.buildForecast({
+    issue: issueNumber,
+    refine,
+    planInput,
+    rubric,
+    comparableOutcomes,
+  });
+  const forecastEnvelope = deps.createForecastEnvelope({
+    repository: cfg.repo,
+    issue: issueNumber,
+    payload: forecast,
+  });
+  return deps.applyAuthority({
+    issueNumber,
+    refine,
+    forecastEnvelope,
+    cfg,
+  });
+}
+
+function equal(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function appendixProjection(value) {
+  if (!value?.refine || !value?.plan) return null;
+  return {
+    refine: { size: value.refine.size, humanHours: value.refine.humanHours },
+    plan: { size: value.plan.size, humanHours: value.plan.humanHours },
+  };
+}
+
+function desiredForecast(state, envelope) {
+  const active = state.forecasts.filter((item) => item.supersededBy == null);
+  const matches = active.filter((item) => item.payloadHash === envelope.payloadHash);
+  const conflicts = active.filter(
+    (item) => item.payloadHash !== envelope.payloadHash && item.recordId !== envelope.supersedes
+  );
+  if (conflicts.length > 0) fail('conflicting-forecast');
+  if (matches.length > 1) fail('duplicate-forecast');
+  return matches[0] ?? null;
+}
+
+async function read(deps) {
+  if (typeof deps.readProjection !== 'function') fail('dependencies');
+  const state = await deps.readProjection();
+  if (!state || typeof state !== 'object') fail('readback');
+  return state;
+}
+
+async function writeAndConfirm({ deps, writer, input, confirms, category }) {
+  if (typeof deps[writer] !== 'function') fail('dependencies');
+  await deps[writer](input);
+  const state = await read(deps);
+  if (!confirms(state)) fail(`${category}-readback`);
+  return state;
+}
+
+async function applyPlanEstimateAuthorityUnlocked({
+  issueNumber,
+  refine,
+  forecastEnvelope,
+  deps = {},
+} = {}) {
+  if (
+    !Number.isInteger(issueNumber) ||
+    issueNumber <= 0 ||
+    !refine ||
+    forecastEnvelope?.recordType !== 'estimation-forecast' ||
+    forecastEnvelope.payload?.issue !== issueNumber
+  ) {
+    fail('input');
+  }
+  validateEstimationForecast(forecastEnvelope.payload, {
+    expectedIssue: issueNumber,
+    requireCurrentSchema: true,
+  });
+  const plan = forecastEnvelope.payload.plan;
+  const publishedRefine = forecastEnvelope.payload.refine;
+  let state = await read(deps);
+  if (state.lifecycleState !== 'plan') fail('not-in-plan');
+  if (state.frozenForecastRecordId && state.frozenForecastRecordId !== forecastEnvelope.recordId) {
+    fail('frozen');
+  }
+  desiredForecast(state, forecastEnvelope);
+
+  const appendix = appendixProjection({ refine: publishedRefine, plan });
+  if (!equal(appendixProjection(state.refineAppendix), appendix)) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeRefineAppendix',
+      input: { issueNumber, refine: publishedRefine, plan },
+      confirms: (next) => equal(appendixProjection(next.refineAppendix), appendix),
+      category: 'refine-appendix',
+    });
+  }
+  if (state.board?.estimate !== plan.humanHours) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeBoardEstimate',
+      input: { issueNumber, estimate: plan.humanHours },
+      confirms: (next) => next.board?.estimate === plan.humanHours,
+      category: 'board-estimate',
+    });
+  }
+  if (state.board?.size !== plan.size) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeBoardSize',
+      input: { issueNumber, size: plan.size },
+      confirms: (next) => next.board?.size === plan.size,
+      category: 'board-size',
+    });
+  }
+  if (state.bodyFields?.estimate !== plan.humanHours || state.bodyFields?.size !== plan.size) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeBodyFields',
+      input: { issueNumber, estimate: plan.humanHours, size: plan.size },
+      confirms: (next) =>
+        next.bodyFields?.estimate === plan.humanHours && next.bodyFields?.size === plan.size,
+      category: 'body-fields',
+    });
+  }
+  let stored = desiredForecast(state, forecastEnvelope);
+  if (!stored) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeForecast',
+      input: { issueNumber, envelope: forecastEnvelope },
+      confirms: (next) => desiredForecast(next, forecastEnvelope) !== null,
+      category: 'forecast',
+    });
+    stored = desiredForecast(state, forecastEnvelope);
+  }
+  if (state.readyForecastRecordId !== stored.recordId) {
+    state = await writeAndConfirm({
+      deps,
+      writer: 'writeForecastReadyMarker',
+      input: { issueNumber, recordId: stored.recordId },
+      confirms: (next) => next.readyForecastRecordId === stored.recordId,
+      category: 'forecast-ready',
+    });
+  }
+  if (
+    state.board?.estimate !== state.bodyFields?.estimate ||
+    state.board?.size !== state.bodyFields?.size
+  ) {
+    fail('projection-divergence');
+  }
+  return {
+    status: 'converged',
+    forecastRecordId: stored.recordId,
+    forecastCommentNodeId: stored.commentNodeId,
+  };
+}
+
+export async function applyPlanEstimateAuthority({
+  issueNumber,
+  refine,
+  forecastEnvelope,
+  deps = {},
+} = {}) {
+  return runLogicalRecordClaim(
+    deps,
+    {
+      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
+      issue: issueNumber,
+    },
+    () => applyPlanEstimateAuthorityUnlocked({ issueNumber, refine, forecastEnvelope, deps })
+  );
+}
+
+async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps }) {
+  if (
+    !Number.isInteger(issueNumber) ||
+    issueNumber <= 0 ||
+    forecastEnvelope?.recordType !== 'estimation-forecast' ||
+    forecastEnvelope.payload?.issue !== issueNumber
+  ) {
+    fail('legacy-adoption-input');
+  }
+  validateEstimationForecast(forecastEnvelope.payload, {
+    expectedIssue: issueNumber,
+    requireCurrentSchema: true,
+  });
+  const plan = forecastEnvelope.payload.plan;
+  let state = await read(deps);
+  const appendix = appendixProjection(state.refineAppendix);
+  const active = state.forecasts.filter((forecast) => forecast.supersededBy == null);
+  if (
+    state.lifecycleState !== 'develop' ||
+    state.readyForecastRecordId !== null ||
+    active.length !== 0 ||
+    appendix?.plan?.size !== plan.size ||
+    appendix?.plan?.humanHours !== plan.humanHours ||
+    state.board?.size !== plan.size ||
+    state.board?.estimate !== plan.humanHours ||
+    state.bodyFields?.size !== plan.size ||
+    state.bodyFields?.estimate !== plan.humanHours
+  ) {
+    fail('legacy-adoption-projection');
+  }
+  state = await writeAndConfirm({
+    deps,
+    writer: 'writeForecast',
+    input: { issueNumber, envelope: forecastEnvelope },
+    confirms: (next) => desiredForecast(next, forecastEnvelope) !== null,
+    category: 'legacy-adoption-forecast',
+  });
+  const stored = desiredForecast(state, forecastEnvelope);
+  await writeAndConfirm({
+    deps,
+    writer: 'writeForecastReadyMarker',
+    input: { issueNumber, recordId: stored.recordId },
+    confirms: (next) => next.readyForecastRecordId === stored.recordId,
+    category: 'legacy-adoption-ready',
+  });
+  return {
+    status: 'converged',
+    forecastRecordId: stored.recordId,
+    forecastCommentNodeId: stored.commentNodeId,
+  };
+}
+
+export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, deps = {} } = {}) {
+  return runLogicalRecordClaim(
+    deps,
+    {
+      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
+      issue: issueNumber,
+    },
+    () => adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps })
+  );
+}
+
+LIVE PLANNING SECTIONS
+

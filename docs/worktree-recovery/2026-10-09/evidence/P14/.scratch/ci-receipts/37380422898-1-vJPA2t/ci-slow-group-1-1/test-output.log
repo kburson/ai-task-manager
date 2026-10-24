@@ -1,0 +1,31 @@
+
+> @kburson/ai-task-manager@0.1.0 test:slow
+> node scripts/run-tests.mjs --lane slow --shard 1/3
+
+▶ lane=slow (19 files)
+
+▶ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs ... ok (4.8s)
+▶ scripts/tests/slow/task-tracker/core/verify-develop.test.mjs ... ok (858ms)
+▶ scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs ... ok (1.0s)
+▶ scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ... ok (180.5s)
+▶ scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs ... ok (543ms)
+▶ scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs ... ok (332ms)
+▶ scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs ... ok (2.1s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ... ok (10.8s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs ... ok (611ms)
+▶ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ... ok (155ms)
+▶ scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs ... ok (254ms)
+▶ scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs ... ok (817ms)
+▶ scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ... ok (5.5s)
+▶ scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs ... ok (4.3s)
+▶ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ... ok (1.5s)
+▶ scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs ... ok (563ms)
+▶ scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs ... ok (208ms)
+▶ scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ... ok (977ms)
+▶ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs ... ok (283ms)
+
+▶ scheduling: 0 pure unit file(s) at pool concurrency 3 (peak 0); 0 direct-subprocess file(s) at pool concurrency 2 (peak 0); 1 explicit-safe slow file(s) at pool concurrency 2 (peak 1); 18 explicit-unsafe/integration/unmarked-slow file(s) serial
+
+run-tests: lane 'slow' bounded sections: slow-parallel=180.5s/600s (1 files); serial=35.7s/600s (18 files); aggregate=216.2s
+
+All 19 test files passed.

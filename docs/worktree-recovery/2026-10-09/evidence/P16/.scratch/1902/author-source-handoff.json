@@ -1,0 +1,223 @@
+{
+  "schema": "aitm.author-source-handoff/v1",
+  "issue": 1902,
+  "status": "Staged implementation verified; uncommitted, NOT CODE_COMPLETE",
+  "base": "dab9548a5836f958b7abcf623f8c7447e2eaabca",
+  "head": "dab9548a5836f958b7abcf623f8c7447e2eaabca",
+  "branch": "codex/1902-preserve-merge-history",
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+  "actor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+  "files": [
+    {
+      "path": "docs/superpowers/plans/2026-10-06-1902-preserve-merge-history.md",
+      "sha256": "836b0f705b5466bb5b48d20145d7f6526465325760bb8291f85ba32b1e1766fc",
+      "bytes": 6267
+    },
+    {
+      "path": "scripts/task-tracker/merge-back.mjs",
+      "sha256": "41d2aa3b3475d60188095cc2b53f018d4bb3a415117d733c5c36b82eb21fb472",
+      "bytes": 10921
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/merge-back.test.mjs",
+      "sha256": "2b2d92a8fac784846c82f4387b85738333e96902d9885502a9f8aca61d781b12",
+      "bytes": 23400
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+      "sha256": "25ddc5708a7fdc0ffcd86ec76d8f2eaee4729e62cad7a25e304a20ced65fa972",
+      "bytes": 13694
+    }
+  ],
+  "stagedDiff": {
+    "path": ".scratch/1902/exact-staged-diff.stdout.txt",
+    "sha256": "1d5c8d1ce26088419188c49714bbe6a4fbd13d851cf0c4e14fbe35a88aa8ce28"
+  },
+  "checks": [
+    {
+      "label": "real-merge-history-red",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=#1902: already-contained merged child",
+        "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:50:12.374Z",
+      "endedAt": "2026-10-06T12:50:14.421Z",
+      "exitCode": 1,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/real-merge-history-red.stdout.txt",
+      "stderr": ".scratch/1902/real-merge-history-red.stderr.txt"
+    },
+    {
+      "label": "contained-race-red",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=#1902: contained-child verification race",
+        "scripts/tests/unit/task-tracker/merge-back.test.mjs"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:51:06.013Z",
+      "endedAt": "2026-10-06T12:51:06.288Z",
+      "exitCode": 1,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/contained-race-red.stdout.txt",
+      "stderr": ".scratch/1902/contained-race-red.stderr.txt"
+    },
+    {
+      "label": "real-merge-history-green",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=#1902: already-contained merged child",
+        "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:52:56.348Z",
+      "endedAt": "2026-10-06T12:52:57.911Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/real-merge-history-green.stdout.txt",
+      "stderr": ".scratch/1902/real-merge-history-green.stderr.txt"
+    },
+    {
+      "label": "contained-race-green",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=#1902: contained-child verification race",
+        "scripts/tests/unit/task-tracker/merge-back.test.mjs"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:52:54.696Z",
+      "endedAt": "2026-10-06T12:52:54.966Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/contained-race-green.stdout.txt",
+      "stderr": ".scratch/1902/contained-race-green.stderr.txt"
+    },
+    {
+      "label": "vc1-affected-green",
+      "command": [
+        "node",
+        "--test",
+        "scripts/tests/unit/task-tracker/merge-back.test.mjs",
+        "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+        "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:54:50.691Z",
+      "endedAt": "2026-10-06T12:55:02.236Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/vc1-affected-green.stdout.txt",
+      "stderr": ".scratch/1902/vc1-affected-green.stderr.txt"
+    },
+    {
+      "label": "lint-full",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:54:49.478Z",
+      "endedAt": "2026-10-06T12:55:28.382Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/lint-full.stdout.txt",
+      "stderr": ".scratch/1902/lint-full.stderr.txt"
+    },
+    {
+      "label": "format-full",
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:54:51.499Z",
+      "endedAt": "2026-10-06T12:55:19.754Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/format-full.stdout.txt",
+      "stderr": ".scratch/1902/format-full.stderr.txt"
+    },
+    {
+      "label": "final-diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T12:57:10.967Z",
+      "endedAt": "2026-10-06T12:57:11.267Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/final-diff-check.stdout.txt",
+      "stderr": ".scratch/1902/final-diff-check.stderr.txt"
+    },
+    {
+      "label": "staged-diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1902-merge-history",
+      "actualActor": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+      "startedAt": "2026-10-06T13:00:13.891Z",
+      "endedAt": "2026-10-06T13:00:13.908Z",
+      "exitCode": 0,
+      "exception": "Documented foreign-worktree scope exception for explicitly authorized isolated #1902 agent worktree only; no identity/guard override.",
+      "stdout": ".scratch/1902/staged-diff-check.stdout.txt",
+      "stderr": ".scratch/1902/staged-diff-check.stderr.txt"
+    }
+  ],
+  "results": {
+    "realGitRed": "Actual reviewed merge SHA0c222fa... was rewritten toedeeab...; exit1",
+    "realGitGreen": "Original reviewed SHA/provider observation/both merge parents/side ancestry/upstream preserved; exit0",
+    "containedRace": "Observed RED then GREEN; no integration/cleanup on changed verified HEAD",
+    "affected": "49/49 pass,0skip,exit0",
+    "lint": "exit0",
+    "format": "exit0",
+    "diff": "exit0",
+    "fullHostSuites": "Not run",
+    "nativeTestReviewClose": "Not run"
+  },
+  "planAuthority": ".scratch/1902/approved-plan-pin.json",
+  "developAuthority": ".scratch/1902/develop-entry-retry.stdout.txt",
+  "transportFailure": ".scratch/1902/develop-entry.stderr.txt",
+  "commitRefusal": ".scratch/1902/commit-pretool-refusal.json",
+  "prProposal": {
+    "body": ".scratch/1902/pr-description.md",
+    "title": "[#1902] Preserve reviewed child history when parent is already contained",
+    "base": "trunk",
+    "head": "codex/1902-preserve-merge-history",
+    "draft": true,
+    "label": "ci-slow"
+  },
+  "pauseRelease": ".scratch/1902/author-source-pause-release.json",
+  "remaining": [
+    "Root actual native binding and attributed commit/trace/publication",
+    "Per-AC/DoD actual evidence and exact-head fast+slow CI",
+    "Serialized native Test and root Review/delivery/Close"
+  ],
+  "rulings": [
+    "Strengthen the plan's simple merge example with two merge commits and current parent contained through second parent; same bounded guarantee, actual reproduction."
+  ],
+  "scope": "Only three scoped code/test files plus unchanged native-approved plan; no APR or installed-module patch.",
+  "checkExportCorrection": "Initial exporter selected earliest identical-command RED entries for two GREEN labels; corrected to actual latest command records, with original export/raw logs retained. No execution/evidence/source changed."
+}
