@@ -1,0 +1,30 @@
+✔ recording authority resolves the bound checkout, live owner and authenticated actor (9.246459ms)
+✔ authority refuses foreign invocation (2.996708ms)
+✔ authority refuses wrong bound issue (3.258292ms)
+✔ authority refuses detached branch (2.54325ms)
+✔ authority refuses branch drift (2.83225ms)
+✔ authority refuses missing assignment (2.306333ms)
+✔ authority refuses ambiguous assignment (1.888625ms)
+✔ authority refuses actor mismatch (2.213667ms)
+✔ authority refuses Review stage (3.266208ms)
+✔ local evidence hashes original manifest bytes including final LF (4.859791ms)
+✔ artifacts refuse escape (1.882875ms)
+✔ artifacts refuse final symlink (2.479125ms)
+✔ artifacts refuse intermediate symlink (2.305833ms)
+✔ artifacts refuse directory (2.01075ms)
+✔ artifacts refuse changed bytes (2.735083ms)
+✔ artifacts refuse hardlink aliases (2.72175ms)
+✔ artifacts refuse HEAD drift (1.80125ms)
+✔ manifest bytes must agree with both disk and parsed manifest (2.428208ms)
+✔ read-only evidence context and bound manifest remain available outside recording stages (3.151291ms)
+✔ device-like FIFO is refused before opening (9.320042ms)
+✔ oversized artifacts stop at the bounded read and refuse (14.456625ms)
+✔ path replacement during descriptor read refuses (2.783417ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.027292

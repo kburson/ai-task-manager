@@ -1,0 +1,13 @@
+Closed #925.
+Closed #925.
+✔ projected close readiness bypasses only the configured approval refusal (1.439292ms)
+✔ gate-bypassed ordinary close ignores reviewer env and passes explicit authority (265.49075ms)
+✔ human-gate ordinary close without reviewer env passes explicit authority (246.829083ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 522.674083

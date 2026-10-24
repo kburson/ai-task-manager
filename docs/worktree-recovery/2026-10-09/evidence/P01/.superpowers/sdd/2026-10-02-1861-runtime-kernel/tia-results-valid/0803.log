@@ -1,0 +1,127 @@
+#925 is closed for not_planned — left issue and board untouched.
+#925 recovery completed after reopening the issue, restoring the board to Review, and posting the timing audit.
+#925 recovery completed after posting the timing audit.
+#925 recovery completed after restoring the board to Review and posting the timing audit.
+#925 recovery completed without repeating live-state repair or timing effects.
+#925 recovery completed after reopening the issue and posting the timing audit.
+#925 recovery completed after reopening the issue and posting the timing audit.
+Closed #925.
+Closed #925.
+✔ close asks the outcome runtime about forecast-free epics and permits a legacy skip (1.304959ms)
+✔ close passes explicit reopened-cycle correction authority to the outcome runtime (0.117833ms)
+✔ close uses the frozen Plan forecast and refuses a drifted ready marker (0.502917ms)
+✔ close refuses an adaptive ready forecast without frozen Plan lineage (0.1785ms)
+✔ primary convergence resolves the issue worktree instead of inheriting the caller directory (0.113042ms)
+✔ primary convergence fails closed when issue worktree registration is unavailable (0.101125ms)
+✔ dead issue returns without body or child reads (146.570125ms)
+✔ completed issue already at Done fails closed when transaction inspection is unavailable (123.405667ms)
+✔ pending recovery on a completed issue already at Done resumes before noop (190.152625ms)
+✔ completed not-Done issue refuses an unknown strict child snapshot (126.609875ms)
+✔ pending recovery on an open issue resumes from its serialized phase (113.032834ms)
+✔ pending recovery outranks close-issue for an open issue already at Done (114.844541ms)
+✔ retry after a successful timing post does not duplicate the transaction audit (114.472042ms)
+✔ pending recovery on a still-closed issue preserves its durable transaction (113.020416ms)
+✔ complete recovery is not reused when a later close is a new aberration (109.851334ms)
+✔ stale restart refuses unsafe live state before audit or terminal mutation (1341.574125ms)
+✔ stale restart refuses terminal prefixes and stale delivery authority (246.849375ms)
+✔ stale restart fails closed across comment and body persistence failures (886.63975ms)
+✔ stale restart reuses matching evidence and rejects duplicates before body mutation (382.977417ms)
+✔ stale restart is incompatible with force, repair, answer, and disposition lanes (456.564375ms)
+✔ ordinary close adopts a same-SHA Done board and refuses stale SHA without restart writes (330.995084ms)
+✔ mismatched transaction recovery mutation refuses before later effects (119.048041ms)
+✔ mismatched phase recovery mutation refuses before later effects (120.116333ms)
+✔ failed status recovery mutation refuses before later effects (118.94225ms)
+✔ failed result recovery mutation refuses before later effects (114.27125ms)
+✔ recovery persistence requires the grouped issue-body mutator capability (118.392ms)
+✔ explicit close has no direct issue-body mutator import or fallback (0.850292ms)
+✔ v1 estimation outcome is required before the terminal Done move (0.529208ms)
+✔ receipt authorization precedes outcome; Done precedes Delivered disposition (0.341208ms)
+✔ convergence close synchronizes terminal timing before freezing its outcome (0.474333ms)
+✔ convergence refuses completion when a terminal timing row is only queued (117.09275ms)
+✔ board-Done open-issue convergence refuses GitHub close when terminal timing is queued (123.1945ms)
+✔ delivery receipt input refusal precedes every specified side effect (115.666542ms)
+✔ delivery receipt lineage refusal precedes every specified side effect (119.735792ms)
+✔ delivery receipt missing refusal precedes every specified side effect (116.6955ms)
+✔ delivery receipt malformed refusal precedes every specified side effect (116.624084ms)
+✔ delivery receipt duplicate refusal precedes every specified side effect (114.522542ms)
+✔ delivery receipt conflicting refusal precedes every specified side effect (122.088833ms)
+✔ delivery receipt ambiguous-pr refusal precedes every specified side effect (115.45875ms)
+✔ delivery receipt not-merged refusal precedes every specified side effect (112.138292ms)
+✔ delivery receipt branch-mismatch refusal precedes every specified side effect (114.527542ms)
+✔ delivery receipt base-mismatch refusal precedes every specified side effect (117.17575ms)
+✔ delivery receipt head-mismatch refusal precedes every specified side effect (118.890042ms)
+✔ delivery receipt issue-mismatch refusal precedes every specified side effect (118.437041ms)
+✔ delivery receipt pr-mismatch refusal precedes every specified side effect (128.127125ms)
+✔ delivery receipt merge-commit-missing refusal precedes every specified side effect (118.4645ms)
+✔ delivery receipt merge-commit-mismatch refusal precedes every specified side effect (114.852041ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7406.490958
+#925 is closed and Done but its body could not be read for transaction inspection: transient body outage
+No convergence mutation was attempted; retry later.
+#925 child inventory is unknown: GraphQL unavailable
+No convergence mutation was attempted; retry later.
+#925 does not have a restartable Delivered close transaction: delivered-close-supersession:no-stale-transaction
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:fresh-authority
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:live-terminal-state
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:dirty-worktree
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:terminal-prefix
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: close-delivery-receipt:test-sha-mismatch
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: list unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: create unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: read unavailable
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:comment-readback
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:body-write
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:body-readback
+No convergence mutation was attempted; retry later.
+#925 stale Delivered close transaction could not be restarted: delivered-close-supersession:duplicate-evidence
+No convergence mutation was attempted; retry later.
+[task-tracker] ⛔ Refusing to close #925: delivered-close-transaction-accepted-sha-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker readback mismatch for transaction: expected c2686783-9528-414a-9cbd-83642c3757d1, got tx-stale. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker readback mismatch for phase: expected intent, got reopened. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker mutation failed for phase intent: expected status ok/no-op with verified body. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: recovery marker mutation failed for phase intent: expected status ok/no-op with verified body. Local task state was retained for retry.
+#925 closed-issue aberration failed at writeRecoveryPhase:intent: issueBodyMutator.mutate capability is required for recovery persistence. Local task state was retained for retry.
+#925 closed-issue finalize failed at emitClosePair: terminal timing issue:wrap was not durably posted: network down. Local task state was retained for retry.
+[task-tracker] ⛔ Refusing to close #925: terminal timing issue:wrap was not durably posted: network down. Issue left OPEN; retry after timing evidence is reachable.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:input. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:lineage. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:missing. Run `/task deliver` until a verified exact-head receipt exists, then retry. If a delivery intent is pending because an invariant failed, prepare an exact waiver with `/task workflow-exception prepare #N --input-file <proposal.json>`.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:malformed. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:duplicate. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:conflicting. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:ambiguous-pr. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:not-merged. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:branch-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:base-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:head-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:issue-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:pr-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:merge-commit-missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.
+[task-tracker] ⛔ Refusing to close #925: close-delivery-receipt:merge-commit-mismatch. Run `/task deliver` until a verified exact-head receipt exists, then retry.

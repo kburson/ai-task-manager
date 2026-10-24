@@ -1,0 +1,17 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Partial runtime loss requires registered recovery
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+    at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+    at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+    at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+    at runApprove (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/approve.mjs:323:10)
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs:147:13 {
+  code: 'RUNTIME_CONTROL_INVALID'
+}
+
+Node.js v26.8.1

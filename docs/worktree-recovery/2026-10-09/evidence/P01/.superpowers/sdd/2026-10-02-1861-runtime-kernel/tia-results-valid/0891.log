@@ -1,0 +1,21 @@
+PASS: refine on Refine-state issue completes to R4P (#1213)
+PASS: refine is idempotent on a Refine-state issue (#282)
+PASS: refine stamps aitm-refine-complete marker (#282)
+PASS: stampRefineCompleteMarker is idempotent
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Explicit runtime migration or initialization required
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+    at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+    at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+    at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+    at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+    at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs:147:19 {
+  code: 'RUNTIME_MIGRATION_REQUIRED'
+}
+
+Node.js v26.8.1

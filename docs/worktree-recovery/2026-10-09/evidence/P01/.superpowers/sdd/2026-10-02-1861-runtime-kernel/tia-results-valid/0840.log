@@ -1,0 +1,14 @@
+✔ default delivery adapter unwraps the raw GitHub GraphQL envelope for child lineage (1.16825ms)
+✔ default delivery adapter accepts only an explicit null parent as top-level lineage (0.139708ms)
+✔ default delivery adapter rejects GraphQL errors instead of selecting trunk (0.300834ms)
+✔ default delivery adapter rejects missing data instead of selecting trunk (0.096084ms)
+✔ default delivery adapter rejects missing issue instead of selecting trunk (0.115292ms)
+✔ default delivery adapter rejects malformed parent instead of selecting trunk (0.10725ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.161375

@@ -1,0 +1,17 @@
+✔ Develop exit defers an unchecked AC that contains a Test-restricted verifier (2.707ms)
+✔ Develop exit defers a reconciled epic AC that contains a Test-restricted verifier (0.3395ms)
+✔ Develop exit keeps an ordinary unchecked epic AC blocking (0.239917ms)
+✔ Develop exit does not defer Test-restricted ACs for other no-commit kinds (0.224917ms)
+✔ epic Test-stage deferral preserves reconciliation and deliverable blockers (0.207ms)
+✔ Develop exit keeps an ordinary unchecked targeted AC blocking (0.241708ms)
+✔ Develop exit keeps a dangling Test-stage citation blocking (0.152875ms)
+✔ Develop exit keeps a malformed Test-stage citation blocking (0.134041ms)
+✔ Test auto-tick still requires every command cited by the deferred AC to pass (1.759042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.30625

@@ -1,0 +1,14 @@
+✔ names the reconciliation lane so it is discoverable from the refusal (0.454125ms)
+✔ pending intent guidance points to waiver preparation without advertising reconciliation (0.09175ms)
+✔ still carries the original deliver-then-retry guidance (0.0575ms)
+✔ surfaces the close target and the underlying reason verbatim (0.05275ms)
+✔ does not advertise --force as an escape from this gate (0.071ms)
+✔ close success distinguishes generic and attribution waivers from ordinary delivery (0.108333ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.319959

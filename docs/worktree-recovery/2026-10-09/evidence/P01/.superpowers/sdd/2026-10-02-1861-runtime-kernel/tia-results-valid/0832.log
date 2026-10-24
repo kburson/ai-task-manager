@@ -1,0 +1,50 @@
+coverage-kind.test.mjs: defined
+[task-tracker] ✓ kind on #42: set to "audit".
+[task-tracker] ✓ kind on #42: set to "epic".
+✔ no args → usage error, exit 1 (0.646ms)
+✖ one arg with no active task → exit 1 (0.310792ms)
+✔ invalid kind → exit 1 (0.141584ms)
+✔ invalid issue number → exit 1 (0.131416ms)
+✔ happy path: explicit target + non-code kind → sets marker (3.049084ms)
+✖ happy path: one-arg active-bind form + code kind → clears marker (0.289584ms)
+✔ epic kind delegates all carriers to the shared metadata reconciler (0.146958ms)
+✔ epic body reconciliation appends the introduced DoD verifier with the next stable id (29.907334ms)
+✔ repeating epic body reconciliation is content-idempotent and Review preflight accepts it (36.49125ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.408125
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:153:1
+✖ one arg with no active task → exit 1 (0.310792ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:69:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:155:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:179:1
+✖ happy path: one-arg active-bind form + code kind → clears marker (0.289584ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at saveState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:241:10)
+      at stateFile (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:69:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs:185:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
