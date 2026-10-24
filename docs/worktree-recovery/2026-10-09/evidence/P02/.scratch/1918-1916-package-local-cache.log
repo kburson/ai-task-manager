@@ -1,0 +1,19 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ packed deep-import engine and both body adapters keep transaction mutation quarantined (12194.106458ms)
+✔ package-boundary: no test files are packed (9081.433625ms)
+✔ package-boundary: excluded directories do not reappear (0.305125ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.239666ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.398542ms)
+✔ package-boundary: total entry count stays under the ceiling (0.323542ms)
+✔ package-boundary: development-only context calibration is not shipped (0.289667ms)
+✔ package-boundary: runtime entry points are still shipped (0.133417ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.335791ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.886958ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12389.196584

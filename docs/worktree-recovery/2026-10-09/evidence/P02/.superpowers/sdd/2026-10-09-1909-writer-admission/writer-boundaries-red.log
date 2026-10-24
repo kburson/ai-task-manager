@@ -1,0 +1,298 @@
+✖ independent initializeIssueDirectory pending refuses before original callback or transport selection (76.911958ms)
+✖ independent initializeIssueDirectory stale refuses before original callback or transport selection (157.004916ms)
+✖ independent initializeIssueDirectory malformed refuses before original callback or transport selection (20.092042ms)
+✖ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (17.340708ms)
+✖ independent initializeIssueDirectory baseline retains its complete original algorithm (15.994541ms)
+✖ independent initializeIssueDirectory approved retains its complete original algorithm (264.054542ms)
+✖ independent repairIssueDirectory pending refuses before original callback or transport selection (52.247334ms)
+✖ independent repairIssueDirectory stale refuses before original callback or transport selection (141.962042ms)
+✖ independent repairIssueDirectory malformed refuses before original callback or transport selection (16.068959ms)
+✖ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.771709ms)
+✖ independent repairIssueDirectory baseline retains its complete original algorithm (15.578084ms)
+✖ independent repairIssueDirectory approved retains its complete original algorithm (267.074083ms)
+✖ independent createIssueComment pending refuses before original callback or transport selection (50.674083ms)
+✖ independent createIssueComment stale refuses before original callback or transport selection (139.0015ms)
+✖ independent createIssueComment malformed refuses before original callback or transport selection (15.04075ms)
+✖ independent createIssueComment unavailable refuses before original callback or transport selection (14.81025ms)
+✖ independent createIssueComment baseline retains its complete original algorithm (15.255708ms)
+✖ independent createIssueComment approved retains its complete original algorithm (247.721834ms)
+✖ independent updateIssueComment pending refuses before original callback or transport selection (49.947166ms)
+✖ independent updateIssueComment stale refuses before original callback or transport selection (139.509458ms)
+✖ independent updateIssueComment malformed refuses before original callback or transport selection (15.284708ms)
+✖ independent updateIssueComment unavailable refuses before original callback or transport selection (15.003709ms)
+✖ independent updateIssueComment baseline retains its complete original algorithm (15.032458ms)
+✖ independent updateIssueComment approved retains its complete original algorithm (244.587458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 0
+ℹ fail 24
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2190.634125
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent initializeIssueDirectory pending refuses before original callback or transport selection (76.911958ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent initializeIssueDirectory stale refuses before original callback or transport selection (157.004916ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent initializeIssueDirectory malformed refuses before original callback or transport selection (20.092042ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (17.340708ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent initializeIssueDirectory baseline retains its complete original algorithm (15.994541ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent initializeIssueDirectory approved retains its complete original algorithm (264.054542ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent repairIssueDirectory pending refuses before original callback or transport selection (52.247334ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent repairIssueDirectory stale refuses before original callback or transport selection (141.962042ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent repairIssueDirectory malformed refuses before original callback or transport selection (16.068959ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.771709ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent repairIssueDirectory baseline retains its complete original algorithm (15.578084ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent repairIssueDirectory approved retains its complete original algorithm (267.074083ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent createIssueComment pending refuses before original callback or transport selection (50.674083ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent createIssueComment stale refuses before original callback or transport selection (139.0015ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent createIssueComment malformed refuses before original callback or transport selection (15.04075ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent createIssueComment unavailable refuses before original callback or transport selection (14.81025ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent createIssueComment baseline retains its complete original algorithm (15.255708ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent createIssueComment approved retains its complete original algorithm (247.721834ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent updateIssueComment pending refuses before original callback or transport selection (49.947166ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent updateIssueComment stale refuses before original callback or transport selection (139.509458ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent updateIssueComment malformed refuses before original callback or transport selection (15.284708ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:131:5
+✖ independent updateIssueComment unavailable refuses before original callback or transport selection (15.003709ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:138:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent updateIssueComment baseline retains its complete original algorithm (15.032458ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:161:5
+✖ independent updateIssueComment approved retains its complete original algorithm (244.587458ms)
+  TypeError: record-envelope:record-id
+      at recordError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:54:10)
+      at validateEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:110:45)
+      at createAitmRecordEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/github-records/record-envelope.mjs:261:3)
+      at writerStore (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:24:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:163:17)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

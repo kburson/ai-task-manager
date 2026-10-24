@@ -1,0 +1,168 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (99.498084ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (224.92025ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (16.561667ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (15.917167ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (17.846834ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (345.356ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (66.997459ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (260.1445ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (17.132ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (15.760041ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (16.769666ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (398.458584ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (68.903792ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (215.727042ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (16.677208ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (16.487583ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (17.005084ms)
+✔ independent createIssueComment approved retains its complete original algorithm (353.344333ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (69.064333ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (212.04875ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (17.271791ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (18.068833ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (18.21975ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (335.556333ms)
+✔ durable projection repair pending retains custody and rereads revision admission (91.756375ms)
+✔ durable projection repair stale retains custody and rereads revision admission (227.559625ms)
+✔ durable projection repair malformed retains custody and rereads revision admission (38.662917ms)
+✔ durable projection repair unavailable retains custody and rereads revision admission (37.989708ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (41.064667ms)
+✔ durable projection repair approved retains custody and rereads revision admission (361.858ms)
+✔ independent lifecycle append pending cannot reuse historical custody as current readiness (99.903417ms)
+✔ independent lifecycle append stale cannot reuse historical custody as current readiness (236.13525ms)
+✔ independent lifecycle append malformed cannot reuse historical custody as current readiness (43.209541ms)
+✔ independent lifecycle append unavailable cannot reuse historical custody as current readiness (37.597166ms)
+✔ independent lifecycle append baseline cannot reuse historical custody as current readiness (38.688792ms)
+✔ independent lifecycle append approved cannot reuse historical custody as current readiness (367.159542ms)
+✖ independent singleton convergence pending requires fresh admission before reads and writes (56.202583ms)
+✖ independent singleton convergence stale requires fresh admission before reads and writes (141.2665ms)
+✖ independent singleton convergence malformed requires fresh admission before reads and writes (15.861583ms)
+✖ independent singleton convergence unavailable requires fresh admission before reads and writes (15.890375ms)
+✔ independent singleton convergence baseline requires fresh admission before reads and writes (16.742875ms)
+✔ independent singleton convergence approved requires fresh admission before reads and writes (262.286458ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 38
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5202.842916
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:374:3
+✖ independent singleton convergence pending requires fresh admission before reads and writes (56.202583ms)
+  AssertionError [ERR_ASSERTION]: No projection callbacks before current admission
+  + actual - expected
+  
+  + [
+  +   'read',
+  +   'write',
+  +   'read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:396:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'read', 'write', 'read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:374:3
+✖ independent singleton convergence stale requires fresh admission before reads and writes (141.2665ms)
+  AssertionError [ERR_ASSERTION]: No projection callbacks before current admission
+  + actual - expected
+  
+  + [
+  +   'read',
+  +   'write',
+  +   'read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:396:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'read', 'write', 'read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:374:3
+✖ independent singleton convergence malformed requires fresh admission before reads and writes (15.861583ms)
+  AssertionError [ERR_ASSERTION]: No projection callbacks before current admission
+  + actual - expected
+  
+  + [
+  +   'read',
+  +   'write',
+  +   'read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:396:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'read', 'write', 'read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:374:3
+✖ independent singleton convergence unavailable requires fresh admission before reads and writes (15.890375ms)
+  AssertionError [ERR_ASSERTION]: No projection callbacks before current admission
+  + actual - expected
+  
+  + [
+  +   'read',
+  +   'write',
+  +   'read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:396:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'read', 'write', 'read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

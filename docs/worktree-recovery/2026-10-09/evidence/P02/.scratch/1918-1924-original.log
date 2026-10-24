@@ -1,0 +1,92 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+[move-state:warn] #741: transition commit provenance missing: Cannot read properties of undefined (reading 'repo')
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+⛔ #741 → test: board confirmed at target but aitm-last-known-state marker reads "develop". Board/marker consistency post-condition FAILED.
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+[move-state:warn] #741: transition commit provenance missing: Cannot read properties of undefined (reading 'repo')
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ AC1: a failed board write rolls the marker back to the prior stage and stays loud (42.080458ms)
+✔ AC3: rollback restores aitm-last-known-state to priorState (real code) (54.13125ms)
+✔ AC3: rollback is a no-op when the marker already reads priorState (0.306875ms)
+✔ AC2: success path runs the board==marker consistency assertion (29.251334ms)
+✔ AC2: a board/marker mismatch on success fails closed and never runs the tail (24.472ms)
+✔ AC2: assertBoardMarkerConsistent reports consistent iff marker == expected (real code) (0.505333ms)
+✔ AC4: with no priorState (undefined stamp result) the #741 branches stay dormant (33.147417ms)
+✔ AC4: with no priorState a failed board write does NOT attempt a rollback (29.277417ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+[move-state:warn] #999: transition commit provenance missing: github unavailable
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ moveState runs guard → rows → markers → status → sentinel → commit → tail (38.357ms)
+✔ atomic core order: rows + markers land before Status, sentinel before tail (46.8495ms)
+✔ transition commit failure warns without failing a confirmed move (22.898333ms)
+✔ moveState fails closed when the sentinel does not verify (22.125208ms)
+✔ moveState halts on guard refusal and never writes status (19.425417ms)
+✔ moveState prefers the public pre-evaluated guard over the legacy test seam (28.842125ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+
+⛔ Refusing to move #1462 to test:
+   BLOCKED: contiguity-hole — missing prior-stage entry marker(s): aitm-entered-backlog, aitm-entered-refine, aitm-entered-plan, aitm-entered-develop. The board shows develop but the body never recorded entry into: backlog, refine, plan, develop
+
+A forward move may not enter a new stage while an earlier stage in the chain is unrecorded.
+Recovery:
+   • Run `/task reconcile backfill 1462` to fill the missing entry marker(s) if the stage(s) genuinely ran, then retry.
+   • Only if the board and recorded body state have actually drifted (not merely a missing historical marker), run `/task reconcile accept-live 1462` instead.
+
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ pre-mutation guard consumes the locked snapshot body without a second issue fetch (757.921583ms)
+✔ pre-mutation boundary reloads policy only after a waivable guard refusal (131.470833ms)
+✔ Plan → Develop exposes the exact successful guard decision for durable authority (64.641125ms)
+✔ Plan → Develop verifies authority after replay probe and before mutation (39.24775ms)
+✔ Plan → Develop authority failure is fail-closed before every mutation (32.284834ms)
+✔ Plan → Develop scope drift after authority write fails before lifecycle mutation (43.78225ms)
+✔ Plan → Develop scope drift at entry stamping returns the typed authority refusal (25.484458ms)
+✔ moveState halts on status exit and never runs tail (22.9185ms)
+✔ AC5: a throwing tail step is logged and never fails-reports or reverts the move (27.950875ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ re-run of a complete move is a no-op (no rows/markers/status/sentinel rewrite) (31.632791ms)
+✔ partial move (sentinel absent) rolls forward through the saga (34.87625ms)
+✔ same-target replay repairs a post-Status partial move with the existing transition ID (31.787333ms)
+✔ same-target replay without a recoverable partial move remains a strict no-op (27.487625ms)
+✔ production completion probe recovers only the latest fully-evidenced entry identity (235.629542ms)
+✔ production completion probe recovers a demotion with target-bound timing evidence (237.291083ms)
+✔ success readout asserts each element verified-as-stored + sentinel + tail summary (#757 AC1) (40.682917ms)
+✔ success readout names deferred tail steps when some best-effort steps failed (#757 AC1) (0.243917ms)
+✔ idempotent replay renders an "already complete" header (#757 AC1) (0.110416ms)
+✔ status-phase failure: names element, BEFORE Status write, sentinel ABSENT (#757 AC2) (1.23475ms)
+✔ sentinel-phase failure: AFTER Status write, board moved, sentinel ABSENT ⇒ converge (#757 AC2) (1.198458ms)
+✔ status-phase failure recommends re-run (#757 AC3) (0.198625ms)
+✔ sentinel-phase failure recommends re-run to converge (#757 AC3) (0.15025ms)
+✔ guard-phase failure recommends demote to fix code (#757 AC3) (0.114417ms)
+✔ unclassifiable exit recommends filing a bug (#757 AC3) (1.472958ms)
+✔ sentinel present on a reported failure ⇒ treat as complete/reconcile (#757 AC2) (0.203458ms)
+✔ BACKWARD_TARGETS is non-empty (sanity — otherwise this test vacuously passes) (0.503667ms)
+✔ every BACKWARD_TARGETS state has a refusalVerbHint verb that can actually declare it legal (204.225667ms)
+✔ demote is unaffected by #848: still hardcoded to develop, from test/review only (4.611875ms)
+⛔ #999 → test: board moved but aitm-move-complete sentinel did NOT confirm on re-read. Move is NOT stamped complete; re-run to converge.
+✔ sentinel is written and re-read-verified as target (3.138375ms)
+✔ SKIP_NETWORK short-circuits: no body write, reported verified (0.148708ms)
+✔ sentinel verify fails closed when the verified body does not show target (0.491875ms)
+✔ AC1: a child exiting non-zero WITH stderr detail names the step and exit code (0.9345ms)
+✔ AC1: exit code read from `.status` when `.code` is a string (spawn-style) (0.17ms)
+✔ AC3: a non-zero exit with NO usable stderr detail yields the explicit fallback (0.119042ms)
+✔ AC2: a benign human-reviewer-audit line is NOT chosen as the failure reason (0.098833ms)
+✔ AC2: when ONLY benign informational lines are present, fall back to no-detail (0.088042ms)
+✔ a plain (non-child) Error throw without an exit code names the step and message (0.066ms)
+✔ AC2 (source): audit-timing informational lines are level-tagged as non-failure (0.250209ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4974.073083

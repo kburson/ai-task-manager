@@ -1,0 +1,63 @@
+[move-state] #10: onEnter action "boom" failed: action failed
+[move-state] #10: onEnter dispatch failed: states module boom
+[move-state] #10: kanbanState cache refresh failed: session lookup boom
+[unpark] #10: partial reconciliation for 12: boom
+[unpark] #10: partial reconciliation for ?: x
+[unpark] #10: enforcement failed: unpark down
+warning: Start Time field sync failed: sync failed line
+more
+  To repair: node scripts/gh/update-event-fields.mjs 10 develop --item-id undefined
+✔ dispatchOnEnterActions: SKIP_NETWORK short-circuits (0.80025ms)
+✔ dispatchOnEnterActions: runs onEnter actions and swallows a throwing one (0.85725ms)
+✔ dispatchOnEnterActions: outer catch absorbs an import/lookup failure (0.178042ms)
+✔ refreshKanbanStateCache: non-stage stateArg short-circuits (0.175ms)
+✔ refreshKanbanStateCache: refreshes cache for the matching active task (60.55125ms)
+✔ refreshKanbanStateCache: no session id → skip, and mismatched active → skip (26.124375ms)
+✔ refreshKanbanStateCache: catch absorbs a throwing collaborator (0.205417ms)
+✔ unparkDoneDependents: non-done move short-circuits (0.14925ms)
+✔ unparkDoneDependents: summarizes cleared + errored releases (0.160375ms)
+✔ unparkDoneDependents: enforcement catch absorbs a throw (0.166042ms)
+✔ syncTrackerState: syncs the tracker ledger for the new state (132.113ms)
+✔ syncEventFields: SKIP_NETWORK short-circuits (0.184458ms)
+✔ syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec (16.181875ms)
+✔ syncEventFields: a throwing pexec surfaces a warning, no rethrow (16.301875ms)
+✔ endTaskTracking: non-done move short-circuits (0.158625ms)
+✔ endTaskTracking: fires the local task-tracker end on the move to done (18.580375ms)
+✔ shared original move command preserves ordinary stdout stderr promise and child handle (45.236041ms)
+✔ shared original move command preserves ordinary rejection fields and child failure (87.624958ms)
+✔ shared move command denies transport scope before public argument access or process creation (0.761625ms)
+✔ shared move command denies stage scope before public argument access or process creation (0.127959ms)
+✔ recorded refresh runs the original branch and changes only the current same-issue kanban cache (183.870875ms)
+✔ recorded tracker runs original load/state/save and retains every unaffected local resource (1.667625ms)
+✔ recorded local tail refuses nested getters, foreign actor and unrelated operation choices (0.628958ms)
+✔ recorded tracker reads cursor only when original actor timing overlay is absent (1.092041ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ task-owner exposes issue, project, and session scopes (2.099417ms)
+✔ background-convergence exposes only issue and project scopes (0.264625ms)
+✔ task-owner preserves the exact legacy tail (0.254042ms)
+✔ background convergence excludes every session effect (0.099458ms)
+✔ task-owner is the default profile (0.128541ms)
+✔ every falsy profile except undefined fails closed (0.508416ms)
+✔ non-string profiles fail closed even when string coercion names a known profile (0.110709ms)
+✔ unknown profiles fail closed (0.088375ms)
+✔ moveState refuses an unknown profile before any saga effect (25.418917ms)
+✔ moveState refuses an unsupported review authority before any saga effect (250.471209ms)
+✔ runMoveStateHost refuses an unknown profile before argv policy (47.325958ms)
+✔ runMoveStateHost refuses an unsupported review authority before argv policy (42.780042ms)
+✔ runMoveStateInProcess forwards typed profile and review authority without argv flags (0.592458ms)
+✔ runMoveStateInProcess preserves task-owner and null authority defaults (0.186ms)
+✔ AC1: a throwing post-commit tail step does NOT propagate — the sequencer resolves (1.1645ms)
+✔ AC1: the throwing step is logged to stderr, naming the step (0.340708ms)
+✔ AC4: a synchronous (non-async) throwing step is also isolated (0.143959ms)
+✔ AC3: a benign audit-comment stderr line is never surfaced as a failure reason (0.204667ms)
+✔ the sequencer reports which steps failed without changing control flow (0.147416ms)
+✔ DEFAULT_TAIL_STEPS enumerates the exact tail order (post-#756: entry evidence moved to the atomic core) (0.070584ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1660.107625
