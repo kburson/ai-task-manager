@@ -315,7 +315,7 @@ async function assertRoot(root) {
 }
 export async function createUsageWriter(
   enrollment,
-  { io = fs, stderr, softBytes, softFiles, checkEvery = 100 } = {}
+  { io = fs, stderr, softBytes, softFiles, checkEvery = 100, inspectRetention = true } = {}
 ) {
   const warn = fallback(stderr);
   let queue = Promise.resolve();
@@ -325,6 +325,8 @@ export async function createUsageWriter(
   let identity = null;
   let writes = 0;
   const checkRetention = async () => {
+    // #2079: request-owned writers cannot sweep history inside authority deadlines.
+    if (inspectRetention === false) return;
     try {
       for (const warning of (await usageRetention(enrollment.root, { softBytes, softFiles }))
         .warnings)

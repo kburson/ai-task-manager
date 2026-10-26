@@ -1,0 +1,189 @@
+{
+  "issue": 2050,
+  "phase": "Backlog to Refine",
+  "start": "2026-10-20T18:06:41.666Z",
+  "end": "2026-10-20T18:13:02.520Z",
+  "observations": 283,
+  "knownPoints": 111,
+  "unknownCosts": 172,
+  "failures": [],
+  "unknownReasons": {
+    "opaque-cli": 151,
+    "mutation-cost-unavailable": 21
+  },
+  "operations": [
+    {
+      "operation": "gh.issue.view",
+      "count": 73,
+      "knownPoints": 0,
+      "unknownCosts": 73,
+      "unknownReasons": {
+        "opaque-cli": 73
+      }
+    },
+    {
+      "operation": "TargetProjectValues",
+      "count": 51,
+      "knownPoints": 0,
+      "unknownCosts": 51,
+      "unknownReasons": {
+        "opaque-cli": 51
+      }
+    },
+    {
+      "operation": "AitmEstimationProjection",
+      "count": 45,
+      "knownPoints": 45,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "count": 45,
+      "knownPoints": 45,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "TargetBodyFields",
+      "count": 24,
+      "knownPoints": 0,
+      "unknownCosts": 24,
+      "unknownReasons": {
+        "opaque-cli": 24
+      }
+    },
+    {
+      "operation": "gh.issue.edit",
+      "count": 11,
+      "knownPoints": 0,
+      "unknownCosts": 11,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 11
+      }
+    },
+    {
+      "operation": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "count": 9,
+      "knownPoints": 9,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "count": 4,
+      "knownPoints": 4,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.6773602e4af4f1abddadb9da4afd3d35a25e14980b1c5b3f0884da11730d312c",
+      "count": 3,
+      "knownPoints": 0,
+      "unknownCosts": 3,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 3
+      }
+    },
+    {
+      "operation": "anonymous.b2ea38f9b2b4ebe5107b7877ff3aaf76a634ace6dad36d9164ef3eb134d67cd1",
+      "count": 3,
+      "knownPoints": 3,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.80ddd956a1d9fa7237935ab4cfbc39d6fc13c89d4763e8831fafd045418a5512",
+      "count": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 2
+      }
+    },
+    {
+      "operation": "anonymous.5a81394383940e918867ec73690069ff3e058362ce7c270432b6353f18e98581",
+      "count": 2,
+      "knownPoints": 2,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.32ecad6249ae0c14e4090a0e5f8a98bdebbec4e8332fde2807fe2d48ad9e4f81",
+      "count": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 2
+      }
+    },
+    {
+      "operation": "anonymous.c0be66beb033fc51e89587293fafb7ee3382d0fb3dbb7bdd89f7a9753227d926",
+      "count": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 2
+      }
+    },
+    {
+      "operation": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "count": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "unknownReasons": {
+        "opaque-cli": 2
+      }
+    },
+    {
+      "operation": "gh.project.item-edit",
+      "count": 1,
+      "knownPoints": 0,
+      "unknownCosts": 1,
+      "unknownReasons": {
+        "mutation-cost-unavailable": 1
+      }
+    },
+    {
+      "operation": "TargetBinding",
+      "count": 1,
+      "knownPoints": 0,
+      "unknownCosts": 1,
+      "unknownReasons": {
+        "opaque-cli": 1
+      }
+    },
+    {
+      "operation": "anonymous.d7be73df600a5d9a53fdbaca2210859554c85e453556fd61cd2d506c1009e459",
+      "count": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.a014cc2aaca3fbe84458a73fe515a579e6094c88053337b28c2db11050b6ebf9",
+      "count": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    },
+    {
+      "operation": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "count": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "unknownReasons": {}
+    }
+  ],
+  "baseline": {
+    "issue": 2060,
+    "observations": 507,
+    "knownPoints": 336,
+    "unknownCosts": 171
+  },
+  "caveats": [
+    "Different target leaf/context, not a controlled live A/B",
+    "Unknown costs and hidden HTTP expansion remain unknown",
+    "No wire-byte measurement"
+  ]
+}

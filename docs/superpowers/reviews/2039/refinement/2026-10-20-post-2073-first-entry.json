@@ -1,0 +1,181 @@
+{
+  "start": "2026-10-20T17:44:37.627Z",
+  "end": "2026-10-20T17:52:27.152Z",
+  "issue": 2049,
+  "phase": "Backlog to Refine",
+  "observations": 285,
+  "knownPoints": 111,
+  "unknownCosts": 174,
+  "failures": 1,
+  "operations": [
+    {
+      "operation": "gh.issue.view",
+      "observations": 74,
+      "knownPoints": 0,
+      "unknownCosts": 74,
+      "failures": 0
+    },
+    {
+      "operation": "TargetProjectValues",
+      "observations": 51,
+      "knownPoints": 0,
+      "unknownCosts": 51,
+      "failures": 0
+    },
+    {
+      "operation": "AitmEstimationProjection",
+      "observations": 45,
+      "knownPoints": 45,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "observations": 45,
+      "knownPoints": 45,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "TargetBodyFields",
+      "observations": 24,
+      "knownPoints": 0,
+      "unknownCosts": 24,
+      "failures": 0
+    },
+    {
+      "operation": "gh.issue.edit",
+      "observations": 11,
+      "knownPoints": 0,
+      "unknownCosts": 11,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "observations": 9,
+      "knownPoints": 9,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "observations": 4,
+      "knownPoints": 4,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.b2ea38f9b2b4ebe5107b7877ff3aaf76a634ace6dad36d9164ef3eb134d67cd1",
+      "observations": 3,
+      "knownPoints": 3,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.6773602e4af4f1abddadb9da4afd3d35a25e14980b1c5b3f0884da11730d312c",
+      "observations": 3,
+      "knownPoints": 0,
+      "unknownCosts": 3,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.32ecad6249ae0c14e4090a0e5f8a98bdebbec4e8332fde2807fe2d48ad9e4f81",
+      "observations": 3,
+      "knownPoints": 0,
+      "unknownCosts": 3,
+      "failures": 1
+    },
+    {
+      "operation": "anonymous.c0be66beb033fc51e89587293fafb7ee3382d0fb3dbb7bdd89f7a9753227d926",
+      "observations": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.5a81394383940e918867ec73690069ff3e058362ce7c270432b6353f18e98581",
+      "observations": 2,
+      "knownPoints": 2,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "observations": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.80ddd956a1d9fa7237935ab4cfbc39d6fc13c89d4763e8831fafd045418a5512",
+      "observations": 2,
+      "knownPoints": 0,
+      "unknownCosts": 2,
+      "failures": 0
+    },
+    {
+      "operation": "gh.project.item-edit",
+      "observations": 1,
+      "knownPoints": 0,
+      "unknownCosts": 1,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.d7be73df600a5d9a53fdbaca2210859554c85e453556fd61cd2d506c1009e459",
+      "observations": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.a014cc2aaca3fbe84458a73fe515a579e6094c88053337b28c2db11050b6ebf9",
+      "observations": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "observations": 1,
+      "knownPoints": 1,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "operation": "TargetBinding",
+      "observations": 1,
+      "knownPoints": 0,
+      "unknownCosts": 1,
+      "failures": 0
+    }
+  ],
+  "incompleteCoverage": {
+    "unclosedWriters": 145,
+    "malformed": 0,
+    "partial": 0
+  },
+  "exclusions": [
+    {
+      "operation": "Aitm2039RefinementQuota",
+      "observations": 1,
+      "reason": "Concurrent explicit quota probe, not native refinement workload",
+      "returnedPointCost": 1,
+      "collectorPointCost": null
+    }
+  ],
+  "baseline": {
+    "issue": 2060,
+    "phase": "Backlog to Refine",
+    "observations": 507,
+    "knownPoints": 336,
+    "unknownCosts": 171,
+    "source": "2026-10-20-2039-authority-query-attribution.md"
+  },
+  "caveats": [
+    "Different current leaf and surrounding workflow context; observational comparison, not controlled live A/B",
+    "Known points are subtotals with changed coverage; no actual point-saving claim",
+    "CLI observations do not enumerate hidden HTTP requests",
+    "Wire request/response sizes and runtime source stacks unavailable",
+    "Global unclosed-writer counters are not attributed to this one invocation"
+  ]
+}

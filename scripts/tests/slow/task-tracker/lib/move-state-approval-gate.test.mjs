@@ -291,7 +291,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   if(args.includes('--input')) try { stdin=fs.readFileSync(0,'utf8'); } catch {}
   if(stdin.includes('viewer{login}')) {
     const connection={nodes:[],pageInfo:{hasNextPage:false,endCursor:null}};
-    fs.writeSync(1,JSON.stringify({data:{viewer:{login:'kburson'},repository:{issue:{id:'ISSUE_TEST',number:100,body:currentBody(),assignees:{nodes:[{login:'kburson'}]},projectItems:{nodes:[{id:'ITEM_TEST',project:{id:${JSON.stringify(PROJECT_ID)}},fieldValueByName:{name:${JSON.stringify(currentState)}},fieldValues:{nodes:[{number:2,field:{id:'EST',name:'Estimate'}},{name:'S',field:{id:'SIZE',name:'Size'}},{name:${JSON.stringify(currentState)},field:{id:'PVTF_x',name:'Status'}}],pageInfo:{hasNextPage:false,endCursor:null}}}],pageInfo:{hasNextPage:false,endCursor:null}},comments:connection,subIssues:connection}}}}));
+    fs.writeSync(1,JSON.stringify({data:{viewer:{login:'kburson'},repository:{issue:{id:'ISSUE_TEST',number:100,repository:{nameWithOwner:'o/r'},body:currentBody(),assignees:{nodes:[{login:'kburson'}]},projectItems:{nodes:[{id:'ITEM_TEST',project:{id:${JSON.stringify(PROJECT_ID)}},fieldValueByName:{name:${JSON.stringify(currentState)}},fieldValues:{nodes:[{number:2,field:{id:'EST',name:'Estimate'}},{name:'S',field:{id:'SIZE',name:'Size'}},{name:${JSON.stringify(currentState)},field:{id:'PVTF_x',name:'Status'}}],pageInfo:{hasNextPage:false,endCursor:null}}}],pageInfo:{hasNextPage:false,endCursor:null}},comments:connection,subIssues:connection}}}}));
     process.exit(0);
   }
   if (stdin.includes('parent { number }')) { fs.writeSync(1,JSON.stringify({data:{repository:{issue:{parent:null}}}}));process.exit(0); }

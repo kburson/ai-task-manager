@@ -438,7 +438,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
       process.stdout.write(JSON.stringify({ data: {
         viewer: { login: 'fixture-operator' },
         repository: { issue: {
-          id: 'ISSUE_CAPTURE', number: 2100, body,
+          id: 'ISSUE_CAPTURE', number: 2100, repository: { nameWithOwner: 'example/project' }, body,
           assignees: { nodes: [{ login: 'fixture-operator' }] },
           projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' },
             fieldValueByName: { name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase()) },

@@ -1,0 +1,30 @@
+✔ delivery Explain exposes only named read ports (0.642667ms)
+✔ archived recertification retains its observed authority and original runner provenance (25.206125ms)
+✔ current recertification captures complete simulated authority without executing actions (35552.474583ms)
+✔ current recertification replays start from identical current authority bytes (37116.953833ms)
+From /Users/kpburson/.codex/worktrees/bc8d/ai-task-manager
+ * branch              7af9dc2b60c0e70e7479b4061af320c68a171d4a -> FETCH_HEAD
+From /Users/kpburson/.codex/worktrees/bc8d/ai-task-manager
+ * branch              7af9dc2b60c0e70e7479b4061af320c68a171d4a -> FETCH_HEAD
+✔ claude static pickup and captured lifecycle use the same router-plus-pickup budget (14.834083ms)
+✔ claude static lifecycle and captured lifecycle use the same full-lifecycle budget (9.376625ms)
+✔ codex static pickup and captured lifecycle use the same router-plus-pickup budget (11.148042ms)
+✔ codex static lifecycle and captured lifecycle use the same full-lifecycle budget (7.086167ms)
+✔ pre-slim public CLI capture cannot certify the final installed adapter release (1097.776708ms)
+✔ archived final release retains its original committed proof and rejects current drift (5911.127875ms)
+✔ current package capture preserves lifecycle outcomes and instruction inputs (54551.6725ms)
+✔ fixed release measurement refuses a missing required instruction file (4.968875ms)
+✔ claude aggregate CLI labels fixed release scenarios and exits on any breach (278.979708ms)
+✔ codex aggregate CLI labels fixed release scenarios and exits on any breach (173.154792ms)
+✔ accepted final archive stays intact and cannot certify changed current sources (6.540458ms)
+✔ internally consistent dirty installed guidance cannot inherit a committed source identity (6143.056042ms)
+move-state-approval-gate.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs (17140.065875ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 73073.896

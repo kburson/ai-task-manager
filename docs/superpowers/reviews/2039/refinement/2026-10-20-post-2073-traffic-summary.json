@@ -1,0 +1,425 @@
+{
+  "source": "Native local usage reader; zero GitHub requests for analysis",
+  "window": {
+    "start": "2026-10-20T17:36:36.744Z",
+    "end": "2026-10-20T21:33:04.133Z",
+    "worktreeId": "sha256:3f43960145f2d2ac9ac8ae49565355849bf915411d7f360e371d80965b68cd56"
+  },
+  "observations": 8028,
+  "knownPoints": 3648,
+  "unknownCosts": 4590,
+  "failures": [
+    {
+      "startedAt": "2026-10-20T17:39:12.499Z",
+      "operation": "anonymous.fbd69fa6a252537d392d73cf28e590b97db7d625c0f4fce5ee134f852c400e5f",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:15:16.848Z",
+      "operation": "gh.issue.view",
+      "outcome": "failure",
+      "errorClass": "unknown",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T17:51:59.979Z",
+      "operation": "anonymous.32ecad6249ae0c14e4090a0e5f8a98bdebbec4e8332fde2807fe2d48ad9e4f81",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T17:38:57.659Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:30:19.486Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T20:57:42.364Z",
+      "operation": "gh.issue.view",
+      "outcome": "failure",
+      "errorClass": "unknown",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:32:28.678Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T17:38:57.661Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:32:28.476Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:30:19.503Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:31:06.963Z",
+      "operation": "anonymous.fbd69fa6a252537d392d73cf28e590b97db7d625c0f4fce5ee134f852c400e5f",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:32:28.224Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    },
+    {
+      "startedAt": "2026-10-20T21:32:28.711Z",
+      "operation": "gh.issue.view",
+      "outcome": "timeout",
+      "errorClass": "timeout",
+      "cost": null
+    }
+  ],
+  "operations": [
+    {
+      "name": "gh.issue.view",
+      "observations": 2299,
+      "knownPoints": 0,
+      "unknownCosts": 2299,
+      "failures": 10
+    },
+    {
+      "name": "AitmEstimationProjection",
+      "observations": 895,
+      "knownPoints": 895,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.eb74807a6a65f2b6bd97223fe7b3dde004d1f6b6c2b5baa8d00570dc8acd446a",
+      "observations": 895,
+      "knownPoints": 895,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "TargetProjectValues",
+      "observations": 867,
+      "knownPoints": 0,
+      "unknownCosts": 867,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.cc1b2bb952a095c716c4ca1e75acbf1fecc2fcb04d41b6c96ea80078af476f96",
+      "observations": 449,
+      "knownPoints": 449,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "TargetBodyFields",
+      "observations": 408,
+      "knownPoints": 0,
+      "unknownCosts": 408,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.2e9aad4db59390fe2f25c72aaa36d8e8e6ed8581fe8d2b70d99485749761286f",
+      "observations": 392,
+      "knownPoints": 392,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "gh.issue.edit",
+      "observations": 368,
+      "knownPoints": 0,
+      "unknownCosts": 368,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.cf1d97f59243f1991a8ca4b9b4c343c88023dc66f9b7701a65eaae7b2a8d1dc4",
+      "observations": 297,
+      "knownPoints": 297,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.ff0fe7b2e4472490bcf64ede1f2294284949c8f594bc90380291abfe561b6250",
+      "observations": 163,
+      "knownPoints": 0,
+      "unknownCosts": 163,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.e613994d2fa7cba1d9e5a6598c647317c8c623a6d6783e097b5a6fb81d9c748a",
+      "observations": 131,
+      "knownPoints": 131,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.32ecad6249ae0c14e4090a0e5f8a98bdebbec4e8332fde2807fe2d48ad9e4f81",
+      "observations": 120,
+      "knownPoints": 0,
+      "unknownCosts": 120,
+      "failures": 1
+    },
+    {
+      "name": "anonymous.b2ea38f9b2b4ebe5107b7877ff3aaf76a634ace6dad36d9164ef3eb134d67cd1",
+      "observations": 97,
+      "knownPoints": 97,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.c0be66beb033fc51e89587293fafb7ee3382d0fb3dbb7bdd89f7a9753227d926",
+      "observations": 68,
+      "knownPoints": 0,
+      "unknownCosts": 68,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.6773602e4af4f1abddadb9da4afd3d35a25e14980b1c5b3f0884da11730d312c",
+      "observations": 68,
+      "knownPoints": 0,
+      "unknownCosts": 68,
+      "failures": 0
+    },
+    {
+      "name": "gh.issue.comment",
+      "observations": 60,
+      "knownPoints": 0,
+      "unknownCosts": 60,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.2a108f03695f1a3a168dc11c6d75923edcd55dcc5ea3f7599049b62759094c83",
+      "observations": 55,
+      "knownPoints": 0,
+      "unknownCosts": 55,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.5a81394383940e918867ec73690069ff3e058362ce7c270432b6353f18e98581",
+      "observations": 54,
+      "knownPoints": 54,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.d7be73df600a5d9a53fdbaca2210859554c85e453556fd61cd2d506c1009e459",
+      "observations": 52,
+      "knownPoints": 52,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.80ddd956a1d9fa7237935ab4cfbc39d6fc13c89d4763e8831fafd045418a5512",
+      "observations": 51,
+      "knownPoints": 0,
+      "unknownCosts": 51,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.0a09de4dc0c3072fa1bffa3c9d52090ba6de709e96569dbaa94614e5cfdb252b",
+      "observations": 38,
+      "knownPoints": 38,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.6e738cbdb4bd0d44c4a01ca0d81f8fa0348800f4dc296173a88ea8333220bcf7",
+      "observations": 38,
+      "knownPoints": 38,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.bddfdc412573bfcc8558eba33c15f1223649fd07508197f3d973ed99763d9d46",
+      "observations": 37,
+      "knownPoints": 37,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "gh.project.item-edit",
+      "observations": 34,
+      "knownPoints": 0,
+      "unknownCosts": 34,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.a014cc2aaca3fbe84458a73fe515a579e6094c88053337b28c2db11050b6ebf9",
+      "observations": 17,
+      "knownPoints": 17,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "TargetBinding",
+      "observations": 17,
+      "knownPoints": 0,
+      "unknownCosts": 17,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.3d423b50b18e2ea11895a8a084163f313b876e1be8a5494a7bd173636edee235",
+      "observations": 13,
+      "knownPoints": 13,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.6bf74b7b91641249fdcc9802ee06265f7f39a10ca7d5a03495c7ff38a978543f",
+      "observations": 11,
+      "knownPoints": 11,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.c5c67459578b61e62839b31a93bde9e289768e55b7c7daace9629c295c299580",
+      "observations": 10,
+      "knownPoints": 220,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.5947c36c187a469f79ab955f1eb875572b63c5d4b7a7cd53b0e3921e257ad39e",
+      "observations": 10,
+      "knownPoints": 10,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.6c50814dc16a5f4394d9f9a12fd2879476feb6e26d2f2fb61d2a868291d0a1e6",
+      "observations": 7,
+      "knownPoints": 0,
+      "unknownCosts": 7,
+      "failures": 0
+    },
+    {
+      "name": "anonymous.fbd69fa6a252537d392d73cf28e590b97db7d625c0f4fce5ee134f852c400e5f",
+      "observations": 4,
+      "knownPoints": 0,
+      "unknownCosts": 4,
+      "failures": 2
+    },
+    {
+      "name": "AitmIssueComments",
+      "observations": 2,
+      "knownPoints": 2,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "Aitm2039RefinementQuota",
+      "observations": 1,
+      "knownPoints": 0,
+      "unknownCosts": 1,
+      "failures": 0
+    }
+  ],
+  "costUnknownReasons": [
+    {
+      "name": "opaque-cli",
+      "observations": 3756,
+      "knownPoints": 0,
+      "unknownCosts": 3756,
+      "failures": 2
+    },
+    {
+      "name": "unknown",
+      "observations": 3438,
+      "knownPoints": 3648,
+      "unknownCosts": 0,
+      "failures": 0
+    },
+    {
+      "name": "mutation-cost-unavailable",
+      "observations": 823,
+      "knownPoints": 0,
+      "unknownCosts": 823,
+      "failures": 0
+    },
+    {
+      "name": "ambiguous-dispatch",
+      "observations": 11,
+      "knownPoints": 0,
+      "unknownCosts": 11,
+      "failures": 11
+    }
+  ],
+  "launchRoutes": [
+    {
+      "name": "aitm-cli",
+      "observations": 8001,
+      "knownPoints": 3645,
+      "unknownCosts": 4566,
+      "failures": 13
+    },
+    {
+      "name": "measurement-launcher",
+      "observations": 27,
+      "knownPoints": 3,
+      "unknownCosts": 24,
+      "failures": 0
+    }
+  ],
+  "sessions": [
+    {
+      "name": "sha256:6d90ef771e9ff9614059b8fdf66ad634565d4d3fa2b1c9afd042a1fad17d2e5d",
+      "observations": 8028,
+      "knownPoints": 3648,
+      "unknownCosts": 4590,
+      "failures": 13
+    }
+  ],
+  "lifecycleStates": [
+    {
+      "name": "unknown",
+      "observations": 8028,
+      "knownPoints": 3648,
+      "unknownCosts": 4590,
+      "failures": 13
+    }
+  ],
+  "wireBytes": null,
+  "httpRequestCount": null,
+  "rawStore": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.git/aitm/graphql-usage",
+  "readHealthWholeStore": {
+    "conflictCount": 0,
+    "malformedLineCount": 0,
+    "unreadableFileCount": 0,
+    "partialLineCount": 0,
+    "unclosedWriterCount": 177
+  },
+  "limits": [
+    "CLI observations may hide multiple HTTP requests",
+    "Known costs are partial same-response costs, not a complete nonoverlapping quota debit",
+    "No wire-byte sizes or runtime caller stacks are measured",
+    "Phase/source attribution uses retained command windows and static query-constructor matches",
+    "Closeout activity after this frozen cutoff remains in the raw store and is excluded from these totals"
+  ]
+}

@@ -1,7 +1,11 @@
 {
   "version": "0.2",
   "language": "en",
-  "ignoreRegExpList": ["01M3SS09DEQCABP49A5D1B7EDV", "01M4NVNKYFJGEA0KCXQR6HNXJN"],
+  "ignoreRegExpList": [
+    "01M3SS09DEQCABP49A5D1B7EDV",
+    "01M4NVNKYFJGEA0KCXQR6HNXJN",
+    "01M5CRHF99AKZRD6E33GD7P5KW"
+  ],
   "useGitignore": false,
   "dictionaryDefinitions": [
     {
@@ -17,6 +21,26 @@
       "ignoreRegExpList": [
         "\"(?:path|branch|sourceBranch|sourceHead|originalBranch|recoveryBranch|originalPath|storedPath|archivePath|archive|source)\":\\s*\"[^\"]*\""
       ]
+    },
+    {
+      "filename": "docs/superpowers/reviews/2039/refinement/native-continued/2066.json",
+      "ignoreRegExpList": ["PVTI_[A-Za-z0-9_-]+"]
+    },
+    {
+      "filename": "docs/superpowers/reviews/2039/native-revisions/2026-10-19-native-revision-probe.md",
+      "ignoreRegExpList": ["(?:IC|UCE)_[A-Za-z0-9_-]+"]
+    },
+    {
+      "filename": "docs/superpowers/reviews/2039/refinement/graphql-usage-2026-10-20.md",
+      "ignoreRegExpList": ["[0-9A-F]{4,}(?::[0-9A-F]+){2,}"]
+    },
+    {
+      "filename": ["docs/superpowers/reviews/2039/plan/SAR/plan.r0.md", "cspell.json"],
+      "ignoreWords": ["Childs"]
+    },
+    {
+      "filename": ["scripts/tests/fixtures/2026/aitm-2055-timing.json", "cspell.json"],
+      "ignoreRegExpList": ["IC_kwDOSU6LgM8AAAABdrBCLA"]
     }
   ],
   "ignorePaths": [

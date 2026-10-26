@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { enrollUsage, createUsageWriter } from './storage.mjs';
+import { enrollUsage, createUsageWriter, usageRetention } from './storage.mjs';
 import { sessionIdEnvKeys } from '../session-id.mjs';
 import {
   prepareGraphqlQuery,
@@ -20,7 +20,7 @@ async function reportDiagnostics(enrollment, writer = null) {
   const entries = enrollment.diagnostics || [];
   for (const entry of entries) warning(entry.code);
   if (!enrollment.available || entries.length === 0) return;
-  const sink = writer || (await createUsageWriter(enrollment));
+  const sink = writer || (await createUsageWriter(enrollment, { inspectRetention: false }));
   try {
     for (const entry of entries) await sink.appendDiagnostic(entry);
   } finally {
@@ -51,6 +51,16 @@ export async function prepareUsageEnv({
       runtimeSessionId,
     });
     await reportDiagnostics(enrollment);
+    // #2079: soft-cap inspection belongs to root launch, before workflow deadlines.
+    // Context presence is only a scheduling hint; enrollment still validates it.
+    if (enrollment.available && !env.AITM_GRAPHQL_USAGE_CONTEXT) {
+      try {
+        for (const code of (await usageRetention(enrollment.root)).warnings) warning(code);
+      } catch {
+        // Advisory failures must not discard otherwise available collection.
+        warning('storage-failure');
+      }
+    }
     const shimDir = fileURLToPath(new URL('../../action-capture-bin', import.meta.url));
     const realGh =
       env.AITM_CAPTURE_REAL_GH ||
@@ -295,7 +305,7 @@ export async function beginObservation({
       await reportDiagnostics(enrollment);
       return null;
     }
-    const writer = await createUsageWriter(enrollment);
+    const writer = await createUsageWriter(enrollment, { inspectRetention: false });
     await reportDiagnostics(enrollment, writer);
     const c = enrollment.context;
     const callId = randomUUID();

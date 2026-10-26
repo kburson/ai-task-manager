@@ -243,11 +243,23 @@ export function visibleMetadataFieldValues(body, heading, key) {
   return values;
 }
 
+// Prepared structure belongs to one immutable plan observation, never an authority cache.
+export function createDecompositionPlanSelector(planText = '') {
+  const text = String(planText);
+  const tasks = extractPlanTasks(text);
+  return ({ body = '', activePlanKey = null } = {}) =>
+    selectPlanSection({ body, planText: text, activePlanKey, tasks });
+}
+
 export function selectDecompositionPlanSection({
   body = '',
   planText = '',
   activePlanKey = null,
 } = {}) {
+  return createDecompositionPlanSelector(planText)({ body, activePlanKey });
+}
+
+function selectPlanSection({ body, planText, activePlanKey, tasks }) {
   const inactive = {
     ok: true,
     applied: false,
@@ -257,7 +269,7 @@ export function selectDecompositionPlanSection({
   };
   const selection = selectStoryIntentTask({
     body,
-    tasks: extractPlanTasks(planText),
+    tasks,
     activePlanKey,
   });
   if (!selection.applied) return inactive;

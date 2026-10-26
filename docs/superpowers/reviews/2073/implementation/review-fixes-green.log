@@ -1,0 +1,33 @@
+✔ unsafe hook snapshot refuses: unknown-kind (228.689ms)
+✔ unsafe hook snapshot refuses: duplicate-kind (237.434791ms)
+✔ unsafe hook snapshot refuses: misplaced-kind (256.880417ms)
+✔ unsafe hook snapshot refuses: non-epic-child (219.277791ms)
+✔ unsafe hook snapshot refuses: four-page-comments (226.5705ms)
+✔ unsafe hook snapshot refuses: drift-body (219.692625ms)
+✔ unsafe hook snapshot refuses: drift-owner (233.980041ms)
+✔ unsafe hook snapshot refuses: drift-item (323.53125ms)
+✔ unsafe hook snapshot refuses: drift-field (400.092709ms)
+✔ unsafe hook snapshot refuses: drift-children (285.402542ms)
+✔ unsafe hook snapshot refuses: empty-epic (312.073625ms)
+✔ unsafe hook snapshot refuses: unready-epic (231.3335ms)
+✔ ready parent observes graph and complete fence: two-child-ready-epic (226.969792ms)
+✔ ready parent observes graph and complete fence: 51-child-ready-epic (621.825459ms)
+✔ selected item pagination: root valid (237.611375ms)
+✔ selected item pagination: root wrong-item (253.786875ms)
+✔ selected item pagination: root wrong-project (214.604417ms)
+✔ selected item pagination: root wrong-content (227.823416ms)
+✔ selected item pagination: child valid (252.54775ms)
+✔ selected item pagination: child wrong-item (245.814417ms)
+✔ selected item pagination: child wrong-project (263.887917ms)
+✔ selected item pagination: child wrong-content (238.920334ms)
+✔ complete initial inventory refuses observed addition (211.973875ms)
+✔ complete initial inventory refuses observed removal (269.791833ms)
+✔ complete initial inventory refuses observed replacement (252.365417ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6771.799167
