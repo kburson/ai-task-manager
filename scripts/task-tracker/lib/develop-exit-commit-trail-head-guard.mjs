@@ -41,6 +41,7 @@ export const developExitCommitTrailHeadGuard = {
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
       projectDir,
+      artifactSubject: ctx.artifactSubject,
       deps: ctx.deps?.commitTrailHead,
     });
     if (result.ok) return { ok: true };

@@ -1,3 +1,13 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
+import { stampDeclarationIdentity } from '../lib/stamp-declaration.mjs';
+import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // #303 — `/task dod-stamp <key>` runs the verifier command(s) declared by a
 // stampable Functional DoD item's `aitm-verified-by` markers and stamps the
 // resulting evidence marker
@@ -11,7 +21,7 @@
 import { loadState } from '../state.mjs';
 import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { mutateIssueBody as nativeMutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { ISSUE_LOCK_HELD_ENV } from '../issue-mutator-lock.mjs';
 import {
@@ -53,6 +63,50 @@ export async function verbDodStamp(ctx) {
     process.exit(1);
   }
   const issueNum = s.active.replace(/^#/, '');
+  const operatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: issueNum })
+    : null;
+  const mutateIssueBody = (input) => {
+    const permitted = [
+      captureIssueProofAuthority(body),
+      captureIssueProofAuthority(input.mutate(body)),
+    ];
+    return nativeMutateIssueBody({
+      ...input,
+      validateFreshBase: (base) => {
+        const freshTarget = parseFunctionalDodKeys(base).find((item) => item.key === key);
+        if (stampDeclarationIdentity(base, freshTarget) !== declarationIdentity)
+          throw new Error(
+            'dod-stamp: verifier declaration changed; run the current declaration again'
+          );
+        if (ctx.artifactSubject) {
+          validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+        }
+        assertIssueProofAuthority(base, permitted);
+        input.validateFreshBase?.(base);
+      },
+      validateFreshBaseAsync: async (base, next) => {
+        const freshDecision = await decideStampExecutionFromEnv({
+          commands: target.evidenceCommands,
+          body: base,
+          issueNumber: issueNum,
+          cfg,
+          pexec,
+          projectDir,
+          deps: ctx.deps,
+          artifactSubject: ctx.artifactSubject,
+        });
+        if (freshDecision.action !== decision.action || freshDecision.live !== decision.live)
+          throw new Error(
+            'artifact: authorizing receipt changed or verifier state changed before write'
+          );
+        await input.validateFreshBaseAsync?.(base, next);
+        if (ctx.artifactSubject)
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+      },
+    });
+  };
 
   const { stdout: body } = await pexec(
     'gh',
@@ -66,6 +120,8 @@ export async function verbDodStamp(ctx) {
     readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
   });
   const items = directory ? [] : parseFunctionalDodKeys(body);
+  if (directory && ctx.artifactSubject)
+    throw new Error('artifact: directory authority unsupported');
   const contractTarget = directory?.contract.definitionOfDone.find(
     (entry) => entry.logicalId === `dod-${key}` || entry.logicalId === key
   );
@@ -89,6 +145,8 @@ export async function verbDodStamp(ctx) {
     process.exit(1);
   }
 
+  const declarationIdentity = stampDeclarationIdentity(body, target);
+
   const decision = await decideStampExecutionFromEnv({
     commands: target.evidenceCommands,
     body,
@@ -97,6 +155,7 @@ export async function verbDodStamp(ctx) {
     pexec,
     projectDir,
     deps: ctx.deps,
+    artifactSubject: ctx.artifactSubject,
   });
   if (decision.action === 'refuse') {
     console.error(`[task-tracker] dod-stamp ${key}: ${decision.message}`);
@@ -184,10 +243,14 @@ export async function verbDodStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    executionContext: sourceExecutionContext,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    artifactSubject: ctx.artifactSubject,
+    boundIssue: issueNum,
+    installDependencies: Boolean(ctx.artifactSubject),
     env: cleanEnv,
     // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
     cache: { dir: verifierCacheBaseDir(projectDir) },
@@ -216,10 +279,12 @@ export async function verbDodStamp(ctx) {
   // into `## Verification Commands` below so the tick and the #231 orphan-command
   // check can never strand against each other.
   const executedCommands = ran.map((r) => r.cmd).filter(Boolean);
-  const executionContext = captureEvidenceProvenance({
-    projectDir,
-    boundIssue: issueNum,
-  });
+  const executionContext =
+    sourceExecutionContext ??
+    captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
 
   if (directory) {
     await writeDirectoryContractOperation({

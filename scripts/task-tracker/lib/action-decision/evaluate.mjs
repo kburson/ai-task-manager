@@ -668,7 +668,12 @@ async function evaluateCompletedAction({
                   body: inputs.body,
                   head: inputs.head,
                   attempt,
-                  ports: { scope, cfg: inputs.config, ...(deps.testPorts ?? {}) },
+                  ports: {
+                    scope,
+                    cfg: inputs.config,
+                    artifactSubject: inputs.artifactSubject,
+                    ...(deps.testPorts ?? {}),
+                  },
                 })
               : reviewAction
                 ? await collectReviewReadiness({
@@ -677,7 +682,12 @@ async function evaluateCompletedAction({
                     body: inputs.body,
                     head: inputs.head,
                     attempt,
-                    ports: { scope, cfg: inputs.config, ...(deps.reviewPorts ?? {}) },
+                    ports: {
+                      scope,
+                      cfg: inputs.config,
+                      artifactSubject: inputs.artifactSubject,
+                      ...(deps.reviewPorts ?? {}),
+                    },
                   })
                 : actionId === 'deliver'
                   ? await collectDeliveryReadiness({

@@ -1,3 +1,4 @@
+import { assertDeliveryArtifactSubject } from './delivery-authority.mjs';
 // @story #939
 // Pure close-time authorization from a verified delivery receipt. This module
 // does no I/O: callers must supply the current live PR snapshot and the strict
@@ -54,6 +55,7 @@ export function requireDeliveryReceipt({
   lineage,
   branch,
   acceptedSha,
+  artifactSubject,
   pullRequests,
   records,
   noCommitRecords,
@@ -117,7 +119,13 @@ export function requireDeliveryReceipt({
   const pr = exactHeadPullRequests[0];
   if (!isObject(pr) || !Number.isSafeInteger(pr.number) || pr.number <= 0) fail('ambiguous-pr');
   if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') fail('not-merged');
-  if (pr.headRefName !== branch) fail('branch-mismatch');
+  if (artifactSubject) {
+    try {
+      assertDeliveryArtifactSubject({ artifactSubject, acceptedSha, pullRequest: pr });
+    } catch {
+      fail('artifact-mismatch');
+    }
+  } else if (pr.headRefName !== branch) fail('branch-mismatch');
   if (pr.headRefOid !== acceptedSha) fail('head-mismatch');
   if (pr.baseRefName !== lineage.deliveryTarget) fail('base-mismatch');
   if (!SHA_RE.test(pr.mergeCommitSha || '')) fail('merge-commit-missing');

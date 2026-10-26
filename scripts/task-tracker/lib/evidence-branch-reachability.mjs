@@ -1,3 +1,4 @@
+import { validateArtifactSubject } from './artifact-subject.mjs';
 // @story #1168
 // Read-side backstop for provenance-bearing evidence. Writer-side worktree
 // guards can be explicitly overridden; ancestry of the stored artifact cannot.
@@ -99,6 +100,7 @@ export async function auditEvidenceBranchReachability({
   body,
   issueNumber,
   projectDir,
+  artifactSubject,
   deps = {},
 } = {}) {
   if (issueNumber == null) {
@@ -108,6 +110,7 @@ export async function auditEvidenceBranchReachability({
     throw new Error('evidence-branch-reachability: projectDir is required');
   }
 
+  if (artifactSubject) validateArtifactSubject({ projectDir, artifactSubject });
   const evidence = collectEvidenceWithProvenance(body);
   if (evidence.length === 0) return { ok: true, reasons: [], boundBranch: null, evidence };
 
@@ -133,11 +136,19 @@ export async function auditEvidenceBranchReachability({
       );
       continue;
     }
+    if (artifactSubject && item.boundIssue !== Number(issueNumber)) {
+      reasons.push('artifact: evidence issue mismatch');
+      continue;
+    }
     let reachable = reachableBySha.get(item.sha);
     if (reachable === undefined) {
       try {
         reachable = Boolean(
-          await isAncestor({ ancestor: item.sha, descendant: boundBranch, projectDir })
+          await isAncestor({
+            ancestor: item.sha,
+            descendant: artifactSubject?.commitSha ?? boundBranch,
+            projectDir,
+          })
         );
         reachableBySha.set(item.sha, reachable);
       } catch (error) {

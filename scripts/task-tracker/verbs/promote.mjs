@@ -211,14 +211,23 @@ export function spawnVerbTimeout(verb) {
   return GH_API_TIMEOUT_MS * 4;
 }
 
-function defaultSpawnVerb({ verb, issueNumber }) {
+function defaultSpawnVerb({ verb, issueNumber, artifactSubject }) {
   const script = path.resolve(__dir, '../task-tracker.mjs');
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env },
-      timeout: spawnVerbTimeout(verb),
-    });
+    const child = spawn(
+      process.execPath,
+      [
+        script,
+        verb,
+        String(issueNumber),
+        ...(artifactSubject ? ['--artifact-commit', artifactSubject.commitSha] : []),
+      ],
+      {
+        stdio: ['ignore', 'inherit', 'inherit'],
+        env: { ...process.env },
+        timeout: spawnVerbTimeout(verb),
+      }
+    );
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });
@@ -236,7 +245,7 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
 export function defaultRunMoveState(
-  { issueNumber, target, command = 'promote', projectDir, invokingDir },
+  { issueNumber, target, command = 'promote', projectDir, invokingDir, artifactSubject },
   { host = runMoveStateHost } = {}
 ) {
   const cursorRequest = buildCommandCursorRequest({
@@ -249,6 +258,7 @@ export function defaultRunMoveState(
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
     projectDir,
     invokingDir,
+    artifactSubject,
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -352,7 +362,12 @@ export async function runPromote({
   // already gates human sign-off on — instead of proceeding to `close`.
   if (recorded === 'review' && !isAgentReviewComplete(body)) {
     const reason = agentReviewIncompleteReason(body);
-    const exitCode = await spawnVerb({ verb: 'review', issueNumber, cfg });
+    const exitCode = await spawnVerb({
+      verb: 'review',
+      issueNumber,
+      cfg,
+      artifactSubject: deps.artifactSubject,
+    });
     return {
       status: 'redelegated-to-review',
       reason,
@@ -389,6 +404,7 @@ export async function runPromote({
   // failed write/readback/drift refuses before delegating the transition.
   const guardContextBase = {
     issueNumber,
+    artifactSubject: deps.artifactSubject,
     repo: cfg.repo,
     fromState: recorded,
     toState: target,
@@ -434,6 +450,7 @@ export async function runPromote({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,
+      artifactSubject: deps.artifactSubject,
       projectDir: guardContextBase.projectDir,
       deps: {
         pexec: deps.pexec || pexec,
@@ -478,7 +495,12 @@ export async function runPromote({
     ? {
         kind: 'alias',
         verb: aliasVerb,
-        exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
+        exitCode: await spawnVerb({
+          verb: aliasVerb,
+          issueNumber,
+          cfg,
+          artifactSubject: deps.artifactSubject,
+        }),
       }
     : {
         kind: 'direct',
@@ -488,6 +510,7 @@ export async function runPromote({
           cfg,
           projectDir: guardContextBase.projectDir,
           invokingDir: guardContextBase.invokingDir,
+          artifactSubject: deps.artifactSubject,
         }),
       };
 

@@ -90,6 +90,7 @@ export const developExitCodeCompleteGuard = {
         body: ctx.body,
         issueNumber: ctx.issueNumber,
         projectDir: ctx.projectDir,
+        artifactSubject: ctx.artifactSubject,
       });
       if (!reachability.ok) {
         return {

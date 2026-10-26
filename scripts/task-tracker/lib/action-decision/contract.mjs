@@ -112,6 +112,14 @@ const decompositionArgs = args(['issue', 'operationId'], {
   operationId: Object.freeze({ type: 'nullable-uuid' }),
 });
 export const CODE_DEFINITIONS = Object.freeze({
+  'develop-artifact-authority-invalid': decisionBlocked('develop-artifact-authority-invalid', [
+    'develop-exit-receipt',
+  ]),
+  'review-verification-evidence-invalid': decisionBlocked(
+    'review-verification-evidence-invalid',
+    ['authority-collection'],
+    { phases: ['collection', 'evaluation'] }
+  ),
   'decomposition-required': decisionBlocked(
     'decomposition-required',
     ['decomposition-continuation', 'develop-exit-code-complete', 'plan-exit-decomposition'],

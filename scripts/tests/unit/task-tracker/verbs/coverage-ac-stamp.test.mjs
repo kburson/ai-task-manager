@@ -212,3 +212,122 @@ test('happy path: verifier passes → stamps marker, no exit', async () => {
 });
 
 console.log('coverage-ac-stamp.test.mjs: defined');
+
+// @story #2096 — refuse evidence when the declaration changes after execution.
+for (const change of ['replace', 'add']) {
+  test(`ac-stamp refuses ${change} verifier declaration at fresh write base`, async () => {
+    const original = bodyWithAc();
+    const fresh = original.replace(
+      VERIFIER_CMD,
+      change === 'replace' ? 'npm run lint' : VERIFIER_CMD + '` `npm run lint'
+    );
+    let reads = 0;
+    let writes = 0;
+    const delegate = makePexec({ body: original });
+    const pexec = async (bin, args = [], options = {}) => {
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view')
+        return { stdout: ++reads === 1 ? original : fresh, stderr: '' };
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'edit') ++writes;
+      return delegate(bin, args, options);
+    };
+    await assert.rejects(
+      runVerb(
+        baseCtx({
+          statePath: stateFile('#777'),
+          rest: [AC_LABEL],
+          pexec,
+        })
+      ),
+      /verifier declaration changed/
+    );
+    assert.equal(writes, 0, 'no stale proof published');
+  });
+}
+
+// @story #2096 — real fresh-base receipt authorization.
+for (const drift of ['remove', 'replace', 'retire'])
+  test(`ac reuse refuses ${drift}d current Test receipt before publication`, async () => {
+    const {
+      createVerificationReceipt,
+      upsertVerificationReceipt,
+      canonicalVerificationCommandSet,
+    } = await import('../../../../task-tracker/lib/verification-receipt.mjs');
+    const { splitCmd } = await import('../../../../task-tracker/lib/evidence-runner.mjs');
+    const sha = 'a'.repeat(40),
+      command = VERIFIER_CMD;
+    const fp = {
+      commitSha: sha,
+      verificationCommands: canonicalVerificationCommandSet([command]),
+      environment: {
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        lockfileHash: 'sha256:' + 'a'.repeat(64),
+        configHashes: {},
+        sandbox: { kind: 'worktree', identity: tmpRoot, clean: true },
+      },
+    };
+    const receipt = createVerificationReceipt({
+      issueNumber: 777,
+      stage: 'test',
+      fingerprint: fp,
+      commands: [
+        ...[
+          ['lint-full', 'lint'],
+          ['format-full', 'format:check'],
+          ['test-unit', 'test:unit'],
+          ['test-integration', 'test:integration'],
+          ['test-slow', 'test:slow'],
+        ].map(([classification, script]) => ({
+          classification,
+          command: 'npm',
+          args: ['run', script],
+          exitCode: 0,
+          durationMs: 1,
+        })),
+        {
+          classification: 'test-targeted-1',
+          command: splitCmd(command)[0],
+          args: splitCmd(command).slice(1),
+          exitCode: 0,
+          durationMs: 1,
+        },
+      ],
+      now: () => '2026-10-26T20:00:00.000Z',
+    });
+    const plain = bodyWithAc().replace(
+      '- [ ] existing entry',
+      `- [ ] \`${VERIFIER_CMD}\` <!-- id=1 -->`
+    );
+    const original = upsertVerificationReceipt(plain, receipt);
+    const fresh =
+      drift === 'remove'
+        ? plain
+        : drift === 'retire'
+          ? original.replace('aitm-verification-receipt', 'aitm-retired-verification-receipt')
+          : upsertVerificationReceipt(plain, {
+              ...receipt,
+              receiptId: '7' + receipt.receiptId.slice(1),
+            });
+    let reads = 0,
+      writes = 0;
+    const delegate = makePexec({ body: original });
+    const pexec = async (bin, args = [], options = {}) => {
+      if (bin === 'git' && args.includes('rev-parse')) return { stdout: sha, stderr: '' };
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view')
+        return { stdout: ++reads === 1 ? original : fresh, stderr: '' };
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'edit') writes++;
+      return delegate(bin, args, options);
+    };
+    await assert.rejects(
+      runVerb(
+        baseCtx({
+          statePath: stateFile('#777'),
+          rest: [AC_LABEL],
+          pexec,
+          deps: { getLiveState: async () => 'review', buildFingerprint: () => fp },
+        })
+      ),
+      /proof authority changed|authorizing receipt changed/
+    );
+    assert.equal(writes, 0);
+  });

@@ -1,3 +1,11 @@
+import { resolveReviewVerificationEvidence } from './review.mjs';
+import { assertReviewedDeclarations } from '../lib/issue-proof-authority.mjs';
+import {
+  validateArtifactSubject,
+  artifactReceiptMatches,
+  sourceCommit,
+} from '../lib/artifact-subject.mjs';
+import { captureArtifactOperator } from '../lib/artifact-execution.mjs';
 import { randomUUID } from 'node:crypto';
 import { pexec as closePexec } from '../../gh/lib/gh-client.mjs';
 
@@ -689,6 +697,44 @@ export async function loadCloseDeliveryGateInput({
   ]);
   const branch = String(branchOut || '').trim();
   const localHeadSha = String(headOut || '').trim();
+  const artifactSubject = ctx.artifactSubject;
+  let operatorContext;
+  if (artifactSubject) {
+    assertReviewedDeclarations(body);
+    validateArtifactSubject({ projectDir, artifactSubject });
+    operatorContext = (ctx.captureArtifactOperator ?? captureArtifactOperator)({
+      projectDir,
+      issueNumber,
+    });
+    if (
+      !artifactReceiptMatches({
+        receipt: parseVerificationReceipt(body, 'test'),
+        artifactSubject,
+        operatorContext,
+      })
+    )
+      throw new TypeError('artifact: Close Test receipt mismatch');
+    const evidence = await resolveReviewVerificationEvidence({
+      body,
+      artifactSubject,
+      operatorContext,
+      issueNumber,
+      repository: cfg.repo,
+      projectDir,
+      getHeadSha: async () => localHeadSha,
+    });
+    if (!evidence.ok)
+      throw new TypeError(
+        'artifact: Close current Test evidence invalid: ' + JSON.stringify(evidence.reasons)
+      );
+    const finalOperator = (ctx.captureArtifactOperator ?? captureArtifactOperator)({
+      projectDir,
+      issueNumber,
+    });
+    if (canonicalRecordJson(finalOperator) !== canonicalRecordJson(operatorContext))
+      throw new Error('artifact: Close operator changed during Test evidence validation');
+    validateArtifactSubject({ projectDir, artifactSubject });
+  }
   const directoryLane = lifecycleEvidence !== null;
   const testReceiptSha = parseVerificationReceipt(body, 'test')?.commitSha ?? null;
   const reviewReceiptSha = directoryLane
@@ -697,23 +743,37 @@ export async function loadCloseDeliveryGateInput({
   const agentReviewPassed = directoryLane
     ? hasAcceptedReviewEvidence(lifecycleEvidence)
     : isAgentReviewComplete(body);
-  const { stdout: prOut } = await pexec(
-    'gh',
-    [
-      'pr',
-      'list',
-      '-R',
-      cfg.repo,
-      '--head',
-      branch,
-      '--state',
-      'all',
-      '--json',
-      'number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName',
-    ],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => {
+  let listedPullRequests;
+  if (artifactSubject) {
+    if (ctx.fetchCloseArtifactPullRequests)
+      listedPullRequests = await ctx.fetchCloseArtifactPullRequests(artifactSubject);
+    else {
+      const delivery = createDefaultDeliverDeps({ cfg, projectDir }, { exec: pexec });
+      const refs = await delivery.listPullRequests({ headSha: artifactSubject.commitSha });
+      listedPullRequests = await Promise.all(
+        refs.map(({ number }) => delivery.fetchPullRequest({ prNumber: number }))
+      );
+    }
+  } else {
+    const { stdout: prOut } = await pexec(
+      'gh',
+      [
+        'pr',
+        'list',
+        '-R',
+        cfg.repo,
+        '--head',
+        branch,
+        '--state',
+        'all',
+        '--json',
+        'number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName',
+      ],
+      { timeout: GH_API_TIMEOUT_MS }
+    );
+    listedPullRequests = JSON.parse(String(prOut || '[]'));
+  }
+  const pullRequests = listedPullRequests.map((pr) => {
     const merged = String(pr.state || '').toUpperCase() === 'MERGED';
     const mergedAt = merged ? normalizeGitHubInstant(pr.mergedAt) : pr.mergedAt;
     if (merged && mergedAt === null) throw new TypeError('close-delivery-pr-merged-at');
@@ -776,6 +836,7 @@ export async function loadCloseDeliveryGateInput({
           agentReviewPassed,
           reviewAuthority,
           pullRequests,
+          artifactSubject,
         })
       : null;
   const acceptedSha =
@@ -847,6 +908,7 @@ export async function loadCloseDeliveryGateInput({
   }
   return {
     issueNumber,
+    ...(artifactSubject ? { artifactSubject, operatorContext } : {}),
     repository: cfg.repo,
     body,
     lineage,
@@ -2117,11 +2179,21 @@ export function applyCloseReviewApprovalBypass(guardResult, reviewGateBypassed) 
   return { ...guardResult, status: 'ready', ok: true, refusals: [], humanDecision: null };
 }
 
-export async function verifyFreshCloseProjection({ body, head, evaluatedAt, evaluate }) {
+export async function verifyFreshCloseProjection({
+  body,
+  head,
+  artifactSubject,
+  evaluatedAt,
+  evaluate,
+}) {
   if (typeof evaluate !== 'function') {
     throw new Error('close-authority-drift: fresh guard evaluator unavailable');
   }
-  const projection = projectFunctionalDod({ body, head, evaluatedAt });
+  const projection = projectFunctionalDod({
+    body,
+    head: sourceCommit({ artifactSubject, operatorHead: head }),
+    evaluatedAt,
+  });
   if (projection.normalization) {
     throw new Error('close-authority-drift: new normalization required');
   }
@@ -3782,6 +3854,7 @@ export async function verbClose(ctx) {
         fromState: 'review',
         toState: 'done',
         body: projectedBody,
+        artifactSubject: ctx.artifactSubject,
         lifecycleEvidence: projectedLifecycleEvidence,
         cfg,
         projectDir,
@@ -3864,6 +3937,13 @@ export async function verbClose(ctx) {
             issueNumber: closeIssueNum,
             repo: cfg.repo,
             scanBody: body,
+            ...(ctx.artifactSubject
+              ? {
+                  authorityBody: body,
+                  operatorContext: resolvedDeliveryGate?.gateInput?.operatorContext,
+                }
+              : {}),
+            artifactSubject: ctx.artifactSubject,
             projectDir,
             deps: {
               pexec,
@@ -4578,6 +4658,7 @@ export async function verbClose(ctx) {
       try {
         await verifyFreshCloseProjection({
           body: resolvedDeliveryGate.deliveryBody,
+          artifactSubject: ctx.artifactSubject,
           head:
             resolvedDeliveryGate.gateInput.observedLocalHeadSha ??
             resolvedDeliveryGate.gateInput.localHeadSha,

@@ -1,3 +1,13 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
+import { stampDeclarationIdentity } from '../lib/stamp-declaration.mjs';
+import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // #345 — `/task ac-stamp "<ac label>"` runs the verifier command(s) declared by
 // an Acceptance Criteria checkbox line's `aitm-verified-by` markers and stamps
 // the resulting evidence marker
@@ -12,7 +22,7 @@
 import { loadState } from '../state.mjs';
 import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { mutateIssueBody as nativeMutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
@@ -36,6 +46,50 @@ export async function verbAcStamp(ctx) {
     process.exit(1);
   }
   const issueNum = s.active.replace(/^#/, '');
+  const operatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: issueNum })
+    : null;
+  const mutateIssueBody = (input) => {
+    const permitted = [
+      captureIssueProofAuthority(body),
+      captureIssueProofAuthority(input.mutate(body)),
+    ];
+    return nativeMutateIssueBody({
+      ...input,
+      validateFreshBase: (base) => {
+        const freshTarget = findEvidenceAc(base, label);
+        if (stampDeclarationIdentity(base, freshTarget) !== declarationIdentity)
+          throw new Error(
+            'ac-stamp: verifier declaration changed; run the current declaration again'
+          );
+        if (ctx.artifactSubject) {
+          validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+        }
+        assertIssueProofAuthority(base, permitted);
+        input.validateFreshBase?.(base);
+      },
+      validateFreshBaseAsync: async (base, next) => {
+        const freshDecision = await decideStampExecutionFromEnv({
+          commands: target.evidenceCommands,
+          body: base,
+          issueNumber: issueNum,
+          cfg,
+          pexec,
+          projectDir,
+          deps: ctx.deps,
+          artifactSubject: ctx.artifactSubject,
+        });
+        if (freshDecision.action !== decision.action || freshDecision.live !== decision.live)
+          throw new Error(
+            'artifact: authorizing receipt changed or verifier state changed before write'
+          );
+        await input.validateFreshBaseAsync?.(base, next);
+        if (ctx.artifactSubject)
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+      },
+    });
+  };
 
   const { stdout: body } = await pexec(
     'gh',
@@ -48,6 +102,8 @@ export async function verbAcStamp(ctx) {
     issueBody: body,
     readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
   });
+  if (directory && ctx.artifactSubject)
+    throw new Error('artifact: directory authority unsupported');
   const contractTarget = directory?.contract.acceptanceCriteria.find(
     (entry) => entry.text.replace(/\s+/g, ' ').trim() === label.replace(/\s+/g, ' ').trim()
   );
@@ -72,6 +128,8 @@ export async function verbAcStamp(ctx) {
     process.exit(1);
   }
 
+  const declarationIdentity = stampDeclarationIdentity(body, target);
+
   const decision = await decideStampExecutionFromEnv({
     commands: target.evidenceCommands,
     body,
@@ -80,6 +138,7 @@ export async function verbAcStamp(ctx) {
     pexec,
     projectDir,
     deps: ctx.deps,
+    artifactSubject: ctx.artifactSubject,
   });
   if (decision.action === 'refuse') {
     console.error(`[task-tracker] ac-stamp: ${decision.message}`);
@@ -154,10 +213,14 @@ export async function verbAcStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    executionContext: sourceExecutionContext,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    artifactSubject: ctx.artifactSubject,
+    boundIssue: issueNum,
+    installDependencies: Boolean(ctx.artifactSubject),
     // #446 — content-addressed suite-run cache. The store lives in the REAL
     // project's machine-local tree (`.tmp/aitm/cache/`, #573), decoupled from
     // `cwd`, so repeat stamps of the same heavyweight command at one clean HEAD
@@ -183,10 +246,12 @@ export async function verbAcStamp(ctx) {
   const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
   const ts = ran[0]?.ts || nowIso(ctx.deps);
   const canonicalCmd = ran[0]?.cmd || '';
-  const executionContext = captureEvidenceProvenance({
-    projectDir,
-    boundIssue: issueNum,
-  });
+  const executionContext =
+    sourceExecutionContext ??
+    captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
 
   if (directory) {
     await writeDirectoryContractOperation({

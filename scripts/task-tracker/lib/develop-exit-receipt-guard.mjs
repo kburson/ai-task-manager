@@ -1,3 +1,9 @@
+import {
+  sourceCommit,
+  validateArtifactSubject,
+  artifactReceiptMatches,
+} from './artifact-subject.mjs';
+import { captureArtifactOperator } from './artifact-execution.mjs';
 // @story #937
 
 import { execFileSync } from 'node:child_process';
@@ -54,11 +60,40 @@ export const developExitReceiptGuard = Object.freeze({
         'develop-to-test-receipt-malformed: a claimed verification receipt is malformed and cannot establish authority';
       return { ok: false, reason, blockers: [reason] };
     }
-    const headSha = resolveHead(ctx);
+    let operatorContext;
+    try {
+      if (ctx.artifactSubject) {
+        validateArtifactSubject({
+          projectDir: ctx.projectDir,
+          artifactSubject: ctx.artifactSubject,
+        });
+        operatorContext = (ctx.deps?.captureArtifactOperator ?? captureArtifactOperator)({
+          projectDir: ctx.projectDir,
+          issueNumber: ctx.issueNumber,
+        });
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        code: 'develop-artifact-authority-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
+        reason: error.message,
+        blockers: [error.message],
+      };
+    }
+    const headSha = sourceCommit({
+      artifactSubject: ctx.artifactSubject,
+      operatorHead: resolveHead(ctx),
+    });
     const readReceipt =
       ctx?.deps?.readDevelopReceipt || ((body) => parseVerificationReceipt(body, 'develop-final'));
     const receipt = await readReceipt(ctx.body);
-    if (headSha && receiptPasses(receipt, ctx.issueNumber, headSha)) {
+    if (
+      headSha &&
+      receiptPasses(receipt, ctx.issueNumber, headSha) &&
+      artifactReceiptMatches({ receipt, artifactSubject: ctx.artifactSubject, operatorContext })
+    ) {
       if (hasVerificationReceiptMarker(ctx.body, 'develop-final')) {
         const authority = validateVerificationReceiptCommandAuthority({
           body: ctx.body,

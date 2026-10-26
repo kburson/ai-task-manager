@@ -7,6 +7,7 @@ import { fetchIssueProjectMembership } from '../gh/lib/project-membership.mjs';
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
+import { parseArtifactSelection, resolveArtifactSubject } from './lib/artifact-subject.mjs';
 import { realpathSync } from 'node:fs';
 import { resolveEvidenceExecutionContext } from './lib/evidence-v2/execution-context.mjs';
 import { createEvidenceRuntime } from './lib/evidence-v2/runtime-adapter.mjs';
@@ -132,6 +133,7 @@ export async function runMoveStateInProcess(
     tailProfile = 'task-owner',
     reviewAuthority = null,
     lifecycleEvidence = null,
+    artifactSubject = null,
     cursorCommand = null,
     projectDir,
     invokingDir,
@@ -190,6 +192,7 @@ export async function runMoveStateInProcess(
       tailProfile,
       reviewAuthority,
       lifecycleEvidence,
+      artifactSubject,
       projectDir,
       invokingDir,
     });
@@ -277,6 +280,8 @@ export async function flushBoundActorInterval(
 }
 
 export function buildContext(rawArgv = process.argv.slice(2), { executionContext = null } = {}) {
+  const artifactSelection = parseArtifactSelection(rawArgv);
+  rawArgv = artifactSelection.argv;
   const recordedContext =
     executionContext == null ? null : resolveEvidenceExecutionContext(executionContext);
   if (recordedContext && realpathSync(getProjectDir()) !== recordedContext.sourceRoot) {
@@ -313,6 +318,11 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     .map((a) => (ISSUE_ARG_VERBS.has(verb) && /^\d+$/.test(a) ? `#${a}` : a));
 
   const projectDir = getProjectDir();
+  const artifactSubject = artifactSelection.commitSha
+    ? resolveArtifactSubject({ projectDir, commitSha: artifactSelection.commitSha })
+    : null;
+  if (artifactSubject && recordedContext)
+    throw new Error('artifact: evidence-v2 context unsupported');
   const cfg = loadConfig();
   // #314 — surface configuration drift once per process so operators see
   // missing project-field ids before silent skips bury them.
@@ -324,6 +334,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   const SKIP_NETWORK = process.env.TT_SKIP_NETWORK === '1';
 
   const ctx = {
+    artifactSubject,
     ...(recordedContext ? { executionContext: recordedContext } : {}),
     cfg,
     projectDir,
@@ -839,6 +850,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     runMoveStateInProcess(issue, state, {
       projectDir: ctx.projectDir,
       invokingDir: ctx.invokingDir ?? process.cwd(),
+      artifactSubject: ctx.artifactSubject,
       ...opts,
       skipNetwork: SKIP_NETWORK,
     });

@@ -507,3 +507,23 @@ test('pure delivery policy modules contain no process execution boundary', () =>
     assert.equal(source.includes(['gh', 'pr', 'merge'].join(' ')), false);
   }
 });
+
+test('#2096 explicit artifact separates operator branch/HEAD from exact PR source', () => {
+  const input = snapshot();
+  const treeSha = 'c'.repeat(40);
+  input.artifactSubject = { commitSha: HEAD, treeSha };
+  input.localHeadSha = OTHER_HEAD;
+  input.binding.branch = 'controller';
+  input.pullRequests[0].sourceCommitEvidence = [{ oid: HEAD, tree: treeSha }];
+  const result = validateDeliveryPreflight(input);
+  assert.equal(result.expectedHeadSha, HEAD);
+  assert.equal(result.pr.headRefName, 'codex/939-full-auto-merge');
+  assert.equal(input.binding.branch, 'controller');
+  assert.equal(input.localHeadSha, OTHER_HEAD);
+  assert.throws(() =>
+    validateDeliveryPreflight({
+      ...input,
+      artifactSubject: { commitSha: HEAD, treeSha: 'd'.repeat(40) },
+    })
+  );
+});

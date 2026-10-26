@@ -194,6 +194,13 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
+function hasPreflightKeys(value, keys) {
+  return hasExactKeys(
+    value,
+    value?.artifactSubject === undefined ? keys : [...keys, 'artifactSubject']
+  );
+}
+
 function hasExactKeys(value, keys) {
   if (!isPlainObject(value)) return false;
   const actual = Object.keys(value).sort();
@@ -259,7 +266,7 @@ function validateLineage(lineage, baseRef) {
   }
 }
 
-function validatePullRequest(pr, binding, baseRef, { merged = false } = {}) {
+function validatePullRequest(pr, binding, baseRef, { merged = false, artifactSubject } = {}) {
   if (!isPlainObject(pr) || !isPositiveInteger(pr.number)) fail('pull-request-count');
   if (merged) {
     if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') {
@@ -270,7 +277,7 @@ function validatePullRequest(pr, binding, baseRef, { merged = false } = {}) {
   }
   if (pr.isDraft !== false) fail('pull-request-draft');
   if (pr.baseRefName !== baseRef) fail('pull-request-base');
-  if (pr.headRefName !== binding.branch) fail('pull-request-head');
+  if (!artifactSubject && pr.headRefName !== binding.branch) fail('pull-request-head');
   return pr;
 }
 
@@ -327,8 +334,8 @@ function validateConfiguration(config) {
 }
 
 function validatePreflight(input, { merged = false } = {}) {
-  const exceptionalInput = !merged && hasExactKeys(input, EXCEPTION_INPUT_KEYS);
-  if (!hasExactKeys(input, INPUT_KEYS) && !exceptionalInput) fail('input');
+  const exceptionalInput = !merged && hasPreflightKeys(input, EXCEPTION_INPUT_KEYS);
+  if (!hasPreflightKeys(input, INPUT_KEYS) && !exceptionalInput) fail('input');
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
@@ -343,6 +350,7 @@ function validatePreflight(input, { merged = false } = {}) {
       agentReviewPassed: input.issue.agentReviewPassed,
       reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
+      artifactSubject: input.artifactSubject,
     });
   } catch (error) {
     if (!(error instanceof DeliveryAuthorityError)) throw error;
@@ -356,17 +364,20 @@ function validatePreflight(input, { merged = false } = {}) {
             : 'input';
     fail(category, error);
   }
-  if (authority.headRelation !== 'current') fail('head-mismatch');
-  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged });
+  if (authority.headRelation !== 'current' && !input.artifactSubject) fail('head-mismatch');
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, {
+    merged,
+    artifactSubject: input.artifactSubject,
+  });
   validateExactHead({
-    localHeadSha: input.localHeadSha,
+    localHeadSha: input.artifactSubject?.commitSha ?? input.localHeadSha,
     remoteHeadSha: pr.headRefOid,
     testReceiptSha: input.testReceiptSha,
     acceptedReviewSha: input.acceptedReviewSha,
   });
   if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
   if (!merged && pr.mergeable !== 'MERGEABLE') fail('mergeability');
-  validateChecks(input.checks, input.localHeadSha);
+  validateChecks(input.checks, input.artifactSubject?.commitSha ?? input.localHeadSha);
   const resolved = validateConfiguration(input.config);
 
   let builtCommitText;
@@ -376,7 +387,7 @@ function validatePreflight(input, { merged = false } = {}) {
     builtCommitText = builder({
       issueNumber: input.issue.number,
       prNumber: pr.number,
-      expectedHeadSha: input.localHeadSha,
+      expectedHeadSha: input.artifactSubject?.commitSha ?? input.localHeadSha,
       commitSubjects: input.commitSubjects,
     });
     if (exceptionalInput) fail('attribution-exception-unneeded');
@@ -390,7 +401,10 @@ function validatePreflight(input, { merged = false } = {}) {
       fail('attribution', error, sourceAttributionDiagnostic(input.commitSubjects));
     }
     try {
-      const inventory = canonicalSourceInventory(input.sourceInventory.commits, input.localHeadSha);
+      const inventory = canonicalSourceInventory(
+        input.sourceInventory.commits,
+        input.artifactSubject?.commitSha ?? input.localHeadSha
+      );
       const record = input.attributionException;
       const proposal = record.proposal;
       const scope = {
@@ -399,7 +413,7 @@ function validatePreflight(input, { merged = false } = {}) {
         prNumber: pr.number,
         baseRef: pr.baseRefName,
         headRef: pr.headRefName,
-        headSha: input.localHeadSha,
+        headSha: input.artifactSubject?.commitSha ?? input.localHeadSha,
         sourceDigest: inventory.sourceDigest,
       };
       if (
@@ -411,7 +425,7 @@ function validatePreflight(input, { merged = false } = {}) {
       const evaluated = evaluateDeliveryAttributionException({
         issueNumber: input.issue.number,
         prNumber: pr.number,
-        expectedHeadSha: input.localHeadSha,
+        expectedHeadSha: input.artifactSubject?.commitSha ?? input.localHeadSha,
         commits: inventory.commits,
         attributableCommits: input.sourceInventory.attributableCommits,
         verifiedMergeShas: input.sourceInventory.verifiedMergeShas,
@@ -443,7 +457,7 @@ function validatePreflight(input, { merged = false } = {}) {
   return deepFreeze({
     issue,
     pr: { ...pr },
-    expectedHeadSha: input.localHeadSha,
+    expectedHeadSha: input.artifactSubject?.commitSha ?? input.localHeadSha,
     mergeMethod: resolved.mergeMethod,
     commitText,
     ...(exceptionDisposition === null ? {} : { exceptionDisposition }),
@@ -486,7 +500,7 @@ export function validateNoCommitDeliveryPreflight(input = {}) {
 }
 
 export function validateHistoricalRecoveryPreflight(input = {}) {
-  if (!hasExactKeys(input, HISTORICAL_INPUT_KEYS)) fail('input');
+  if (!hasPreflightKeys(input, HISTORICAL_INPUT_KEYS)) fail('input');
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
@@ -502,6 +516,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
       agentReviewPassed: input.issue.agentReviewPassed,
       reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
+      artifactSubject: input.artifactSubject,
     });
   } catch (error) {
     if (!(error instanceof DeliveryAuthorityError)) throw error;
@@ -516,7 +531,10 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
     fail(category, error);
   }
   if (authority.headRelation !== 'advanced') fail('head-relation');
-  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged: true });
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, {
+    merged: true,
+    artifactSubject: input.artifactSubject,
+  });
   if (
     !isSha(input.testReceiptSha) ||
     !isSha(input.acceptedReviewSha) ||
@@ -546,7 +564,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
     repository: input.config.repo,
     prNumber: pr.number,
     baseRef,
-    headRef: input.binding.branch,
+    headRef: pr.headRefName,
     expectedHeadSha: authority.acceptedSha,
     mergeMethod: resolved.mergeMethod,
     attributionTokens: commitText.attributionTokens,
@@ -574,7 +592,7 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
 }
 
 export function validateHistoricalReconstructionPreflight(input = {}) {
-  if (!hasExactKeys(input, HISTORICAL_RECONSTRUCTION_INPUT_KEYS)) fail('input');
+  if (!hasPreflightKeys(input, HISTORICAL_RECONSTRUCTION_INPUT_KEYS)) fail('input');
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
@@ -590,6 +608,7 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
       agentReviewPassed: input.issue.agentReviewPassed,
       reviewAuthority: input.issue.reviewAuthority,
       pullRequests: input.pullRequests,
+      artifactSubject: input.artifactSubject,
     });
   } catch (error) {
     if (!(error instanceof DeliveryAuthorityError)) throw error;
@@ -604,7 +623,10 @@ export function validateHistoricalReconstructionPreflight(input = {}) {
     fail(category, error);
   }
   if (authority.headRelation !== 'advanced') fail('head-relation');
-  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged: true });
+  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, {
+    merged: true,
+    artifactSubject: input.artifactSubject,
+  });
   if (
     !isSha(input.testReceiptSha) ||
     !isSha(input.acceptedReviewSha) ||

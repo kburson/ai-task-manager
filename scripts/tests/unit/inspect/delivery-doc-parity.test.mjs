@@ -142,7 +142,9 @@ test('#1381: delivery guide matches all three executable operational cases', () 
   assert.match(historicalCase, /does not reapply[\s\S]*required-check gate/i);
 
   const advancedBranch = deliverImpl.slice(
-    deliverImpl.indexOf("if (authority.headRelation === 'advanced')"),
+    deliverImpl.indexOf(
+      "if (authority.headRelation === 'advanced' && (!artifactSubject || mergedPullRequest))"
+    ),
     deliverImpl.indexOf('const checks = await fetchRequiredChecks')
   );
   assert.match(advancedBranch, /mode: 'historical-recovery'/);

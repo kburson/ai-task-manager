@@ -1,3 +1,9 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../issue-proof-authority.mjs';
+import { assertNativeArtifactOperator } from '../artifact-execution.mjs';
+import { validateArtifactSubject } from '../artifact-subject.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
 //
 // GitHub-mutation concern extracted from `scripts/gh/move-state.mjs`: the two
@@ -22,7 +28,10 @@ import {
   postReentryAuditComment,
   STAGES,
 } from '../stage-entry-markers.mjs';
-import { serializeEntryMarker } from '../stage-entry-grammar.mjs';
+import {
+  serializeEntryMarker,
+  parseEntryMarkers as parseGrammarEntryMarkers,
+} from '../stage-entry-grammar.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
@@ -42,6 +51,18 @@ export const STATUS_WRITE_READBACK_EXIT = 7;
 export const STATUS_MARKER_CONSISTENCY_EXIT = 8;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function assertArtifactTransition(ctx, body, expected) {
+  if (!ctx.artifactSubject) return;
+  if (!ctx.artifactTransitionAuthority) throw new Error('artifact: transition authority missing');
+  validateArtifactSubject({ projectDir: ctx.projectDir, artifactSubject: ctx.artifactSubject });
+  assertIssueProofAuthority(body, expected);
+  assertNativeArtifactOperator({
+    projectDir: ctx.projectDir,
+    issueNumber: Number(ctx.issueArg),
+    operatorContext: ctx.artifactTransitionAuthority.operatorContext,
+  });
+}
 
 // #711 — default read-back: query the item's live Status single-select
 // `optionId` for the configured project. Mirrors `resolveLiveStateName` in the
@@ -115,6 +136,25 @@ export async function runStatusWrite(ctx) {
     let confirmed = false;
     let lastSeen = '';
     for (let attempt = 1; attempt <= STATUS_WRITE_MAX_ATTEMPTS; attempt++) {
+      if (ctx.artifactSubject) {
+        try {
+          const body = await gh([
+            'issue',
+            'view',
+            issueArg,
+            '-R',
+            cfg.repo,
+            '--json',
+            'body',
+            '--jq',
+            '.body',
+          ]);
+          assertArtifactTransition(ctx, body, ctx.artifactTransitionAuthority?.entryProof);
+        } catch (error) {
+          process.stderr.write(`artifact: refusing Status write: ${error.message}\n`);
+          return { itemId, exit: 19 };
+        }
+      }
       await gh([
         'project',
         'item-edit',
@@ -168,6 +208,7 @@ export async function runStatusWrite(ctx) {
 export async function stampEntryMarkers(ctx) {
   const { issueArg, stateArg, transitionId, cfg, SKIP_NETWORK, gh } = ctx;
   if (!(!SKIP_NETWORK && STAGES.includes(stateArg))) return { priorState: undefined };
+  let priorState = null;
   try {
     const { writeLastKnownState, readLastKnownState } = await import('../../gh-timing-comment.mjs');
     const mutateBody =
@@ -176,11 +217,28 @@ export async function stampEntryMarkers(ctx) {
         const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
         return mutateIssueBody(args);
       });
-    let priorState = null;
     let priorVisitCount = 0;
     let nextVisitCount = 0;
     const stampTs = new Date().toISOString();
+    const expectedEntry =
+      ctx.artifactSubject && ctx.artifactTransitionAuthority
+        ? captureIssueProofAuthority(
+            writeLastKnownState(
+              stampEntryMarker(
+                ctx.artifactTransitionAuthority.body,
+                stateArg,
+                stampTs,
+                transitionId
+              ),
+              stateArg
+            )
+          )
+        : null;
     const validateAuthorityScope = (beforeBody) => {
+      assertArtifactTransition(ctx, beforeBody, [
+        ctx.artifactTransitionAuthority?.proof,
+        expectedEntry,
+      ]);
       if (
         ctx.resolvedFromState !== 'plan' ||
         stateArg !== 'develop' ||
@@ -197,7 +255,7 @@ export async function stampEntryMarkers(ctx) {
         throw new Error('plan-transition-authority:scope-drift-before-entry');
       }
     };
-    await mutateBody({
+    const entryWrite = await mutateBody({
       issueNumber: issueArg,
       repo: cfg.repo,
       maxRetries: 2,
@@ -211,6 +269,15 @@ export async function stampEntryMarkers(ctx) {
         return nextBody;
       },
     });
+    if (ctx.artifactSubject) {
+      if (typeof entryWrite?.body !== 'string')
+        throw new Error('artifact: entry write readback unavailable');
+      assertArtifactTransition(ctx, entryWrite.body, [
+        ctx.artifactTransitionAuthority.proof,
+        expectedEntry,
+      ]);
+      ctx.artifactTransitionAuthority.entryProof = captureIssueProofAuthority(entryWrite.body);
+    }
     // #741 — the stage the authoritative `aitm-last-known-state` marker points at
     // BEFORE this stamp advances it. Returned to the saga so a subsequent failed
     // board write can compensate by rolling the marker back to this value,
@@ -245,6 +312,32 @@ export async function stampEntryMarkers(ctx) {
       transitionId: transitionId ?? null,
     };
   } catch (err) {
+    if (ctx.artifactSubject && priorState !== null) {
+      try {
+        const current = await gh([
+          'issue',
+          'view',
+          issueArg,
+          '-R',
+          cfg.repo,
+          '--json',
+          'body',
+          '--jq',
+          '.body',
+        ]);
+        const ownEntry = parseGrammarEntryMarkers(current)
+          .filter((entry) => entry.state === stateArg)
+          .at(-1);
+        const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
+        if (readLastKnownState(current).state === stateArg && ownEntry?.move === transitionId)
+          await (ctx._rollbackRecordedState ?? rollbackRecordedState)(ctx, priorState);
+      } catch (rollbackError) {
+        process.stderr.write(
+          `artifact: entry compensation requires native reconciliation: ${rollbackError.message}\n`
+        );
+      }
+    }
+
     if (String(err?.message || '').startsWith('plan-transition-authority:')) throw err;
     // Entry evidence is written before Status. Surface a durable diagnostic,
     // then re-throw so the board cannot advance without its entry marker.

@@ -1,3 +1,14 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
+import { sourceCommit } from '../lib/artifact-subject.mjs';
+import {
+  withArtifactSource,
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+  assertArtifactSource,
+} from '../lib/artifact-execution.mjs';
 // `/task test` — sandboxed verification runner (#137).
 //
 // Replaces the in-place command runner that previously lived in review.mjs.
@@ -172,8 +183,8 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultCreateWorktree({ projectDir, path: wtPath }) {
-  await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
+async function defaultCreateWorktree({ projectDir, path: wtPath, ref = 'HEAD' }) {
+  await pexec('git', ['worktree', 'add', '--detach', wtPath, ref], {
     cwd: projectDir,
     timeout: 60_000,
   });
@@ -260,10 +271,19 @@ async function defaultExecInSandbox({ argv, path: wtPath, issueNumber }) {
   }
 }
 
-function defaultRunDevelopFinalization({ projectDir, issueNumber, cfg, verificationCommands }) {
+function defaultRunDevelopFinalization({
+  projectDir,
+  issueNumber,
+  cfg,
+  verificationCommands,
+  artifactSubject,
+  operatorContext,
+}) {
   return runDevelopVerification({
     projectDir,
     mode: 'final',
+    artifactSubject,
+    operatorContext,
     issueNumber,
     developVerification: cfg.developVerification,
     verificationProvider: cfg.verificationProvider,
@@ -284,13 +304,23 @@ async function defaultFetchBody({ cfg, issueNum }) {
 // #522 — `evidenceStamp` is forwarded so the sandbox auto-stamp call site (the
 // only Test-stage write that INTRODUCES execution proof) can bypass the
 // proof-introduction guard; all other Test writes leave it false.
-async function defaultMutateBody({ cfg, issueNum, mutate, evidenceStamp = false }) {
+export async function defaultMutateBody({
+  cfg,
+  issueNum,
+  mutate,
+  evidenceStamp = false,
+  deps = { pexec },
+  validateFreshBase,
+  validateFreshBaseAsync,
+}) {
   return mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
     mutate,
-    deps: { pexec },
+    deps,
     evidenceStamp,
+    validateFreshBase,
+    validateFreshBaseAsync,
   });
 }
 
@@ -418,6 +448,9 @@ function buildAbortComment(diag, err) {
 }
 
 export async function runVerbTest({
+  artifactSubject,
+  operatorContext,
+  sourceDir,
   cfg,
   issueNumber,
   projectDir,
@@ -427,13 +460,27 @@ export async function runVerbTest({
   if (!cfg) throw new Error('verbTest: cfg is required');
   if (!issueNumber) throw new Error('verbTest: issueNumber is required');
   if (!projectDir) throw new Error('verbTest: projectDir is required');
+  sourceDir ??= projectDir;
 
   const issueNum = String(issueNumber).replace(/^#/, '');
   const fetchBody = deps.fetchBody || defaultFetchBody;
-  const mutateBody = deps.mutateBody || defaultMutateBody;
+  const writeBody = deps.mutateBody || defaultMutateBody;
+  const mutateBody = async (input) => {
+    if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
+    return writeBody({
+      ...input,
+      validateFreshBaseAsync: async (base, next) => {
+        if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
+        await input.validateFreshBaseAsync?.(base, next);
+        if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
+      },
+    });
+  };
   const postComment = deps.postComment || defaultPostComment;
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
-  const createWorktree = deps.createWorktree || defaultCreateWorktree;
+  const createSandbox = deps.createWorktree || defaultCreateWorktree;
+  const createWorktree = (input) =>
+    createSandbox({ ...input, ...(artifactSubject ? { ref: artifactSubject.commitSha } : {}) });
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
   const recoverStaleTestSandboxes =
     deps.reapStaleTestSandboxes || (async () => ({ candidates: [], attempted: [] }));
@@ -442,7 +489,16 @@ export async function runVerbTest({
   const runDevelopFinalization = deps.runDevelopFinalization;
   const rawBuildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
   const buildFingerprint = async (input) => {
-    const fingerprint = await rawBuildFingerprint(input);
+    const fingerprint = await rawBuildFingerprint({
+      ...input,
+      ...(artifactSubject
+        ? {
+            projectDir: input.projectDir === projectDir ? sourceDir : input.projectDir,
+            artifactSubject,
+            operatorContext,
+          }
+        : {}),
+    });
     if (
       deps.buildFingerprint &&
       fingerprint?.verificationCommands === undefined &&
@@ -483,7 +539,8 @@ export async function runVerbTest({
     currentState,
     issueNumber: issueNum,
   });
-  const sha = await getHeadSha({ projectDir });
+  const operatorHead = await getHeadSha({ projectDir });
+  const sha = sourceCommit({ artifactSubject, operatorHead });
   const checkEntry = async () => {
     if (typeof deps.entryPreflight !== 'function') return null;
     let readiness;
@@ -493,7 +550,8 @@ export async function runVerbTest({
         cfg,
         projectDir,
         body,
-        head: sha,
+        head: operatorHead,
+        artifactSubject,
       });
     } catch (error) {
       return {
@@ -518,7 +576,7 @@ export async function runVerbTest({
   try {
     verificationProvider = (deps.resolveProvider || resolveVerificationProvider)({
       config: cfg.verificationProvider,
-      projectDir,
+      projectDir: sourceDir,
       legacyDevelopVerification: cfg.developVerification,
       deps,
     });
@@ -545,6 +603,12 @@ export async function runVerbTest({
       reasons: [lifecycleEvidenceReason(error)],
     };
   }
+  if (artifactSubject && authoritySource.kind === 'github-records/v1')
+    return {
+      status: 'directory-evidence-invalid',
+      sha,
+      reasons: [{ code: 'artifact-directory-unsupported' }],
+    };
   if (authoritySource.kind === 'github-records/v1') {
     const resolveLifecycleEvidence = deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence;
     let lifecycleEvidence;
@@ -874,8 +938,11 @@ export async function runVerbTest({
         body: `⚠ Develop-final receipt reuse refused before Test: ${codes}. Running one new Develop finalization.`,
       });
     }
+    const finalizationAuthority = captureIssueProofAuthority(body);
     const finalization = await runDevelopFinalization({
-      projectDir,
+      projectDir: sourceDir,
+      artifactSubject,
+      operatorContext,
       issueNumber: Number(issueNum),
       cfg,
       verificationCommands: vcs,
@@ -902,6 +969,11 @@ export async function runVerbTest({
       cfg,
       issueNum,
       evidenceStamp: true,
+      validateFreshBase: (base) =>
+        assertIssueProofAuthority(base, [
+          finalizationAuthority,
+          captureIssueProofAuthority(upsertVerificationReceipt(body, finalization.receipt)),
+        ]),
       mutate: (base) => upsertVerificationReceipt(base, finalization.receipt),
     });
     body = await fetchBody({ cfg, issueNum });
@@ -957,6 +1029,7 @@ export async function runVerbTest({
   let testExecutionContext = null;
   let evidenceRefusal = null;
   let testPlan = null;
+  let testPublicationAuthority;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
   // run; carries the evidence that made the drop legal so the receipt can say
   // "these lanes were skipped, and here is why" rather than staying silent.
@@ -982,6 +1055,21 @@ export async function runVerbTest({
         });
       }
     }
+
+    body = await fetchBody({ cfg, issueNum });
+    if (artifactSubject && readLastKnownState(body).state !== 'test')
+      throw new Error('artifact: issue proof authority changed before Test execution');
+    if (developEvidence) {
+      if (
+        canonicalRecordJson(parseVerificationReceipt(body, 'develop-final')) !==
+          canonicalRecordJson(developEvidence.receipt) ||
+        canonicalRecordJson(
+          canonicalVerificationCommandSet(parseVerificationCommands(body), { projectDir })
+        ) !== canonicalRecordJson(developEvidence.fingerprint.verificationCommands)
+      )
+        throw new Error('artifact: issue proof authority changed before Test execution');
+    }
+    testPublicationAuthority = captureIssueProofAuthority(body);
 
     // #254 — bounded retry of the setup chain only. A transient throw (registry
     // blip during `npm ci`, worktree-path contention) is retried up to
@@ -1386,6 +1474,26 @@ export async function runVerbTest({
         // #522 — sanctioned sandbox auto-stamp: `insertDodVerifiedMarker` +
         // `autoTickVerified` mint proof from the green sandbox run just executed.
         evidenceStamp: true,
+        validateFreshBase: (base) => {
+          assertIssueProofAuthority(base, [
+            testPublicationAuthority,
+            captureIssueProofAuthority(stamped),
+          ]);
+          if (developEvidence) {
+            const current = parseVerificationReceipt(base, 'develop-final');
+            if (
+              canonicalRecordJson(current) !== canonicalRecordJson(developEvidence.receipt) ||
+              !validateVerificationReceipt({
+                receipt: current,
+                expectedIssue: Number(issueNum),
+                expectedStage: 'develop-final',
+                fingerprint: testFingerprint,
+                required: developRequired,
+              }).ok
+            )
+              throw new Error('artifact: issue proof authority changed before Test publication');
+          }
+        },
         mutate: (base) => {
           let baseVerificationCommands;
           try {
@@ -1546,12 +1654,13 @@ export async function runVerbTest({
 // #346 — re-exported so the slow regression test (and any future callers that
 // need to exercise the two-stage cleanup) can import it directly without
 // reaching through `runVerbTest` deps injection.
-export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox };
+export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox, defaultNpmCi };
 
 // #1169 — Test owns an issue-scoped interlock for its complete execution,
 // including exact-SHA receipt short-circuits. Acquiring here keeps every body,
 // receipt, sandbox, and mutation path inside the #656 PID-liveness primitive.
 export async function runTestWithEntryInterlock({
+  artifactSubject,
   cfg,
   issueNumber,
   projectDir,
@@ -1589,13 +1698,56 @@ export async function runTestWithEntryInterlock({
       let result;
       let executionError;
       try {
-        result = await executeTest({
-          cfg,
-          issueNumber,
-          projectDir,
-          deps: { ...runDeps, entryPreflight },
-          now,
-        });
+        const execute = (extra = {}) =>
+          executeTest({
+            cfg,
+            issueNumber,
+            projectDir,
+            ...extra,
+            deps: { ...runDeps, entryPreflight, ...extra.deps },
+            now,
+          });
+        if (artifactSubject) {
+          let readiness;
+          try {
+            readiness = await entryPreflight({
+              issue: Number(issueNumber),
+              cfg,
+              projectDir,
+              artifactSubject,
+            });
+          } catch (error) {
+            readiness = {
+              status: 'indeterminate',
+              blockers: [
+                { code: 'authority-read-failed', reason: String(error?.message || error) },
+              ],
+            };
+          }
+          if (readiness?.status !== 'ready')
+            result = { status: 'entry-preflight-refused', readiness };
+          else {
+            const operatorContext = (runDeps.captureArtifactOperator ?? captureArtifactOperator)({
+              projectDir,
+              issueNumber,
+            });
+            result = await (runDeps.withArtifactSource ?? withArtifactSource)(
+              { projectDir, artifactSubject, installDependencies: true },
+              ({ sourceDir }) =>
+                execute({
+                  artifactSubject,
+                  sourceDir,
+                  operatorContext,
+                  deps: {
+                    beforeArtifactWrite: () => {
+                      assertNativeArtifactOperator({ projectDir, issueNumber, operatorContext });
+                      assertArtifactSource(sourceDir, artifactSubject);
+                    },
+                  },
+                })
+            );
+          }
+        } else result = await execute();
       } catch (error) {
         executionError = error;
       }
@@ -1659,6 +1811,7 @@ export async function verbTest(ctx) {
       issueNumber,
       projectDir,
       timingContext: ctx,
+      artifactSubject: ctx.artifactSubject,
       deps: {
         moveState,
         demoteState,

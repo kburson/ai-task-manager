@@ -1,3 +1,4 @@
+import { sourceCommit, validateArtifactSubject } from './artifact-subject.mjs';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -66,7 +67,14 @@ async function defaultEpicCommits({ projectDir }) {
   return parseEpicTrailLog(stdout);
 }
 
-export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, deps = {} } = {}) {
+export async function runReviewPreflight({
+  issueNumber,
+  repo,
+  projectDir,
+  cfg,
+  artifactSubject,
+  deps = {},
+} = {}) {
   if (!issueNumber) throw new Error('review-preflight: issueNumber is required');
   if (!repo) throw new Error('review-preflight: repo is required');
   if (!projectDir) throw new Error('review-preflight: projectDir is required');
@@ -91,7 +99,9 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
     reasons.push('tracked worktree changes are uncommitted');
   }
 
-  const headSha = String(await gitHeadSha()).trim();
+  if (artifactSubject) validateArtifactSubject({ projectDir, artifactSubject });
+  const operatorHeadSha = String(await gitHeadSha()).trim();
+  const headSha = sourceCommit({ artifactSubject, operatorHead: operatorHeadSha });
 
   // #885 — the body is fetched BEFORE the trail block (it used to be read after)
   // because the trail requirement branches on kind. An epic has no commit of its
@@ -107,7 +117,7 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
   // `isNoCommitKind(body)` → `hasDeliverableMarker(body)` check.
   const body = String(await getIssueBody());
   const reachabilityAudit = deps.evidenceBranchReachability || auditEvidenceBranchReachability;
-  const reachability = await reachabilityAudit({ body, issueNumber, projectDir });
+  const reachability = await reachabilityAudit({ body, issueNumber, projectDir, artifactSubject });
   reasons.push(...reachability.reasons);
   let lifecycleEvidence = null;
   let authoritySource = null;
@@ -246,7 +256,8 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
   return {
     ok: reasons.length === 0,
     reasons,
-    headSha,
+    headSha: operatorHeadSha,
+    ...(artifactSubject ? { artifactSubject, acceptedSha: headSha } : {}),
     bodyDigest: `sha256:${createHash('sha256').update(body).digest('hex')}`,
     derivedTrail,
     lifecycleEvidence,

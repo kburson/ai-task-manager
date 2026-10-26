@@ -9,6 +9,9 @@ const forwarding = new Map([
   ['bin/cli.mjs', 'targetDir'],
   ['scripts/task-tracker/lib/action-capture.mjs', 'cwd'],
   ['scripts/task-tracker/verbs/test.mjs', 'wtPath'],
+  // #2096: immutable-source sandbox forwarding; child root discovery still validates it.
+  ['scripts/task-tracker/lib/evidence-runner.mjs', 'sourceDir'],
+  ['scripts/task-tracker/verify-develop.mjs', 'projectDir'],
   ['scripts/maintenance/capture-guidance-explain.mjs', 'fixtureDir'],
   ['scripts/maintenance/capture-guidance-lifecycle.mjs', 'fixtureDir'],
 ]);

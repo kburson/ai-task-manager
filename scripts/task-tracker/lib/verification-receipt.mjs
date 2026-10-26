@@ -1,3 +1,5 @@
+import { validateArtifactSubject } from './artifact-subject.mjs';
+import { assertArtifactSource } from './artifact-execution.mjs';
 // @story #1089
 // cspell:ignore ABCDEFGHJKMNPQRSTVWXYZ CROCKFORD HJKMNP
 // Versioned, exact-SHA verification evidence shared by Develop, Test, and Review.
@@ -121,14 +123,106 @@ export function canonicalVerificationCommandSet(commands = [], { projectDir } = 
   return canonical;
 }
 
+function assertCompleteArtifactOperator(context) {
+  if (
+    !context?.sessionId ||
+    !context?.bindingGenerationId ||
+    !context?.worktreePath ||
+    !context?.branch ||
+    !SHA_RE.test(context?.headSha ?? '') ||
+    !Number.isSafeInteger(context?.boundIssue) ||
+    context.boundIssue <= 0
+  ) {
+    throw new Error('artifact: complete operator context required');
+  }
+}
+
+// Expected-source fingerprint only: immutable Git reads, never execution evidence.
+export function buildArtifactVerificationFingerprint({
+  projectDir,
+  artifactSubject,
+  operatorContext,
+  configPaths,
+  verificationCommands = [],
+} = {}) {
+  validateArtifactSubject({ projectDir, artifactSubject });
+  assertCompleteArtifactOperator(operatorContext);
+  const identity = realpathSync(projectDir);
+  const run = (args) => {
+    const result = spawnSync('git', args, { cwd: identity, maxBuffer: 16 * 1024 * 1024 });
+    if (result.error || result.status !== 0)
+      throw new Error('artifact: immutable source read failed', { cause: result.error });
+    return result.stdout;
+  };
+  const paths = [
+    ...new Set(
+      (configPaths ?? DEFAULT_CONFIG_PATHS).map((item) => normalizeRelativePath(identity, item))
+    ),
+  ].sort();
+  const entries = run([
+    'ls-tree',
+    '-r',
+    '-z',
+    artifactSubject.commitSha,
+    '--',
+    'package-lock.json',
+    ...paths,
+  ])
+    .toString()
+    .split('\0')
+    .filter(Boolean);
+  const blobs = new Map();
+  for (const entry of entries) {
+    const split = entry.indexOf('\t');
+    const [mode, kind, oid] = entry.slice(0, split).split(' ');
+    const relative = entry.slice(split + 1);
+    if (kind !== 'blob' || !['100644', '100755'].includes(mode) || !SHA_RE.test(oid))
+      throw new Error('artifact: fingerprint source must be a regular file');
+    blobs.set(relative, oid);
+  }
+  const hashBlob = (relative) => {
+    const oid = blobs.get(relative);
+    if (!oid) throw new Error('artifact: required fingerprint source absent');
+    return `sha256:${createHash('sha256')
+      .update(run(['cat-file', 'blob', oid]))
+      .digest('hex')}`;
+  };
+  const configHashes = {};
+  for (const relative of paths)
+    if (blobs.has(relative)) configHashes[relative] = hashBlob(relative);
+  return {
+    commitSha: artifactSubject.commitSha,
+    artifactSubject: structuredClone(artifactSubject),
+    operatorContext: structuredClone(operatorContext),
+    verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+      projectDir: identity,
+    }),
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: hashBlob('package-lock.json'),
+      configHashes,
+      sandbox: { kind: 'git-object', identity: `git:${artifactSubject.commitSha}`, clean: true },
+    },
+  };
+}
+
 export function buildVerificationFingerprint({
   projectDir,
   commitSha,
   configPaths,
+  artifactSubject,
+  operatorContext,
   verificationCommands = [],
 } = {}) {
   if (!SHA_RE.test(String(commitSha || ''))) {
     throw new TypeError('verification-receipt: commitSha must be a complete 40-hex SHA');
+  }
+  if (artifactSubject) {
+    assertArtifactSource(projectDir, artifactSubject);
+    if (commitSha !== artifactSubject.commitSha)
+      throw new Error('artifact: fingerprint commit mismatch');
+    assertCompleteArtifactOperator(operatorContext);
   }
   const identity = realpathSync(projectDir);
   const lockfilePath = path.join(identity, 'package-lock.json');
@@ -148,6 +242,12 @@ export function buildVerificationFingerprint({
   }
 
   return {
+    ...(artifactSubject
+      ? {
+          artifactSubject: structuredClone(artifactSubject),
+          operatorContext: structuredClone(operatorContext),
+        }
+      : {}),
     commitSha,
     verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
       projectDir: identity,
@@ -217,6 +317,8 @@ export function createVerificationReceipt({
   executionContext,
   now = () => new Date().toISOString(),
 } = {}) {
+  if (fingerprint?.environment?.sandbox?.kind === 'git-object')
+    throw new Error('artifact: read-only fingerprint is not execution evidence');
   const normalizedCommands = (commands || []).map(normalizeCommand);
   const fallback = typeof now === 'function' ? now() : now;
   const starts = normalizedCommands.map(({ startedAt }) => startedAt).filter(canonicalInstant);
@@ -232,6 +334,12 @@ export function createVerificationReceipt({
     issue: Number(issueNumber),
     stage: String(stage || ''),
     commitSha: fingerprint?.commitSha,
+    ...(fingerprint?.artifactSubject
+      ? {
+          artifactSubject: structuredClone(fingerprint.artifactSubject),
+          operatorContext: structuredClone(fingerprint.operatorContext),
+        }
+      : {}),
     startedAt,
     completedAt,
     environment: structuredClone(fingerprint?.environment),
@@ -527,6 +635,20 @@ export function validateVerificationReceipt({
     );
   }
   if (receipt.commitSha !== fingerprint?.commitSha) reasons.push(reason('sha-mismatch'));
+  if (Boolean(receipt.artifactSubject) !== Boolean(fingerprint?.artifactSubject))
+    reasons.push(reason('artifact-selection-mismatch'));
+  if (fingerprint?.artifactSubject) {
+    if (
+      canonicalRecordJson(receipt.artifactSubject ?? null) !==
+      canonicalRecordJson(fingerprint.artifactSubject)
+    )
+      reasons.push(reason('artifact-tree-mismatch'));
+    if (
+      canonicalRecordJson(receipt.operatorContext ?? null) !==
+      canonicalRecordJson(fingerprint.operatorContext ?? null)
+    )
+      reasons.push(reason('artifact-operator-mismatch'));
+  }
   if (
     receipt.verificationCommands === undefined ||
     !Array.isArray(fingerprint?.verificationCommands) ||

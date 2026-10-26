@@ -32,6 +32,7 @@ Read-only Test-entry readiness.
 
 function testFixture({
   body,
+  artifactSubject,
   state = 'develop',
   worktree,
   sessionState,
@@ -69,7 +70,7 @@ function testFixture({
       actionId,
       repository: REPOSITORY,
       issue: ISSUE,
-      inputs: { state, head: HEAD, body: effectiveBody },
+      inputs: { state, head: HEAD, body: effectiveBody, artifactSubject },
       attempt,
       deps: {
         effectAttempts: () => effects,
@@ -164,6 +165,14 @@ test('accepted directory-backed Test evidence does not require legacy VCs or san
   const decision = await fixture.evaluate('test');
   assert.equal(decision.status, 'ready', JSON.stringify(decision));
   assert.deepEqual(fixture.effects, []);
+  const selectedFixture = testFixture({
+    body,
+    delivery,
+    artifactSubject: { commitSha: HEAD, treeSha: 'c'.repeat(40) },
+  });
+  const selected = await selectedFixture.evaluate('test');
+  assert.equal(selected.status, 'blocked');
+  assert.deepEqual(selectedFixture.effects, []);
 });
 
 test('Review-state Test request is not advertised as runnable', async () => {
@@ -696,4 +705,20 @@ test('current wrong-tree Test provenance remains a readiness refusal', async () 
   const decision = await fixture.evaluate('test');
   assert.equal(decision.status, 'blocked');
   assert.ok(fixture.inspected.every((body) => body.includes('aitm-verification-receipt')));
+});
+
+test('explicit artifact readiness keeps actual HEAD observation and forwards source to guards', async () => {
+  const artifactSubject = { commitSha: 'b'.repeat(40), treeSha: 'c'.repeat(40) };
+  let observed;
+  const fixture = testFixture({
+    artifactSubject,
+    runGuards: async (_from, _to, context) => {
+      observed = context;
+      return { ok: true, status: 'ready', refusals: [], humanDecision: null };
+    },
+  });
+  const result = await fixture.evaluate('test');
+  assert.equal(result.status, 'ready');
+  assert.equal(observed.headSha, HEAD);
+  assert.deepEqual(observed.artifactSubject, artifactSubject);
 });

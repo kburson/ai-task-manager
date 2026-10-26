@@ -1,3 +1,4 @@
+import { sourceCommit } from '../artifact-subject.mjs';
 // @story #1666 #1887
 // Read-only Test-entry observations. An explanation is never an execution grant.
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
@@ -94,6 +95,7 @@ export async function evaluateTestReadiness({
   projectDir,
   body,
   head,
+  artifactSubject,
   deps = {},
   now = () => new Date().toISOString(),
 } = {}) {
@@ -155,7 +157,7 @@ export async function evaluateTestReadiness({
           // The collector already compared its observed issue body with this
           // snapshot. Resolve directory records against that same body.
           issueBody: initialBody,
-          expectedSha: initialHead,
+          expectedSha: sourceCommit({ artifactSubject, operatorHead: initialHead }),
           graphql:
             deps.lifecycleEvidenceDeps?.graphql ??
             (({ query, variables }) => gql(query, variables).then((data) => ({ data }))),
@@ -184,6 +186,7 @@ export async function evaluateTestReadiness({
       scope,
       cfg,
       projectDir,
+      artifactSubject,
       deps: deps.guardDeps,
       runGuards: deps.runGuards,
       resolveProvider: deps.resolveProvider,
@@ -293,6 +296,7 @@ export async function collectTestReadiness({
     blockers.push(blocked('test-directory-evidence-invalid'));
   }
   if (authoritySource?.kind === 'github-records/v1') {
+    if (ports.artifactSubject) blockers.push(blocked('test-directory-evidence-invalid'));
     const evidenceObservation = await attempt.observe({
       resource: 'delivery',
       identity: `evidence:${issue}:1`,
@@ -336,7 +340,10 @@ export async function collectTestReadiness({
   }
   let guardBody = body;
   try {
-    guardBody = planStaleTestReceiptRetirement(body, { expectedIssue: issue, head }).body;
+    guardBody = planStaleTestReceiptRetirement(body, {
+      expectedIssue: issue,
+      head: sourceCommit({ artifactSubject: ports.artifactSubject, operatorHead: head }),
+    }).body;
   } catch {
     if (!blockers.some(({ code }) => code === 'test-receipt-malformed')) {
       blockers.push(blocked('test-receipt-malformed'));
@@ -365,6 +372,7 @@ export async function collectTestReadiness({
       body: guardBody,
       projectDir,
       headSha: head,
+      artifactSubject: ports.artifactSubject,
       readOnly: true,
       deps: {
         ...(ports.deps ?? {}),

@@ -1,3 +1,14 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
+import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
+import { validateArtifactSubject, sourceCommit } from '../lib/artifact-subject.mjs';
+import {
+  withArtifactSource,
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // @story #1629
 import { statSync } from 'node:fs';
 import path from 'node:path';
@@ -65,6 +76,7 @@ import { parseEntryMarkers } from '../lib/stage-entry-markers.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   buildVerificationFingerprint,
+  buildArtifactVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
   hasMalformedVerificationReceiptClaim,
@@ -147,23 +159,32 @@ function markerMatchesSha(marker, sha) {
 }
 
 export async function resolveReviewVerificationEvidence({
+  artifactSubject,
+  operatorContext,
   body,
   issueNumber,
   repository,
   projectDir,
   getHeadSha,
-  buildFingerprint = buildVerificationFingerprint,
+  buildFingerprint,
   graphql,
   readContractRecord,
   listIssueRecords,
   resolveLifecycleEvidence = resolveLifecycleGateEvidence,
 } = {}) {
+  if (artifactSubject) operatorContext ??= captureArtifactOperator({ projectDir, issueNumber });
+  const fingerprintBuilder =
+    buildFingerprint ??
+    (artifactSubject ? buildArtifactVerificationFingerprint : buildVerificationFingerprint);
   let authoritySource;
   try {
     authoritySource = locateAuthoritySource({ issueBody: body });
   } catch (error) {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'github-records-v1',
       receipt: null,
       commandResults: new Map(),
@@ -171,13 +192,28 @@ export async function resolveReviewVerificationEvidence({
       remediation: 'Repair the issue directory and current accepted Test evidence.',
     };
   }
+  if (artifactSubject && authoritySource.kind === 'github-records/v1')
+    return {
+      ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
+      mode: 'receipt-v1',
+      receipt: null,
+      commandResults: new Map(),
+      reasons: [{ code: 'artifact-receipt-required' }],
+      remediation: 'Explicit artifact selection supports R0 body authority only.',
+    };
   if (authoritySource.kind === 'github-records/v1') {
     let commitSha;
     try {
-      commitSha = await getHeadSha({ projectDir });
+      commitSha = sourceCommit({ artifactSubject, operatorHead: await getHeadSha({ projectDir }) });
     } catch {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -199,6 +235,9 @@ export async function resolveReviewVerificationEvidence({
     } catch (error) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -209,6 +248,9 @@ export async function resolveReviewVerificationEvidence({
     if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -234,6 +276,9 @@ export async function resolveReviewVerificationEvidence({
     if (hasVerificationReceiptMarker(body, 'test') || hasMalformedVerificationReceiptClaim(body)) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'receipt-v1',
         receipt: null,
         commandResults: new Map(),
@@ -242,15 +287,29 @@ export async function resolveReviewVerificationEvidence({
           'Return to Develop, run Develop finalization, then complete one new Test pass.',
       };
     }
+    if (artifactSubject)
+      return {
+        ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
+        mode: 'receipt-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [{ code: 'artifact-receipt-required' }],
+      };
     return { ok: true, mode: 'legacy-marker', receipt: null, commandResults, reasons: [] };
   }
 
   let commitSha;
   try {
-    commitSha = await getHeadSha({ projectDir });
+    commitSha = sourceCommit({ artifactSubject, operatorHead: await getHeadSha({ projectDir }) });
   } catch {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'receipt-v1',
       receipt,
       commandResults: new Map(),
@@ -260,14 +319,19 @@ export async function resolveReviewVerificationEvidence({
   }
   let fingerprint;
   try {
-    fingerprint = await buildFingerprint({
+    fingerprint = await fingerprintBuilder({
       projectDir,
+      artifactSubject,
+      operatorContext,
       commitSha,
       verificationCommands: parseVerificationCommands(body),
     });
   } catch {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'receipt-v1',
       receipt,
       commandResults: new Map(),
@@ -297,6 +361,13 @@ export async function resolveReviewVerificationEvidence({
   }
   return {
     ok: reasons.length === 0,
+    ...(reasons.length > 0
+      ? {
+          code: 'review-verification-evidence-invalid',
+          args: {},
+          noAutomaticRemediation: { reason: 'operator-action-required' },
+        }
+      : {}),
     mode: 'receipt-v1',
     receipt,
     fingerprint,
@@ -896,6 +967,10 @@ export async function verbReview(ctx) {
     process.exit(1);
   }
 
+  const reviewOperatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: String(target).replace(/^#/, '') })
+    : null;
+
   // Test keeps the issue bound but closes its timing segment. Review is an
   // automated state action, so reopen that exact binding before preflight and
   // keep it open through Full-Auto approval/delivery. This is entry
@@ -928,6 +1003,7 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       projectDir,
+      artifactSubject: ctx.artifactSubject,
       // #885 — the epic branch needs cfg to fetch the epic's children.
       cfg,
     });
@@ -968,6 +1044,8 @@ export async function verbReview(ctx) {
       currentState,
       issueNumber: issueNum,
     });
+    if (probeCommands.length > 0 && ctx.artifactSubject)
+      throw new Error('artifact: explicit-source Review probes are unsupported');
     if (probeCommands.length > 0) {
       if (currentState !== 'review') {
         process.stderr.write(
@@ -1084,6 +1162,7 @@ export async function verbReview(ctx) {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         body: rawBody,
+        artifactSubject: ctx.artifactSubject,
         cfg,
         fromState: 'test',
         toState: 'review',
@@ -1184,11 +1263,13 @@ export async function verbReview(ctx) {
       });
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
+      artifactSubject: ctx.artifactSubject,
+      operatorContext: reviewOperatorContext,
       issueNumber: Number(issueNum),
       repository: cfg.repo,
       projectDir,
       getHeadSha: getReviewHeadSha,
-      buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,
+      buildFingerprint: ctx.buildVerificationFingerprint,
       graphql: ctx.graphql,
       readContractRecord: ctx.readContractRecord,
       listIssueRecords: ctx.listIssueRecords,
@@ -1418,7 +1499,42 @@ export async function verbReview(ctx) {
     await mutateBodyFn({
       issueNumber: issueNum,
       repo: cfg.repo,
-      mutate: () => finalBody,
+      mutate: () => stripBodyVersion(finalBody),
+      validateFreshBase: (base) => {
+        assertIssueProofAuthority(base, [
+          captureIssueProofAuthority(rawBody),
+          captureIssueProofAuthority(finalBody),
+        ]);
+        if (ctx.artifactSubject)
+          assertNativeArtifactOperator({
+            projectDir,
+            issueNumber: issueNum,
+            operatorContext: reviewOperatorContext,
+          });
+      },
+      validateFreshBaseAsync: async (base) => {
+        if (!ctx.artifactSubject) return;
+        const fresh = await resolveReviewVerificationEvidence({
+          body: base,
+          artifactSubject: ctx.artifactSubject,
+          operatorContext: reviewOperatorContext,
+          issueNumber: Number(issueNum),
+          repository: cfg.repo,
+          projectDir,
+          getHeadSha: getReviewHeadSha,
+          buildFingerprint: ctx.buildVerificationFingerprint,
+        });
+        if (
+          !fresh.ok ||
+          canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(reviewEvidence.receipt)
+        )
+          throw new Error('Review preliminary accepted Test evidence changed');
+        assertNativeArtifactOperator({
+          projectDir,
+          issueNumber: issueNum,
+          operatorContext: reviewOperatorContext,
+        });
+      },
       timeout: GH_API_TIMEOUT_MS,
       deps: { pexec },
       allowUnverifiedTicks: true,
@@ -1479,6 +1595,7 @@ export async function verbReview(ctx) {
             issueNumber: Number(issueNum),
             repo: cfg.repo,
             body: projection.body,
+            artifactSubject: ctx.artifactSubject,
             cfg,
             fromState: 'test',
             toState: 'review',
@@ -1511,6 +1628,10 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
+      ...(ctx.artifactSubject
+        ? { authorityBody: finalBody, operatorContext: reviewOperatorContext }
+        : {}),
+      artifactSubject: ctx.artifactSubject,
       projectDir,
       deps: {
         pexec,
@@ -1611,7 +1732,14 @@ export async function verbReview(ctx) {
       review: {
         repo: cfg.repo,
         readComments: async ({ snapshot }) => snapshot.reviewComments || [],
-        computeChangedPaths: () => computeReviewChangedPaths({ cfg, projectDir, deps: { pexec } }),
+        computeChangedPaths: () =>
+          ctx.artifactSubject
+            ? withArtifactSource(
+                { projectDir, artifactSubject: ctx.artifactSubject },
+                ({ sourceDir }) =>
+                  computeReviewChangedPaths({ cfg, projectDir: sourceDir, deps: { pexec } })
+              )
+            : computeReviewChangedPaths({ cfg, projectDir, deps: { pexec } }),
         runAgentReviewGate,
         onFailure: async ({ failures: objections, failedBody, ts }) => {
           await emitReviewGateFailureTimeline({
@@ -1629,18 +1757,52 @@ export async function verbReview(ctx) {
         },
         onPass: async ({ validators, passedBody, originalBody, ts }) => {
           if (passedBody !== originalBody) {
-            try {
-              await mutateBodyFn({
-                issueNumber: issueNum,
-                repo: cfg.repo,
-                mutate: () => passedBody,
-                timeout: GH_API_TIMEOUT_MS,
-                deps: { pexec },
-                evidenceStamp: true,
-              });
-            } catch (error) {
-              console.error(`[task-tracker] failed to stamp Agent Review Passed: ${error.message}`);
-            }
+            await mutateBodyFn({
+              issueNumber: issueNum,
+              repo: cfg.repo,
+              validateFreshBase: (base) => {
+                if (stripBodyVersion(base).trimEnd() !== stripBodyVersion(originalBody).trimEnd())
+                  throw new Error(
+                    'Review completion body changed; re-run Review on the fresh evidence'
+                  );
+                if (ctx.artifactSubject) {
+                  validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+                  assertNativeArtifactOperator({
+                    projectDir,
+                    issueNumber: issueNum,
+                    operatorContext: reviewOperatorContext,
+                  });
+                }
+              },
+              validateFreshBaseAsync: async (base) => {
+                if (!ctx.artifactSubject) return;
+                const freshEvidence = await resolveReviewVerificationEvidence({
+                  body: base,
+                  artifactSubject: ctx.artifactSubject,
+                  operatorContext: reviewOperatorContext,
+                  issueNumber: Number(issueNum),
+                  repository: cfg.repo,
+                  projectDir,
+                  getHeadSha: getReviewHeadSha,
+                  buildFingerprint: ctx.buildVerificationFingerprint,
+                });
+                if (
+                  !freshEvidence.ok ||
+                  canonicalRecordJson(freshEvidence.receipt) !==
+                    canonicalRecordJson(reviewEvidence.receipt)
+                )
+                  throw new Error('Review completion Test evidence changed; re-run Review');
+                assertNativeArtifactOperator({
+                  projectDir,
+                  issueNumber: issueNum,
+                  operatorContext: reviewOperatorContext,
+                });
+              },
+              mutate: () => stripBodyVersion(passedBody),
+              timeout: GH_API_TIMEOUT_MS,
+              deps: { pexec },
+              evidenceStamp: true,
+            });
           }
           await emitReviewGatePassTimeline({
             target,

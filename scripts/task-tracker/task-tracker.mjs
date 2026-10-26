@@ -819,7 +819,9 @@ if (_isMain)
         }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
-          annotationVerbResult = await verbApprove(ctx.rest, ctx.cfg);
+          annotationVerbResult = await verbApprove(ctx.rest, ctx.cfg, {
+            artifactSubject: ctx.artifactSubject,
+          });
           break;
         }
         case 'plan-approve': {
@@ -836,7 +838,10 @@ if (_isMain)
         case 'promote':
         case 'next': {
           const { verbPromote } = await import('./verbs/promote.mjs');
-          await verbPromote(ctx.rest, ctx.cfg, { cursorCommand: ctx.verb });
+          await verbPromote(ctx.rest, ctx.cfg, {
+            cursorCommand: ctx.verb,
+            artifactSubject: ctx.artifactSubject,
+          });
           break;
         }
         case 'refine': {
