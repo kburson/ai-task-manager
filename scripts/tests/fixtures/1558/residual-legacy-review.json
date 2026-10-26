@@ -70,7 +70,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:c1e1f3fc59e40ee8d7ffedf29c1a19acc358da610d3796b822de63c823316a03"
+        "sitesSha256": "sha256:f9a855826c1fdfc54f3af10971063173d431e68f579fa404ccf0355d9618d395"
       },
       "rationale": "Non-AC code-completion refusals remain legacy and need investigation; AC evidence gaps are typed."
     },
@@ -79,7 +79,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:59c2e20215cf59ab2b12b3c99191bf08f89161ca36677ba1031035df87427aac"
+        "sitesSha256": "sha256:eeb5e76e04d2acdb578b8c4e96a70d2c256644e754b10202442d69eb61faed71"
       },
       "rationale": "Commit attribution must use the exact current HEAD; an untyped refusal cannot stamp it."
     },
@@ -97,7 +97,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:63eca302a8c564be1a772935f7939f884e23d5dd35e570862ae4d413ecc8ebd1"
+        "sitesSha256": "sha256:63f3cf20139ec6b32f7dcb5cc2e06ddeef8d5ac3508956f9d94d6b6d4a6e6222"
       },
       "rationale": "A missing or stale verification receipt cannot be synthesized by explanation."
     },
@@ -133,7 +133,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:a0c48400f164fc663fd40d98fe140ff8c18619d6cb90750ac59431f56215eb11"
+        "sitesSha256": "sha256:5bfba2df1e161e198d3de9cc402c11df2cf6024d817b5ba8fbd5938ac32c2bd2"
       },
       "rationale": "Current shared assessment emits typed pending, required and unavailable refusals; dynamically selected fallback sites stay inventoried and cannot admit prose waivers or erase publication intent."
     },
@@ -268,7 +268,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:eef37441c21349f700d684d3cf1699b598e2cbb496f220b0af02eb8e06564f21"
+        "sitesSha256": "sha256:37a21f07b0558aa1ea9c7320a9c3626fd08fd5fa6b0aa0e4010a019fdc046a46"
       },
       "rationale": "Close-gate refusals and warnings combine delivery, approval, and timing authority."
     },
@@ -304,7 +304,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:e8f96e7c4e34dc2ac511d941e6606f5ebd6e8a01ed93cb03b36baf00217b8982"
+        "sitesSha256": "sha256:b4a513f656dd56b2e136586221c656bcc65fc5a1dd6a0c79cc169bd1476b6298"
       },
       "rationale": "Functional DoD needs exact-head receipts and cannot be satisfied by a legacy message."
     },

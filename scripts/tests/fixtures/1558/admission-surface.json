@@ -1679,6 +1679,7 @@
       "classification": "internal-hook-or-guard",
       "command": null,
       "staticImports": [
+        "./lib/artifact-subject.mjs",
         "node:fs",
         "node:child_process",
         "node:util",
@@ -2510,6 +2511,11 @@
       "classification": "agent-callable-verb",
       "command": "approve",
       "staticImports": [
+        "../lib/issue-proof-authority.mjs",
+        "./review.mjs",
+        "../lib/github-records/canonical-json.mjs",
+        "../lib/artifact-subject.mjs",
+        "../lib/artifact-execution.mjs",
         "../lib/direct-guidance-admission.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",

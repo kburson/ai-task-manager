@@ -140,7 +140,8 @@ test('A to B reused-branch delivery closes historical A through production seams
   );
   // #1512/#1668: each delivery resolves both gates again at effect boundaries;
   // an earlier decision cannot substitute for current policy authority.
-  assert.equal(harness.effects.policyReads, 48);
+  // #2096 adds a final complete two-gate recheck after each receipt reachability check.
+  assert.equal(harness.effects.policyReads, 56);
 
   const gateInput = await harness.closeGateInput(1381);
   assert.equal(gateInput.acceptedSha, SHA_A);
