@@ -1,9 +1,9 @@
 // @story #2096
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { artifactRepository as repository } from '../../../helpers/artifact-repository.mjs';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import {
   resolveArtifactSubject,
@@ -11,25 +11,6 @@ import {
   sourceCommit,
   parseArtifactSelection,
 } from '../../../../task-tracker/lib/artifact-subject.mjs';
-
-function repository(t) {
-  const root = mkdtempSync(path.join(tmpdir(), 'aitm-artifact-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-  git('init', '-q');
-  git('config', 'user.name', 'Artifact test');
-  git('config', 'user.email', 'artifact@example.test');
-  writeFileSync(path.join(root, 'source.txt'), 'candidate');
-  writeFileSync(path.join(root, 'package-lock.json'), '{}');
-  writeFileSync(path.join(root, 'package.json'), '{}');
-  git('add', '.');
-  git('commit', '-qm', '[#2096] candidate');
-  const candidate = git('rev-parse', 'HEAD');
-  const tree = git('rev-parse', 'HEAD^{tree}');
-  writeFileSync(path.join(root, 'source.txt'), 'controller');
-  git('commit', '-qam', 'Controller advances');
-  return { root, git, candidate, tree, operatorHead: git('rev-parse', 'HEAD') };
-}
 
 test('immutable source selection preserves the actual controller checkout', (t) => {
   const { root, git, candidate, tree, operatorHead } = repository(t);
@@ -213,6 +194,18 @@ test('explicit source receipt reuse requires matching tree and operator context'
   });
   assert.deepEqual(receipt.artifactSubject, artifactSubject);
   assert.deepEqual(receipt.operatorContext, operatorContext);
+  const controllerFingerprint = buildVerificationFingerprint({
+    projectDir: root,
+    commitSha: operatorHead,
+  });
+  assert.notEqual(
+    fingerprint.environment.lockfileHash,
+    controllerFingerprint.environment.lockfileHash
+  );
+  assert.notEqual(
+    fingerprint.environment.configHashes['package.json'],
+    controllerFingerprint.environment.configHashes['package.json']
+  );
   const validate = (value) =>
     validateVerificationReceipt({
       receipt: value,
@@ -221,6 +214,15 @@ test('explicit source receipt reuse requires matching tree and operator context'
       fingerprint,
     });
   assert.equal(validate(receipt).ok, true);
+  assert.equal(
+    validateVerificationReceipt({
+      receipt,
+      expectedIssue: 2096,
+      expectedStage: 'test',
+      fingerprint: { ...fingerprint, artifactSubject: undefined, operatorContext: undefined },
+    }).ok,
+    false
+  );
   assert.equal(
     validate({ ...receipt, artifactSubject: { ...artifactSubject, treeSha: '0'.repeat(40) } }).ok,
     false
@@ -286,5 +288,85 @@ test('native operator observation requires the actual matching session binding',
         deps: { ...deps, getActiveTask: () => ({ ...binding, worktreePath: '/foreign' }) },
       }),
     /binding/
+  );
+});
+
+test('artifact provenance follows source ancestry after squash delivery', async (t) => {
+  const { root, git, candidate, tree } = repository(t);
+  const squash = git('commit-tree', tree, '-m', 'Squash delivery');
+  git('reset', '--hard', squash);
+  const { serializeProofMarker } = await import('../../../../task-tracker/lib/proof-marker.mjs');
+  const { auditEvidenceBranchReachability } =
+    await import('../../../../task-tracker/lib/evidence-branch-reachability.mjs');
+  const proof = (issue) =>
+    serializeProofMarker({
+      cmd: '`node check.mjs`',
+      exit: '0',
+      sha: candidate,
+      ts: '2026-10-26T18:00:00.000Z',
+      worktree: '/retired/execution',
+      branch: 'HEAD',
+      'bound-issue': String(issue),
+    });
+  const options = {
+    body: proof(2096),
+    issueNumber: 2096,
+    projectDir: root,
+    artifactSubject: { commitSha: candidate, treeSha: tree },
+  };
+  assert.equal((await auditEvidenceBranchReachability(options)).ok, true);
+  assert.equal(
+    (await auditEvidenceBranchReachability({ ...options, body: proof(2090) })).ok,
+    false
+  );
+  assert.equal(
+    (await auditEvidenceBranchReachability({ ...options, artifactSubject: undefined })).ok,
+    false
+  );
+});
+
+test('read-only artifact fingerprint uses immutable blobs and cannot become execution evidence', async (t) => {
+  const { root, git, candidate, tree, operatorHead } = repository(t);
+  const {
+    buildArtifactVerificationFingerprint,
+    buildVerificationFingerprint,
+    createVerificationReceipt,
+  } = await import('../../../../task-tracker/lib/verification-receipt.mjs');
+  const { withArtifactSource } =
+    await import('../../../../task-tracker/lib/artifact-execution.mjs');
+  const artifactSubject = { commitSha: candidate, treeSha: tree };
+  const operatorContext = {
+    sessionId: 'actual',
+    worktreePath: realpathSync(root),
+    branch: git('branch', '--show-current'),
+    headSha: operatorHead,
+    boundIssue: 2096,
+    bindingGenerationId: 'generation',
+  };
+  const executed = await withArtifactSource(
+    { projectDir: root, artifactSubject },
+    ({ sourceDir }) =>
+      buildVerificationFingerprint({
+        projectDir: sourceDir,
+        commitSha: candidate,
+        artifactSubject,
+        operatorContext,
+      })
+  );
+  const worktrees = git('worktree', 'list', '--porcelain');
+  const fingerprint = buildArtifactVerificationFingerprint({
+    projectDir: root,
+    artifactSubject,
+    operatorContext,
+  });
+  assert.deepEqual(fingerprint.environment.configHashes, executed.environment.configHashes);
+  assert.equal(fingerprint.environment.lockfileHash, executed.environment.lockfileHash);
+  assert.equal(fingerprint.environment.sandbox.kind, 'git-object');
+  assert.equal(git('worktree', 'list', '--porcelain'), worktrees);
+  assert.equal(git('rev-parse', 'HEAD'), operatorHead);
+  assert.throws(
+    () =>
+      createVerificationReceipt({ issueNumber: 2096, stage: 'test', fingerprint, commands: [] }),
+    (error) => String(error.message).includes('execution')
   );
 });

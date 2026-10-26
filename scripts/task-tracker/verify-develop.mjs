@@ -107,13 +107,14 @@ export function buildFinalSteps() {
   ];
 }
 
-function defaultRunCommand(step, projectDir) {
+function defaultRunCommand(step, projectDir, env) {
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   const result = spawnSync(step.command, step.args, {
     cwd: projectDir,
     stdio: 'inherit',
     shell: false,
+    ...(env ? { env } : {}),
   });
   if (result.error) throw result.error;
   return {
@@ -168,6 +169,8 @@ function commandFailure(command) {
 export function runDevelopVerification({
   projectDir = process.cwd(),
   mode = 'iteration',
+  artifactSubject,
+  operatorContext,
   issueNumber,
   developVerification,
   verificationProvider,
@@ -177,7 +180,11 @@ export function runDevelopVerification({
   if (!['iteration', 'final'].includes(mode)) {
     return { ok: false, mode, commands: [], reasons: [{ code: 'invalid-mode' }] };
   }
-  const runCommand = deps.runCommand || defaultRunCommand;
+  const sourceEnv = artifactSubject
+    ? { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: projectDir }
+    : undefined;
+  if (sourceEnv) delete sourceEnv.AITM_ISSUE_LOCK_HELD;
+  const runCommand = deps.runCommand || ((step, dir) => defaultRunCommand(step, dir, sourceEnv));
   const getHeadSha = deps.getHeadSha || gitHead;
   const isClean = deps.isClean || gitClean;
   const commands = [];
@@ -343,6 +350,8 @@ export function runDevelopVerification({
     const fingerprint = (deps.buildFingerprint || buildVerificationFingerprint)({
       projectDir,
       commitSha,
+      artifactSubject,
+      operatorContext,
       verificationCommands,
     });
     const receipt = (deps.createReceipt || createVerificationReceipt)({

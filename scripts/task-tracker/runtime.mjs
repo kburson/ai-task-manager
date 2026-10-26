@@ -321,6 +321,8 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
   const artifactSubject = artifactSelection.commitSha
     ? resolveArtifactSubject({ projectDir, commitSha: artifactSelection.commitSha })
     : null;
+  if (artifactSubject && recordedContext)
+    throw new Error('artifact: evidence-v2 context unsupported');
   const cfg = loadConfig();
   // #314 — surface configuration drift once per process so operators see
   // missing project-field ids before silent skips bury them.

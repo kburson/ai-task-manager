@@ -1,3 +1,4 @@
+import { parseArtifactSelection, resolveArtifactSubject } from '../lib/artifact-subject.mjs';
 import { decompositionRuntimeFor } from '../lib/action-decision/decomposition.mjs';
 // @story #1675
 // @story #1767
@@ -67,6 +68,9 @@ export function deliveryExplainReadPorts({ cfg, projectRoot, factory = createDef
         return [name, candidate[name]];
       })
     ),
+    ...(typeof candidate.assertArtifactDeliveryContext === 'function'
+      ? { assertArtifactDeliveryContext: candidate.assertArtifactDeliveryContext }
+      : {}),
     providerActionAvailable: candidate.providerActionAvailable,
   });
 }
@@ -90,7 +94,8 @@ function issueNumber(value) {
 /** Return `{ matched: false }` for ordinary lifecycle execution. */
 export function parseExplainInvocation(argv = []) {
   if (!Array.isArray(argv) || argv.some((value) => typeof value !== 'string')) fail('argv');
-  const [verb, rawIssue, ...rawFlags] = argv;
+  const selection = parseArtifactSelection(argv);
+  const [verb, rawIssue, ...rawFlags] = selection.argv;
   const alias = Object.hasOwn(ALIASES, verb);
   const canonical = verb === 'explain';
   const explainFlag = rawFlags.includes('--explain');
@@ -122,7 +127,15 @@ export function parseExplainInvocation(argv = []) {
   }
   if (!json) fail('json-required');
   if (alias && seen.has('--action')) fail('alias-action');
-  return { matched: true, issue, actionId, known, knownSource, diagnostic };
+  return {
+    matched: true,
+    issue,
+    actionId,
+    known,
+    knownSource,
+    diagnostic,
+    ...(selection.commitSha ? { artifactCommit: selection.commitSha } : {}),
+  };
 }
 
 /** Injectable command core; `evaluate` must perform exactly one fresh read-only evaluation. */
@@ -145,6 +158,7 @@ export async function runExplain(
     issue: request.issue,
     actionId: request.actionId,
     diagnostic: request.diagnostic,
+    ...(request.artifactCommit ? { artifactCommit: request.artifactCommit } : {}),
   });
   const agentIndex = await loadAgentIndex({ projectRoot });
   const envelope = buildExplanationEnvelope({
@@ -247,7 +261,11 @@ export async function evaluateExplanation({
   actionId,
   projectRoot = getProjectDir(),
   deliveryDeps,
+  artifactCommit,
 } = {}) {
+  const artifactSubject = artifactCommit
+    ? resolveArtifactSubject({ projectDir: projectRoot, commitSha: artifactCommit })
+    : null;
   const cfg = loadConfig();
   const repository = cfg.repo;
   if (typeof repository !== 'string' || !repository.includes('/')) fail('repository');
@@ -257,6 +275,7 @@ export async function evaluateExplanation({
       issue,
       cfg,
       projectDir: projectRoot,
+      artifactSubject,
       state,
       deps: deliveryDeps ?? deliveryExplainReadPorts({ cfg, projectRoot }),
     });
@@ -318,11 +337,13 @@ export async function evaluateExplanation({
       projectDir: projectRoot,
       body,
       head,
+      artifactSubject,
       deps: { resolveBoundDir: resolveBoundDirSilently },
     });
   } else if (effectiveAction === 'review') {
     readiness = await evaluateReviewReadiness({
       invokingDir: process.cwd(),
+      artifactSubject,
       issue,
       cfg,
       projectDir: projectRoot,
@@ -330,6 +351,7 @@ export async function evaluateExplanation({
     });
   } else if (effectiveAction === 'close') {
     readiness = await evaluateCloseReadiness({
+      artifactSubject,
       issue,
       cfg,
       projectDir: projectRoot,
@@ -343,7 +365,7 @@ export async function evaluateExplanation({
     actionId: requestedAction,
     repository,
     issue,
-    inputs: { state, head, body, sessionState, config: cfg },
+    inputs: { state, head, body, sessionState, config: cfg, artifactSubject },
     attempt,
     deps: {
       effectAttempts: () => [],

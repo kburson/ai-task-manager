@@ -162,3 +162,19 @@ test('Close refuses a waived receipt when the live source inventory changes', as
     /waived-authority/
   );
 });
+
+test('#2096 explicit artifact Close keeps the controller separate from the delivered PR', async () => {
+  const { gateInput } = await fixture();
+  const treeSha = 'd'.repeat(40);
+  gateInput.artifactSubject = { commitSha: HEAD, treeSha };
+  gateInput.branch = 'controller';
+  gateInput.observedLocalHeadSha = 'e'.repeat(40);
+  gateInput.pullRequests[0].sourceCommitEvidence = [{ oid: HEAD, tree: treeSha }];
+  assert.equal(requireDeliveryReceipt(gateInput).receipt.expectedHeadSha, HEAD);
+  assert.throws(() =>
+    requireDeliveryReceipt({
+      ...gateInput,
+      artifactSubject: { commitSha: HEAD, treeSha: 'f'.repeat(40) },
+    })
+  );
+});

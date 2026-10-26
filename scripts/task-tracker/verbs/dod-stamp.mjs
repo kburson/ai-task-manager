@@ -1,3 +1,8 @@
+import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // #303 — `/task dod-stamp <key>` runs the verifier command(s) declared by a
 // stampable Functional DoD item's `aitm-verified-by` markers and stamps the
 // resulting evidence marker
@@ -11,7 +16,7 @@
 import { loadState } from '../state.mjs';
 import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { mutateIssueBody as nativeMutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { ISSUE_LOCK_HELD_ENV } from '../issue-mutator-lock.mjs';
 import {
@@ -53,6 +58,22 @@ export async function verbDodStamp(ctx) {
     process.exit(1);
   }
   const issueNum = s.active.replace(/^#/, '');
+  const operatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: issueNum })
+    : null;
+  const mutateIssueBody = (input) =>
+    nativeMutateIssueBody({
+      ...input,
+      ...(ctx.artifactSubject
+        ? {
+            validateFreshBase: (body) => {
+              validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+              assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+              input.validateFreshBase?.(body);
+            },
+          }
+        : {}),
+    });
 
   const { stdout: body } = await pexec(
     'gh',
@@ -66,6 +87,8 @@ export async function verbDodStamp(ctx) {
     readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
   });
   const items = directory ? [] : parseFunctionalDodKeys(body);
+  if (directory && ctx.artifactSubject)
+    throw new Error('artifact: directory authority unsupported');
   const contractTarget = directory?.contract.definitionOfDone.find(
     (entry) => entry.logicalId === `dod-${key}` || entry.logicalId === key
   );
@@ -97,6 +120,7 @@ export async function verbDodStamp(ctx) {
     pexec,
     projectDir,
     deps: ctx.deps,
+    artifactSubject: ctx.artifactSubject,
   });
   if (decision.action === 'refuse') {
     console.error(`[task-tracker] dod-stamp ${key}: ${decision.message}`);

@@ -1,3 +1,8 @@
+import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // #345 — `/task ac-stamp "<ac label>"` runs the verifier command(s) declared by
 // an Acceptance Criteria checkbox line's `aitm-verified-by` markers and stamps
 // the resulting evidence marker
@@ -12,7 +17,7 @@
 import { loadState } from '../state.mjs';
 import { verifierCacheBaseDir } from '../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { mutateIssueBody as nativeMutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
@@ -36,6 +41,22 @@ export async function verbAcStamp(ctx) {
     process.exit(1);
   }
   const issueNum = s.active.replace(/^#/, '');
+  const operatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: issueNum })
+    : null;
+  const mutateIssueBody = (input) =>
+    nativeMutateIssueBody({
+      ...input,
+      ...(ctx.artifactSubject
+        ? {
+            validateFreshBase: (body) => {
+              validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+              assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+              input.validateFreshBase?.(body);
+            },
+          }
+        : {}),
+    });
 
   const { stdout: body } = await pexec(
     'gh',
@@ -48,6 +69,8 @@ export async function verbAcStamp(ctx) {
     issueBody: body,
     readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
   });
+  if (directory && ctx.artifactSubject)
+    throw new Error('artifact: directory authority unsupported');
   const contractTarget = directory?.contract.acceptanceCriteria.find(
     (entry) => entry.text.replace(/\s+/g, ' ').trim() === label.replace(/\s+/g, ' ').trim()
   );
@@ -80,6 +103,7 @@ export async function verbAcStamp(ctx) {
     pexec,
     projectDir,
     deps: ctx.deps,
+    artifactSubject: ctx.artifactSubject,
   });
   if (decision.action === 'refuse') {
     console.error(`[task-tracker] ac-stamp: ${decision.message}`);

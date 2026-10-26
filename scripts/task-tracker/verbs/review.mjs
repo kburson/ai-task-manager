@@ -1,3 +1,5 @@
+import { sourceCommit } from '../lib/artifact-subject.mjs';
+import { withArtifactSource, captureArtifactOperator } from '../lib/artifact-execution.mjs';
 // @story #1629
 import { statSync } from 'node:fs';
 import path from 'node:path';
@@ -65,6 +67,7 @@ import { parseEntryMarkers } from '../lib/stage-entry-markers.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   buildVerificationFingerprint,
+  buildArtifactVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
   hasMalformedVerificationReceiptClaim,
@@ -147,17 +150,23 @@ function markerMatchesSha(marker, sha) {
 }
 
 export async function resolveReviewVerificationEvidence({
+  artifactSubject,
+  operatorContext,
   body,
   issueNumber,
   repository,
   projectDir,
   getHeadSha,
-  buildFingerprint = buildVerificationFingerprint,
+  buildFingerprint,
   graphql,
   readContractRecord,
   listIssueRecords,
   resolveLifecycleEvidence = resolveLifecycleGateEvidence,
 } = {}) {
+  if (artifactSubject) operatorContext ??= captureArtifactOperator({ projectDir, issueNumber });
+  const fingerprintBuilder =
+    buildFingerprint ??
+    (artifactSubject ? buildArtifactVerificationFingerprint : buildVerificationFingerprint);
   let authoritySource;
   try {
     authoritySource = locateAuthoritySource({ issueBody: body });
@@ -171,10 +180,19 @@ export async function resolveReviewVerificationEvidence({
       remediation: 'Repair the issue directory and current accepted Test evidence.',
     };
   }
+  if (artifactSubject && authoritySource.kind === 'github-records/v1')
+    return {
+      ok: false,
+      mode: 'receipt-v1',
+      receipt: null,
+      commandResults: new Map(),
+      reasons: [{ code: 'artifact-receipt-required' }],
+      remediation: 'Explicit artifact selection supports R0 body authority only.',
+    };
   if (authoritySource.kind === 'github-records/v1') {
     let commitSha;
     try {
-      commitSha = await getHeadSha({ projectDir });
+      commitSha = sourceCommit({ artifactSubject, operatorHead: await getHeadSha({ projectDir }) });
     } catch {
       return {
         ok: false,
@@ -242,12 +260,20 @@ export async function resolveReviewVerificationEvidence({
           'Return to Develop, run Develop finalization, then complete one new Test pass.',
       };
     }
+    if (artifactSubject)
+      return {
+        ok: false,
+        mode: 'receipt-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [{ code: 'artifact-receipt-required' }],
+      };
     return { ok: true, mode: 'legacy-marker', receipt: null, commandResults, reasons: [] };
   }
 
   let commitSha;
   try {
-    commitSha = await getHeadSha({ projectDir });
+    commitSha = sourceCommit({ artifactSubject, operatorHead: await getHeadSha({ projectDir }) });
   } catch {
     return {
       ok: false,
@@ -260,8 +286,10 @@ export async function resolveReviewVerificationEvidence({
   }
   let fingerprint;
   try {
-    fingerprint = await buildFingerprint({
+    fingerprint = await fingerprintBuilder({
       projectDir,
+      artifactSubject,
+      operatorContext,
       commitSha,
       verificationCommands: parseVerificationCommands(body),
     });
@@ -928,6 +956,7 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       projectDir,
+      artifactSubject: ctx.artifactSubject,
       // #885 — the epic branch needs cfg to fetch the epic's children.
       cfg,
     });
@@ -968,6 +997,8 @@ export async function verbReview(ctx) {
       currentState,
       issueNumber: issueNum,
     });
+    if (probeCommands.length > 0 && ctx.artifactSubject)
+      throw new Error('artifact: explicit-source Review probes are unsupported');
     if (probeCommands.length > 0) {
       if (currentState !== 'review') {
         process.stderr.write(
@@ -1084,6 +1115,7 @@ export async function verbReview(ctx) {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
         body: rawBody,
+        artifactSubject: ctx.artifactSubject,
         cfg,
         fromState: 'test',
         toState: 'review',
@@ -1184,11 +1216,12 @@ export async function verbReview(ctx) {
       });
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
+      artifactSubject: ctx.artifactSubject,
       issueNumber: Number(issueNum),
       repository: cfg.repo,
       projectDir,
       getHeadSha: getReviewHeadSha,
-      buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,
+      buildFingerprint: ctx.buildVerificationFingerprint,
       graphql: ctx.graphql,
       readContractRecord: ctx.readContractRecord,
       listIssueRecords: ctx.listIssueRecords,
@@ -1479,6 +1512,7 @@ export async function verbReview(ctx) {
             issueNumber: Number(issueNum),
             repo: cfg.repo,
             body: projection.body,
+            artifactSubject: ctx.artifactSubject,
             cfg,
             fromState: 'test',
             toState: 'review',
@@ -1511,6 +1545,7 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
+      artifactSubject: ctx.artifactSubject,
       projectDir,
       deps: {
         pexec,
@@ -1611,7 +1646,14 @@ export async function verbReview(ctx) {
       review: {
         repo: cfg.repo,
         readComments: async ({ snapshot }) => snapshot.reviewComments || [],
-        computeChangedPaths: () => computeReviewChangedPaths({ cfg, projectDir, deps: { pexec } }),
+        computeChangedPaths: () =>
+          ctx.artifactSubject
+            ? withArtifactSource(
+                { projectDir, artifactSubject: ctx.artifactSubject },
+                ({ sourceDir }) =>
+                  computeReviewChangedPaths({ cfg, projectDir: sourceDir, deps: { pexec } })
+              )
+            : computeReviewChangedPaths({ cfg, projectDir, deps: { pexec } }),
         runAgentReviewGate,
         onFailure: async ({ failures: objections, failedBody, ts }) => {
           await emitReviewGateFailureTimeline({

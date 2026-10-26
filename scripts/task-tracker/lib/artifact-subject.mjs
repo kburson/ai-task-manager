@@ -65,3 +65,29 @@ export function validateArtifactSubject({ projectDir, artifactSubject } = {}) {
 export function sourceCommit({ artifactSubject, operatorHead } = {}) {
   return artifactSubject?.commitSha ?? operatorHead;
 }
+
+export function artifactReceiptMatches({ receipt, artifactSubject, operatorContext } = {}) {
+  if (!artifactSubject) return true;
+  if (
+    receipt?.commitSha !== artifactSubject.commitSha ||
+    receipt?.artifactSubject?.commitSha !== artifactSubject.commitSha ||
+    receipt?.artifactSubject?.treeSha !== artifactSubject.treeSha
+  )
+    return false;
+  const keys = [
+    'sessionId',
+    'worktreePath',
+    'branch',
+    'headSha',
+    'boundIssue',
+    'bindingGenerationId',
+  ];
+  return (
+    Boolean(operatorContext) &&
+    keys.every(
+      (key) =>
+        operatorContext[key] !== undefined &&
+        receipt?.operatorContext?.[key] === operatorContext[key]
+    )
+  );
+}

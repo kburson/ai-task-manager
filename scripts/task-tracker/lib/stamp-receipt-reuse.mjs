@@ -1,3 +1,5 @@
+import { sourceCommit } from './artifact-subject.mjs';
+import { captureArtifactOperator } from './artifact-execution.mjs';
 // #1356 — decide whether dod-stamp / ac-stamp may spawn a verifier.
 //
 // A valid exact-SHA Test receipt already owns standard lanes. Re-executing
@@ -5,6 +7,7 @@
 
 import {
   buildVerificationFingerprint,
+  buildArtifactVerificationFingerprint,
   parseVerificationReceipt,
   requiredTestReceiptClassifications,
   validateVerificationReceipt,
@@ -174,6 +177,7 @@ export async function decideStampExecutionFromEnv({
   cfg,
   pexec,
   projectDir,
+  artifactSubject,
   deps = {},
 } = {}) {
   const receipt = parseVerificationReceipt(body, 'test');
@@ -181,14 +185,37 @@ export async function decideStampExecutionFromEnv({
   let fingerprint = null;
   try {
     const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
-    headSha = String(stdout || '').trim();
-    const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
-    fingerprint = await buildFingerprint({
+    headSha = sourceCommit({ artifactSubject, operatorHead: String(stdout || '').trim() });
+    const buildFingerprint =
+      deps.buildFingerprint ||
+      (artifactSubject ? buildArtifactVerificationFingerprint : buildVerificationFingerprint);
+    const input = {
       projectDir,
       commitSha: headSha,
       verificationCommands: parseVerificationCommands(body),
+    };
+    fingerprint = await buildFingerprint({
+      ...input,
+      ...(artifactSubject
+        ? {
+            artifactSubject,
+            operatorContext: (deps.captureArtifactOperator ?? captureArtifactOperator)({
+              projectDir,
+              issueNumber,
+            }),
+          }
+        : {}),
     });
   } catch {
+    if (artifactSubject)
+      return {
+        live: null,
+        receipt,
+        headSha,
+        action: 'refuse',
+        message:
+          'explicit artifact fingerprint or operator context unavailable; no verifier executed',
+      };
     headSha = '';
     fingerprint = null;
   }

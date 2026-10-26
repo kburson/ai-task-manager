@@ -1,3 +1,9 @@
+import {
+  sourceCommit,
+  validateArtifactSubject,
+  artifactReceiptMatches,
+} from '../lib/artifact-subject.mjs';
+import { captureArtifactOperator } from '../lib/artifact-execution.mjs';
 // @story #1629
 // `approve` verb — Review -> Done human gate.
 //
@@ -294,7 +300,14 @@ export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY }
   return { fired: true, signals: parts.join(',') };
 }
 
-export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, human = false } = {}) {
+export async function runApprove({
+  issueNumber,
+  cfg,
+  projectDir,
+  artifactSubject,
+  deps = {},
+  human = false,
+} = {}) {
   if (!issueNumber) throw new Error('approve: issueNumber is required');
   if (!cfg) throw new Error('approve: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
@@ -325,7 +338,30 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
       const getHeadSha = deps.getHeadSha || defaultGetHeadSha;
-      const approvedSha = await getHeadSha({ projectDir });
+      const operatorHead = await getHeadSha({ projectDir });
+      let operatorContext;
+      const captureOperator = deps.captureArtifactOperator ?? captureArtifactOperator;
+      const assertArtifactApproval = (freshBody) => {
+        if (!artifactSubject) return;
+        validateArtifactSubject({ projectDir, artifactSubject });
+        const current = captureOperator({ projectDir, issueNumber });
+        if (JSON.stringify(current) !== JSON.stringify(operatorContext))
+          throw new Error('artifact: operator changed before approval');
+        if (
+          !artifactReceiptMatches({
+            receipt: parseVerificationReceipt(freshBody, 'test'),
+            artifactSubject,
+            operatorContext,
+          })
+        )
+          throw new Error('artifact: accepted Test receipt mismatch before approval');
+      };
+      if (artifactSubject) {
+        validateArtifactSubject({ projectDir, artifactSubject });
+        operatorContext = captureOperator({ projectDir, issueNumber });
+        assertArtifactApproval(body);
+      }
+      const approvedSha = sourceCommit({ artifactSubject, operatorHead });
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
       }
@@ -464,7 +500,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // revoked while approval was waiting cannot authorize the body write.
       const revalidateSemanticReviewWaiver = async (freshBody) => {
         const freshHeadSha = await getHeadSha({ projectDir });
-        if (freshHeadSha !== approvedSha) {
+        if (freshHeadSha !== operatorHead) {
           throw new Error(`approve: HEAD changed before approval write`);
         }
         const freshTestReceiptSha = await resolveTestReceiptSha(freshBody, approvedSha);
@@ -497,6 +533,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // gate (hasApprovalMarker / state check / drivers derivation); the
       // actual write transform reads its own base.
       const stamp = (base) => {
+        assertArtifactApproval(base);
         const freshApprovalState = lifecycleItemState({
           body: base,
           key: 'passed-final-review',
@@ -586,6 +623,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         mutate: stamp,
         allowUnverifiedTicks: true,
         validateFreshBase: (freshBase) => {
+          assertArtifactApproval(freshBase);
           if (!semanticReviewWaiverAuthority) {
             if (isAgentReviewComplete(freshBase)) return;
             throw new Error(`approve: agent review evidence changed before approval write`);
@@ -677,7 +715,14 @@ export async function verbApprove(rest, cfg, deps = {}) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runApprove({ issueNumber, cfg, projectDir, deps, human });
+    result = await runApprove({
+      issueNumber,
+      cfg,
+      projectDir,
+      artifactSubject: deps.artifactSubject,
+      deps,
+      human,
+    });
   } catch (err) {
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);

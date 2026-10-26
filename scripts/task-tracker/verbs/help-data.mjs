@@ -54,6 +54,10 @@ export const VERB_REFERENCE = {
     usage:
       '/task explain <N> [--action <id>] [--known <id@digest>] [--known-source <receipt>] [--diagnostic] --json',
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       { flag: '--action <id>', desc: 'select an action; defaults to promote/navigation' },
       { flag: '--known <id@digest>', desc: 'repeatable exact agent-guidance receipt' },
       { flag: '--known-source <receipt>', desc: 'suppress only a matching source warning' },
@@ -228,6 +232,10 @@ export const VERB_REFERENCE = {
     usage: '/task promote #N [--explain --json]',
     aliases: ['next'],
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       { flag: '--explain', desc: 'evaluate current readiness without mutating lifecycle state' },
       { flag: '--json', desc: 'required with --explain; emit the typed explanation envelope' },
     ],
@@ -459,6 +467,10 @@ export const VERB_REFERENCE = {
     usage: '/task approve #N [--human]',
     flags: [
       {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
+      {
         flag: '--human',
         desc: 'record an explicit human approval instead of Full-Auto provenance',
       },
@@ -472,6 +484,10 @@ export const VERB_REFERENCE = {
     usage:
       '/task review #N [--duration-minutes N --words N] [--probe "command"] [--explain --json]',
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       { flag: '--explain', desc: 'evaluate current Review readiness without mutating state' },
       { flag: '--json', desc: 'required with --explain; emit the typed explanation envelope' },
       { flag: '--duration-minutes <N>', desc: 'agent-reported active minutes (skips JSONL read)' },
@@ -495,6 +511,10 @@ export const VERB_REFERENCE = {
       'Re-entrant Review-only accepted SHA delivery: open current-head provider handoff, already-merged current-head external recovery, or advanced-head historical receipt recovery; recovery emits no provider action. A manual GitHub merge is verified by observed method and content, then Close replays the receipt.',
     usage: '/task deliver #N [--reconcile-merge-method <merge|squash|rebase> --reason <text>]',
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       {
         flag: '--reconcile-merge-method <merge|squash|rebase>',
         desc: 'declare the observed method for already-merged external recovery without an original intent; not needed for a verified manual method difference',
@@ -594,6 +614,12 @@ export const VERB_REFERENCE = {
   },
   test: {
     topic: 'board',
+    flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
+    ],
     summary:
       'Develop→Test verification — finalizes Develop lint/format evidence, then runs Test-owned commands in an isolated worktree.',
     usage: '/task test #N',
@@ -670,6 +696,10 @@ export const VERB_REFERENCE = {
       '/task close [#N] [--explain --json] [--force] [--repair] [--restart-stale-transaction] [--restart-reopened-transaction] [--restart-false-delivery-transaction --audit-issue <N> --recovery-issue <N>] [--answer yes|no|cancel] [--as duplicate|not-planned|incorporated] [--of <N>]',
     aliases: ['end'],
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       { flag: '--explain', desc: 'evaluate current close readiness without mutating state' },
       { flag: '--json', desc: 'required with --explain; emit the typed explanation envelope' },
       { flag: '--force', desc: 'close even if unchecked items remain' },
@@ -794,6 +824,12 @@ export const VERB_REFERENCE = {
   // ── evidence & proof ──────────────────────────────────────────────────────
   'ac-stamp': {
     topic: 'evidence',
+    flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
+    ],
     summary:
       "Run an AC's declared verifier and stamp its `aitm-ac-evidence` marker (refuses on non-zero exit).",
     usage: '/task ac-stamp "<acceptance criterion label>"',
@@ -802,6 +838,12 @@ export const VERB_REFERENCE = {
   },
   'dod-stamp': {
     topic: 'evidence',
+    flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
+    ],
     summary: "Run a Functional DoD item's verifier and stamp its `aitm-dod-evidence` marker.",
     usage: '/task dod-stamp <key>   (key ∈ { tests, lint, commits })',
     exitCodes: [{ code: 1, meaning: 'unknown key, or the verifier command exited non-zero' }],
@@ -815,6 +857,10 @@ export const VERB_REFERENCE = {
       '/task check ["<label>" | --label "<label>" ... | --labels-file <path>] [--allow-unverified-ticks]   (deprecated alias of ensureChecked)',
     aliases: ['ensureChecked'],
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       {
         flag: '--reviewed-evidence <manifest>',
         desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
@@ -836,6 +882,10 @@ export const VERB_REFERENCE = {
       '/task ensureChecked ["<label>" | --label "<label>" ... | --labels-file <path>] [--allow-unverified-ticks]',
     aliases: ['check'],
     flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
       {
         flag: '--reviewed-evidence <manifest>',
         desc: 'one narrative Scope label; canonical manifest and retained local artifacts in the bound Develop/Test checkout; no batch or override flags',
@@ -900,6 +950,12 @@ export const VERB_REFERENCE = {
   },
   'commit-trace': {
     topic: 'evidence',
+    flags: [
+      {
+        flag: '--artifact-commit <sha>',
+        desc: 'accept this immutable full commit/tree while retaining the actual operator; repeat on each acceptance command',
+      },
+    ],
     summary: 'Create or update the canonical commit-trace comment from HEAD.',
     usage: '/task commit-trace [#N]',
     examples: ['/task commit-trace 667'],

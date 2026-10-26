@@ -1,3 +1,4 @@
+import { sourceCommit } from '../artifact-subject.mjs';
 // @story #1667
 // Review explanation collects authority but never persists normalization or runs a reviewer.
 import { createHash } from 'node:crypto';
@@ -28,6 +29,10 @@ const HEAD = /^[a-f0-9]{40,64}$/;
 const REVIEW_EVIDENCE_REASONS = new Set([
   'directory-test-evidence-missing',
   'receipt-malformed',
+  'artifact-receipt-required',
+  'artifact-tree-mismatch',
+  'artifact-selection-mismatch',
+  'artifact-operator-mismatch',
   'head-unresolvable',
   'fingerprint-unresolvable',
   'test-started-sha-mismatch',
@@ -109,6 +114,7 @@ export async function evaluateReviewReadiness({
   cfg,
   projectDir,
   invokingDir,
+  artifactSubject,
   deps = {},
   now = () => new Date().toISOString(),
 } = {}) {
@@ -201,6 +207,7 @@ export async function evaluateReviewReadiness({
             issueNumber: issue,
             repository: cfg.repo,
             projectDir,
+            artifactSubject,
             getHeadSha: async () => readHead(),
           });
           value = {
@@ -209,6 +216,7 @@ export async function evaluateReviewReadiness({
               repo: cfg.repo,
               projectDir,
               cfg,
+              artifactSubject,
             }),
             reviewEvidence: {
               ok: reviewEvidence?.ok,
@@ -338,6 +346,7 @@ export async function evaluateReviewReadiness({
       cfg,
       projectDir,
       invokingDir,
+      artifactSubject,
       deps,
       evaluatedAt: now(),
       runGuards: deps.runGuards ?? runGuards,
@@ -523,7 +532,12 @@ export async function collectReviewReadiness({
     }
     let resident;
     try {
-      resident = await ports.verifyResident({ issue, body, head, delivery });
+      resident = await ports.verifyResident({
+        issue,
+        body,
+        head: sourceCommit({ artifactSubject: ports.artifactSubject, operatorHead: head }),
+        delivery,
+      });
     } catch {
       resident = { status: 'paused', reason: 'review-resident-unavailable' };
     }
@@ -573,7 +587,7 @@ export async function collectReviewReadiness({
   }
   const projection = projectFunctionalDod({
     body,
-    head,
+    head: sourceCommit({ artifactSubject: ports.artifactSubject, operatorHead: head }),
     evaluatedAt: ports.evaluatedAt ?? '1970-01-01T00:00:00.000Z',
   });
   const { guardResult } = await evaluateProjectedReviewGuards({
@@ -583,6 +597,7 @@ export async function collectReviewReadiness({
       cfg: ports.cfg,
       projectDir: ports.projectDir,
       invokingDir: ports.invokingDir,
+      artifactSubject: ports.artifactSubject,
       body: projection.body,
       lifecycleEvidence: reviewEvidence.lifecycleEvidence ?? preflight.lifecycleEvidence ?? null,
       toState: 'review',

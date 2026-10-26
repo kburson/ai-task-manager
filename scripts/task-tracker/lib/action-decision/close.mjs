@@ -1,3 +1,4 @@
+import { sourceCommit } from '../artifact-subject.mjs';
 // @story #1669
 // @story #1767
 // @story #1802
@@ -102,7 +103,7 @@ async function compareReadOnlyDeliveryContent(input, output) {
 }
 
 /** Read-only readers share no state across command boundaries. */
-export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) {
+export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubject, deps = {} }) {
   const transport = deps.run ?? pexec;
   const run = async (command, args, options) => {
     const gitRead =
@@ -307,6 +308,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, deps = {} }) 
       body,
       lifecycleEvidence,
       ctx: {
+        artifactSubject,
         resolveCloseParentIssue: async () => graph.get(issue).parent,
         loadWorkflowBoundary: deps.loadWorkflowBoundary,
         workflowPolicyRuntime: deps.workflowPolicyRuntime,
@@ -842,7 +844,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
   if (typeof body === 'string' && SHA.test(head ?? '')) {
     const projection = projectFunctionalDod({
       body,
-      head,
+      head: sourceCommit({ artifactSubject: ports.artifactSubject, operatorHead: head }),
       evaluatedAt: ports.evaluatedAt ?? new Date().toISOString(),
     });
     normalizations = projection.normalization ? [projection.normalization] : [];
@@ -861,6 +863,7 @@ export async function collectCloseReadiness({ issue, attempt, ports = {} } = {})
           toState: 'done',
           readOnly: true,
           headSha: head,
+          artifactSubject: ports.artifactSubject,
           delivery:
             localTrunkProof || localTrunkReceipt
               ? { ...delivery, localTrunkProof, localTrunkReceipt }
@@ -916,12 +919,13 @@ export async function evaluateCloseReadiness({
   issue,
   cfg,
   projectDir,
+  artifactSubject,
   deps = {},
   now = () => new Date().toISOString(),
 } = {}) {
   if (!cfg?.repo || typeof projectDir !== 'string')
     throw new TypeError('close-readiness:configuration');
-  const production = createCloseReadOnlyPorts({ issue, cfg, projectDir, deps });
+  const production = createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubject, deps });
   const readIssue = async () => {
     const value = deps.readIssue
       ? await deps.readIssue()
@@ -1063,6 +1067,7 @@ export async function evaluateCloseReadiness({
       scope,
       cfg,
       head,
+      artifactSubject,
       projectDir,
       evaluatedAt: now(),
       runGuards:

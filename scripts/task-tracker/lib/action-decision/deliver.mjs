@@ -508,7 +508,10 @@ export async function collectDeliveryReadiness({ issue, attempt, ports = {} } = 
         observations: [body, delivery],
       };
     }
-    if (preflight.expectedHeadSha !== value.preflightInput.localHeadSha) {
+    if (
+      preflight.expectedHeadSha !==
+      (value.preflightInput.artifactSubject?.commitSha ?? value.preflightInput.localHeadSha)
+    ) {
       throw new TypeError('delivery-readiness:head');
     }
     const live = projection?.liveIntent?.record;
@@ -649,6 +652,7 @@ export async function evaluateDeliveryReadiness({
   cfg,
   projectDir,
   state,
+  artifactSubject,
   deps,
   now = () => new Date().toISOString(),
 } = {}) {
@@ -687,8 +691,20 @@ export async function evaluateDeliveryReadiness({
       repository: cfg.repo,
       issue: observedIssue,
     });
+    if (artifactSubject) {
+      if (typeof deps.assertArtifactDeliveryContext !== 'function')
+        throw new TypeError('artifact: delivery context unavailable');
+      await deps.assertArtifactDeliveryContext({
+        artifactSubject,
+        issueNumber: issue,
+        issue: observedIssue,
+      });
+    }
     const branch = await deps.getCurrentBranch();
-    const references = await deps.listPullRequests({ repository: cfg.repo, headRef: branch });
+    const references = await deps.listPullRequests({
+      repository: cfg.repo,
+      ...(artifactSubject ? { headSha: artifactSubject.commitSha } : { headRef: branch }),
+    });
     const pullRequests = await Promise.all(
       references.map(({ number }) =>
         deps.fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
@@ -742,7 +758,11 @@ export async function evaluateDeliveryReadiness({
       : selected?.state === 'MERGED' || selected?.merged === true
         ? await mergedSourceCommitSubjects(selected, deps.inspectSourceCommit)
         : await openSourceCommitSubjects(
-            await deps.listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            await deps.listCommitSubjects({
+              range: artifactSubject
+                ? `origin/trunk..${artifactSubject.commitSha}`
+                : 'origin/trunk..HEAD',
+            }),
             selected,
             deps.inspectSourceCommit
           );
@@ -765,6 +785,7 @@ export async function evaluateDeliveryReadiness({
       });
     }
     const preflightInput = {
+      ...(artifactSubject ? { artifactSubject } : {}),
       issue: {
         ...observedIssue,
         agentReviewPassed: reviewAuthority.outcome === 'passed',

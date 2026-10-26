@@ -3,7 +3,13 @@ import { gitInfo as defaultGitInfo, postCommitTrail } from '../commit-trail-hand
 import { getProjectDir } from '../paths.mjs';
 import { hasAttributingCommit as defaultHasAttributingCommit } from '../lib/commit-attribution.mjs';
 
-export async function runCommitTrace({ issueNumber, cfg, projectDir, deps = {} } = {}) {
+export async function runCommitTrace({
+  issueNumber,
+  cfg,
+  projectDir,
+  artifactSubject,
+  deps = {},
+} = {}) {
   if (!issueNumber) throw new Error('commit-trace: issueNumber is required');
   if (!cfg?.repo) throw new Error('commit-trace: cfg.repo is required');
   const cwd = projectDir || getProjectDir();
@@ -11,7 +17,7 @@ export async function runCommitTrace({ issueNumber, cfg, projectDir, deps = {} }
   const getInfo = deps.gitInfo || defaultGitInfo;
   const post = deps.postCommitTrail || postCommitTrail;
   const hasAttribution = deps.hasAttributingCommit || defaultHasAttributingCommit;
-  const info = await getInfo(cwd);
+  const info = await getInfo(cwd, { artifactSubject });
   const result = await post({ issueNumber: id, repo: cfg.repo, info, cwd });
 
   // #733 — assert MESSAGE-based attribution (a `[#N]` token in some commit
@@ -26,7 +32,10 @@ export async function runCommitTrace({ issueNumber, cfg, projectDir, deps = {} }
   let attributed = null;
   let attributionError = null;
   try {
-    attributed = await hasAttribution(id, { cwd });
+    attributed = await hasAttribution(id, {
+      cwd,
+      ...(artifactSubject ? { refs: [artifactSubject.commitSha] } : {}),
+    });
   } catch (err) {
     attributionError = err?.message || String(err);
   }
@@ -43,7 +52,12 @@ export async function verbCommitTrace(ctx) {
     process.exit(1);
   }
   try {
-    const result = await runCommitTrace({ issueNumber: target, cfg, projectDir });
+    const result = await runCommitTrace({
+      issueNumber: target,
+      cfg,
+      projectDir,
+      artifactSubject: ctx.artifactSubject,
+    });
     const id = String(target).replace(/^#/, '');
     process.stdout.write(`✓ Commit trace ${result.action} for #${id}.\n`);
     // #733 — non-fatal attribution advisory. Never exits non-zero on this path.

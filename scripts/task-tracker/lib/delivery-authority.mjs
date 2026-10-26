@@ -154,6 +154,18 @@ export function resolveAcceptedDeliveryHead({
   return typedAuthorityValid ? reviewAuthority.acceptedSha : (reviewReceiptSha ?? testReceiptSha);
 }
 
+export function assertDeliveryArtifactSubject({ artifactSubject, acceptedSha, pullRequest }) {
+  const evidence = pullRequest.sourceCommitEvidence?.filter((entry) => entry.oid === acceptedSha);
+  if (
+    Object.keys(artifactSubject).sort().join(',') !== 'commitSha,treeSha' ||
+    artifactSubject.commitSha !== acceptedSha ||
+    !SHA_RE.test(artifactSubject.treeSha ?? '') ||
+    evidence?.length !== 1 ||
+    evidence[0].tree !== artifactSubject.treeSha
+  )
+    fail('artifact-mismatch');
+}
+
 export function resolveAcceptedDeliveryAuthority({
   issueNumber,
   branch,
@@ -163,6 +175,7 @@ export function resolveAcceptedDeliveryAuthority({
   agentReviewPassed,
   reviewAuthority = null,
   pullRequests,
+  artifactSubject,
 } = {}) {
   if (
     !Number.isSafeInteger(issueNumber) ||
@@ -186,11 +199,13 @@ export function resolveAcceptedDeliveryAuthority({
   if (matches.length !== 1) fail('ambiguous-pr');
   const pullRequest = matches[0];
   if (!Number.isSafeInteger(pullRequest.number) || pullRequest.number <= 0) fail('ambiguous-pr');
-  if (pullRequest.headRefName !== branch) fail('branch-mismatch');
+  if (artifactSubject) assertDeliveryArtifactSubject({ artifactSubject, acceptedSha, pullRequest });
+  else if (pullRequest.headRefName !== branch) fail('branch-mismatch');
 
   return deepFreeze({
     issueNumber,
     acceptedSha,
+    ...(artifactSubject ? { artifactSubject: { ...artifactSubject }, operatorBranch: branch } : {}),
     observedLocalHeadSha: localHeadSha,
     headRelation: localHeadSha === acceptedSha ? 'current' : 'advanced',
     pullRequest: { ...pullRequest },

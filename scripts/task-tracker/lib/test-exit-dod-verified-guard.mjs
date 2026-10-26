@@ -31,7 +31,12 @@ export const testExitDodVerifiedGuard = {
     if (typeof ctx.projectDir === 'string') {
       const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
       return Promise.resolve(
-        auditFn({ body: ctx.body, issueNumber: ctx.issueNumber, projectDir: ctx.projectDir })
+        auditFn({
+          body: ctx.body,
+          issueNumber: ctx.issueNumber,
+          projectDir: ctx.projectDir,
+          artifactSubject: ctx.artifactSubject,
+        })
       ).then((reachability) => {
         if (!reachability.ok) {
           return {

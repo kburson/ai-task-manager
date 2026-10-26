@@ -1,8 +1,8 @@
 // @story #2096
 // Temporary verification materialization; native authority stays with the caller.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, mkdirSync, rmSync, realpathSync } from 'node:fs';
+import { testSandboxDirectory } from './test-sandbox-reaper.mjs';
 import path from 'node:path';
 import { validateArtifactSubject } from './artifact-subject.mjs';
 import { currentSessionId } from '../word-counter.mjs';
@@ -49,7 +49,9 @@ export async function withArtifactSource(
   if (!artifactSubject) return action({ sourceDir: projectDir });
   validateArtifactSubject({ projectDir, artifactSubject });
   const operatorContext = observeArtifactOperator(projectDir);
-  const parent = mkdtempSync(path.join(tmpdir(), 'aitm-artifact-source-'));
+  const directory = testSandboxDirectory(projectDir);
+  mkdirSync(directory, { recursive: true });
+  const parent = mkdtempSync(path.join(directory, '.artifact-source-'));
   const sourceDir = path.join(parent, 'source');
   // Reuse the native Test sandbox lifecycle, including its nested-fixture cleanup.
   const { defaultCreateWorktree, defaultRemoveWorktree, defaultNpmCi } =

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { validateArtifactSubject } from './lib/artifact-subject.mjs';
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
 // the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
@@ -101,13 +102,19 @@ function loadRepo(projectDir) {
   }
 }
 
-export async function gitInfo(cwd) {
+export async function gitInfo(cwd, { artifactSubject } = {}) {
+  if (artifactSubject) validateArtifactSubject({ projectDir: cwd, artifactSubject });
   const run = async (args) => {
     const { stdout } = await pexec('git', args, { cwd, timeout: GIT_TIMEOUT_MS });
     return stdout.trim();
   };
-  const sha = await run(['rev-parse', 'HEAD']);
-  const log = await run(['log', '-1', '--format=%H%x09%s%x09%an%x09%aI']);
+  const sha = artifactSubject?.commitSha ?? (await run(['rev-parse', 'HEAD']));
+  const log = await run([
+    'log',
+    '-1',
+    '--format=%H%x09%s%x09%an%x09%aI',
+    ...(artifactSubject ? [artifactSubject.commitSha] : []),
+  ]);
   const [logSha, subject, author, ts] = log.split('\t');
   const branch = await run(['rev-parse', '--abbrev-ref', 'HEAD']).catch(() => '');
   let isWorktree = false;

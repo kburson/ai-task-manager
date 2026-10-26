@@ -1,3 +1,5 @@
+import { validateArtifactSubject, artifactReceiptMatches } from '../lib/artifact-subject.mjs';
+import { captureArtifactOperator } from '../lib/artifact-execution.mjs';
 // @story #939
 // Review-stage, re-entrant delivery-intent orchestration.
 
@@ -1096,7 +1098,14 @@ function equalJson(left, right) {
   return canonicalRecordJson(left) === canonicalRecordJson(right);
 }
 
-export async function runDeliver({ issueNumber, cfg, state, reconcile = null, deps = {} } = {}) {
+export async function runDeliver({
+  issueNumber,
+  cfg,
+  state,
+  reconcile = null,
+  artifactSubject,
+  deps = {},
+} = {}) {
   // #1562 — carries the reconciliation record from the recovery path out to the
   // caller so it can be appended to the issue ledger beside the receipt.
   let methodReconciliation = null;
@@ -1111,6 +1120,11 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   const fetchIssue = requiredDependency(deps, 'fetchIssue');
   const resolveLineage = requiredDependency(deps, 'resolveLineage');
   const issue = await fetchIssue({ issueNumber, repository: cfg.repo });
+  if (artifactSubject)
+    await requiredDependency(
+      deps,
+      'assertArtifactDeliveryContext'
+    )({ artifactSubject, issueNumber, issue });
   const lineage = validateLineageResult(
     await resolveLineage({ issueNumber, repository: cfg.repo, issue })
   );
@@ -1144,7 +1158,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
   const branch = await getCurrentBranch();
   const pullRequestRefs = await listPullRequests({
     repository: cfg.repo,
-    headRef: branch,
+    ...(artifactSubject ? { headSha: artifactSubject.commitSha } : { headRef: branch }),
   });
   if (!Array.isArray(pullRequestRefs)) throw deliverError('pull-requests');
 
@@ -1201,6 +1215,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       agentReviewPassed,
       reviewAuthority,
       pullRequests,
+      artifactSubject,
     });
   } catch (error) {
     if (!(error instanceof DeliveryAuthorityError)) throw error;
@@ -1265,11 +1280,16 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       : mergedPullRequest
         ? await mergedSourceCommitSubjects(selectedPullRequest, deps.inspectSourceCommit)
         : await openSourceCommitSubjects(
-            await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            await listCommitSubjects({
+              range: artifactSubject
+                ? `origin/trunk..${artifactSubject.commitSha}`
+                : 'origin/trunk..HEAD',
+            }),
             selectedPullRequest,
             deps.inspectSourceCommit
           );
   const preflightInput = {
+    ...(artifactSubject ? { artifactSubject } : {}),
     issue: { ...issue, agentReviewPassed, reviewAuthority, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
@@ -1285,7 +1305,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     preflightInput.sourceInventory = sourceInventory;
     preflightInput.attributionException = activeAttributionException;
   }
-  if (authority.headRelation === 'advanced') {
+  if (authority.headRelation === 'advanced' && (!artifactSubject || mergedPullRequest)) {
     if (reconcile !== null && (live === null || live.record.provider === 'external')) {
       const historical = validateHistoricalReconstructionPreflight(preflightInput);
       await checkManualCodeReview({
@@ -1539,6 +1559,11 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
     allowScopeRefresh = false,
   } = {}) => {
     const freshIssue = await fetchIssue({ issueNumber, repository: cfg.repo });
+    if (artifactSubject)
+      await requiredDependency(
+        deps,
+        'assertArtifactDeliveryContext'
+      )({ artifactSubject, issueNumber, issue: freshIssue });
     const freshLineage = validateLineageResult(
       await resolveLineage({ issueNumber, repository: cfg.repo, issue: freshIssue })
     );
@@ -1552,7 +1577,10 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
       issueNumber,
       testReceiptSha: freshTestReceiptSha,
     });
-    const freshRefs = await listPullRequests({ repository: cfg.repo, headRef: freshBranch });
+    const freshRefs = await listPullRequests({
+      repository: cfg.repo,
+      ...(artifactSubject ? { headSha: artifactSubject.commitSha } : { headRef: freshBranch }),
+    });
     const freshPullRequests = await Promise.all(
       freshRefs.map(({ number }) =>
         fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
@@ -1569,6 +1597,7 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
         agentReviewPassed: freshReviewAuthority.outcome === 'passed',
         reviewAuthority: freshReviewAuthority,
         pullRequests: freshPullRequests,
+        artifactSubject,
       });
     } catch (error) {
       if (!(error instanceof DeliveryAuthorityError)) throw error;
@@ -1610,7 +1639,11 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
             deps.inspectSourceCommit
           )
         : await openSourceCommitSubjects(
-            await listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+            await listCommitSubjects({
+              range: artifactSubject
+                ? `origin/trunk..${artifactSubject.commitSha}`
+                : 'origin/trunk..HEAD',
+            }),
             freshAcceptedAuthority.pullRequest,
             deps.inspectSourceCommit
           );
@@ -2065,6 +2098,27 @@ export function resolveDeliveryProviderCapability(providerName, cfg) {
 }
 
 export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
+  let selectedArtifact = null;
+  let artifactOperatorContext = null;
+  const assertArtifactDeliveryContext = async ({ artifactSubject, issueNumber, issue }) => {
+    validateArtifactSubject({ projectDir: ctx.projectDir, artifactSubject });
+    const current = captureArtifactOperator({ projectDir: ctx.projectDir, issueNumber });
+    if (
+      artifactOperatorContext &&
+      JSON.stringify(current) !== JSON.stringify(artifactOperatorContext)
+    )
+      throw new Error('artifact: delivery operator changed');
+    artifactOperatorContext ??= current;
+    selectedArtifact = artifactSubject;
+    if (
+      !artifactReceiptMatches({
+        receipt: parseVerificationReceipt(issue.body, 'test'),
+        artifactSubject,
+        operatorContext: current,
+      })
+    )
+      throw new Error('artifact: delivery Test receipt mismatch');
+  };
   const run = async (command, args, options = {}) =>
     exec(command, args, {
       cwd: ctx.projectDir,
@@ -2261,6 +2315,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   };
 
   return {
+    assertArtifactDeliveryContext,
     createDeliveryWaiverJournal({ repository, issue }) {
       return createDeliveryWaiverJournal({ cwd: ctx.projectDir, repository, issue });
     },
@@ -2458,7 +2513,17 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         ? hasAcceptedReviewEvidence(lifecycleEvidence)
         : isAgentReviewComplete(issue.body);
     },
-    async listPullRequests({ headRef }) {
+    async listPullRequests({ headRef, headSha }) {
+      if (headSha) {
+        if (!SHA_RE.test(headSha)) throw deliverError('artifact-sha');
+        const pages = await json('gh', [
+          'api',
+          '--paginate',
+          '--slurp',
+          `repos/${owner}/${repoName}/commits/${headSha}/pulls`,
+        ]);
+        return pages.flat().map(({ number }) => ({ number }));
+      }
       return json('gh', [
         'pr',
         'list',
@@ -2577,6 +2642,22 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       });
     },
     async createIssueComment({ issueNumber, body }) {
+      if (selectedArtifact) {
+        const issue = await json('gh', [
+          'issue',
+          'view',
+          String(issueNumber),
+          '-R',
+          ctx.cfg.repo,
+          '--json',
+          'body',
+        ]);
+        await assertArtifactDeliveryContext({
+          artifactSubject: selectedArtifact,
+          issueNumber,
+          issue,
+        });
+      }
       return json('gh', [
         'api',
         '--method',
@@ -2721,6 +2802,7 @@ export async function verbDeliver(ctx, injected = {}) {
     cfg: ctx.cfg,
     state,
     reconcile,
+    artifactSubject: ctx.artifactSubject,
     deps: injected.deliverDeps ?? createDefaultDeliverDeps(ctx),
   });
   if (result.status === 'action-required') {
