@@ -1,5 +1,5 @@
-// cspell:ignore optout
 // @story #2096
+// cspell:ignore optout
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { artifactRepository as repository } from '../../../helpers/artifact-repository.mjs';
