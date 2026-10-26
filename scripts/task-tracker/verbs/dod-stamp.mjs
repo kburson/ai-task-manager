@@ -1,3 +1,4 @@
+import { stampDeclarationIdentity } from '../lib/stamp-declaration.mjs';
 import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
 import {
   captureArtifactOperator,
@@ -64,15 +65,18 @@ export async function verbDodStamp(ctx) {
   const mutateIssueBody = (input) =>
     nativeMutateIssueBody({
       ...input,
-      ...(ctx.artifactSubject
-        ? {
-            validateFreshBase: (body) => {
-              validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
-              assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
-              input.validateFreshBase?.(body);
-            },
-          }
-        : {}),
+      validateFreshBase: (base) => {
+        const freshTarget = parseFunctionalDodKeys(base).find((item) => item.key === key);
+        if (stampDeclarationIdentity(base, freshTarget) !== declarationIdentity)
+          throw new Error(
+            'dod-stamp: verifier declaration changed; run the current declaration again'
+          );
+        if (ctx.artifactSubject) {
+          validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+        }
+        input.validateFreshBase?.(base);
+      },
     });
 
   const { stdout: body } = await pexec(
@@ -111,6 +115,8 @@ export async function verbDodStamp(ctx) {
     );
     process.exit(1);
   }
+
+  const declarationIdentity = stampDeclarationIdentity(body, target);
 
   const decision = await decideStampExecutionFromEnv({
     commands: target.evidenceCommands,

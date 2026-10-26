@@ -300,13 +300,23 @@ async function defaultFetchBody({ cfg, issueNum }) {
 // #522 — `evidenceStamp` is forwarded so the sandbox auto-stamp call site (the
 // only Test-stage write that INTRODUCES execution proof) can bypass the
 // proof-introduction guard; all other Test writes leave it false.
-async function defaultMutateBody({ cfg, issueNum, mutate, evidenceStamp = false }) {
+export async function defaultMutateBody({
+  cfg,
+  issueNum,
+  mutate,
+  evidenceStamp = false,
+  deps = { pexec },
+  validateFreshBase,
+  validateFreshBaseAsync,
+}) {
   return mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
     mutate,
-    deps: { pexec },
+    deps,
     evidenceStamp,
+    validateFreshBase,
+    validateFreshBaseAsync,
   });
 }
 
@@ -453,7 +463,13 @@ export async function runVerbTest({
   const writeBody = deps.mutateBody || defaultMutateBody;
   const mutateBody = async (input) => {
     if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
-    return writeBody(input);
+    return writeBody({
+      ...input,
+      validateFreshBaseAsync: async (base, next) => {
+        if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
+        await input.validateFreshBaseAsync?.(base, next);
+      },
+    });
   };
   const postComment = deps.postComment || defaultPostComment;
   const getHeadSha = deps.getHeadSha || defaultGetHeadSha;

@@ -1,5 +1,10 @@
-import { sourceCommit } from '../lib/artifact-subject.mjs';
-import { withArtifactSource, captureArtifactOperator } from '../lib/artifact-execution.mjs';
+import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
+import { validateArtifactSubject, sourceCommit } from '../lib/artifact-subject.mjs';
+import {
+  withArtifactSource,
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // @story #1629
 import { statSync } from 'node:fs';
 import path from 'node:path';
@@ -924,6 +929,10 @@ export async function verbReview(ctx) {
     process.exit(1);
   }
 
+  const reviewOperatorContext = ctx.artifactSubject
+    ? captureArtifactOperator({ projectDir, issueNumber: String(target).replace(/^#/, '') })
+    : null;
+
   // Test keeps the issue bound but closes its timing segment. Review is an
   // automated state action, so reopen that exact binding before preflight and
   // keep it open through Full-Auto approval/delivery. This is entry
@@ -1217,6 +1226,7 @@ export async function verbReview(ctx) {
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
       artifactSubject: ctx.artifactSubject,
+      operatorContext: reviewOperatorContext,
       issueNumber: Number(issueNum),
       repository: cfg.repo,
       projectDir,
@@ -1671,18 +1681,51 @@ export async function verbReview(ctx) {
         },
         onPass: async ({ validators, passedBody, originalBody, ts }) => {
           if (passedBody !== originalBody) {
-            try {
-              await mutateBodyFn({
-                issueNumber: issueNum,
-                repo: cfg.repo,
-                mutate: () => passedBody,
-                timeout: GH_API_TIMEOUT_MS,
-                deps: { pexec },
-                evidenceStamp: true,
-              });
-            } catch (error) {
-              console.error(`[task-tracker] failed to stamp Agent Review Passed: ${error.message}`);
-            }
+            await mutateBodyFn({
+              issueNumber: issueNum,
+              repo: cfg.repo,
+              validateFreshBase: (base) => {
+                if (stripBodyVersion(base).trimEnd() !== stripBodyVersion(originalBody).trimEnd())
+                  throw new Error(
+                    'Review completion body changed; re-run Review on the fresh evidence'
+                  );
+                if (ctx.artifactSubject) {
+                  validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
+                  assertNativeArtifactOperator({
+                    projectDir,
+                    issueNumber: issueNum,
+                    operatorContext: reviewOperatorContext,
+                  });
+                }
+              },
+              validateFreshBaseAsync: async (base) => {
+                if (!ctx.artifactSubject) return;
+                const freshEvidence = await resolveReviewVerificationEvidence({
+                  body: base,
+                  artifactSubject: ctx.artifactSubject,
+                  operatorContext: reviewOperatorContext,
+                  issueNumber: Number(issueNum),
+                  repository: cfg.repo,
+                  projectDir,
+                  getHeadSha: getReviewHeadSha,
+                  buildFingerprint: ctx.buildVerificationFingerprint,
+                });
+                if (
+                  !freshEvidence.ok ||
+                  freshEvidence.receipt?.receiptId !== reviewEvidence.receipt?.receiptId
+                )
+                  throw new Error('Review completion Test evidence changed; re-run Review');
+                assertNativeArtifactOperator({
+                  projectDir,
+                  issueNumber: issueNum,
+                  operatorContext: reviewOperatorContext,
+                });
+              },
+              mutate: () => stripBodyVersion(passedBody),
+              timeout: GH_API_TIMEOUT_MS,
+              deps: { pexec },
+              evidenceStamp: true,
+            });
           }
           await emitReviewGatePassTimeline({
             target,

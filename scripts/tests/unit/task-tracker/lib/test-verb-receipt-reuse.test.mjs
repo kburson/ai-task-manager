@@ -719,3 +719,77 @@ test('successful coverage retains distinct configured and uncovered execution id
     ]
   );
 });
+
+// @story #2096 — use the real versioned writer, including retry validation.
+for (const phase of ['fetch', 'retry'])
+  test(`/task Test rechecks actor during native ${phase} write attempt`, async () => {
+    let body = targetedOnlyIssueBody();
+    const events = [];
+    const sandboxRuns = [];
+    const receipt = developReceipt(TARGETED_COMMANDS);
+    let finalizationCommands;
+    let drift = false;
+    let writes = 0;
+    let fetches = 0;
+    const { defaultMutateBody } = await import('../../../../task-tracker/verbs/test.mjs');
+    await assert.rejects(
+      runVerbTest({
+        cfg,
+        issueNumber: 1089,
+        projectDir: process.cwd(),
+        now: () => INSTANT,
+        deps: {
+          fetchBody: async () => body,
+          beforeArtifactWrite: () => {
+            if (drift) throw new Error('actor drift');
+          },
+          mutateBody: (input) =>
+            defaultMutateBody({
+              ...input,
+              deps: {
+                fetchBody: async () => {
+                  fetches++;
+                  if (phase === 'fetch' || fetches >= 3) drift = true;
+                  return body;
+                },
+                pushBody: async (_repo, _issue, next) => {
+                  writes++;
+                  body = phase === 'retry' ? next + '\nConcurrent unrelated note\n' : next;
+                },
+              },
+            }),
+          postComment: async () => {},
+          getHeadSha: async () => SHA,
+          runDevelopFinalization: async ({ verificationCommands }) => {
+            finalizationCommands = verificationCommands;
+            events.push('finalize');
+            return { ok: true, fingerprint: fingerprint('/outer', TARGETED_COMMANDS), receipt };
+          },
+          createWorktree: async () => {
+            events.push('worktree');
+          },
+          removeWorktree: async () => {},
+          npmCi: async () => {},
+          getSandboxHeadSha: async () => SHA,
+          buildFingerprint: ({ verificationCommands }) =>
+            fingerprint('/sandbox', verificationCommands),
+          execInSandbox: async ({ argv }) => {
+            sandboxRuns.push(argv.join(' '));
+            return {
+              exit: 0,
+              stdout: '',
+              stderr: '',
+              durationMs: 5,
+              startedAt: INSTANT,
+              completedAt: INSTANT,
+            };
+          },
+          moveState: async () => ({ ok: true }),
+          logIssueTime: async () => {},
+        },
+      }),
+      /actor drift/
+    );
+    assert.equal(writes, phase === 'fetch' ? 0 : 1);
+    assert.equal(finalizationCommands !== undefined, true);
+  });

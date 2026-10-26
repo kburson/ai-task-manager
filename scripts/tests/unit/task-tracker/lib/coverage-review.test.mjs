@@ -191,7 +191,9 @@ async function runExit(ctx, { captureStderr = false } = {}) {
     return true;
   };
   console.log = () => {};
-  console.error = () => {};
+  console.error = (...args) => {
+    if (captureStderr) stderr += args.join(' ');
+  };
   try {
     await verbReview(ctx);
   } catch (e) {
@@ -483,6 +485,31 @@ test('success via else branch (target not the active session)', async () => {
     });
     assert.equal(await runExit(ctx), null);
     assert.ok(calls.move.includes('review'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// @story #2096 — completion refuses fresh-body drift rather than reporting pass.
+test('Review completion propagates stale fresh-base refusal without success timing', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  try {
+    const body = CLEAN_BODY.replace(
+      '## AITM Progress Markers',
+      '### Lifecycle (verified at Review)\n- [ ] Agent Review Passed\n## AITM Progress Markers'
+    );
+    const { ctx, calls } = makeCtx({ statePath, rawBody: body, scanBody: body });
+    ctx.mutateIssueBody = async ({ mutate, validateFreshBase }) => {
+      const next = mutate(body);
+      if (!String(next).includes('gate="agent-review"')) return { status: 'updated' };
+      validateFreshBase?.(body + '\nChanged acceptance declaration\n');
+      throw new Error('stale completion was published');
+    };
+    await assert.rejects(runExit(ctx), /Review completion body changed/);
+    assert.equal(
+      calls.post.some((row) => String(row).includes('review:passed')),
+      false
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

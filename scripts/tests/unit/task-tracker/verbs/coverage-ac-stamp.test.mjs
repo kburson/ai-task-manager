@@ -212,3 +212,34 @@ test('happy path: verifier passes → stamps marker, no exit', async () => {
 });
 
 console.log('coverage-ac-stamp.test.mjs: defined');
+
+// @story #2096 — refuse evidence when the declaration changes after execution.
+for (const change of ['replace', 'add']) {
+  test(`ac-stamp refuses ${change} verifier declaration at fresh write base`, async () => {
+    const original = bodyWithAc();
+    const fresh = original.replace(
+      VERIFIER_CMD,
+      change === 'replace' ? 'npm run lint' : VERIFIER_CMD + '` `npm run lint'
+    );
+    let reads = 0;
+    let writes = 0;
+    const delegate = makePexec({ body: original });
+    const pexec = async (bin, args = [], options = {}) => {
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'view')
+        return { stdout: ++reads === 1 ? original : fresh, stderr: '' };
+      if (bin === 'gh' && args[0] === 'issue' && args[1] === 'edit') ++writes;
+      return delegate(bin, args, options);
+    };
+    await assert.rejects(
+      runVerb(
+        baseCtx({
+          statePath: stateFile('#777'),
+          rest: [AC_LABEL],
+          pexec,
+        })
+      ),
+      /verifier declaration changed/
+    );
+    assert.equal(writes, 0, 'no stale proof published');
+  });
+}
