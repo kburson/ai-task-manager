@@ -1,3 +1,4 @@
+import { assertArtifactSource } from './artifact-execution.mjs';
 // @story #1089
 // cspell:ignore ABCDEFGHJKMNPQRSTVWXYZ CROCKFORD HJKMNP
 // Versioned, exact-SHA verification evidence shared by Develop, Test, and Review.
@@ -125,10 +126,26 @@ export function buildVerificationFingerprint({
   projectDir,
   commitSha,
   configPaths,
+  artifactSubject,
+  operatorContext,
   verificationCommands = [],
 } = {}) {
   if (!SHA_RE.test(String(commitSha || ''))) {
     throw new TypeError('verification-receipt: commitSha must be a complete 40-hex SHA');
+  }
+  if (artifactSubject) {
+    assertArtifactSource(projectDir, artifactSubject);
+    if (commitSha !== artifactSubject.commitSha)
+      throw new Error('artifact: fingerprint commit mismatch');
+    if (
+      !operatorContext?.sessionId ||
+      !operatorContext?.bindingGenerationId ||
+      !operatorContext?.worktreePath ||
+      !operatorContext?.branch ||
+      !operatorContext?.headSha ||
+      !Number.isSafeInteger(operatorContext?.boundIssue)
+    )
+      throw new Error('artifact: complete operator context required');
   }
   const identity = realpathSync(projectDir);
   const lockfilePath = path.join(identity, 'package-lock.json');
@@ -148,6 +165,12 @@ export function buildVerificationFingerprint({
   }
 
   return {
+    ...(artifactSubject
+      ? {
+          artifactSubject: structuredClone(artifactSubject),
+          operatorContext: structuredClone(operatorContext),
+        }
+      : {}),
     commitSha,
     verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
       projectDir: identity,
@@ -232,6 +255,12 @@ export function createVerificationReceipt({
     issue: Number(issueNumber),
     stage: String(stage || ''),
     commitSha: fingerprint?.commitSha,
+    ...(fingerprint?.artifactSubject
+      ? {
+          artifactSubject: structuredClone(fingerprint.artifactSubject),
+          operatorContext: structuredClone(fingerprint.operatorContext),
+        }
+      : {}),
     startedAt,
     completedAt,
     environment: structuredClone(fingerprint?.environment),
@@ -527,6 +556,18 @@ export function validateVerificationReceipt({
     );
   }
   if (receipt.commitSha !== fingerprint?.commitSha) reasons.push(reason('sha-mismatch'));
+  if (fingerprint?.artifactSubject) {
+    if (
+      canonicalRecordJson(receipt.artifactSubject ?? null) !==
+      canonicalRecordJson(fingerprint.artifactSubject)
+    )
+      reasons.push(reason('artifact-tree-mismatch'));
+    if (
+      canonicalRecordJson(receipt.operatorContext ?? null) !==
+      canonicalRecordJson(fingerprint.operatorContext ?? null)
+    )
+      reasons.push(reason('artifact-operator-mismatch'));
+  }
   if (
     receipt.verificationCommands === undefined ||
     !Array.isArray(fingerprint?.verificationCommands) ||

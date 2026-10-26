@@ -2,7 +2,7 @@
   "repo": "kburson/ai-task-manager",
   "trunkRef": "origin/trunk",
   "projectId": "PVT_kwHOABCEY84BXill",
-  "estimationRubricIssue": 1091,
+  "estimationRubricIssue": 0,
   "kanbanFieldId": "PVTSSF_lAHOABCEY84BXillzhSuw0o",
   "kanbanOptionBacklog": "1f366e8c",
   "kanbanOptionReadyForPlan": "f627e155",
@@ -83,11 +83,15 @@
       "declaredCommandCoverage": [
         {
           "command": "npm test",
-          "requires": ["test-cloud-complete"]
+          "requires": [
+            "test-cloud-complete"
+          ]
         },
         {
           "command": "npm run test:slow",
-          "requires": ["test-cloud-complete"]
+          "requires": [
+            "test-cloud-complete"
+          ]
         }
       ]
     }

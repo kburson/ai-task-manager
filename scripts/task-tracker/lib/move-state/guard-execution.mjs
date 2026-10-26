@@ -207,6 +207,7 @@ export async function runGuardExecution(ctx) {
       projectDir,
       invokingDir: ctx.invokingDir,
       lifecycleEvidence,
+      artifactSubject: ctx.artifactSubject,
       sessionPolicy:
         ctx.sessionPolicy ||
         (ctx._loadSession || loadSession)((ctx._currentSessionId || currentSessionId)()),

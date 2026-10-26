@@ -16,6 +16,7 @@
 // @story #1990
 import { assertScopedDecompositionEffect } from './decomposition-effect-admission.mjs';
 import { execFile } from 'node:child_process';
+import { validateArtifactSubject, sourceCommit } from './artifact-subject.mjs';
 import { promisify } from 'node:util';
 import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
 import { resolveContractSource } from './github-records/contract-source.mjs';
@@ -135,6 +136,7 @@ async function defaultDirtyFiles() {
 // (full SHA); we compare prefix-either-direction so 6-char short forms in
 // callers still match a full SHA in the marker.
 export async function gateCommitTrailContainsHead({
+  artifactSubject,
   cfg,
   issueNumber,
   projectDir,
@@ -155,7 +157,8 @@ export async function gateCommitTrailContainsHead({
 
   let headSha = null;
   try {
-    headSha = await getHeadSha();
+    if (artifactSubject) validateArtifactSubject({ projectDir, artifactSubject });
+    headSha = sourceCommit({ artifactSubject, operatorHead: await getHeadSha() });
   } catch (err) {
     return {
       ok: false,
@@ -234,7 +237,7 @@ export async function gateCommitTrailContainsHead({
     // probe needed.
     ownCommits = await attributingCommits(issueNumber, {
       cwd: projectDir,
-      refs: ['HEAD'],
+      refs: [artifactSubject?.commitSha ?? 'HEAD'],
     });
   } catch (err) {
     return {

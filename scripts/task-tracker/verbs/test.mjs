@@ -172,8 +172,8 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultCreateWorktree({ projectDir, path: wtPath }) {
-  await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
+async function defaultCreateWorktree({ projectDir, path: wtPath, ref = 'HEAD' }) {
+  await pexec('git', ['worktree', 'add', '--detach', wtPath, ref], {
     cwd: projectDir,
     timeout: 60_000,
   });
@@ -1546,7 +1546,7 @@ export async function runVerbTest({
 // #346 — re-exported so the slow regression test (and any future callers that
 // need to exercise the two-stage cleanup) can import it directly without
 // reaching through `runVerbTest` deps injection.
-export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox };
+export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox, defaultNpmCi };
 
 // #1169 — Test owns an issue-scoped interlock for its complete execution,
 // including exact-SHA receipt short-circuits. Acquiring here keeps every body,

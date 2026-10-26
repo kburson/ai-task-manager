@@ -1,3 +1,5 @@
+import { withArtifactSource } from './artifact-execution.mjs';
+import { captureEvidenceProvenance } from './evidence-provenance.mjs';
 // #345 — shared verifier-execution primitives for evidence stamping.
 //
 // Extracted from `verbs/dod-stamp.mjs` (#303) so both `dod-stamp` (Functional
@@ -131,7 +133,41 @@ async function treeIdentity(pexec, cwd) {
 // behave byte-identically to the pre-#446 runner. `now` is an injectable clock
 // (() => ISO string) used to timestamp fresh runs that get recorded; defaults to
 // `new Date().toISOString()`.
-export async function runVerifiers({ commands, pexec, cwd, timeout, maxBuffer, cache, env } = {}) {
+export async function runVerifiers({
+  commands,
+  pexec,
+  cwd,
+  timeout,
+  maxBuffer,
+  cache,
+  env,
+  artifactSubject,
+  boundIssue,
+  installDependencies = false,
+} = {}) {
+  if (artifactSubject) {
+    return withArtifactSource(
+      { projectDir: cwd, artifactSubject, installDependencies },
+      async ({ sourceDir, operatorContext }) => {
+        const { buildSandboxEnv } = await import('../verbs/test.mjs');
+        const result = await runVerifiers({
+          commands,
+          pexec,
+          cwd: sourceDir,
+          timeout,
+          maxBuffer,
+          cache,
+          env: buildSandboxEnv(env ?? process.env, { AI_TASK_MANAGER_PROJECT_DIR: sourceDir }),
+        });
+        return {
+          ...result,
+          sha: artifactSubject.commitSha,
+          operatorContext,
+          executionContext: captureEvidenceProvenance({ projectDir: sourceDir, boundIssue }),
+        };
+      }
+    );
+  }
   const list = Array.isArray(commands) ? commands : [];
   const runOptions = {
     cwd,

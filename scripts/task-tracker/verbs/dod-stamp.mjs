@@ -184,10 +184,14 @@ export async function verbDodStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    executionContext: sourceExecutionContext,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    artifactSubject: ctx.artifactSubject,
+    boundIssue: issueNum,
+    installDependencies: Boolean(ctx.artifactSubject),
     env: cleanEnv,
     // #446 — content-addressed suite-run cache (see ac-stamp for rationale).
     cache: { dir: verifierCacheBaseDir(projectDir) },
@@ -216,10 +220,12 @@ export async function verbDodStamp(ctx) {
   // into `## Verification Commands` below so the tick and the #231 orphan-command
   // check can never strand against each other.
   const executedCommands = ran.map((r) => r.cmd).filter(Boolean);
-  const executionContext = captureEvidenceProvenance({
-    projectDir,
-    boundIssue: issueNum,
-  });
+  const executionContext =
+    sourceExecutionContext ??
+    captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
 
   if (directory) {
     await writeDirectoryContractOperation({

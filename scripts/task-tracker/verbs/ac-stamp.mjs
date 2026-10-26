@@ -154,10 +154,14 @@ export async function verbAcStamp(ctx) {
     ran,
     firstFailure,
     sha: runSha,
+    executionContext: sourceExecutionContext,
   } = await runVerifiers({
     commands: target.evidenceCommands,
     pexec,
     cwd: projectDir,
+    artifactSubject: ctx.artifactSubject,
+    boundIssue: issueNum,
+    installDependencies: Boolean(ctx.artifactSubject),
     // #446 — content-addressed suite-run cache. The store lives in the REAL
     // project's machine-local tree (`.tmp/aitm/cache/`, #573), decoupled from
     // `cwd`, so repeat stamps of the same heavyweight command at one clean HEAD
@@ -183,10 +187,12 @@ export async function verbAcStamp(ctx) {
   const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
   const ts = ran[0]?.ts || nowIso(ctx.deps);
   const canonicalCmd = ran[0]?.cmd || '';
-  const executionContext = captureEvidenceProvenance({
-    projectDir,
-    boundIssue: issueNum,
-  });
+  const executionContext =
+    sourceExecutionContext ??
+    captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
 
   if (directory) {
     await writeDirectoryContractOperation({
