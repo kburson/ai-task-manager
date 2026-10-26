@@ -1,3 +1,5 @@
+import { captureIssueProofAuthority, assertIssueProofAuthority } from './issue-proof-authority.mjs';
+import { projectFunctionalDod } from './functional-dod-project.mjs';
 import { sourceCommit, validateArtifactSubject } from './artifact-subject.mjs';
 import { captureArtifactOperator } from './artifact-execution.mjs';
 // @story #502 #1732
@@ -26,6 +28,8 @@ export async function deriveAndRescan({
   repo,
   projectDir,
   artifactSubject,
+  operatorContext: entryOperatorContext,
+  authorityBody,
   deps = {},
 } = {}) {
   if (typeof deps.refreshAndEvaluate !== 'function') {
@@ -56,7 +60,8 @@ export async function deriveAndRescan({
   };
   if (artifactSubject) {
     validateArtifactSubject({ projectDir, artifactSubject });
-    operatorContext = structuredClone(capture({ projectDir, issueNumber }));
+    operatorContext = structuredClone(entryOperatorContext ?? capture({ projectDir, issueNumber }));
+    assertCurrent();
     head = sourceCommit({ artifactSubject, operatorHead });
   }
   const readBack =
@@ -69,14 +74,27 @@ export async function deriveAndRescan({
       });
       return { body, head: String(stdout ?? '').trim() };
     });
+  const evaluatedAt = (deps.nowIso || (() => new Date().toISOString()))();
+  const permittedAuthority =
+    typeof authorityBody === 'string'
+      ? [
+          captureIssueProofAuthority(authorityBody),
+          captureIssueProofAuthority(
+            projectFunctionalDod({ body: authorityBody, head, evaluatedAt }).body
+          ),
+        ]
+      : null;
   const result = await persistReadyNormalizations({
     issueNumber,
     repo,
     head,
-    evaluatedAt: (deps.nowIso || (() => new Date().toISOString()))(),
+    evaluatedAt,
     refreshAndEvaluate: async (input) => {
       assertCurrent();
-      return deps.refreshAndEvaluate(input);
+      if (permittedAuthority) assertIssueProofAuthority(input.body, permittedAuthority);
+      const decision = await deps.refreshAndEvaluate(input);
+      assertCurrent();
+      return decision;
     },
     mutateBody: deps.mutateBody,
     deps: { pexec },

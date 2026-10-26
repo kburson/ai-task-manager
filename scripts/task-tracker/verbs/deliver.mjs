@@ -1,5 +1,10 @@
+import { resolveReviewVerificationEvidence } from './review.mjs';
+import { assertReviewedDeclarations } from '../lib/issue-proof-authority.mjs';
 import { validateArtifactSubject, artifactReceiptMatches } from '../lib/artifact-subject.mjs';
-import { captureArtifactOperator } from '../lib/artifact-execution.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 // @story #939
 // Review-stage, re-entrant delivery-intent orchestration.
 
@@ -659,12 +664,13 @@ async function verifyAndFinalize({
   ) {
     throw deliverError('trunk-reachability-drift');
   }
+  if (beforeReceiptWrite) await beforeReceiptWrite();
   let createError = null;
   try {
     await requiredDependency(
       deps,
       'createIssueComment'
-    )({ issueNumber, repository, body: receiptBody });
+    )({ issueNumber, repository, body: receiptBody, beforeWrite: beforeReceiptWrite });
   } catch (error) {
     createError = error;
   }
@@ -1120,6 +1126,7 @@ export async function runDeliver({
   const fetchIssue = requiredDependency(deps, 'fetchIssue');
   const resolveLineage = requiredDependency(deps, 'resolveLineage');
   const issue = await fetchIssue({ issueNumber, repository: cfg.repo });
+  if (artifactSubject) assertReviewedDeclarations(issue.body);
   if (artifactSubject)
     await requiredDependency(
       deps,
@@ -1559,6 +1566,7 @@ export async function runDeliver({
     allowScopeRefresh = false,
   } = {}) => {
     const freshIssue = await fetchIssue({ issueNumber, repository: cfg.repo });
+    if (artifactSubject) assertReviewedDeclarations(freshIssue.body);
     if (artifactSubject)
       await requiredDependency(
         deps,
@@ -2118,6 +2126,25 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       })
     )
       throw new Error('artifact: delivery Test receipt mismatch');
+    const evidence = await resolveReviewVerificationEvidence({
+      body: issue.body,
+      artifactSubject,
+      operatorContext: artifactOperatorContext,
+      issueNumber,
+      repository: ctx.cfg.repo,
+      projectDir: ctx.projectDir,
+      getHeadSha: async () =>
+        captureArtifactOperator({ projectDir: ctx.projectDir, issueNumber }).headSha,
+    });
+    if (!evidence.ok)
+      throw new Error(
+        'artifact: delivery current Test evidence invalid: ' + JSON.stringify(evidence.reasons)
+      );
+    assertNativeArtifactOperator({
+      projectDir: ctx.projectDir,
+      issueNumber,
+      operatorContext: artifactOperatorContext,
+    });
   };
   const run = async (command, args, options = {}) =>
     exec(command, args, {
@@ -2641,7 +2668,7 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         };
       });
     },
-    async createIssueComment({ issueNumber, body }) {
+    async createIssueComment({ issueNumber, body, beforeWrite }) {
       if (selectedArtifact) {
         const issue = await json('gh', [
           'issue',
@@ -2652,12 +2679,20 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
           '--json',
           'body',
         ]);
+        assertReviewedDeclarations(issue.body);
         await assertArtifactDeliveryContext({
           artifactSubject: selectedArtifact,
           issueNumber,
           issue,
         });
       }
+      if (beforeWrite) await beforeWrite();
+      if (selectedArtifact)
+        assertNativeArtifactOperator({
+          projectDir: ctx.projectDir,
+          issueNumber,
+          operatorContext: artifactOperatorContext,
+        });
       return json('gh', [
         'api',
         '--method',

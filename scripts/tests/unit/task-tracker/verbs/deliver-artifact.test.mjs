@@ -1,12 +1,19 @@
 // @story #2096
 import assert from 'node:assert/strict';
+import { stampAgentReviewPassed } from '../../../../task-tracker/lib/agent-review/review-gate.mjs';
 import { test } from 'node:test';
 import { HEAD, NEXT_HEAD, deliver, makeHarness } from './deliver-test-harness.mjs';
 
 test('native delivery uses exact artifact PR and keeps controller observations real', async () => {
   const treeSha = 'd'.repeat(40);
   const artifactSubject = { commitSha: HEAD, treeSha };
-  const h = makeHarness({ prSourceEvidence: [{ oid: HEAD, tree: treeSha }] });
+  const h = makeHarness({
+    issueBody: stampAgentReviewPassed(
+      '## Definition of Done\n### Lifecycle (verified at Review)\n- [x] Agent Review Passed',
+      { ts: '2026-10-26T18:00:00Z', validators: ['body-sections'] }
+    ),
+    prSourceEvidence: [{ oid: HEAD, tree: treeSha }],
+  });
   let checks = 0;
   h.deps.assertArtifactDeliveryContext = async (input) => {
     assert.deepEqual(input.artifactSubject, artifactSubject);

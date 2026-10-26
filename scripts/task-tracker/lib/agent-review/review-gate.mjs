@@ -1,3 +1,4 @@
+import { reviewDeclarationDigest } from '../issue-proof-authority.mjs';
 // Agent Review Gate — orchestrator (#809).
 //
 // `runAgentReviewGate` assembles the review context (issue body + comments +
@@ -107,13 +108,14 @@ export function runAgentReviewGate({
 
 // Build the run-evidence marker. `ts` must be a real ISO timestamp (caller
 // passes review-runtime `nowIso()`); `validators` is the executed-id list.
-export function buildAgentReviewEvidenceMarker({ ts, validators = [] } = {}) {
+export function buildAgentReviewEvidenceMarker({ ts, validators = [], declarations } = {}) {
   return serializeProofMarker({
     gate: 'agent-review',
     ts: ts || '',
     sha: 'sandbox',
     validators: (Array.isArray(validators) ? validators : []).join(','),
     result: 'pass',
+    ...(declarations ? { declarations } : {}),
   });
 }
 
@@ -123,7 +125,11 @@ export function buildAgentReviewEvidenceMarker({ ts, validators = [] } = {}) {
 // body comes back with only the tick applied (a no-op if it too is absent).
 export function stampAgentReviewPassed(body, { ts, validators = [] } = {}) {
   const ticked = tickLifecycleItem(typeof body === 'string' ? body : '', 'agent-review-passed');
-  const marker = buildAgentReviewEvidenceMarker({ ts, validators });
+  const marker = buildAgentReviewEvidenceMarker({
+    ts,
+    validators,
+    declarations: reviewDeclarationDigest(body),
+  });
   const lines = ticked.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];

@@ -1,3 +1,5 @@
+import { captureIssueProofAuthority } from '../issue-proof-authority.mjs';
+import { captureArtifactOperator } from '../artifact-execution.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
 //
 // Guard-execution concern extracted from `scripts/gh/move-state.mjs`: the
@@ -195,6 +197,13 @@ export async function runGuardExecution(ctx) {
     const projectDir = ctx.projectDir ?? getProjectDir();
     const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir });
 
+    if (ctx.artifactSubject) {
+      ctx.artifactTransitionAuthority = {
+        operatorContext: captureArtifactOperator({ projectDir, issueNumber: Number(issueArg) }),
+        body: guardBody,
+        proof: captureIssueProofAuthority(guardBody),
+      };
+    }
     let guardCtx = {
       issueNumber: Number(issueArg),
       repo: cfg.repo,

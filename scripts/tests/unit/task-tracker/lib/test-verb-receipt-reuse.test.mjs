@@ -754,7 +754,8 @@ for (const phase of ['fetch', 'retry'])
                 },
                 pushBody: async (_repo, _issue, next) => {
                   writes++;
-                  body = phase === 'retry' ? next + '\nConcurrent unrelated note\n' : next;
+                  body =
+                    phase === 'retry' ? next + '\n## Concurrent audit\nUnrelated note\n' : next;
                 },
               },
             }),

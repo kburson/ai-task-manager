@@ -1,3 +1,7 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
 import { sourceCommit } from '../lib/artifact-subject.mjs';
 import {
   withArtifactSource,
@@ -468,6 +472,7 @@ export async function runVerbTest({
       validateFreshBaseAsync: async (base, next) => {
         if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
         await input.validateFreshBaseAsync?.(base, next);
+        if (deps.beforeArtifactWrite) await deps.beforeArtifactWrite();
       },
     });
   };
@@ -933,6 +938,7 @@ export async function runVerbTest({
         body: `⚠ Develop-final receipt reuse refused before Test: ${codes}. Running one new Develop finalization.`,
       });
     }
+    const finalizationAuthority = captureIssueProofAuthority(body);
     const finalization = await runDevelopFinalization({
       projectDir: sourceDir,
       artifactSubject,
@@ -963,6 +969,11 @@ export async function runVerbTest({
       cfg,
       issueNum,
       evidenceStamp: true,
+      validateFreshBase: (base) =>
+        assertIssueProofAuthority(base, [
+          finalizationAuthority,
+          captureIssueProofAuthority(upsertVerificationReceipt(body, finalization.receipt)),
+        ]),
       mutate: (base) => upsertVerificationReceipt(base, finalization.receipt),
     });
     body = await fetchBody({ cfg, issueNum });
@@ -1018,6 +1029,7 @@ export async function runVerbTest({
   let testExecutionContext = null;
   let evidenceRefusal = null;
   let testPlan = null;
+  let testPublicationAuthority;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
   // run; carries the evidence that made the drop legal so the receipt can say
   // "these lanes were skipped, and here is why" rather than staying silent.
@@ -1043,6 +1055,21 @@ export async function runVerbTest({
         });
       }
     }
+
+    body = await fetchBody({ cfg, issueNum });
+    if (artifactSubject && readLastKnownState(body).state !== 'test')
+      throw new Error('artifact: issue proof authority changed before Test execution');
+    if (developEvidence) {
+      if (
+        canonicalRecordJson(parseVerificationReceipt(body, 'develop-final')) !==
+          canonicalRecordJson(developEvidence.receipt) ||
+        canonicalRecordJson(
+          canonicalVerificationCommandSet(parseVerificationCommands(body), { projectDir })
+        ) !== canonicalRecordJson(developEvidence.fingerprint.verificationCommands)
+      )
+        throw new Error('artifact: issue proof authority changed before Test execution');
+    }
+    testPublicationAuthority = captureIssueProofAuthority(body);
 
     // #254 — bounded retry of the setup chain only. A transient throw (registry
     // blip during `npm ci`, worktree-path contention) is retried up to
@@ -1447,6 +1474,26 @@ export async function runVerbTest({
         // #522 — sanctioned sandbox auto-stamp: `insertDodVerifiedMarker` +
         // `autoTickVerified` mint proof from the green sandbox run just executed.
         evidenceStamp: true,
+        validateFreshBase: (base) => {
+          assertIssueProofAuthority(base, [
+            testPublicationAuthority,
+            captureIssueProofAuthority(stamped),
+          ]);
+          if (developEvidence) {
+            const current = parseVerificationReceipt(base, 'develop-final');
+            if (
+              canonicalRecordJson(current) !== canonicalRecordJson(developEvidence.receipt) ||
+              !validateVerificationReceipt({
+                receipt: current,
+                expectedIssue: Number(issueNum),
+                expectedStage: 'develop-final',
+                fingerprint: testFingerprint,
+                required: developRequired,
+              }).ok
+            )
+              throw new Error('artifact: issue proof authority changed before Test publication');
+          }
+        },
         mutate: (base) => {
           let baseVerificationCommands;
           try {

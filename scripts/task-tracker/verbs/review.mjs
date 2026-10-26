@@ -1,3 +1,7 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
 import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
 import { validateArtifactSubject, sourceCommit } from '../lib/artifact-subject.mjs';
 import {
@@ -1495,7 +1499,42 @@ export async function verbReview(ctx) {
     await mutateBodyFn({
       issueNumber: issueNum,
       repo: cfg.repo,
-      mutate: () => finalBody,
+      mutate: () => stripBodyVersion(finalBody),
+      validateFreshBase: (base) => {
+        assertIssueProofAuthority(base, [
+          captureIssueProofAuthority(rawBody),
+          captureIssueProofAuthority(finalBody),
+        ]);
+        if (ctx.artifactSubject)
+          assertNativeArtifactOperator({
+            projectDir,
+            issueNumber: issueNum,
+            operatorContext: reviewOperatorContext,
+          });
+      },
+      validateFreshBaseAsync: async (base) => {
+        if (!ctx.artifactSubject) return;
+        const fresh = await resolveReviewVerificationEvidence({
+          body: base,
+          artifactSubject: ctx.artifactSubject,
+          operatorContext: reviewOperatorContext,
+          issueNumber: Number(issueNum),
+          repository: cfg.repo,
+          projectDir,
+          getHeadSha: getReviewHeadSha,
+          buildFingerprint: ctx.buildVerificationFingerprint,
+        });
+        if (
+          !fresh.ok ||
+          canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(reviewEvidence.receipt)
+        )
+          throw new Error('Review preliminary accepted Test evidence changed');
+        assertNativeArtifactOperator({
+          projectDir,
+          issueNumber: issueNum,
+          operatorContext: reviewOperatorContext,
+        });
+      },
       timeout: GH_API_TIMEOUT_MS,
       deps: { pexec },
       allowUnverifiedTicks: true,
@@ -1589,6 +1628,9 @@ export async function verbReview(ctx) {
       issueNumber: issueNum,
       repo: cfg.repo,
       scanBody: rawBody,
+      ...(ctx.artifactSubject
+        ? { authorityBody: finalBody, operatorContext: reviewOperatorContext }
+        : {}),
       artifactSubject: ctx.artifactSubject,
       projectDir,
       deps: {
@@ -1746,7 +1788,8 @@ export async function verbReview(ctx) {
                 });
                 if (
                   !freshEvidence.ok ||
-                  freshEvidence.receipt?.receiptId !== reviewEvidence.receipt?.receiptId
+                  canonicalRecordJson(freshEvidence.receipt) !==
+                    canonicalRecordJson(reviewEvidence.receipt)
                 )
                   throw new Error('Review completion Test evidence changed; re-run Review');
                 assertNativeArtifactOperator({

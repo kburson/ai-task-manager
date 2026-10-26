@@ -514,3 +514,24 @@ test('Review completion propagates stale fresh-base refusal without success timi
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('Review preliminary proof writer rejects changed declarations before ticks', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  try {
+    const { ctx, calls } = makeCtx({ statePath, rawBody: CLEAN_BODY, scanBody: CLEAN_BODY });
+    ctx.mutateIssueBody = async ({ mutate, validateFreshBase }) => {
+      validateFreshBase?.(
+        CLEAN_BODY.replace('Exercise the review success path.', 'Changed reviewed scope.')
+      );
+      mutate(CLEAN_BODY);
+      throw new Error('stale preliminary proof published');
+    };
+    await assert.rejects(runExit(ctx), /proof authority changed/);
+    assert.equal(
+      calls.post.some((row) => String(row).includes('review:passed')),
+      false
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

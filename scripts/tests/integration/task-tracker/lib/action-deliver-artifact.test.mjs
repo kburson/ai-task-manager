@@ -1,5 +1,6 @@
 // @story #2096
 import assert from 'node:assert/strict';
+import { stampAgentReviewPassed } from '../../../../task-tracker/lib/agent-review/review-gate.mjs';
 import { test } from 'node:test';
 import * as deliveryDecision from '../../../../task-tracker/lib/action-decision/deliver.mjs';
 import {
@@ -24,7 +25,11 @@ Explain current provider delivery authorization without effects.
 test('#2096 explicit artifact delivery readiness uses source PR and actual controller head', async () => {
   const artifactSubject = { commitSha: DELIVERY_HEAD, treeSha: 'd'.repeat(40) };
   const h = makeHarness({
-    issueBody: BODY,
+    issueBody: stampAgentReviewPassed(
+      BODY +
+        '\n\n## Definition of Done\n### Lifecycle (verified at Review)\n- [x] Agent Review Passed',
+      { ts: '2026-10-26T18:00:00Z', validators: ['body-sections'] }
+    ),
     prSourceEvidence: [{ oid: DELIVERY_HEAD, tree: artifactSubject.treeSha }],
   });
   h.deps.providerActionAvailable = true;

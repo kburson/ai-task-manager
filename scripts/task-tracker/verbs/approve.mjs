@@ -1,4 +1,11 @@
 import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+  assertReviewedDeclarations,
+} from '../lib/issue-proof-authority.mjs';
+import { resolveReviewVerificationEvidence } from './review.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import {
   sourceCommit,
   validateArtifactSubject,
   artifactReceiptMatches,
@@ -361,6 +368,28 @@ export async function runApprove({
         operatorContext = captureOperator({ projectDir, issueNumber });
         assertArtifactApproval(body);
       }
+      const capturedTestReceipt = parseVerificationReceipt(body, 'test');
+      const assertCurrentAcceptedTest = async (freshBody) => {
+        if (!artifactSubject) return;
+        assertReviewedDeclarations(freshBody);
+        const fresh = await resolveReviewVerificationEvidence({
+          body: freshBody,
+          artifactSubject,
+          operatorContext,
+          issueNumber: Number(issueNumber),
+          repository: cfg.repo,
+          projectDir,
+          getHeadSha,
+          buildFingerprint: deps.buildVerificationFingerprint,
+        });
+        if (
+          !fresh.ok ||
+          canonicalRecordJson(fresh.receipt) !== canonicalRecordJson(capturedTestReceipt)
+        )
+          throw new Error('artifact: accepted Test evidence changed or is invalid before approval');
+        assertArtifactApproval(freshBody);
+      };
+      await assertCurrentAcceptedTest(body);
       const approvedSha = sourceCommit({ artifactSubject, operatorHead });
       if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
         throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
@@ -624,6 +653,11 @@ export async function runApprove({
         allowUnverifiedTicks: true,
         validateFreshBase: (freshBase) => {
           assertArtifactApproval(freshBase);
+          if (artifactSubject)
+            assertIssueProofAuthority(freshBase, [
+              captureIssueProofAuthority(body),
+              captureIssueProofAuthority(stamp(body)),
+            ]);
           if (!semanticReviewWaiverAuthority) {
             if (isAgentReviewComplete(freshBase)) return;
             throw new Error(`approve: agent review evidence changed before approval write`);
@@ -652,9 +686,10 @@ export async function runApprove({
             );
           }
         },
-        validateFreshBaseAsync: semanticReviewWaiverAuthority
-          ? revalidateSemanticReviewWaiver
-          : undefined,
+        validateFreshBaseAsync: async (freshBase) => {
+          await assertCurrentAcceptedTest(freshBase);
+          if (semanticReviewWaiverAuthority) await revalidateSemanticReviewWaiver(freshBase);
+        },
       });
       // #655 — read-back verification. The write call not throwing is NOT proof
       // the `aitm-review-approved` marker persisted (the #652 silent-success

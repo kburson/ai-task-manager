@@ -1,5 +1,6 @@
 // @story #2096
 import assert from 'node:assert/strict';
+import { stampAgentReviewPassed } from '../../../../task-tracker/lib/agent-review/review-gate.mjs';
 import { test } from 'node:test';
 import { artifactRepository as repository } from '../../../helpers/artifact-repository.mjs';
 import { execFileSync } from 'node:child_process';
@@ -52,8 +53,11 @@ test('delivery authority selects unique source PR while preserving actual operat
 test('Close loader reads the artifact PR and retains actual controller authority', async (t) => {
   const { root, git, candidate, tree, operatorHead } = repository(t);
   const { loadCloseDeliveryGateInput } = await import('../../../../task-tracker/verbs/close.mjs');
-  const { createVerificationReceipt, upsertVerificationReceipt } =
-    await import('../../../../task-tracker/lib/verification-receipt.mjs');
+  const {
+    createVerificationReceipt,
+    upsertVerificationReceipt,
+    buildArtifactVerificationFingerprint,
+  } = await import('../../../../task-tracker/lib/verification-receipt.mjs');
   const artifactSubject = { commitSha: candidate, treeSha: tree };
   const operatorContext = {
     sessionId: 'actual',
@@ -66,25 +70,43 @@ test('Close loader reads the artifact PR and retains actual controller authority
   const receipt = createVerificationReceipt({
     issueNumber: 2096,
     stage: 'test',
-    fingerprint: {
-      commitSha: candidate,
-      artifactSubject,
-      operatorContext,
-      verificationCommands: [],
-      environment: {
-        node: process.version,
-        platform: `${process.platform}-${process.arch}`,
-        lockfileHash: 'sha256:' + 'a'.repeat(64),
-        configHashes: {},
-        sandbox: { kind: 'worktree', identity: root, clean: true },
-      },
-    },
-    commands: [],
+    fingerprint: (() => {
+      const fingerprint = buildArtifactVerificationFingerprint({
+        projectDir: root,
+        artifactSubject,
+        operatorContext,
+        verificationCommands: [],
+      });
+      return {
+        ...fingerprint,
+        environment: {
+          ...fingerprint.environment,
+          sandbox: { kind: 'worktree', identity: root, clean: true },
+        },
+      };
+    })(),
+    commands: [
+      ['lint-full', 'lint'],
+      ['format-full', 'format:check'],
+      ['test-unit', 'test:unit'],
+      ['test-integration', 'test:integration'],
+      ['test-slow', 'test:slow'],
+    ].map(([classification, script]) => ({
+      classification,
+      command: 'npm',
+      args: ['run', script],
+      exitCode: 0,
+      durationMs: 1,
+    })),
     now: () => '2026-10-26T18:00:00.000Z',
   });
-  const body = upsertVerificationReceipt(
-    '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-10-26T18:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->',
-    receipt
+  const body = stampAgentReviewPassed(
+    upsertVerificationReceipt(
+      '## Definition of Done\n### Lifecycle (verified at Review)\n- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-10-26T18:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->',
+      receipt
+    ) +
+      `\n<!-- aitm-test-started: ${candidate}:2026-10-26T18:00:00Z -->\n<!-- aitm-dod-verified: ${candidate}:2026-10-26T18:00:00Z -->`,
+    { ts: '2026-10-26T18:00:00Z', validators: ['body-sections'] }
   );
   let selected;
   const result = await loadCloseDeliveryGateInput({

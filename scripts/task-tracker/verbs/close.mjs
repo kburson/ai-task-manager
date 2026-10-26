@@ -1,3 +1,5 @@
+import { resolveReviewVerificationEvidence } from './review.mjs';
+import { assertReviewedDeclarations } from '../lib/issue-proof-authority.mjs';
 import {
   validateArtifactSubject,
   artifactReceiptMatches,
@@ -698,6 +700,7 @@ export async function loadCloseDeliveryGateInput({
   const artifactSubject = ctx.artifactSubject;
   let operatorContext;
   if (artifactSubject) {
+    assertReviewedDeclarations(body);
     validateArtifactSubject({ projectDir, artifactSubject });
     operatorContext = (ctx.captureArtifactOperator ?? captureArtifactOperator)({
       projectDir,
@@ -711,6 +714,26 @@ export async function loadCloseDeliveryGateInput({
       })
     )
       throw new TypeError('artifact: Close Test receipt mismatch');
+    const evidence = await resolveReviewVerificationEvidence({
+      body,
+      artifactSubject,
+      operatorContext,
+      issueNumber,
+      repository: cfg.repo,
+      projectDir,
+      getHeadSha: async () => localHeadSha,
+    });
+    if (!evidence.ok)
+      throw new TypeError(
+        'artifact: Close current Test evidence invalid: ' + JSON.stringify(evidence.reasons)
+      );
+    const finalOperator = (ctx.captureArtifactOperator ?? captureArtifactOperator)({
+      projectDir,
+      issueNumber,
+    });
+    if (canonicalRecordJson(finalOperator) !== canonicalRecordJson(operatorContext))
+      throw new Error('artifact: Close operator changed during Test evidence validation');
+    validateArtifactSubject({ projectDir, artifactSubject });
   }
   const directoryLane = lifecycleEvidence !== null;
   const testReceiptSha = parseVerificationReceipt(body, 'test')?.commitSha ?? null;
@@ -3914,6 +3937,12 @@ export async function verbClose(ctx) {
             issueNumber: closeIssueNum,
             repo: cfg.repo,
             scanBody: body,
+            ...(ctx.artifactSubject
+              ? {
+                  authorityBody: body,
+                  operatorContext: resolvedDeliveryGate?.gateInput?.operatorContext,
+                }
+              : {}),
             artifactSubject: ctx.artifactSubject,
             projectDir,
             deps: {

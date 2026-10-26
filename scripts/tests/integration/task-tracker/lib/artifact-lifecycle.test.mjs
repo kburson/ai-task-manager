@@ -217,9 +217,14 @@ test('Promote forwards explicit source through its direct transition host', asyn
 
 test('approval stamps selected commit and refuses actor drift before durable write', async (t) => {
   const { root, git, candidate, tree, operatorHead } = repository(t);
+  const { stampAgentReviewPassed } =
+    await import('../../../../task-tracker/lib/agent-review/review-gate.mjs');
   const { runApprove } = await import('../../../../task-tracker/verbs/approve.mjs');
-  const { createVerificationReceipt, upsertVerificationReceipt } =
-    await import('../../../../task-tracker/lib/verification-receipt.mjs');
+  const {
+    createVerificationReceipt,
+    upsertVerificationReceipt,
+    buildArtifactVerificationFingerprint,
+  } = await import('../../../../task-tracker/lib/verification-receipt.mjs');
   const artifactSubject = { commitSha: candidate, treeSha: tree };
   const operatorContext = {
     sessionId: 'actual',
@@ -232,26 +237,46 @@ test('approval stamps selected commit and refuses actor drift before durable wri
   const receipt = createVerificationReceipt({
     issueNumber: 2096,
     stage: 'test',
-    fingerprint: {
-      commitSha: candidate,
-      artifactSubject,
-      operatorContext,
-      verificationCommands: [],
-      environment: {
-        node: process.version,
-        platform: `${process.platform}-${process.arch}`,
-        lockfileHash: 'sha256:' + 'a'.repeat(64),
-        configHashes: {},
-        sandbox: { kind: 'worktree', identity: root, clean: true },
-      },
-    },
-    commands: [],
+    fingerprint: (() => {
+      const fingerprint = buildArtifactVerificationFingerprint({
+        projectDir: root,
+        commitSha: candidate,
+        artifactSubject,
+        operatorContext,
+        verificationCommands: [],
+      });
+      return {
+        ...fingerprint,
+        environment: {
+          ...fingerprint.environment,
+          sandbox: { kind: 'worktree', identity: root, clean: true },
+        },
+      };
+    })(),
+    commands: [
+      ['lint-full', 'lint'],
+      ['format-full', 'format:check'],
+      ['test-unit', 'test:unit'],
+      ['test-integration', 'test:integration'],
+      ['test-slow', 'test:slow'],
+    ].map(([classification, script]) => ({
+      classification,
+      command: 'npm',
+      args: ['run', script],
+      exitCode: 0,
+      durationMs: 1,
+    })),
     now: () => '2026-10-26T18:00:00.000Z',
   });
-  const initial = upsertVerificationReceipt(
-    '## Acceptance Criteria\n- [x] accepted\n\n## Definition of Done\n### Lifecycle\n- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-10-26T18:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n- [ ] Final Review Passed\n<!-- aitm-lifecycle-optout: passed-final-review -->\n',
-    receipt
+  const initial = stampAgentReviewPassed(
+    upsertVerificationReceipt(
+      '## Acceptance Criteria\n- [x] accepted\n\n## Definition of Done\n### Lifecycle\n- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-10-26T18:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n- [ ] Final Review Passed\n<!-- aitm-lifecycle-optout: passed-final-review -->\n',
+      receipt
+    ) +
+      `\n<!-- aitm-test-started: ${candidate}:2026-10-26T18:00:00.000Z -->\n<!-- aitm-dod-verified: ${candidate}:2026-10-26T18:00:00.000Z -->`,
+    { ts: '2026-10-26T18:00:00Z', validators: ['body-sections'] }
   );
+
   let body = initial;
   let actor = operatorContext;
   const deps = {
@@ -266,8 +291,9 @@ test('approval stamps selected commit and refuses actor drift before durable wri
     deriveDrivers: () => [],
     postComment: async () => {},
     reconcileReviewApprovedTiming: async () => ({}),
-    mutateIssueBody: async ({ mutate, validateFreshBase }) => {
+    mutateIssueBody: async ({ mutate, validateFreshBase, validateFreshBaseAsync }) => {
       await validateFreshBase?.(body);
+      await validateFreshBaseAsync?.(body);
       body = mutate(body);
       return { status: 'ok', body };
     },
@@ -296,6 +322,33 @@ test('approval stamps selected commit and refuses actor drift before durable wri
     /artifact.*operator/
   );
   assert.equal(body, initial);
+
+  actor = operatorContext;
+  for (const drift of ['receipt', 'review-proof', 'initial-vc', 'initial-scope']) {
+    body = initial;
+    deps.postComment = async () => {
+      if (drift === 'receipt')
+        body = upsertVerificationReceipt(body, {
+          ...receipt,
+          receiptId: '7' + receipt.receiptId.slice(1),
+        });
+      if (drift === 'review-proof')
+        body = body.replace('validators="body-sections"', 'validators="different-validator"');
+    };
+    if (drift === 'initial-scope') body = body.replace('accepted\n', 'changed acceptance\n');
+    if (drift === 'initial-vc')
+      body += '\n## Verification Commands\n- [ ] `git log --oneline -1` <!-- id=1 -->\n';
+    await assert.rejects(
+      runApprove({
+        issueNumber: 2096,
+        cfg: { repo: 'o/r' },
+        projectDir: root,
+        artifactSubject,
+        deps,
+      }),
+      /proof authority changed|accepted Test evidence|Review declarations/
+    );
+  }
 });
 
 test('Review and Close normalization projects artifact evidence while rechecking actual actor', async (t) => {
@@ -444,5 +497,37 @@ test('Develop refuses a mismatched artifact tree with a valid typed authority re
       },
       { status: 'blocked' }
     )
+  );
+});
+
+test('normalization retains caller operator and rejects drift during awaited evaluation', async (t) => {
+  const { root, candidate, tree, operatorHead } = repository(t);
+  const { deriveAndRescan } = await import('../../../../task-tracker/lib/review-derive-rescan.mjs');
+  const original = { sessionId: 'original', headSha: operatorHead };
+  let actor = original;
+  await assert.rejects(
+    deriveAndRescan({
+      issueNumber: 2096,
+      repo: 'o/r',
+      projectDir: root,
+      artifactSubject: { commitSha: candidate, treeSha: tree },
+      operatorContext: original,
+      deps: {
+        captureArtifactOperator: () => actor,
+        pexec: async () => ({ stdout: operatorHead }),
+        readBack: async () => ({
+          body: '## Acceptance Criteria\n- [x] accepted',
+          head: operatorHead,
+        }),
+        refreshAndEvaluate: async () => {
+          actor = { ...original, sessionId: 'changed' };
+          return { ok: true, status: 'ready', refusals: [], humanDecision: null };
+        },
+        mutateBody: async () => {
+          throw new Error('unexpected write');
+        },
+      },
+    }),
+    (error) => String(error.code).startsWith('normalization-')
   );
 });

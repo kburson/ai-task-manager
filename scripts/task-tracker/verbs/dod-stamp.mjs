@@ -1,3 +1,7 @@
+import {
+  captureIssueProofAuthority,
+  assertIssueProofAuthority,
+} from '../lib/issue-proof-authority.mjs';
 import { stampDeclarationIdentity } from '../lib/stamp-declaration.mjs';
 import { validateArtifactSubject } from '../lib/artifact-subject.mjs';
 import {
@@ -62,8 +66,12 @@ export async function verbDodStamp(ctx) {
   const operatorContext = ctx.artifactSubject
     ? captureArtifactOperator({ projectDir, issueNumber: issueNum })
     : null;
-  const mutateIssueBody = (input) =>
-    nativeMutateIssueBody({
+  const mutateIssueBody = (input) => {
+    const permitted = [
+      captureIssueProofAuthority(body),
+      captureIssueProofAuthority(input.mutate(body)),
+    ];
+    return nativeMutateIssueBody({
       ...input,
       validateFreshBase: (base) => {
         const freshTarget = parseFunctionalDodKeys(base).find((item) => item.key === key);
@@ -75,9 +83,30 @@ export async function verbDodStamp(ctx) {
           validateArtifactSubject({ projectDir, artifactSubject: ctx.artifactSubject });
           assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
         }
+        assertIssueProofAuthority(base, permitted);
         input.validateFreshBase?.(base);
       },
+      validateFreshBaseAsync: async (base, next) => {
+        const freshDecision = await decideStampExecutionFromEnv({
+          commands: target.evidenceCommands,
+          body: base,
+          issueNumber: issueNum,
+          cfg,
+          pexec,
+          projectDir,
+          deps: ctx.deps,
+          artifactSubject: ctx.artifactSubject,
+        });
+        if (freshDecision.action !== decision.action || freshDecision.live !== decision.live)
+          throw new Error(
+            'artifact: authorizing receipt changed or verifier state changed before write'
+          );
+        await input.validateFreshBaseAsync?.(base, next);
+        if (ctx.artifactSubject)
+          assertNativeArtifactOperator({ projectDir, issueNumber: issueNum, operatorContext });
+      },
     });
+  };
 
   const { stdout: body } = await pexec(
     'gh',
