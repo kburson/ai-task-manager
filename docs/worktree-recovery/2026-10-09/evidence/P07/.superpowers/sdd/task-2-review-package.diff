@@ -1,0 +1,187 @@
+# Review package: 5f2235066b290ae248f74dc55d1a670aef711f7d..8b7ba7f1a7ab6beec5b03ec175da5419ea05666e
+
+## Commits
+8b7ba7f1 feat(book): simplify opener semantics
+
+## Files changed
+ scripts/articles/lib/book/chapter-openers.mjs                 | 3 ---
+ scripts/articles/lib/book/diagrams.mjs                        | 2 +-
+ scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs | 5 ++---
+ scripts/tests/unit/articles/lib/book/corpus.test.mjs          | 2 +-
+ scripts/tests/unit/articles/lib/book/diagrams.test.mjs        | 2 +-
+ 5 files changed, 5 insertions(+), 9 deletions(-)
+
+## Diff
+diff --git a/scripts/articles/lib/book/chapter-openers.mjs b/scripts/articles/lib/book/chapter-openers.mjs
+index 45713614..bf30e881 100644
+--- a/scripts/articles/lib/book/chapter-openers.mjs
++++ b/scripts/articles/lib/book/chapter-openers.mjs
+@@ -27,36 +27,33 @@ export function escapeLatex(value) {
+ 
+ export function chapterOpenerFor({ target, chapter, imageName, subtitle }) {
+   const number = chapter.number;
+   if (target === 'pdf') {
+     return [`\\bookchapter{${imageName}}{${escapeLatex(chapter.title)}}{${escapeLatex(subtitle)}}`];
+   }
+   if (target === 'manuscript') {
+     return [
+       `![Chapter ${number} header](${imageName})`,
+       '',
+-      `<div align="center">Chapter ${number}</div>`,
+-      '',
+       `# ${chapter.title}`,
+       '',
+       `<div align="center">${subtitle}</div>`,
+       '',
+     ];
+   }
+   if (target === 'html' || target === 'epub') {
+     return [
+       '::: {.chapter-opener}',
+       `# ${chapter.title} {.chapter-title}`,
+       '::: {.chapter-image}',
+       `![Chapter ${number} header](${imageName})`,
+       ':::',
+-      `<div class="chapter-number">Chapter ${number}</div>`,
+       `<div class="chapter-subtitle">${subtitle}</div>`,
+       ':::',
+       '',
+     ];
+   }
+   throw new Error(`unsupported chapter opener target: ${target}`);
+ }
+ 
+ function assertContained(root, candidate, label) {
+   const relative = path.relative(root, candidate);
+diff --git a/scripts/articles/lib/book/diagrams.mjs b/scripts/articles/lib/book/diagrams.mjs
+index 67b4a0e7..844e3c87 100644
+--- a/scripts/articles/lib/book/diagrams.mjs
++++ b/scripts/articles/lib/book/diagrams.mjs
+@@ -41,21 +41,21 @@ export function extractBookDiagrams(sections, slug) {
+         const line = section.items[j];
+         if (line.kind === 'text' && line.text.trim() === '```') break;
+         code.push(line.kind === 'text' ? line.text : '');
+         j += 1;
+       }
+       if (j >= section.items.length) {
+         throw new Error(`${slug}: unterminated \`\`\`mermaid fence`);
+       }
+       const imageName = `${slug}-diagram-${diagrams.length + 1}.png`;
+       diagrams.push({ code: code.join('\n'), imageName });
+-      items.push({ kind: 'text', text: `![](${imageName})` });
++      items.push({ kind: 'text', text: `![](${imageName}){.book-diagram}` });
+       i = j + 1;
+     }
+     return { heading: section.heading, items };
+   });
+ 
+   return { sections: out, diagrams };
+ }
+ 
+ /**
+  * @param {Array<{code: string, imageName: string}>} diagrams
+diff --git a/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs b/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
+index 0d2789c3..094f53fe 100644
+--- a/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/chapter-openers.test.mjs
+@@ -36,22 +36,20 @@ test('chapterOpenerFor emits a reviewable manuscript opener', () => {
+   assert.deepEqual(
+     chapterOpenerFor({
+       target: 'manuscript',
+       chapter: { number: 2, title: 'Title' },
+       imageName: 'chapter-02-header.png',
+       subtitle: 'Subtitle',
+     }),
+     [
+       '![Chapter 2 header](chapter-02-header.png)',
+       '',
+-      '<div align="center">Chapter 2</div>',
+-      '',
+       '# Title',
+       '',
+       '<div align="center">Subtitle</div>',
+       '',
+     ]
+   );
+ });
+ 
+ test('chapterOpenerFor emits one native PDF command and one semantic reflowable division', () => {
+   const options = {
+@@ -60,21 +58,22 @@ test('chapterOpenerFor emits one native PDF command and one semantic reflowable
+     subtitle: 'C_1',
+   };
+   const pdf = chapterOpenerFor({ ...options, target: 'pdf' }).join('\n');
+   assert.equal((pdf.match(/\\bookchapter\{/g) || []).length, 1);
+   assert.equal(pdf, '\\bookchapter{chapter-02-header.png}{A \\& B}{C\\_1}');
+ 
+   for (const target of ['html', 'epub']) {
+     const markdown = chapterOpenerFor({ ...options, target }).join('\n');
+     assert.equal((markdown.match(/\.chapter-opener/g) || []).length, 1);
+     assert.ok(markdown.indexOf('# A & B') < markdown.indexOf('chapter-02-header.png'));
+-    assert.match(markdown, /Chapter 2/);
++    assert.doesNotMatch(markdown, /chapter-number/);
++    assert.doesNotMatch(markdown, />Chapter 2</);
+     assert.match(markdown, /C_1/);
+   }
+ });
+ 
+ test('planChapterImages uses only the first member and deterministic chapter names', async () => {
+   const root = await mkdtemp(path.join(projectScratchDir('test'), 'chapter-openers-'));
+   const articlesDir = path.join(root, 'articles');
+   const headersDir = path.join(articlesDir, 'assets', 'article-headers');
+   const outDir = path.join(root, 'out');
+   try {
+diff --git a/scripts/tests/unit/articles/lib/book/corpus.test.mjs b/scripts/tests/unit/articles/lib/book/corpus.test.mjs
+index 4aee32dc..34708aee 100644
+--- a/scripts/tests/unit/articles/lib/book/corpus.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/corpus.test.mjs
+@@ -139,21 +139,21 @@ test('chapter one carries footnotes sourced from its own bibliography', async ()
+ test('epub and html carry no latex, and the pdf keeps its index out of the appendices', async () => {
+   for (const target of ['epub', 'html']) {
+     const { markdown } = await buildManuscript({
+       articlesDir: ARTICLES_DIR,
+       bookDir: BOOK_DIR,
+       target,
+     });
+     for (const token of ['\\index{', '\\newpage', '\\part{', '\\appendix', '\\printindex']) {
+       assert.equal(markdown.includes(token), false, `${target} leaked ${token}`);
+     }
+-    assert.match(markdown, /<div class="chapter-number">Chapter 1<\/div>/);
++    assert.doesNotMatch(markdown, /chapter-number/);
+   }
+ 
+   const manuscript = await buildManuscript({
+     articlesDir: ARTICLES_DIR,
+     bookDir: BOOK_DIR,
+     target: 'manuscript',
+   });
+   assert.equal(
+     manuscript.markdown.includes('\\'),
+     false,
+diff --git a/scripts/tests/unit/articles/lib/book/diagrams.test.mjs b/scripts/tests/unit/articles/lib/book/diagrams.test.mjs
+index 97c6b7c1..46a79533 100644
+--- a/scripts/tests/unit/articles/lib/book/diagrams.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/diagrams.test.mjs
+@@ -20,21 +20,21 @@ test('extractBookDiagrams replaces fences with image references', () => {
+       ],
+     },
+   ];
+   const { sections: out, diagrams } = extractBookDiagrams(sections, '03-slug');
+ 
+   assert.deepEqual(diagrams, [
+     { code: 'flowchart LR\n  A --> B', imageName: '03-slug-diagram-1.png' },
+   ]);
+   assert.deepEqual(out[0].items, [
+     text('Before.'),
+-    text('![](03-slug-diagram-1.png)'),
++    text('![](03-slug-diagram-1.png){.book-diagram}'),
+     text('After.'),
+   ]);
+ });
+ 
+ test('extractBookDiagrams numbers diagrams across sections in document order', () => {
+   const fence = () => [text('```mermaid'), text('graph TD'), text('```')];
+   const { diagrams } = extractBookDiagrams(
+     [
+       { heading: 'One', items: fence() },
+       { heading: 'Two', items: fence() },

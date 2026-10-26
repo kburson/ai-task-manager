@@ -1,0 +1,849 @@
+# Review package: 3018481310a98d17102b1be252d6952439ef4bd3..ed61f9fbb40fd19d3cdb84d43f93f55503efd629
+
+## Commits
+ed61f9fb fix(book): reject unsafe EPUB entries
+2c74701a fix(book): harden EPUB postprocessing
+a6838514 fix(book): render EPUB title banner
+b3539fbf style(book): constrain reflowable artwork
+
+## Files changed
+ docs/articles/assets/book/book.css                 |  74 +++++--
+ scripts/articles/lib/book/render.mjs               | 216 ++++++++++++++++++++-
+ scripts/articles/lib/book/toolchain.mjs            |   7 +-
+ .../tests/unit/articles/lib/book/render.test.mjs   | 215 +++++++++++++++++++-
+ .../unit/articles/lib/book/toolchain.test.mjs      |  11 +-
+ 5 files changed, 496 insertions(+), 27 deletions(-)
+
+## Diff
+diff --git a/docs/articles/assets/book/book.css b/docs/articles/assets/book/book.css
+index 39bc6f11..b5b3ee81 100644
+--- a/docs/articles/assets/book/book.css
++++ b/docs/articles/assets/book/book.css
+@@ -1,41 +1,92 @@
++#title-block-header {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++}
++
++#title-block-header::before {
++  content: '';
++  display: block;
++  order: -1;
++  width: 100%;
++  aspect-ratio: 1376 / 768;
++  margin-bottom: 2rem;
++  background: url('title-page.png') center / contain no-repeat;
++}
++
++#title-block-header h1.title {
++  font-size: 2.75rem;
++  line-height: 1.15;
++}
++
++.titlepage {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  text-align: center;
++}
++
++.titlepage .title-banner {
++  display: block;
++  order: -1;
++  width: 100%;
++  margin-bottom: 2rem;
++}
++
++.titlepage .title-banner svg {
++  display: block;
++  width: 100%;
++  height: auto;
++}
++
++.titlepage h1.title {
++  font-size: 2.75rem;
++  line-height: 1.15;
++}
++
+ .chapter-opener {
+   display: flex;
+   flex-direction: column;
+   gap: 0;
+   margin-block: 4rem 2rem;
+   break-before: page;
+   page-break-before: always;
+ }
+ 
+ .chapter-opener .chapter-image {
+   order: 1;
+   margin: 0 0 1.5rem;
+ }
+ 
+ .chapter-opener .chapter-image img {
+   display: block;
+-  width: 100%;
+-  height: 20vh;
+-  object-fit: cover;
+-  object-position: center;
++  max-width: 100%;
++  width: auto;
++  height: auto;
++  margin-inline: auto;
++  object-fit: contain;
+ }
+ 
+ .chapter-opener figcaption {
+   display: none;
+ }
+ 
+-.chapter-opener .chapter-number {
+-  order: 2;
+-  text-align: center;
+-  font-variant: small-caps;
+-  letter-spacing: 0.04em;
++.book-diagram {
++  display: block;
++  max-width: 100%;
++  width: auto;
++  height: auto;
++  max-height: 70vh;
++  margin: 1.5rem auto;
++  object-fit: contain;
+ }
+ 
+ .chapter-opener .chapter-title {
+   order: 3;
+   margin: 0.55rem 0 0;
+   text-align: center;
+ }
+ 
+ .chapter-opener .chapter-subtitle {
+   order: 4;
+@@ -46,22 +97,17 @@
+ 
+ @media print {
+   .chapter-opener {
+     margin-block: 0 1.5rem;
+     break-before: page;
+     page-break-before: always;
+     break-inside: avoid;
+     page-break-inside: avoid;
+   }
+ 
+-  .chapter-opener .chapter-image img {
+-    height: 2.2in;
+-  }
+-
+   .chapter-opener .chapter-image,
+-  .chapter-opener .chapter-number,
+   .chapter-opener .chapter-title,
+   .chapter-opener .chapter-subtitle {
+     break-inside: avoid;
+     page-break-inside: avoid;
+   }
+ }
+diff --git a/scripts/articles/lib/book/render.mjs b/scripts/articles/lib/book/render.mjs
+index bd9d54b3..40d3a5b1 100644
+--- a/scripts/articles/lib/book/render.mjs
++++ b/scripts/articles/lib/book/render.mjs
+@@ -1,53 +1,262 @@
+ // Rendering. Pandoc for every target; latexmk on top of it for PDF, because a
+ // table of contents and a makeindex index both need multiple passes and pandoc
+ // runs the engine exactly once.
+ 
+ import { spawn } from 'node:child_process';
++import { lstat, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ 
+ export const TARGETS = ['manuscript', 'pdf', 'epub', 'html'];
+ 
+ const OUTPUT_NAME = { pdf: 'book.tex', epub: 'book.epub', html: 'book.html' };
+ 
+ /**
+  * `--toc-depth` is not a portable number. Under the `book` class pandoc turns
+  * it into `\setcounter{tocdepth}{N}`, where 0 is chapter and 1 is section — so
+  * the 2 that gives EPUB and HTML a chapter-plus-section contents listed every
+  * `###` subsection in the PDF. The PDF therefore wants 1.
+  */
+ export const TOC_DEPTH = { pdf: 1, epub: 2, html: 2 };
+ 
+ export function pandocArgs({ manuscriptPath, bookDir, target, outDir }) {
+   const presentationArgs =
+     target === 'pdf'
+       ? [`--include-in-header=${path.join(bookDir, 'chapter-openers.tex')}`]
+-      : target === 'epub' || target === 'html'
+-        ? ['--css=book.css']
+-        : [];
++      : target === 'epub'
++        ? ['--css=book.css', '--epub-cover-image=title-page.png']
++        : target === 'html'
++          ? ['--css=book.css']
++          : [];
+   return [
+     manuscriptPath,
+     `--metadata-file=${path.join(bookDir, 'book.json')}`,
+     '--top-level-division=chapter',
+     '--toc',
+     `--toc-depth=${TOC_DEPTH[target] ?? 2}`,
+     '--standalone',
+     ...presentationArgs,
+     '-o',
+     path.join(outDir, OUTPUT_NAME[target]),
+   ];
+ }
+ 
+ export function latexmkArgs({ texPath, outDir }) {
+   return ['-xelatex', '-interaction=nonstopmode', '-halt-on-error', `-outdir=${outDir}`, texPath];
+ }
+ 
++function epubManifestHref(opf, id) {
++  const item = opf.match(
++    new RegExp(`<item\\b(?=[^>]*\\bid="${id}")(?=[^>]*\\bhref="([^"]+)")[^>]*\\/?>`)
++  );
++  if (!item) throw new Error(`EPUB manifest is missing ${id}`);
++  return item[1];
++}
++
++function epubCoverHref(opf) {
++  const item = opf.match(
++    /<item\b(?=[^>]*\bproperties="[^"]*\bcover-image\b[^"]*")(?=[^>]*\bhref="([^"]+)")[^>]*\/?>/
++  );
++  if (!item) throw new Error('EPUB manifest is missing a cover-image item');
++  return item[1];
++}
++
++const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
++
++function crc32(bytes) {
++  let crc = 0xffffffff;
++  for (const byte of bytes) {
++    crc ^= byte;
++    for (let bit = 0; bit < 8; bit += 1) {
++      crc = (crc >>> 1) ^ ((crc & 1) === 1 ? 0xedb88320 : 0);
++    }
++  }
++  return (crc ^ 0xffffffff) >>> 0;
++}
++
++export function pngDimensions(png) {
++  if (
++    png.length < PNG_SIGNATURE.length ||
++    !png.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
++  ) {
++    throw new Error('EPUB cover image is not a PNG');
++  }
++  if (png.length < 33 || png.readUInt32BE(8) !== 13 || png.toString('ascii', 12, 16) !== 'IHDR') {
++    throw new Error('EPUB cover image has an invalid IHDR chunk');
++  }
++  if (crc32(png.subarray(12, 29)) !== png.readUInt32BE(29)) {
++    throw new Error('EPUB cover image has an invalid IHDR CRC');
++  }
++  const width = png.readUInt32BE(16);
++  const height = png.readUInt32BE(20);
++  if (width === 0 || height === 0) throw new Error('EPUB cover image has invalid dimensions');
++  return { width, height };
++}
++
++function assertSafeEpubPathPart(value) {
++  if (
++    typeof value !== 'string' ||
++    value.length === 0 ||
++    value.includes('\0') ||
++    value.includes('\\') ||
++    path.posix.isAbsolute(value) ||
++    path.win32.isAbsolute(value)
++  ) {
++    throw new Error(`unsafe EPUB path: ${value}`);
++  }
++  const segments = value.split('/');
++  if (
++    segments.some(
++      (segment, index) =>
++        segment === '.' || segment === '..' || (segment === '' && index !== segments.length - 1)
++    )
++  ) {
++    throw new Error(`unsafe EPUB path: ${value}`);
++  }
++}
++
++export function resolveEpubPath(root, href) {
++  assertSafeEpubPathPart(href);
++  const resolved = path.resolve(root, ...href.split('/'));
++  const relative = path.relative(path.resolve(root), resolved);
++  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
++    throw new Error(`unsafe EPUB path: ${href}`);
++  }
++  return resolved;
++}
++
++export function assertSafeArchiveEntry(root, entryName) {
++  resolveEpubPath(root, entryName);
++  return true;
++}
++
++export function validateZipEntries(root, entryNames, modes) {
++  if (!Array.isArray(entryNames) || !Array.isArray(modes) || entryNames.length !== modes.length) {
++    throw new Error('EPUB ZIP metadata does not match its entry list');
++  }
++  entryNames.forEach((entryName, index) => {
++    assertSafeArchiveEntry(root, entryName);
++    if (!['-', 'd'].includes(modes[index])) {
++      throw new Error(`unsafe EPUB entry type: ${entryName}`);
++    }
++  });
++}
++
++export async function assertExtractedEpubTreeSafe(root) {
++  const entry = await lstat(root);
++  if (!entry.isDirectory()) throw new Error(`unsafe EPUB extracted entry: ${root}`);
++  for (const name of await readdir(root)) {
++    const child = path.join(root, name);
++    const childStat = await lstat(child);
++    if (childStat.isSymbolicLink() || (!childStat.isFile() && !childStat.isDirectory())) {
++      throw new Error(`unsafe EPUB extracted entry: ${child}`);
++    }
++    if (childStat.isDirectory()) await assertExtractedEpubTreeSafe(child);
++  }
++}
++
++export function insertEpubTitleBanner({
++  titlePage,
++  titleHref,
++  coverHref,
++  coverWidth,
++  coverHeight,
++}) {
++  const imageHref = path.posix.relative(path.posix.dirname(titleHref), coverHref);
++  const banner = `  <div class="title-banner">\n    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%" height="100%" viewBox="0 0 ${coverWidth} ${coverHeight}" preserveAspectRatio="xMidYMid">\n      <image width="${coverWidth}" height="${coverHeight}" xlink:href="${imageHref}" />\n    </svg>\n  </div>\n`;
++  const inserted = titlePage.replace(
++    /(<section\b[^>]*\bclass="titlepage"[^>]*>\s*)(<h1\b)/,
++    `$1${banner}  $2`
++  );
++  if (inserted === titlePage) throw new Error('EPUB title page is missing its title heading');
++  return inserted;
++}
++
++function readCommand(command, args, { cwd } = {}) {
++  return new Promise((resolve, reject) => {
++    const child = spawn(command, args, { cwd });
++    let stdout = '';
++    let stderr = '';
++    child.stdout.on('data', (chunk) => {
++      stdout += chunk;
++    });
++    child.stderr.on('data', (chunk) => {
++      stderr += chunk;
++    });
++    child.on('error', reject);
++    child.on('close', (code) => {
++      if (code === 0) resolve(stdout);
++      else reject(new Error(`${command} exited ${code}: ${stderr}`));
++    });
++  });
++}
++
++async function listZipEntries(epubPath) {
++  const [namesOutput, modesOutput] = await Promise.all([
++    readCommand('unzip', ['-Z1', epubPath]),
++    readCommand('unzip', ['-Z', '-l', epubPath]),
++  ]);
++  return {
++    names: namesOutput.split('\n').filter(Boolean),
++    modes: modesOutput
++      .split('\n')
++      .filter((line) => /^[-dlcbps?]/.test(line))
++      .map((line) => line[0]),
++  };
++}
++
++export async function injectEpubTitleBanner(
++  epubPath,
++  { run = runCommand, listEntries = listZipEntries } = {}
++) {
++  const targetPath = path.resolve(epubPath);
++  const targetDir = path.dirname(targetPath);
++  const { names, modes } = await listEntries(targetPath);
++  const validationRoot = path.join(targetDir, '.epub-entry-validation');
++  validateZipEntries(validationRoot, names, modes);
++  const stageDir = await mkdtemp(
++    path.join(targetDir, `.${path.basename(targetPath)}-title-banner-`)
++  );
++  try {
++    await run('unzip', ['-qq', targetPath, '-d', stageDir]);
++    await assertExtractedEpubTreeSafe(stageDir);
++    const epubDir = resolveEpubPath(stageDir, 'EPUB');
++    const opfPath = resolveEpubPath(epubDir, 'content.opf');
++    const opf = await readFile(opfPath, 'utf8');
++    const titleHref = epubManifestHref(opf, 'title_page_xhtml');
++    const coverHref = epubCoverHref(opf);
++    const titlePagePath = resolveEpubPath(epubDir, titleHref);
++    const cover = await readFile(resolveEpubPath(epubDir, coverHref));
++    const { width, height } = pngDimensions(cover);
++    const titlePage = await readFile(titlePagePath, 'utf8');
++    await writeFile(
++      titlePagePath,
++      insertEpubTitleBanner({
++        titlePage,
++        titleHref,
++        coverHref,
++        coverWidth: width,
++        coverHeight: height,
++      })
++    );
++
++    const packagedEpub = path.join(stageDir, `${path.basename(targetPath)}.replacement`);
++    await run('zip', ['-X', '-q', '-0', packagedEpub, 'mimetype'], { cwd: stageDir });
++    await run('zip', ['-X', '-q', '-r', packagedEpub, 'META-INF', 'EPUB'], {
++      cwd: stageDir,
++    });
++    await rename(packagedEpub, targetPath);
++  } finally {
++    await rm(stageDir, { recursive: true, force: true });
++  }
++}
++
+ /**
+  * `cwd` matters: image references embedded by `extractBookDiagrams` (Task 14)
+  * are bare filenames like `![](03-slug-diagram-1.png)`, written alongside the
+  * manuscript in `outDir`. Both pandoc and the xelatex engine `latexmk` drives
+  * resolve relative image paths against the spawned process's working
+  * directory, not against the manuscript file's directory — so without `cwd`
+  * set to `outDir`, every diagram fails to resolve during pdf/epub/html
+  * rendering. `manuscriptPath`/`texPath`/`outDir` are already absolute at every
+  * call site in this file, so pointing `cwd` at `outDir` doesn't change how
+  * those absolute paths resolve.
+@@ -92,11 +301,12 @@ export function renderInvocations({ manuscriptPath, bookDir, outDir, target }) {
+ 
+ export async function renderTarget({ manuscriptPath, bookDir, outDir, target }) {
+   for (const { command, args, options } of renderInvocations({
+     manuscriptPath,
+     bookDir,
+     outDir,
+     target,
+   })) {
+     await runCommand(command, args, options);
+   }
++  if (target === 'epub') await injectEpubTitleBanner(path.join(outDir, OUTPUT_NAME.epub));
+ }
+diff --git a/scripts/articles/lib/book/toolchain.mjs b/scripts/articles/lib/book/toolchain.mjs
+index 030f264a..2541c642 100644
+--- a/scripts/articles/lib/book/toolchain.mjs
++++ b/scripts/articles/lib/book/toolchain.mjs
+@@ -7,26 +7,31 @@
+ 
+ import { spawn } from 'node:child_process';
+ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ 
+ import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
+ 
+ // Pandoc renders every target. LaTeX renders exactly one of them, so a machine
+ // that only wants EPUB or HTML should not be told to install BasicTeX.
+ export const PANDOC_BINARIES = ['pandoc'];
++export const EPUB_BINARIES = ['zip', 'unzip'];
+ export const LATEX_BINARIES = ['xelatex', 'latexmk', 'makeindex'];
+ export const REQUIRED_BINARIES = [...PANDOC_BINARIES, ...LATEX_BINARIES];
+ 
+ /** @param {string[]} targets */
+ export function requiredBinariesFor(targets) {
+-  return targets.includes('pdf') ? REQUIRED_BINARIES : [...PANDOC_BINARIES];
++  return [
++    ...PANDOC_BINARIES,
++    ...(targets.includes('epub') ? EPUB_BINARIES : []),
++    ...(targets.includes('pdf') ? LATEX_BINARIES : []),
++  ];
+ }
+ 
+ export const PROBE_PACKAGES = [
+   'fontspec',
+   'unicode-math',
+   'xcolor',
+   'geometry',
+   'hyperref',
+   'booktabs',
+   'etoolbox',
+diff --git a/scripts/tests/unit/articles/lib/book/render.test.mjs b/scripts/tests/unit/articles/lib/book/render.test.mjs
+index 7f1a2c9c..6761686f 100644
+--- a/scripts/tests/unit/articles/lib/book/render.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/render.test.mjs
+@@ -1,14 +1,15 @@
+ // @chore
+ import assert from 'node:assert/strict';
++import { execFileSync } from 'node:child_process';
+ import { readFileSync } from 'node:fs';
+-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
++import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ import test from 'node:test';
+ 
+ import {
+   composeTarget,
+   createAssetStager,
+   parseArgs,
+ } from '../../../../../articles/compose-book.mjs';
+ import {
+   latexmkArgs,
+@@ -20,20 +21,64 @@ import {
+ import { projectScratchDir } from '../../../../../task-tracker/lib/scratch-dir.mjs';
+ 
+ const CHAPTER_HEADER = path.resolve(
+   import.meta.dirname,
+   '../../../../../../docs/articles/assets/book/chapter-openers.tex'
+ );
+ const BOOK_CSS = path.resolve(
+   import.meta.dirname,
+   '../../../../../../docs/articles/assets/book/book.css'
+ );
++const PNG_HEADER = Buffer.from([
++  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
++  0x00, 0x00, 0x05, 0x60, 0x00, 0x00, 0x03, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x25, 0xb1, 0x59,
++  0xea,
++]);
++
++async function createEpubFixture(root, name = 'book.epub') {
++  const source = path.join(root, 'source');
++  const epubDir = path.join(source, 'EPUB');
++  const target = path.join(root, name);
++  await mkdir(path.join(epubDir, 'text'), { recursive: true });
++  await mkdir(path.join(epubDir, 'media'), { recursive: true });
++  await mkdir(path.join(source, 'META-INF'), { recursive: true });
++  await writeFile(path.join(source, 'mimetype'), 'application/epub+zip');
++  await writeFile(path.join(source, 'META-INF', 'container.xml'), '<container/>');
++  await writeFile(
++    path.join(epubDir, 'content.opf'),
++    '<package><manifest><item id="title_page_xhtml" href="text/title_page.xhtml" media-type="application/xhtml+xml" /><item id="cover" href="media/cover.png" properties="cover-image" media-type="image/png" /></manifest></package>'
++  );
++  await writeFile(
++    path.join(epubDir, 'text', 'title_page.xhtml'),
++    '<section epub:type="titlepage" class="titlepage">\n  <h1 class="title">Book</h1>\n</section>'
++  );
++  await writeFile(path.join(epubDir, 'media', 'cover.png'), PNG_HEADER);
++  execFileSync('zip', ['-X', '-q', '-0', target, 'mimetype'], { cwd: source });
++  execFileSync('zip', ['-X', '-q', '-r', target, 'META-INF', 'EPUB'], { cwd: source });
++  return target;
++}
++
++async function createSymlinkEpubFixture(root) {
++  const source = path.join(root, 'source');
++  const outside = path.join(root, 'outside');
++  const target = path.join(root, 'symlink.epub');
++  await mkdir(path.join(source, 'META-INF'), { recursive: true });
++  await mkdir(outside);
++  await writeFile(path.join(source, 'mimetype'), 'application/epub+zip');
++  await writeFile(path.join(source, 'META-INF', 'container.xml'), '<container/>');
++  await writeFile(path.join(outside, 'sentinel.txt'), 'outside content must stay untouched');
++  await symlink(outside, path.join(source, 'EPUB'));
++  execFileSync('zip', ['-X', '-q', '-y', target, 'mimetype', 'META-INF', 'EPUB'], {
++    cwd: source,
++  });
++  return { target, outside };
++}
+ 
+ test('pandocArgs maps top-level headings to chapters and loads the metadata file', () => {
+   const args = pandocArgs({
+     manuscriptPath: '/tmp/book/manuscript.md',
+     bookDir: '/repo/docs/articles/assets/book',
+     target: 'pdf',
+     outDir: '/tmp/book',
+   });
+   assert.ok(args.includes('--top-level-division=chapter'));
+   assert.ok(args.includes('--metadata-file=/repo/docs/articles/assets/book/book.json'));
+@@ -68,24 +113,21 @@ test('the PDF page styles put chapter numbers left and page numbers right', () =
+   assert.match(header, /\\fancyhead\[L\]\{\\bookchapterheader\}/);
+   assert.match(header, /\\fancyfoot\[R\]\{\\thepage\}/);
+   assert.match(header, /\\fancypagestyle\{plain\}/);
+   assert.match(header, /\\ifnum\\value\{chapter\}>0 Chapter \\thechapter\\fi/);
+   assert.match(header, /\\renewcommand\{\\headrulewidth\}\{0pt\}/);
+   assert.match(header, /\\renewcommand\{\\footrulewidth\}\{0pt\}/);
+ });
+ 
+ test('the PDF uses unique physical-page anchors across visible numbering resets', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+-  assert.match(
+-    header,
+-    /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/
+-  );
++  assert.match(header, /\\PassOptionsToPackage\{hypertexnames=false\}\{hyperref\}/);
+   assert.doesNotMatch(header, /pageanchor=false/);
+ });
+ 
+ test('the PDF title page is banner-first, unnumbered, and uses a 34-point title', () => {
+   const header = readFileSync(CHAPTER_HEADER, 'utf8');
+   assert.match(header, /\\providecommand\{\\subtitle\}\[1\]\{\\gdef\\booksubtitle\{#1\}\}/);
+   assert.match(header, /\\renewcommand\{\\maketitle\}/);
+   assert.match(header, /\\thispagestyle\{empty\}/);
+   assert.match(header, /\\includegraphics\{title-page\.png\}/);
+   assert.match(header, /\\fontsize\{34\}\{40\}\\selectfont\\bfseries \\@title/);
+@@ -99,26 +141,189 @@ test('the PDF body-image wrapper centers and bounds diagrams to 70 percent of te
+   assert.match(header, /\.7\\textheight/);
+   assert.match(header, /\\linewidth/);
+   assert.match(header, /\\makebox\[\\linewidth\]\[c\]/);
+ });
+ 
+ test('the HTML and EPUB chapter artwork caption stays visually hidden', () => {
+   const css = readFileSync(BOOK_CSS, 'utf8');
+   assert.match(css, /\.chapter-opener figcaption\s*\{[^}]*display:\s*none;/s);
+ });
+ 
++test('the reflowable stylesheet keeps title, chapter, and diagram images proportional', () => {
++  const css = readFileSync(BOOK_CSS, 'utf8');
++  assert.match(css, /#title-block-header::before\s*\{[^}]*url\(['"]title-page\.png['"]\)/s);
++  assert.match(css, /#title-block-header h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
++  assert.match(
++    css,
++    /\.chapter-opener \.chapter-image img\s*\{[^}]*max-width:\s*100%;[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*object-fit:\s*contain;/s
++  );
++  assert.match(
++    css,
++    /\.book-diagram\s*\{[^}]*max-width:\s*100%;[^}]*max-height:\s*70vh;[^}]*object-fit:\s*contain;/s
++  );
++  assert.doesNotMatch(css, /object-fit:\s*cover/);
++});
++
++test('the reflowable stylesheet supports Pandoc EPUB title-page banners', () => {
++  const css = readFileSync(BOOK_CSS, 'utf8');
++  assert.match(css, /\.titlepage\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s);
++  assert.match(css, /\.titlepage \.title-banner\s*\{[^}]*order:\s*-1;[^}]*width:\s*100%;/s);
++  assert.match(css, /\.titlepage h1\.title\s*\{[^}]*font-size:\s*2\.75rem/s);
++});
++
++test('the EPUB banner inserter uses manifest media before the title', async () => {
++  const { insertEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
++  assert.equal(typeof insertEpubTitleBanner, 'function');
++  const template = insertEpubTitleBanner({
++    titlePage:
++      '<section epub:type="titlepage" class="titlepage">\n  <h1 class="title">Book</h1>\n</section>',
++    titleHref: 'text/title_page.xhtml',
++    coverHref: 'media/file35.png',
++    coverWidth: 1376,
++    coverHeight: 768,
++  });
++  assert.match(
++    template,
++    /class="title-banner"[\s\S]*xlink:href="\.\.\/media\/file35\.png"[\s\S]*<h1 class="title">Book<\/h1>/
++  );
++  assert.match(template, /viewBox="0 0 1376 768"/);
++});
++
++test('the EPUB postprocessor rejects unsafe archive and manifest paths', async () => {
++  const { assertSafeArchiveEntry, resolveEpubPath, validateZipEntries } =
++    await import('../../../../../articles/lib/book/render.mjs');
++  assert.equal(typeof assertSafeArchiveEntry, 'function');
++  assert.equal(typeof resolveEpubPath, 'function');
++  const root = path.join('/safe', 'EPUB');
++  assert.equal(assertSafeArchiveEntry(root, 'EPUB/text/title_page.xhtml'), true);
++  for (const unsafe of ['/absolute', '../traversal', 'EPUB/../escape', 'EPUB\\backslash']) {
++    assert.throws(() => assertSafeArchiveEntry(root, unsafe), /unsafe EPUB path/);
++  }
++  for (const unsafeHref of ['/absolute', '../traversal', 'text/../../escape', 'text\\title']) {
++    assert.throws(() => resolveEpubPath(root, unsafeHref), /unsafe EPUB path/);
++  }
++  assert.throws(() => validateZipEntries(root, ['mimetype'], []), /metadata/);
++  assert.throws(() => validateZipEntries(root, ['mimetype'], ['l']), /entry type/);
++});
++
++test('the EPUB postprocessor validates the complete PNG signature, IHDR, and CRC', async () => {
++  const { pngDimensions } = await import('../../../../../articles/lib/book/render.mjs');
++  assert.equal(typeof pngDimensions, 'function');
++  assert.deepEqual(pngDimensions(PNG_HEADER), { width: 1376, height: 768 });
++  assert.throws(() => pngDimensions(Buffer.from('not a png')), /not a PNG/);
++  assert.throws(() => pngDimensions(PNG_HEADER.subarray(0, 24)), /IHDR/);
++  const missingIhdr = Buffer.from(PNG_HEADER);
++  missingIhdr.writeUInt32BE(12, 8);
++  assert.throws(() => pngDimensions(missingIhdr), /IHDR/);
++  const corruptCrc = Buffer.from(PNG_HEADER);
++  corruptCrc[32] ^= 0xff;
++  assert.throws(() => pngDimensions(corruptCrc), /CRC/);
++});
++
++test('a malicious symlink archive is rejected before extraction or outside access', async () => {
++  const { injectEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-symlink-archive-'));
++  try {
++    const { target, outside } = await createSymlinkEpubFixture(root);
++    let extractionAttempted = false;
++    await assert.rejects(
++      injectEpubTitleBanner(target, {
++        run: async () => {
++          extractionAttempted = true;
++        },
++      }),
++      /entry type/
++    );
++    assert.equal(extractionAttempted, false);
++    assert.equal(
++      await readFile(path.join(outside, 'sentinel.txt'), 'utf8'),
++      'outside content must stay untouched'
++    );
++    assert.equal((await lstat(path.join(root, 'source', 'EPUB'))).isSymbolicLink(), true);
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
++test('the extracted-tree guard rejects symlinks before manifest access', async () => {
++  const { assertExtractedEpubTreeSafe } =
++    await import('../../../../../articles/lib/book/render.mjs');
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-extracted-symlink-'));
++  try {
++    await symlink(path.join(root, 'outside'), path.join(root, 'EPUB'));
++    await assert.rejects(assertExtractedEpubTreeSafe(root), /unsafe EPUB extracted entry/);
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
++test('the EPUB postprocessor rebuilds a custom output atomically with stored mimetype', async () => {
++  const { injectEpubTitleBanner } = await import('../../../../../articles/lib/book/render.mjs');
++  assert.equal(typeof injectEpubTitleBanner, 'function');
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-custom-output-'));
++  const customOutput = path.join(root, 'custom-output');
++  try {
++    await mkdir(customOutput);
++    const epubPath = await createEpubFixture(customOutput);
++    await injectEpubTitleBanner(epubPath);
++    const titlePage = execFileSync('unzip', ['-p', epubPath, 'EPUB/text/title_page.xhtml'], {
++      encoding: 'utf8',
++    });
++    assert.ok(titlePage.indexOf('class="title-banner"') < titlePage.indexOf('<h1 class="title">'));
++    assert.equal(
++      execFileSync('unzip', ['-Z1', epubPath], { encoding: 'utf8' }).split('\n')[0],
++      'mimetype'
++    );
++    assert.match(
++      execFileSync('unzip', ['-lv', epubPath], { encoding: 'utf8' }),
++      /Stored\s+\s*20.*mimetype/
++    );
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
++test('a failed ZIP rewrite preserves the original target and removes adjacent staging', async () => {
++  const { injectEpubTitleBanner, runCommand } =
++    await import('../../../../../articles/lib/book/render.mjs');
++  const root = await mkdtemp(path.join(projectScratchDir('test'), 'epub-rewrite-failure-'));
++  try {
++    const epubPath = await createEpubFixture(root);
++    const original = await readFile(epubPath);
++    await assert.rejects(
++      injectEpubTitleBanner(epubPath, {
++        run: async (command, args, options) => {
++          if (command === 'zip') throw new Error('forced ZIP failure');
++          return runCommand(command, args, options);
++        },
++      }),
++      /forced ZIP failure/
++    );
++    assert.deepEqual(await readFile(epubPath), original);
++    assert.deepEqual(await readdir(root), ['book.epub', 'source']);
++  } finally {
++    await rm(root, { recursive: true, force: true });
++  }
++});
++
+ test('pandocArgs emits epub and html directly', () => {
+   const base = { manuscriptPath: '/m.md', bookDir: '/b', outDir: '/o' };
+   const epub = pandocArgs({ ...base, target: 'epub' });
+   const html = pandocArgs({ ...base, target: 'html' });
+   assert.ok(epub.includes('--css=book.css'));
++  assert.ok(epub.includes('--epub-cover-image=title-page.png'));
++  assert.equal(
++    epub.some((arg) => arg.startsWith('--template=')),
++    false
++  );
+   assert.ok(html.includes('--css=book.css'));
++  assert.equal(html.includes('--epub-cover-image=title-page.png'), false);
+   assert.deepEqual(epub.slice(-2), ['-o', '/o/book.epub']);
+   assert.deepEqual(html.slice(-2), ['-o', '/o/book.html']);
+ });
+ 
+ test('latexmkArgs drives xelatex with an output directory', () => {
+   const args = latexmkArgs({ texPath: '/o/book.tex', outDir: '/o' });
+   assert.ok(args.includes('-xelatex'));
+   assert.ok(args.includes('-interaction=nonstopmode'));
+   assert.ok(args.includes('-outdir=/o'));
+   assert.equal(args.at(-1), '/o/book.tex');
+diff --git a/scripts/tests/unit/articles/lib/book/toolchain.test.mjs b/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
+index 7282d3e3..c9edb0b6 100644
+--- a/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
++++ b/scripts/tests/unit/articles/lib/book/toolchain.test.mjs
+@@ -1,16 +1,17 @@
+ // @chore
+ import assert from 'node:assert/strict';
+ import test from 'node:test';
+ 
+ import {
+   doctor,
++  EPUB_BINARIES,
+   PROBE_PACKAGES,
+   probeDocument,
+   REQUIRED_BINARIES,
+   requiredBinariesFor,
+   tlmgrHint,
+ } from '../../../../../articles/lib/book/toolchain.mjs';
+ 
+ test('probeDocument compiles a single package', () => {
+   const tex = probeDocument('makeidx');
+   assert.match(tex, /\\usepackage\{makeidx\}/);
+@@ -30,52 +31,54 @@ test('doctor reports a clean toolchain', async () => {
+   });
+   assert.deepEqual(result, {
+     ok: true,
+     latexChecked: true,
+     missingBinaries: [],
+     missingPackages: [],
+     hint: null,
+   });
+ });
+ 
+-test('a non-pdf target needs pandoc but no LaTeX at all', async () => {
++test('an EPUB target needs Pandoc and archive tools but no LaTeX', async () => {
+   const asked = [];
+   let probed = 0;
+   const result = await doctor({
+     targets: ['epub', 'html'],
+     runBinary: async (name) => {
+       asked.push(name);
+-      return name === 'pandoc';
++      return ['pandoc', 'zip', 'unzip'].includes(name);
+     },
+     runProbe: async () => {
+       probed += 1;
+       return true;
+     },
+   });
+-  assert.deepEqual(asked, ['pandoc'], 'no LaTeX binary is demanded');
++  assert.deepEqual(asked, ['pandoc', 'zip', 'unzip'], 'no LaTeX binary is demanded');
+   assert.equal(probed, 0, 'no LaTeX package probe is compiled');
+   assert.equal(result.ok, true, 'a TeX-free machine can still render epub and html');
+   assert.equal(result.latexChecked, false);
+ });
+ 
+ test('a non-pdf target still fails when pandoc is missing', async () => {
+   const result = await doctor({
+     targets: ['html'],
+     runBinary: async () => false,
+     runProbe: async () => true,
+   });
+   assert.deepEqual(result.missingBinaries, ['pandoc']);
+   assert.equal(result.ok, false);
+ });
+ 
+ test('requiredBinariesFor adds the LaTeX chain only for the pdf target', () => {
+-  assert.deepEqual(requiredBinariesFor(['epub']), ['pandoc']);
++  assert.deepEqual(EPUB_BINARIES, ['zip', 'unzip']);
++  assert.deepEqual(requiredBinariesFor(['epub']), ['pandoc', 'zip', 'unzip']);
++  assert.deepEqual(requiredBinariesFor(['html']), ['pandoc']);
+   assert.deepEqual(requiredBinariesFor(['manuscript', 'pdf']), REQUIRED_BINARIES);
+ });
+ 
+ test('doctor reports missing binaries and skips probing', async () => {
+   let probed = 0;
+   const result = await doctor({
+     runBinary: async (name) => name !== 'latexmk',
+     runProbe: async () => {
+       probed += 1;
+       return true;
