@@ -1,3 +1,4 @@
+import { assertNativeArtifactOperator } from '../artifact-execution.mjs';
 import { validateOutcomeDeliveryProof, outcomeProofDigest } from './outcome-delivery-proof.mjs';
 import { createHash } from 'node:crypto';
 import { requireDeliveryReceipt, verifyCloseDeliveryReceipt } from '../close-delivery-receipt.mjs';
@@ -31,6 +32,7 @@ import {
 } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
 import {
+  buildArtifactVerificationFingerprint,
   canonicalVerificationCommandSet,
   parseValidatedVerificationReceipts,
   requiredTestReceiptClassifications,
@@ -1353,6 +1355,32 @@ export function createEstimationOutcomeRuntime({
         }
         body = delivery.deliveryBody;
       }
+      let expectedFingerprint;
+      const artifactContext = delivery?.gateInput?.artifactSubject
+        ? {
+            artifactSubject: delivery.gateInput.artifactSubject,
+            operatorContext: delivery.gateInput.operatorContext,
+          }
+        : null;
+      if (artifactContext) {
+        if (artifactContext.artifactSubject.commitSha !== acceptedVerificationSha)
+          fail('outcome-artifact-selection');
+        assertNativeArtifactOperator({
+          projectDir,
+          issueNumber,
+          operatorContext: artifactContext.operatorContext,
+        });
+        expectedFingerprint = buildArtifactVerificationFingerprint({
+          projectDir,
+          ...artifactContext,
+          verificationCommands: parseVerificationCommands(body),
+        });
+        assertNativeArtifactOperator({
+          projectDir,
+          issueNumber,
+          operatorContext: artifactContext.operatorContext,
+        });
+      }
       const verification = verificationEvidence(
         body,
         isEpic || residentProof || residentChild
@@ -1360,6 +1388,7 @@ export function createEstimationOutcomeRuntime({
           : {
               expectedIssue: issueNumber,
               expectedFinalSha: acceptedVerificationSha,
+              expectedFingerprint,
               projectDir,
             }
       );
@@ -1548,7 +1577,19 @@ export function createEstimationOutcomeRuntime({
               actor: 'aitm/close',
               supersedes,
             }),
-          writeOutcome: ({ envelope }) => io.write({ envelope }),
+          writeOutcome: async ({ envelope }) => {
+            if (artifactContext) {
+              const fresh = await resolveDeliveryAuthority({ issueNumber, refresh: true });
+              if (deliveryFingerprint(fresh) !== deliveryFingerprint(delivery))
+                fail('outcome-delivery-changed-before-publication');
+              assertNativeArtifactOperator({
+                projectDir,
+                issueNumber,
+                operatorContext: artifactContext.operatorContext,
+              });
+            }
+            return io.write({ envelope });
+          },
           withLogicalRecordClaim: io.withLogicalRecordClaim,
         },
       });
