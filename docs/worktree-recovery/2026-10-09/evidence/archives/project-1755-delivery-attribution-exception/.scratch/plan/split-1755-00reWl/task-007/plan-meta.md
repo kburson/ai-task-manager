@@ -1,0 +1,7 @@
+- **Parent-epic**: #1755
+- **Nested-epic**: #1755
+- **Governing-spec**: docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md
+- **Source-plan**: docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md
+- **Source-plan-commit**: eb70fbb142e95540fa85490d1018f9fcb3f47818
+- **Source-plan-section**: ### Task 7: Operator guide, package smoke, and release gates
+- **Generated-by**: `npx aitm split-plan`

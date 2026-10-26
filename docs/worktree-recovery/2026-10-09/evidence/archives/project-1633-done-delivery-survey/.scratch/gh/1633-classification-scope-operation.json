@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "Classify delivery as verified, false-Done, indeterminate, main-thread exception, or explicitly local-only according to current project policy.",
+  "replacement": "Classify delivery as verified, false-Done, indeterminate, main-thread exception, explicitly local-only, or terminal-disposition exception according to current project policy."
+}

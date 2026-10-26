@@ -1,0 +1,98 @@
+test 1 passed: unstamped AC tick refused with EVIDENCE_REQUIRED + key + verifier
+test 2 passed: stamped AC tick allowed
+ac-evidence-gate.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs (1858.489875ms)
+cli.test.mjs: status/config/end passed
+✔ scripts/tests/slow/task-tracker/lib/cli.test.mjs (20157.515583ms)
+✔ happy path: creates, tethers, substitutes placeholders (683.611458ms)
+✔ explicit --assignee is forwarded to gh issue create (510.179958ms)
+✔ missing projectId: exits non-zero before calling gh (268.384917ms)
+✔ tether failure: prints recovery command and exits non-zero (504.034833ms)
+✔ --parent flag forwards to project-tether (510.21775ms)
+✔ --no-tether: skips tether step entirely (489.86975ms)
+✔ --shape sub-issue: refuses creation under a Done parent epic (559.332416ms)
+✔ --shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check (1191.144625ms)
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 123 backlog
+move-state-cli.mjs: RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:514:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:305:5) {
+  code: 1,
+  killed: false,
+  signal: null,
+  cmd: 'node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 123 backlog',
+  stdout: '',
+  stderr: 'move-state-cli.mjs: RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/move-state.test.mjs (1451.052291ms)
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:65
+    throw new Error(
+          ^
+
+Error: expected exit 7, got 1
+stdout: 
+stderr: file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {
+  code: 'ROOT_IDENTITY_MISMATCH'
+}
+
+Node.js v26.8.1
+
+    at expectExit (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:65:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:74:15
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs (428.389875ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 10
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20171.123084
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/move-state.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/move-state.test.mjs (1451.052291ms)
+  'test failed'
+
+test at scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs (428.389875ms)
+  'test failed'

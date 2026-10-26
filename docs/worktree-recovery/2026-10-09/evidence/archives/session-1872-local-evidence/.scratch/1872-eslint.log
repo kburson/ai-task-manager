@@ -1,0 +1,15 @@
+npm notice run @kburson/ai-task-manager@0.1.0 lint:js
+npm notice run eslint .
+
+/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/epic-admission-lock.mjs
+  122:7  error  Unsafe usage of ThrowStatement  no-unsafe-finally
+
+/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/epic-rank-wave-bindings.mjs
+  5:8  error  'path' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/epic-rank-wave-store.mjs
+    6:3   error  'rankWaveProposal' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  165:63  error  Duplicate key 'status'                                                              no-dupe-keys
+
+✖ 4 problems (4 errors, 0 warnings)
+

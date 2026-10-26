@@ -1,0 +1,4 @@
+- **kind**: code
+- **discovered-during**: #1755 Plan approval and epic handoff discussion
+- **related**: #1512, #1520, #1721, #1755
+- **current-scope**: design specification only; implementation requires an accepted spec and separate plan

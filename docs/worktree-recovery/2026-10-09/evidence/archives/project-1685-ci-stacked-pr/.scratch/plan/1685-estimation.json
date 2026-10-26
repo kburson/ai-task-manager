@@ -1,0 +1,25 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "stacked-pr-merge-base",
+      "description": "Harden the fast CI checkout ancestry contract and its existing source-level regression test",
+      "baseHumanHours": 0.5,
+      "signals": {
+        "modules": ["github-actions-ci", "ci-contract-tests"],
+        "dependencies": ["trunk-ref-materialization", "docs-only-classifier"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["ci-contract-focused", "fast", "slow"],
+    "isolation": "one existing workflow source-inspection test in an isolated worktree",
+    "expectedMinutes": 15
+  },
+  "risks": [
+    "Full-history checkout increases transfer size",
+    "Removing the local trunk materialization would regress real-git close-gate tests"
+  ],
+  "comparableIssueIds": [745]
+}

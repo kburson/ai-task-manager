@@ -1,0 +1,1 @@
+- [ ] Deliver "### Task 5: Open-PR preflight, late revalidation, and operation-bound intent" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

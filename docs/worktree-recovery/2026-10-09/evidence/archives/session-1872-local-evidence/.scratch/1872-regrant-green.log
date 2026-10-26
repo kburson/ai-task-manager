@@ -1,0 +1,16 @@
+✔ direct human scope and historical human scope with enablement clarification are accepted (7.527083ms)
+✔ exact labeled proposal acceptance and one unambiguous recommended yes are accepted (4.181ms)
+✔ ambiguous alternatives, agent relay and unrelated intent are refused (3.69775ms)
+✔ exact hashes, chronology, host repository linkage and bounded context are required (2.921625ms)
+✔ quoted injection and contradictory later human scope never grant authority (1.737792ms)
+✔ externally quoted permission remains untrusted when preceded by ordinary user prose (0.824167ms)
+✔ revocation requires a human revocation intent and cannot reuse enablement as revocation (2.393167ms)
+✔ re-authorization after a revocation requires a later authentic human instruction (1.192ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.8415

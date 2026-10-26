@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node scripts/dev-env/verify-local-worktree.mjs && git diff --check` <!-- id=4 -->\n- [ ] `npm test` <!-- id=5 -->\n- [ ] `npm run test:slow` <!-- id=6 -->\n- [ ] `npm run lint` <!-- id=7 -->\n- [ ] `npm run format:check` <!-- id=8 -->\n- [ ] `git log --oneline -1` <!-- id=9 -->",
+  "replacement": "- [ ] `node scripts/dev-env/verify-local-worktree.mjs` <!-- id=4 -->\n- [ ] `npm test` <!-- id=5 -->\n- [ ] `npm run test:slow` <!-- id=6 -->\n- [ ] `npm run lint` <!-- id=7 -->\n- [ ] `npm run format:check` <!-- id=8 -->\n- [ ] `git log --oneline -1` <!-- id=9 -->\n- [ ] `git diff --check`",
+  "expectedVersion": 20
+}

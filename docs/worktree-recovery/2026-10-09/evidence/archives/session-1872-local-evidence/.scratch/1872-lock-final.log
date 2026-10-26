@@ -1,0 +1,12 @@
+✔ real linked worktrees resolve the same physical parent lock, including a symlink alias (282.894125ms)
+✔ competing native processes serialize and re-read revocation at the winning boundary (400.883833ms)
+✔ bounded contention never evicts live or unknown ownership and nested context cannot be forged (486.812ms)
+✔ public Plan-to-Develop admission waits for a linked-worktree revoker and revalidates before effects (474.378791ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1709.06975
