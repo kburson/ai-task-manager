@@ -87,3 +87,12 @@ test('review declaration digest survives native proof/ticks but rejects semantic
   ])
     assert.throws(() => assertReviewedDeclarations(changed), /Review declarations/);
 });
+
+test('ignored proof comments cannot join distinct declaration tokens', async () => {
+  const { reviewDeclarationDigest } =
+    await import('../../../../task-tracker/lib/issue-proof-authority.mjs');
+  assert.notEqual(
+    reviewDeclarationDigest(body.replace('Exact source', 'Alpha<!-- ignored -->Beta')),
+    reviewDeclarationDigest(body.replace('Exact source', 'AlphaBeta'))
+  );
+});

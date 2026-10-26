@@ -73,6 +73,8 @@ export function assertIssueProofAuthority(body, expected) {
 export function reviewDeclarationDigest(body) {
   const sections = protectedSections(removeLegacyFullAutoFootnote(removeFullAutoFootnote(body)));
   for (const key of Object.keys(sections)) {
+    // This is hash-input projection, never rendered HTML. Keep a separator so
+    // ignoring run metadata cannot join distinct declaration tokens.
     sections[key] = sections[key]
       .replace(/<!--[\s\S]*?-->/g, (marker) => {
         const properties = parseProofMarker(marker);
@@ -82,13 +84,13 @@ export function reviewDeclarationDigest(body) {
               .filter((name) => properties[name] !== undefined)
               .map((name) => [name, properties[name]])
           );
-          return Object.keys(declaration).length ? canonicalRecordJson(declaration) : '';
+          return Object.keys(declaration).length ? canonicalRecordJson(declaration) : ' ';
         }
         return /^<!--\s*(?:dod:functional:|dod:kinds\b|aitm-non-demonstrable\b|aitm-lifecycle-optout:|aitm-verified-by\b)/.test(
           marker
         )
           ? marker.trim()
-          : '';
+          : ' ';
       })
       .replace(/^(\s*- )\[[ xX]\]/gm, '$1[ ]')
       .split('\n')
