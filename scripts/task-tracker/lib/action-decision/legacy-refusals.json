@@ -221,13 +221,13 @@
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 95,
+          "line": 96,
           "fingerprint": "sha256:35ab73220d5c1a4b647728fd346de0fcce347f558603dcefadb1056ebe79e6ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-code-complete-guard.mjs",
-          "line": 113,
+          "line": 114,
           "fingerprint": "sha256:7c2785bf0d639ed741cdcdd532b8eb5c1a7036c8d03ca66c1866e6434647de85",
           "kind": "refusal"
         }
@@ -238,7 +238,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-commit-trail-head-guard.mjs",
-          "line": 48,
+          "line": 49,
           "fingerprint": "sha256:7c7b585b6ca87256b49c4f0129e0fec3529452a230c203dadb94cdc7476453d3",
           "kind": "refusal"
         }
@@ -260,19 +260,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 55,
+          "line": 61,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 73,
+          "line": 108,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/develop-exit-receipt-guard.mjs",
-          "line": 80,
+          "line": 115,
           "fingerprint": "sha256:85b96c814e25a057adc0b1d7b63879ab270780f80542ddb1278a7fc6f681b155",
           "kind": "refusal"
         }
@@ -382,13 +382,13 @@
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 177,
+          "line": 174,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 174,
+          "line": 177,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         }
@@ -811,7 +811,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/action-decision/close.mjs",
-          "line": 1077,
+          "line": 1082,
           "fingerprint": "sha256:29ab192a2d91255b4af9c4ce8825c47b08f17e74821df6fcd239015563d88b7a",
           "kind": "refusal"
         },
@@ -867,31 +867,31 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
-          "line": 37,
+          "line": 42,
           "fingerprint": "sha256:7cff4c6e368f612a1db648af381fcb68934e7db0a2477248258ef7e7a1ab1e8d",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
-          "line": 43,
+          "line": 48,
           "fingerprint": "sha256:f836b1978d7ca13b41bc34df39b576c33bd346894c4a448365f04480dcda9f2f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
-          "line": 46,
+          "line": 51,
           "fingerprint": "sha256:f836b1978d7ca13b41bc34df39b576c33bd346894c4a448365f04480dcda9f2f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
-          "line": 57,
+          "line": 62,
           "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/test-exit-dod-verified-guard.mjs",
-          "line": 65,
+          "line": 70,
           "fingerprint": "sha256:b1baad47220c33d908de5bf4095f19408d49189d0c4cc2e5b365abb042166d55",
           "kind": "refusal"
         }
@@ -926,25 +926,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 2345,
+          "line": 2394,
           "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3479,
+          "line": 3528,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3760,
+          "line": 3809,
           "fingerprint": "sha256:218076a68383a07b646a0d14222471dce53c0a7f0119802d63c58f378102e0ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 5047,
+          "line": 5099,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
@@ -967,62 +967,8 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 165,
-          "fingerprint": "sha256:5ae2aa31548c7b99021de00267554dcad722ef3c3098d2ba0f6c46b440a3fab9",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 179,
-          "fingerprint": "sha256:bcdf59cbc9f3d1cc0d316fc7dfba9ceba5ae313760647ed052417a2bb04d2987",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 200,
-          "fingerprint": "sha256:2c2d9762465336a65378c8f9abd348e900bf0b8dab628680ce9485672d33ddc8",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 210,
-          "fingerprint": "sha256:34230c4c068fe1caba35d588759884e27001bcb5a1c90ecda32d6c40e1d61d07",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 235,
-          "fingerprint": "sha256:12a924c9266eb99e05005e710513c4f923863e65c59240601f8770ecf04d97af",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 252,
-          "fingerprint": "sha256:4fd7737234de12682b5c0e66f1b6e97d308e88021d1649339f8f4ce8508f05f3",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 269,
-          "fingerprint": "sha256:2a7774416d42325ecc53793cb54ee966572837a12e045ebfb9bf2f4842b9b2f9",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 387,
+          "line": 454,
           "fingerprint": "sha256:856c72d633b8e4f45173703ef5a3b9df62e3f153120d5def4ac8a93357583a5e",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 467,
-          "fingerprint": "sha256:296880b56b3c5949acc2091bd40d31f4e94ff40cbd7a74c105d915cda0d2ec08",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/verbs/review.mjs",
-          "line": 1185,
-          "fingerprint": "sha256:492e8cc29829df9cabe2708fc7955250795a0821d1a29aee6fa0f99bc8dcf005",
           "kind": "refusal"
         }
       ]
@@ -1036,19 +982,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 787,
+          "line": 846,
           "fingerprint": "sha256:a5d9c8340bf9d6fbebf6f93c763f5ca7189a761bb4598925fd2d0ffbc163944f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1430,
+          "line": 1491,
           "fingerprint": "sha256:8cc9d3ebf8e3df5d903cde58cec69efcfcdf958d583b3828264a93ee38e14902",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1432,
+          "line": 1493,
           "fingerprint": "sha256:5c2c3790301c73f999ca5c3b7636eb06f5b03795e722594dcdf7fdb41085426c",
           "kind": "refusal"
         }

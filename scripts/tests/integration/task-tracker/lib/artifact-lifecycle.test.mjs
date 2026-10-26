@@ -388,3 +388,61 @@ test('selected Test refuses fresh preflight blockers before materialization or d
   assert.equal(result.status, 'entry-preflight-refused');
   assert.equal(materializations, 0);
 });
+
+test('explicit Review evidence refusal uses a declared typed disposition', async (t) => {
+  const { root, candidate, tree } = repository(t);
+  const { resolveReviewVerificationEvidence } =
+    await import('../../../../task-tracker/verbs/review.mjs');
+  const { validateBlocker } =
+    await import('../../../../task-tracker/lib/action-decision/contract.mjs');
+  const result = await resolveReviewVerificationEvidence({
+    body: '',
+    issueNumber: 2096,
+    projectDir: root,
+    artifactSubject: { commitSha: candidate, treeSha: tree },
+    operatorContext: {},
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'review-verification-evidence-invalid');
+  assert.deepEqual(result.reasons, [{ code: 'artifact-receipt-required' }]);
+  assert.doesNotThrow(() =>
+    validateBlocker(
+      {
+        guardId: 'authority-collection',
+        code: result.code,
+        args: result.args,
+        noAutomaticRemediation: result.noAutomaticRemediation,
+      },
+      { status: 'blocked' }
+    )
+  );
+});
+
+test('Develop refuses a mismatched artifact tree with a valid typed authority result', async (t) => {
+  const { root, candidate, operatorHead } = repository(t);
+  const { developExitReceiptGuard } =
+    await import('../../../../task-tracker/lib/develop-exit-receipt-guard.mjs');
+  const { validateBlocker } =
+    await import('../../../../task-tracker/lib/action-decision/contract.mjs');
+  const result = await developExitReceiptGuard.run({
+    body: '## Scope\nAccept exact source',
+    toState: 'test',
+    issueNumber: 2096,
+    projectDir: root,
+    headSha: operatorHead,
+    artifactSubject: { commitSha: candidate, treeSha: '0'.repeat(40) },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'develop-artifact-authority-invalid');
+  assert.doesNotThrow(() =>
+    validateBlocker(
+      {
+        guardId: developExitReceiptGuard.id,
+        code: result.code,
+        args: result.args,
+        noAutomaticRemediation: result.noAutomaticRemediation,
+      },
+      { status: 'blocked' }
+    )
+  );
+});

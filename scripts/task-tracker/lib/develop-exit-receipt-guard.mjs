@@ -73,7 +73,14 @@ export const developExitReceiptGuard = Object.freeze({
         });
       }
     } catch (error) {
-      return { ok: false, reason: error.message, blockers: [error.message] };
+      return {
+        ok: false,
+        code: 'develop-artifact-authority-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
+        reason: error.message,
+        blockers: [error.message],
+      };
     }
     const headSha = sourceCommit({
       artifactSubject: ctx.artifactSubject,

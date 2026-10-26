@@ -178,6 +178,9 @@ export async function resolveReviewVerificationEvidence({
   } catch (error) {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'github-records-v1',
       receipt: null,
       commandResults: new Map(),
@@ -188,6 +191,9 @@ export async function resolveReviewVerificationEvidence({
   if (artifactSubject && authoritySource.kind === 'github-records/v1')
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'receipt-v1',
       receipt: null,
       commandResults: new Map(),
@@ -201,6 +207,9 @@ export async function resolveReviewVerificationEvidence({
     } catch {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -222,6 +231,9 @@ export async function resolveReviewVerificationEvidence({
     } catch (error) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -232,6 +244,9 @@ export async function resolveReviewVerificationEvidence({
     if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'github-records-v1',
         receipt: null,
         commandResults: new Map(),
@@ -257,6 +272,9 @@ export async function resolveReviewVerificationEvidence({
     if (hasVerificationReceiptMarker(body, 'test') || hasMalformedVerificationReceiptClaim(body)) {
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'receipt-v1',
         receipt: null,
         commandResults: new Map(),
@@ -268,6 +286,9 @@ export async function resolveReviewVerificationEvidence({
     if (artifactSubject)
       return {
         ok: false,
+        code: 'review-verification-evidence-invalid',
+        args: {},
+        noAutomaticRemediation: { reason: 'operator-action-required' },
         mode: 'receipt-v1',
         receipt: null,
         commandResults: new Map(),
@@ -282,6 +303,9 @@ export async function resolveReviewVerificationEvidence({
   } catch {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'receipt-v1',
       receipt,
       commandResults: new Map(),
@@ -301,6 +325,9 @@ export async function resolveReviewVerificationEvidence({
   } catch {
     return {
       ok: false,
+      code: 'review-verification-evidence-invalid',
+      args: {},
+      noAutomaticRemediation: { reason: 'operator-action-required' },
       mode: 'receipt-v1',
       receipt,
       commandResults: new Map(),
@@ -330,6 +357,13 @@ export async function resolveReviewVerificationEvidence({
   }
   return {
     ok: reasons.length === 0,
+    ...(reasons.length > 0
+      ? {
+          code: 'review-verification-evidence-invalid',
+          args: {},
+          noAutomaticRemediation: { reason: 'operator-action-required' },
+        }
+      : {}),
     mode: 'receipt-v1',
     receipt,
     fingerprint,
