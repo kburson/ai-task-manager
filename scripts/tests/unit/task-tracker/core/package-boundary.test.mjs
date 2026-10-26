@@ -465,7 +465,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2006: exactly one bounded target classifier; the repair plan/tests remain excluded.
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
-    2; // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
+    2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
+    3; // #2096: immutable subject, native source execution and stamp declaration validation.
+  for (const module of ['artifact-subject', 'artifact-execution', 'stamp-declaration'])
+    assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));

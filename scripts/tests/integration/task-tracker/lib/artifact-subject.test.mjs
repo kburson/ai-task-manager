@@ -32,7 +32,7 @@ test('immutable source selection preserves the actual controller checkout', (t) 
   );
 });
 
-test('selection rejects symbolic, missing and noncommit source objects', (t) => {
+test('selection rejects symbolic, missing and invalid commit source objects', (t) => {
   const { root, git, candidate, tree } = repository(t);
   for (const commitSha of [
     'HEAD',

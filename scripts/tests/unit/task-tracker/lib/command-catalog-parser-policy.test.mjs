@@ -10,7 +10,7 @@ import { VALID_KINDS } from '../../../../task-tracker/lib/issue-kind.mjs';
 const argumentNames = (name) => commandByName(name).arguments.map((argument) => argument.name);
 
 test('task metadata matches high-risk verb parser surfaces', () => {
-  assert.deepEqual(argumentNames('test'), ['#N']);
+  assert.deepEqual(argumentNames('test'), ['#N', '--artifact-commit <sha>']);
   assert.deepEqual(argumentNames('new'), [
     '[title|docs/plans/<file>.md]',
     '--kind <code|docs-only|audit|research|spike|epic>',

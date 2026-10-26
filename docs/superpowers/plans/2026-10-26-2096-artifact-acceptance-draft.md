@@ -53,7 +53,7 @@ Reuse detached sandbox creation/cleanup for actual selected-source Develop/AC/VC
 
 ### Test-first sequence
 
-1. Add failing tests for the descriptor and a two-source repository: operator HEAD differs from the artifact and source lockfile/config/script contents differ. A representative API assertion is `assert.equal(sourceCommit({artifactSubject: {commitSha: candidate, treeSha}, operatorHead}), candidate)` followed by an assertion that the captured operator still has operatorHead. Real Git object resolution must refuse missing/noncommit/noncanonical source and wrong recorded tree.
+1. Add failing tests for the descriptor and a two-source repository: operator HEAD differs from the artifact and source lockfile/config/script contents differ. A representative API assertion is `assert.equal(sourceCommit({artifactSubject: {commitSha: candidate, treeSha}, operatorHead}), candidate)` followed by an assertion that the captured operator still has operatorHead. Real Git object resolution must refuse missing/invalid commit/noncanonical source and wrong recorded tree.
 2. Extend existing action-test/review, commit-trail-head-gate, code-complete, evidence-branch-reachability and receipt suites with explicit source distinct from the actor. Include squash delivery, wrong issue/root/ref/binding, stale declarations/evidence, source/tree drift and legacy omitted selection.
 3. Extend Test/Develop/stamper suites to assert actual command cwd/HEAD/tree, byte-derived fingerprints and truthful execution provenance. A substituted SHA with controller bytes must fail.
 4. Extend Review/approval/delivery/Close suites for exact source consistency, operator/source race refusal, unique PR identity and already merged external-delivery recovery without a second merge.
@@ -64,7 +64,7 @@ Relevant existing tests include unit/task-tracker/lib/test-verb-receipt-reuse.te
 
 ## Exact subsequent acceptance target
 
-Original #2090 candidate: 52337be2fd900b55f75b34cf00930ca4a8b1dfb1; tree 72c6a19e8d9f66b16777f18791bfb4c6fe74b5fa. PR #2094 is already MERGED, base 7b27ed149e48fd28c8da6e8a1544df52de10fea3, squash 930b05780af85128a47c02e18be065c4f7c01d23. Old 14fd26ed acceptance remains invalidated. Exact-source CI artifacts remain available; strict final receipt coverage/applicability validation remains required. Reconcile genuine external delivery intent/receipt through the supported route, without inventing an earlier intent or remerging.
+Original #2090 candidate: 52337be2fd900b55f75b34cf00930ca4a8b1dfb1; tree 72c6a19e8d9f66b16777f18791bfb4c6fe74b5fa. PR #2094 is already MERGED, base 7b27ed149e48fd28c8da6e8a1544df52de10fea3, squash 930b05780af85128a47c02e18be065c4f7c01d23. Old 14fd26ed acceptance remains invalidated. Exact-source CI artifacts remain available; strict final receipt coverage/applicability validation remains required. Reconcile genuine external delivery intent/receipt through the supported route, without inventing an earlier intent or merging again.
 
 After #2096 is genuinely Done, close original #2090, then independently deliver #2098 under its existing omitted-rank/original-issue closure scope. Do not work on held stories.
 
