@@ -1227,9 +1227,17 @@ export async function verifyEvidenceV2Delivery(input = {}) {
 }
 
 export async function verifyExternalDeliveredPullRequest(input = {}) {
-  if (!hasExactKeys(input, EXTERNAL_VERIFICATION_INPUT_KEYS)) {
-    throw verificationError('input-keys');
-  }
+  const observedFacts = Object.hasOwn(input, 'compareDeliveryContent');
+  const keys = observedFacts
+    ? [...EXTERNAL_VERIFICATION_INPUT_KEYS, 'compareDeliveryContent', 'resolveTrunkHeadSha']
+    : EXTERNAL_VERIFICATION_INPUT_KEYS;
+  if (!hasExactKeys(input, keys)) throw verificationError('input-keys');
+  if (
+    observedFacts &&
+    (typeof input.compareDeliveryContent !== 'function' ||
+      typeof input.resolveTrunkHeadSha !== 'function')
+  )
+    throw verificationError('input');
   assertVerificationFunctions(input);
   if (
     !hasExactKeys(input.intentInput, EXTERNAL_INTENT_INPUT_KEYS) ||
@@ -1241,6 +1249,7 @@ export async function verifyExternalDeliveredPullRequest(input = {}) {
   return verifyLiveDelivery(input, input.intentInput, {
     requireAuthorizedBytes: false,
     recovery: true,
+    observedFacts,
   });
 }
 
@@ -1320,15 +1329,14 @@ export function buildDeliveryRealPrEvidence(input = {}) {
 // observed topology before it can build an intent, and the intent is what
 // `verifyLiveDelivery` consumes — so the observation cannot come from inside it.
 //
-// Deliberately narrower than `classifyMergeMethod` + the squash-proving ladder
-// used by `verifyLiveDelivery`. Only an unambiguous two-parent merge commit whose
-// second parent is the expected head is attributable here. A single-parent
-// rewrite is ambiguous between squash and rebase without the authorized-bytes or
-// single/multi-source proofs, and this lane must never guess a method an operator
-// is about to have recorded as fact — so it refuses instead.
+// Use only independently attributable topology: a two-parent merge, or the
+// existing complete single-source squash proof used by full verification.
+// A declaration alone never distinguishes a squash from a rebase. Full delivery
+// verification still runs before reconstruction can publish any records.
 export async function observeMergeMethod({
   mergeCommitSha,
   expectedHeadSha,
+  pullRequest,
   inspectMergeCommit,
 } = {}) {
   if (
@@ -1347,6 +1355,11 @@ export async function observeMergeMethod({
     throw verificationError('merge-method-evidence', error);
   }
   const classified = classifyMergeMethod(inspection, expectedHeadSha, mergeCommitSha);
-  if (classified !== 'merge') throw verificationError('merge-method-unattributable');
-  return classified;
+  if (classified === 'merge') return classified;
+  if (
+    classified === 'rewritten-one-parent' &&
+    provesSingleSourceSquash({ pullRequest, inspection, expectedHeadSha, mergeSha: mergeCommitSha })
+  )
+    return 'squash';
+  throw verificationError('merge-method-unattributable');
 }

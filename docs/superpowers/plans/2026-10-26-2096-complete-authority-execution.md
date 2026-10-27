@@ -114,3 +114,11 @@ The human explicitly authorized completing this audit/re-plan and resuming throu
 The existing Review marker binds canonical User Story, Scope, Story Origin, AC, VC and DoD declarations together with the full current Test receipt. Checkbox/proof-only lifecycle changes are normalized. A renewed or changed Test receipt requires genuine renewed Review. Initial capture alone cannot detect changes made between commands; full Test evidence validation remains mandatory in delivery and Close, followed by pinned actual operator revalidation. This extends existing R0 proof contents without a new authority store or R1 protocol.
 
 The independent complete-branch review reproduced an incomplete same-tuple Test receipt being accepted by delivery and Close. The single bounded fix pass adds complete native Review evidence validation to both readers and binds the complete receipt in the existing Review digest. Regression tests first failed with these fixes removed and then passed with them restored. Native qualification remains a separate required outcome.
+
+## Reopened delivery-authority correction — 2026-10-26
+
+Human authorization: reopen #2096 and complete the already promised #2090 merged-candidate recovery. Stop at 2026-10-27T01:00:00Z (8 p.m. Chicago) unless #2096 is genuinely complete; only then continue original #2090. No sister issue, R1, fabricated original intent or controller relocation. Preserve completed historical Close transaction; final Close uses the documented reopened-transaction recovery.
+
+- [ ] Extend historical reconstruction and selected-artifact delivery tests with a complete single-source squash and interrupted prefixes; observe existing merge-method-unattributable failure. Cover missing/incomplete inventory, wrong source head/tree/parent and indistinguishable rewrite with zero ledger writes.
+- [ ] Reuse existing provesSingleSourceSquash in observeMergeMethod using the live PR evidence. Keep two-parent merge behavior and all other refusals. Pass live PR to both observation entry points. Full external verification remains mandatory before reconstruction records.
+- [ ] Run focused and full verification, independent review, exact-source CI and native acceptance/delivery. Reopened #2096 Close must correlate historical and current bundles. Do not claim complete from tests or a PR alone.

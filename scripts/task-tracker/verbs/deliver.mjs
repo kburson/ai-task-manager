@@ -1315,6 +1315,89 @@ export async function runDeliver({
   if (authority.headRelation === 'advanced' && (!artifactSubject || mergedPullRequest)) {
     if (reconcile !== null && (live === null || live.record.provider === 'external')) {
       const historical = validateHistoricalReconstructionPreflight(preflightInput);
+      const assertHistoricalAuthority = async () => {
+        try {
+          const freshIssue = await fetchIssue({ issueNumber, repository: cfg.repo });
+          const freshLineage = validateLineageResult(
+            await resolveLineage({ issueNumber, repository: cfg.repo, issue: freshIssue })
+          );
+          const freshBranch = await getCurrentBranch();
+          const freshHead = await getLocalHeadSha();
+          const freshTest = await resolveTestReceiptSha({ issue: freshIssue, issueNumber });
+          const freshReview = await resolveLiveDeliveryReviewAuthority({
+            deps,
+            cfg,
+            issue: freshIssue,
+            issueNumber,
+            testReceiptSha: freshTest,
+          });
+          const freshAuthorization = await requiredDependency(
+            deps,
+            'resolveReviewAuthorization'
+          )({
+            issue: freshIssue,
+            issueNumber,
+            expectedHeadSha: freshReview.acceptedSha,
+            acceptedReviewSha: freshReview.acceptedSha,
+          });
+          const refs = await listPullRequests({
+            repository: cfg.repo,
+            ...(artifactSubject
+              ? { headSha: artifactSubject.commitSha }
+              : { headRef: freshBranch }),
+          });
+          const freshPrs = await Promise.all(
+            refs.map(({ number }) =>
+              fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
+            )
+          );
+          const freshPr = freshPrs.find(({ number }) => number === historical.pr.number);
+          const fresh = validateHistoricalReconstructionPreflight({
+            ...preflightInput,
+            issue: {
+              ...freshIssue,
+              agentReviewPassed: freshReview.outcome === 'passed',
+              reviewAuthority: freshReview,
+              reviewAuthorization: freshAuthorization,
+            },
+            binding: bindingFromState({ branch: freshBranch, state }),
+            lineage: freshLineage,
+            pullRequests: freshPrs,
+            localHeadSha: freshHead,
+            testReceiptSha: freshTest,
+            acceptedReviewSha: freshReview.acceptedSha,
+            dirtyPaths: await listDirtyPaths({ issueNumber }),
+            config: {
+              ...deliveryConfig,
+              repositoryMergeMethods: await fetchRepositoryMergeMethods({ repository: cfg.repo }),
+            },
+            commitSubjects: await mergedSourceCommitSubjects(freshPr, deps.inspectSourceCommit),
+          });
+          const manual = await checkManualCodeReview({
+            deps,
+            cfg,
+            prNumber: historical.pr.number,
+            expectedHeadSha: authority.acceptedSha,
+            merged: true,
+          });
+          if (
+            canonicalRecordJson(fresh) !== canonicalRecordJson(historical) ||
+            canonicalRecordJson(freshLineage) !== canonicalRecordJson(lineage) ||
+            freshBranch !== branch ||
+            manual.status !== 'authorized'
+          )
+            throw deliverError('historical-authority-drift');
+          if (artifactSubject) {
+            assertReviewedDeclarations(freshIssue.body);
+            await requiredDependency(
+              deps,
+              'assertArtifactDeliveryContext'
+            )({ artifactSubject, issueNumber, issue: freshIssue });
+          }
+        } catch (error) {
+          throw deliverError('historical-authority-drift', error);
+        }
+      };
       await checkManualCodeReview({
         deps,
         cfg,
@@ -1329,12 +1412,14 @@ export async function runDeliver({
       const observed = await observeMergeMethod({
         mergeCommitSha,
         expectedHeadSha: historical.expectedHeadSha,
+        pullRequest: historical.pr,
         inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
       });
       const mergeMethod = resolveReconciledMergeMethod({
         declared: reconcile.declaredMergeMethod,
         observed,
         configured: historical.mergeMethod,
+        intentOrigin: 'retroactively-reconstructed',
       });
       const reconstruction = buildMethodReconciliation({
         issueNumber,
@@ -1382,6 +1467,7 @@ export async function runDeliver({
           testReceiptSha,
           acceptedReviewSha,
           metadataWarnings: historical.metadataWarnings ?? [],
+          beforeReceiptWrite: () => assertHistoricalAuthority(),
         });
       }
       const verified = await verifyExternalDeliveredPullRequest({
@@ -1402,9 +1488,17 @@ export async function runDeliver({
         isAncestor: requiredDependency(deps, 'isAncestor'),
         inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
         attributingCommits: requiredDependency(deps, 'attributingCommits'),
+        ...(typeof deps.compareDeliveryContent === 'function' &&
+        typeof deps.resolveLocalTrunkHeadSha === 'function'
+          ? {
+              compareDeliveryContent: deps.compareDeliveryContent,
+              resolveTrunkHeadSha: deps.resolveLocalTrunkHeadSha,
+            }
+          : {}),
       });
       // #1574 — establish provider/Git proof before the first ledger write.
       if (priorReconstruction === null) {
+        await assertHistoricalAuthority();
         await requiredDependency(
           deps,
           'createIssueComment'
@@ -1414,6 +1508,7 @@ export async function runDeliver({
           body: renderMethodReconciliationComment(reconstruction),
         });
       }
+      await assertHistoricalAuthority();
       const liveIntent = await appendIntent({
         deps,
         issueNumber,
@@ -1437,6 +1532,7 @@ export async function runDeliver({
         acceptedReviewSha,
         verified,
         metadataWarnings: historical.metadataWarnings ?? [],
+        beforeReceiptWrite: () => assertHistoricalAuthority(),
       });
     }
     const historical = validateHistoricalRecoveryPreflight({
@@ -1903,6 +1999,7 @@ export async function runDeliver({
         const observed = await observeMergeMethod({
           mergeCommitSha: selectedPullRequest.mergeCommitSha,
           expectedHeadSha: preflight.expectedHeadSha,
+          pullRequest: selectedPullRequest,
           inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
         });
         reconciledMergeMethod = resolveReconciledMergeMethod({

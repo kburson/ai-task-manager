@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #2096
 // @story #1574
 // @story #939
 // Historical intent reconstruction, retry provenance, and compatibility boundaries.
@@ -134,7 +135,7 @@ test('historical reconstruction and every retry enforce manual approval of the a
         const fetchReview = harness.deps.fetchManualCodeReviewEvidence;
         harness.deps.fetchManualCodeReviewEvidence = async (input) => {
           observedHeads.push(input.expectedHeadSha);
-          assert.equal(harness.calls.createIssueComment, 0);
+          if (observedHeads.length === 1) assert.equal(harness.calls.createIssueComment, 0);
           return fetchReview(input);
         };
         if (approvedSha === HEAD) {
@@ -150,7 +151,8 @@ test('historical reconstruction and every retry enforce manual approval of the a
           assert.equal(harness.calls.createIssueComment, 0);
           assert.deepEqual(harness.data.comments, comments);
         }
-        assert.deepEqual(observedHeads, [HEAD]);
+        assert.ok(observedHeads.length >= 1);
+        assert.ok(observedHeads.every((sha) => sha === HEAD));
         assert.equal(harness.calls.requestPullRequestReview, 0);
         assert.equal(harness.calls.fetchRequiredChecks, 0);
       });
@@ -396,4 +398,147 @@ test('advanced local head refuses an external recovery intent', async () => {
 
   assert.equal(harness.calls.createIssueComment, 0);
   assert.equal(harness.data.comments.length, 1);
+});
+
+function historicalSquashHarness(options = {}) {
+  return historicalReconstructionHarness({
+    historyMergeMethod: 'squash',
+    historyTree: 'e'.repeat(40),
+    prSourceEvidence: [
+      {
+        oid: HEAD,
+        parents: ['d'.repeat(40)],
+        tree: 'e'.repeat(40),
+        message: '[#939] Source repair',
+      },
+    ],
+    ...options,
+  });
+}
+const squashReconcile = { ...historicalReconcile, declaredMergeMethod: 'squash' };
+
+test('historical reconstruction proves a complete single-source squash and resumes every persisted prefix', async () => {
+  const original = historicalSquashHarness();
+  const delivered = await deliver(original, { reconcile: squashReconcile });
+  assert.equal(delivered.mode, 'historical-reconstruction');
+  assert.equal(delivered.receipt.mergeMethod, 'squash');
+  assert.equal(delivered.intent.provider, 'external');
+  assert.equal(delivered.action, null);
+  assert.equal(original.data.head, NEXT_HEAD);
+  assert.equal(original.data.comments.length, 3);
+  for (const prefix of [1, 2, 3]) {
+    const comments = structuredClone(original.data.comments.slice(0, prefix));
+    const h = historicalSquashHarness({ comments });
+    const result = await deliver(h, { reconcile: squashReconcile });
+    assert.equal(result.status, prefix === 3 ? 'already-delivered' : 'delivered');
+    assert.equal(result.receipt.mergeMethod, 'squash');
+    assert.equal(result.action, null);
+    assert.deepEqual(h.data.comments.slice(0, prefix), comments);
+    assert.equal(h.data.comments.length, 3);
+  }
+});
+
+test('historical squash reconstruction refuses incomplete or contradictory evidence before any ledger write', async (t) => {
+  for (const [label, overrides] of [
+    ['incomplete inventory', { sourceCommitsComplete: false }],
+    ['wrong inventory head', { sourceCommitsHeadSha: NEXT_HEAD }],
+    ['missing source proof', { prSourceEvidence: null }],
+    ['wrong tree', { historyTree: 'f'.repeat(40) }],
+    [
+      'wrong parent',
+      {
+        prSourceEvidence: [
+          {
+            oid: HEAD,
+            parents: [NEXT_HEAD],
+            tree: 'e'.repeat(40),
+            message: '[#939] Source repair',
+          },
+        ],
+      },
+    ],
+    [
+      'unchanged message cannot distinguish rewrite',
+      { historyCommitTitle: '[#939] Source repair', historyCommitMessage: '' },
+    ],
+  ]) {
+    await t.test(label, async () => {
+      const h = historicalSquashHarness(overrides);
+      await assert.rejects(
+        () => deliver(h, { reconcile: squashReconcile }),
+        /(?:delivery-verification:merge-method-unattributable|delivery-preflight:attribution)/
+      );
+      assert.equal(h.calls.createIssueComment, 0);
+      assert.equal(h.data.comments.length, 0);
+    });
+  }
+});
+
+test('historical reconstruction refuses authority drift after merge proof before its first ledger write', async (t) => {
+  for (const field of ['head', 'issueBody', 'source']) {
+    await t.test(field, async () => {
+      const h = historicalSquashHarness();
+      const inspect = h.deps.inspectMergeCommit;
+      h.deps.inspectMergeCommit = async (input) => {
+        const result = await inspect(input);
+        if (h.calls.inspectMergeCommit === 2) {
+          if (field === 'head') h.data.head = HEAD;
+          if (field === 'issueBody') h.data.issueBody += '\nChanged declarations';
+          if (field === 'source') h.data.prSourceEvidence[0].tree = 'f'.repeat(40);
+        }
+        return result;
+      };
+      await assert.rejects(
+        () => deliver(h, { reconcile: squashReconcile }),
+        /deliver:historical-authority-drift/
+      );
+      assert.equal(h.calls.createIssueComment, 0);
+      assert.equal(h.data.comments.length, 0);
+    });
+  }
+});
+
+test('historical reconstruction revalidates lifecycle, ownership and complete admission before publication', async (t) => {
+  for (const [field, value] of [
+    ['state', 'CLOSED'],
+    ['projectState', 'Develop'],
+    ['assignees', ['someone-else']],
+    ['dirty', ['owned.mjs']],
+    ['lineage', { parentIssueNumber: 42, deliveryTarget: 'epic/42' }],
+    ['inventory', true],
+  ]) {
+    await t.test(field, async () => {
+      const h = historicalSquashHarness();
+      let changed = false;
+      const inspect = h.deps.inspectMergeCommit;
+      h.deps.inspectMergeCommit = async (input) => {
+        const result = await inspect(input);
+        if (h.calls.inspectMergeCommit === 2) changed = true;
+        return result;
+      };
+      const fetchIssue = h.deps.fetchIssue;
+      h.deps.fetchIssue = async (input) => ({
+        ...(await fetchIssue(input)),
+        ...(changed && ['state', 'projectState', 'assignees'].includes(field)
+          ? { [field]: value }
+          : {}),
+      });
+      const dirty = h.deps.listDirtyPaths;
+      h.deps.listDirtyPaths = async (input) =>
+        changed && field === 'dirty' ? value : dirty(input);
+      const lineage = h.deps.resolveLineage;
+      h.deps.resolveLineage = async (input) =>
+        changed && field === 'lineage' ? value : lineage(input);
+      const list = h.deps.listPullRequests;
+      h.deps.listPullRequests = async (input) => {
+        const result = await list(input);
+        return changed && field === 'inventory' ? [...result, result[0]] : result;
+      };
+      await assert.rejects(
+        () => deliver(h, { reconcile: squashReconcile }),
+        /deliver:historical-authority-drift/
+      );
+      assert.equal(h.calls.createIssueComment, 0);
+    });
+  }
 });

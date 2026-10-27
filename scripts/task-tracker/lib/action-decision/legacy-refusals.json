@@ -926,25 +926,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 2417,
+          "line": 2440,
           "fingerprint": "sha256:e082d3e0bf8bd6bc08fa98eed3c52e616dc3c6329d243087f10166f7d85b6894",
           "kind": "warning"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3551,
+          "line": 3574,
           "fingerprint": "sha256:88a1ee489d6cb2287e4f4b4282081da349cada2938a86e0ae9eb61d189caafb2",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 3832,
+          "line": 3855,
           "fingerprint": "sha256:218076a68383a07b646a0d14222471dce53c0a7f0119802d63c58f378102e0ee",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 5128,
+          "line": 5151,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
