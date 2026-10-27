@@ -354,12 +354,13 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
               priority: priorityNorm.toUpperCase(),
               size,
               estimate: estimateNum,
-              rank: rankNum,
+              ...(rankNum != null ? { rank: rankNum } : {}),
             },
             {
-              overrideKeys: context
-                ? ['priority', 'size', 'estimate', 'rank']
-                : ['priority', 'rank'],
+              overrideKeys: [
+                ...(context ? ['priority', 'size', 'estimate'] : ['priority']),
+                ...(rankNum != null ? ['rank'] : []),
+              ],
             }
           );
           next = refreshed.body;

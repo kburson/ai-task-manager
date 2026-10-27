@@ -1,9 +1,12 @@
 import { publishFieldEstimateRevision } from '../../../../../task-tracker/lib/decomposition-field-writer.mjs';
 import { currentIssueLockOwner } from '../../../../../task-tracker/issue-mutator-lock.mjs';
+// @story #2091 — omitted rank, real snapshots and exact publication retry.
 // @story #1988 — actual tether/refinement composition and provider recovery.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runRefine } from '../../../../../task-tracker/verbs/refine.mjs';
+import { verifyRefinementSnapshot } from '../../../../../task-tracker/lib/refinement-snapshot.mjs';
+import { estimateOperationId } from '../../../../../task-tracker/lib/estimate-writer-publication.mjs';
 import {
   estimationIssueBody,
   estimationPublicationFixture,
@@ -408,6 +411,147 @@ export function registerTetherPublicationCases({ cfg, makeRunner, actualTether }
         assert.equal(r.assessment.estimate.hours, hours);
         assert.match(body, /aitm-refinement-rationale/);
       });
+
+  // These cases retain the real publication owner and snapshot validator. Only
+  // provider I/O is simulated, so omission cannot hide behind a snapshot stub.
+  const rankCases = [
+    { name: 'omitted rank in changed publication', supplied: undefined, want: 3 },
+    { name: 'explicit rank in changed publication', supplied: 7, want: 7 },
+    {
+      name: 'omitted rank in unchanged publication',
+      supplied: undefined,
+      want: 3,
+      unchanged: true,
+    },
+    { name: 'null rank is omission', supplied: null, want: 3 },
+    { name: 'empty rank is omission', supplied: '', want: 3 },
+    { name: 'fresh persisted rank', supplied: undefined, want: 5, freshRank: 5 },
+    { name: 'exact pending retry', supplied: undefined, want: 3, interrupt: true },
+    { name: 'genuinely absent rank', supplied: undefined, absent: true },
+  ];
+  for (const scenario of rankCases)
+    test(`#2091: actual refine snapshot preserves ${scenario.name}`, async () => {
+      const startingEstimate = scenario.unchanged ? 3 : 1;
+      let body =
+          estimationIssueBody({
+            priority: 'P1',
+            estimate: startingEstimate,
+            size: 'S',
+            rank: scenario.absent ? null : 3,
+          }) + '<!-- aitm-last-known-state state="refine" ts="2026-10-23T12:00:00Z" -->\n',
+        board = { estimate: startingEstimate, size: 'S', rank: scenario.absent ? null : 3 },
+        promotions = 0,
+        bodyAttempts = 0,
+        numericWrites = 0;
+      const base = makeRunner({
+        issueSideItems: [{ id: 'ITEM_1987', project: { id: cfg.projectId } }],
+      }).runGql;
+      const runGql = async (query, variables) => {
+        const result = await base(query, variables);
+        if (query.includes('updateProjectV2ItemFieldValue')) {
+          if (variables.field === cfg.fieldEstimate) {
+            numericWrites++;
+            board.estimate = variables.val;
+          }
+          if (variables.field === cfg.sizeFieldId) board.size = 'S';
+          if (variables.field === cfg.fieldRank) board.rank = variables.val;
+        }
+        return result;
+      };
+      const fixture = estimationPublicationFixture({
+        cfg,
+        issueNumber: 1987,
+        getBody: () => body,
+        setBody: (next) => (body = next),
+        getProject: () => board,
+        getForecast: () =>
+          estimationObservation({
+            estimate: null,
+            size: null,
+            recordId: null,
+            proposals: [],
+            observedProjections: [],
+          }),
+      });
+      const args = {
+        issueNumber: 1987,
+        size: 'S',
+        estimate: 3,
+        priority: 'p1',
+        reason: 'preserve optional rank on exact refinement retry',
+        ...(scenario.supplied === undefined ? {} : { rank: scenario.supplied }),
+      };
+      const deps = {
+        ...fixture,
+        assertBound: () => {},
+        fetchBody: async () => body,
+        fetchLabels: async () => ['bug'],
+        tetherIssueToProject: (input) =>
+          actualTether({ ...input, runGql, deps: input.deps ?? fixture }),
+        mutateBody: async ({ mutate }) => {
+          bodyAttempts++;
+          if (scenario.interrupt && bodyAttempts === 1)
+            throw new Error('interrupted before refinement body effect');
+          if (scenario.freshRank) {
+            body = body.replace('"rank":3', '"rank":5');
+            board.rank = 5;
+          }
+          body = mutate(body);
+        },
+        verbPromote: async () => {
+          promotions++;
+        },
+      };
+      let pendingId;
+      if (scenario.interrupt) {
+        const first = await runRefine({ args, cfg, deps });
+        assert.equal(first.status, 'partial');
+        assert.equal(first.reason, 'interrupted before refinement body effect');
+        const pending = readDecompositionRecords(body).publication;
+        assert.equal(pending.status, 'pending');
+        pendingId = pending.operationId;
+        // Omission remains null in the sealed intent, even though rank 3 exists.
+        const intentId = estimateOperationId('refine', {
+          size: 'S',
+          estimate: 3,
+          priority: 'p1',
+          rank: null,
+          reason: args.reason,
+        });
+        assert.equal(
+          pending.effects.find((effect) => effect.id === 'writer-before-values').targetIdentity,
+          `${cfg.repo}#1987:estimate-before:${intentId}`
+        );
+        assert.equal(promotions, 0);
+      }
+      const result = await runRefine({ args, cfg, deps });
+      if (scenario.absent) {
+        assert.equal(result.status, 'partial');
+        assert.equal(result.reason, 'refinement-snapshot:field-rank');
+        assert.equal(promotions, 0);
+        assert.equal(parseIssueFieldDb(body).values.rank, null);
+        assert.equal(readDecompositionRecords(body).publication.status, 'pending');
+        assert.equal(verifyRefinementSnapshot(body, { labels: ['bug'] }).ok, false);
+        return;
+      }
+      assert.equal(result.status, 'refined', result.reason);
+      assert.equal(promotions, 1);
+      assert.equal(parseIssueFieldDb(body).values.rank, scenario.want);
+      assert.equal(board.rank, scenario.want);
+      const snapshot = verifyRefinementSnapshot(body, { labels: ['bug'] });
+      assert.equal(snapshot.ok, true, snapshot.reason);
+      assert.equal(snapshot.snapshot.fields.rank, scenario.want);
+      const publication = readDecompositionRecords(body).publication;
+      if (scenario.unchanged) {
+        assert.equal(publication, null);
+        assert.equal(numericWrites, 0);
+      } else {
+        assert.equal(publication.status, 'complete');
+        assert.equal(publication.writerId, 'refine');
+        assert.equal(numericWrites, 1);
+        if (scenario.interrupt) assert.equal(publication.operationId, pendingId);
+      }
+    });
 
   test('tether refuses an unsupported estimate edit observed after pending intent and preserves it', async () => {
     let body = estimationIssueBody({ estimate: 10, size: 'M' }),
