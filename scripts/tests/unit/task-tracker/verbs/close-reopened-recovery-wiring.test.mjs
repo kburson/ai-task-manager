@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #2096
 // @story #1490
 //
 // Verb-level wiring for the reopened-close recovery.
@@ -793,4 +794,43 @@ test('#1490: two durable records naming the same replacement refuse rather than 
   await assert.rejects(runReopenedCloseRecovery(args), /resume-evidence/);
   assert.deepEqual(calls.createdComments, []);
   assert.deepEqual(calls.bodyWrites, []);
+});
+
+test('#2096: artifact reopen resolves old source separately without widening current gate inventory', async () => {
+  const { args } = harness({ pullRequests: [pullRequestFor(NEW_SHA, NEW_MERGE, 1493)] });
+  const gate = args.resolvedDeliveryGateRef();
+  gate.gateInput.artifactSubject = { commitSha: NEW_SHA, treeSha: 'e'.repeat(40) };
+  const lookedUp = [];
+  args.ctx.fetchReopenedCloseHistoricalPullRequests = async (sha) => {
+    lookedUp.push(sha);
+    return [pullRequestFor(OLD_SHA, OLD_MERGE, 1491)];
+  };
+  const result = await runReopenedCloseRecovery(args);
+  assert.equal(result.transaction.acceptedSha, NEW_SHA);
+  assert.deepEqual(lookedUp, [OLD_SHA]);
+  assert.deepEqual(
+    gate.gateInput.pullRequests.map((pr) => pr.headRefOid),
+    [NEW_SHA]
+  );
+});
+
+test('#2096: separately fetched historical artifact inventory refuses absent or ambiguous source before recovery writes', async () => {
+  for (const historical of [
+    [],
+    [pullRequestFor(NEW_SHA, NEW_MERGE, 1493)],
+    [pullRequestFor(OLD_SHA, OLD_MERGE, 1491), pullRequestFor(OLD_SHA, OLD_MERGE, 1492)],
+  ]) {
+    const { args, calls } = harness({ pullRequests: [pullRequestFor(NEW_SHA, NEW_MERGE, 1493)] });
+    args.resolvedDeliveryGateRef().gateInput.artifactSubject = {
+      commitSha: NEW_SHA,
+      treeSha: 'e'.repeat(40),
+    };
+    args.ctx.fetchReopenedCloseHistoricalPullRequests = async () => historical;
+    await assert.rejects(
+      runReopenedCloseRecovery(args),
+      /reopened-close-recovery:historical-evidence/
+    );
+    assert.equal(calls.bodyWrites.length, 0);
+    assert.equal(calls.createdComments.length, 0);
+  }
 });

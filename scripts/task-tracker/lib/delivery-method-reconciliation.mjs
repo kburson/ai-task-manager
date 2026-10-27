@@ -1,3 +1,4 @@
+// @story #2096
 // @story #1562
 //
 // Merge-method reconciliation record.
@@ -174,8 +175,16 @@ export function validateMethodReconciliation(record) {
 
 // The honesty guard for the lane. An operator DECLARES the method they believe
 // was used; this accepts it only when live observation agrees, and only when it
-// actually diverges from configuration. Everything else refuses.
-export function resolveReconciledMergeMethod({ declared, observed, configured } = {}) {
+// actually diverges from configuration. Explicit missing-intent reconstruction
+// may instead match configuration; its v2 record truthfully derives divergent=false.
+export function resolveReconciledMergeMethod({
+  declared,
+  observed,
+  configured,
+  intentOrigin,
+} = {}) {
+  if (intentOrigin !== undefined && intentOrigin !== RETROACTIVE_INTENT_ORIGIN)
+    fail('intent-origin');
   const declaredMethod = requireMergeMethod(declared, 'declared-merge-method');
   const configuredMethod = requireMergeMethod(configured, 'configured-merge-method');
   // `observed` arrives from `classifyMergeMethod`, which may report `unknown`
@@ -183,7 +192,8 @@ export function resolveReconciledMergeMethod({ declared, observed, configured } 
   // declaration stand in for evidence.
   const observedMethod = requireMergeMethod(observed, 'observed-merge-method');
   if (declaredMethod !== observedMethod) fail('declared-not-observed');
-  if (declaredMethod === configuredMethod) fail('not-divergent');
+  if (declaredMethod === configuredMethod && intentOrigin !== RETROACTIVE_INTENT_ORIGIN)
+    fail('not-divergent');
   return declaredMethod;
 }
 

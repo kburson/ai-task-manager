@@ -152,3 +152,101 @@ test('Close loader reads the artifact PR and retains actual controller authority
   assert.equal(result.observedLocalHeadSha, operatorHead);
   assert.equal(result.acceptedSha, candidate);
 });
+
+test('historical artifact reconstruction verifies a real single-source squash without moving the controller', async (t) => {
+  const { root, git, tree, operatorHead } = repository(t);
+  const { deliver, makeHarness } =
+    await import('../../../unit/task-tracker/verbs/deliver-test-harness.mjs');
+  const candidate = git('commit-tree', tree, '-p', operatorHead, '-m', '[#939] Source repair');
+  const merged = git(
+    'commit-tree',
+    tree,
+    '-p',
+    operatorHead,
+    '-m',
+    '[#939] Source repair (#1400)',
+    '-m',
+    'Refs #939'
+  );
+  git('update-ref', 'refs/remotes/origin/trunk', merged);
+  const artifactSubject = { commitSha: candidate, treeSha: tree };
+  const source = { oid: candidate, parents: [operatorHead], tree, message: '[#939] Source repair' };
+  const reconcile = {
+    declaredMergeMethod: 'squash',
+    reason: 'Reconstruct missing intent from independently verified source and merge objects.',
+    operator: 'kburson',
+  };
+  const h = makeHarness({
+    head: operatorHead,
+    prHead: candidate,
+    prState: 'MERGED',
+    prMergeMethod: null,
+    mergeCommitSha: merged,
+    testReceiptSha: candidate,
+    acceptedReviewSha: candidate,
+    prCommitSubjects: [source.message],
+    prSourceCommits: [{ oid: candidate, messageHeadline: source.message }],
+    prSourceEvidence: [source],
+    sourceCommitsHeadSha: candidate,
+    issueBody: stampAgentReviewPassed(
+      '## Definition of Done\n### Lifecycle (verified at Review)\n- [x] Agent Review Passed',
+      { ts: '2026-10-26T18:00:00Z', validators: ['body-sections'] }
+    ),
+  });
+  h.deps.listPullRequests = async ({ headSha }) => {
+    assert.equal(headSha, candidate);
+    return [{ number: h.data.prNumber }];
+  };
+  h.deps.getCurrentBranch = async () => git('branch', '--show-current');
+  h.deps.assertArtifactDeliveryContext = async (input) => {
+    assert.deepEqual(input.artifactSubject, artifactSubject);
+    assert.equal(git('rev-parse', 'HEAD'), operatorHead);
+  };
+  h.deps.inspectMergeCommit = async ({ mergeCommitSha }) => {
+    const message = git('show', '-s', '--format=%B', mergeCommitSha);
+    const [commitTitle, ...rest] = message.split('\n');
+    return {
+      parents: git('show', '-s', '--format=%P', mergeCommitSha).split(' '),
+      tree: git('show', '-s', '--format=%T', mergeCommitSha),
+      commitTitle,
+      commitMessage: rest.join('\n').trim(),
+    };
+  };
+  h.deps.isAncestor = async ({ ancestor, descendant }) => {
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], {
+        cwd: root,
+        stdio: 'pipe',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  h.deps.resolveLocalTrunkHeadSha = async () => merged;
+  h.deps.compareDeliveryContent = async ({
+    sourceBase,
+    sourceHead,
+    integrationBase,
+    integrationHead,
+  }) => {
+    assert.equal(sourceBase, operatorHead);
+    assert.equal(integrationBase, operatorHead);
+    return (
+      git('rev-parse', `${sourceHead}^{tree}`) === git('rev-parse', `${integrationHead}^{tree}`)
+    );
+  };
+  const result = await deliver(h, { artifactSubject, reconcile });
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.mode, 'historical-reconstruction');
+  assert.equal(result.receipt.mergeMethod, 'squash');
+  assert.equal(result.receipt.mergeCommitSha, merged);
+  assert.equal(result.intent.expectedHeadSha, candidate);
+  assert.equal(result.intent.provider, 'external');
+  assert.equal(result.action, null);
+  assert.equal(git('rev-parse', 'HEAD'), operatorHead);
+  const count = h.data.comments.length;
+  const retry = await deliver(h, { artifactSubject, reconcile });
+  assert.equal(retry.status, 'already-delivered');
+  assert.equal(h.data.comments.length, count);
+});

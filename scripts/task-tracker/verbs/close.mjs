@@ -2003,7 +2003,30 @@ export async function runReopenedCloseRecovery({
     const inventory = Array.isArray(gate?.gateInput?.pullRequests)
       ? gate.gateInput.pullRequests
       : [];
-    const matches = inventory.filter((pullRequest) => pullRequest?.headRefOid === acceptedSha);
+    // The current artifact gate must stay exact-source. A reopened transaction
+    // names a different historical source; resolve that inventory independently.
+    let sourceInventory = inventory;
+    if (gate?.gateInput?.artifactSubject && acceptedSha !== newAcceptedSha) {
+      const fetchHistorical =
+        ctx.fetchReopenedCloseHistoricalPullRequests ??
+        (async (headSha) => {
+          const delivery = createDefaultDeliverDeps({ cfg, projectDir }, { exec: closePexec });
+          const refs = await delivery.listPullRequests({ headSha });
+          return Promise.all(
+            refs.map(({ number }) => delivery.fetchPullRequest({ prNumber: number }))
+          );
+        });
+      sourceInventory = await fetchHistorical(acceptedSha);
+      if (!Array.isArray(sourceInventory)) throw new Error(`reopened-close-recovery:${category}`);
+      sourceInventory = sourceInventory.map((pr) => ({
+        ...pr,
+        merged: String(pr.state || '').toUpperCase() === 'MERGED',
+        mergeCommitSha: pr.mergeCommitSha ?? pr.mergeCommit?.oid ?? null,
+      }));
+    }
+    const matches = sourceInventory.filter(
+      (pullRequest) => pullRequest?.headRefOid === acceptedSha
+    );
     if (matches.length !== 1) throw new Error(`reopened-close-recovery:${category}`);
     const pullRequest = matches[0];
     // Normalize GitHub's raw REST comments into the exact parser shape.
