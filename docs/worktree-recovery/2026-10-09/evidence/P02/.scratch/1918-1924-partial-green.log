@@ -1,0 +1,19 @@
+✔ partial reporting retains all genuine verified and interrupted prefix profiles (0.751375ms)
+▶ actual original failure reports verified committed facts after joined work
+  ✔ criteria-revision-partial-14.test.mjs (152804.767458ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-14.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-15.test.mjs (161604.671459ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-15.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-16.test.mjs (170635.891083ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-16.test.mjs: 1 complete original cases
+  ✔ criteria-revision-partial-unknown.test.mjs (163895.391041ms)
+  ℹ scripts/tests/integration/task-tracker/lib/criteria-revision-partial-unknown.test.mjs: 1 complete original cases
+✔ actual original failure reports verified committed facts after joined work (170647.258959ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 170935.201333

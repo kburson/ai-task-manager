@@ -1,0 +1,27 @@
+✔ independent dispatcher and requested phase frontier discovery retains all five originals (0.762625ms)
+ℹ [{"filename":"native-stage-phase-12-prefix-after-effect-readback.test.mjs","mode":"phase-12-prefix","fault":{"when":"failAfter","suffix":"effect-readback"}},{"filename":"native-stage-phase-adversarial.test.mjs","mode":"phase-adversarial","fault":null},{"filename":"native-stage-phase-pair.test.mjs","mode":"phase-pair","fault":null},{"filename":"native-stage-tail-dispatch-reentry.test.mjs","mode":"tail-dispatch-reentry","fault":null},{"filename":"native-stage-tail-dispatch.test.mjs","mode":"tail-dispatch","fault":null}]
+✔ cache intent transport membership retains both sides of every original boundary (0.100167ms)
+
+Interrupted while running:
+
+⚠ scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs (scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs:1:1)
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs (30751.158375ms)
+✖ scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 2
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30754.9655
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs (30751.158375ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
+  'Promise resolution is still pending but the event loop has already resolved'
