@@ -774,7 +774,18 @@ evidence supports it. Historical v2 warning receipts remain readable. Source
 absence records
 `missing-source-attribution`; an absent default merge or squash trailer records
 `missing-merge-attribution-trailer`. Any present malformed, partial, extra, or
-conflicting attribution remains fatal. Warning-bearing receipts preserve the
+conflicting attribution remains fatal. External recovery also recognizes the exact
+canonical governed title and full message of another primary issue in the complete
+source token set. Its PR number, source SHA and canonical tail order must match;
+merely finding the same tokens in a different order is insufficient. Ordinary
+provider authorization remains byte-exact. Reconciliation resolves the merge SHA
+from flat or GitHub nested facts and refuses contradictory facts.
+
+When delivery recovery itself needs a code correction, accept and deliver that
+new source through its own correction PR before Close. An earlier issue receipt
+is historical evidence and cannot accept the correction.
+
+Warning-bearing receipts preserve the
 exception as evidence; they do not authorize a merge or relax another predicate.
 
 For the narrowly redundant timing shape, use a dry-run-first repair:

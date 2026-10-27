@@ -79,6 +79,7 @@ import {
 import {
   verifyDeliveredPullRequest,
   verifyExternalDeliveredPullRequest,
+  resolveDeliveryMergeCommitSha,
   observeMergeMethod,
 } from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
@@ -1405,10 +1406,7 @@ export async function runDeliver({
         expectedHeadSha: authority.acceptedSha,
         merged: true,
       });
-      const mergeCommitSha =
-        typeof historical.pr.mergeCommitSha === 'string'
-          ? historical.pr.mergeCommitSha
-          : historical.pr.mergeCommit?.oid;
+      const mergeCommitSha = resolveDeliveryMergeCommitSha(historical.pr);
       const observed = await observeMergeMethod({
         mergeCommitSha,
         expectedHeadSha: historical.expectedHeadSha,
@@ -1996,8 +1994,9 @@ export async function runDeliver({
       // intent instead of an unreachable one.
       let reconciledMergeMethod = null;
       if (reconcile !== null) {
+        const mergeCommitSha = resolveDeliveryMergeCommitSha(selectedPullRequest);
         const observed = await observeMergeMethod({
-          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          mergeCommitSha,
           expectedHeadSha: preflight.expectedHeadSha,
           pullRequest: selectedPullRequest,
           inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
@@ -2012,7 +2011,7 @@ export async function runDeliver({
           repository: cfg.repo,
           prNumber: selectedPullRequest.number,
           acceptedSha: authority.acceptedSha,
-          mergeCommitSha: selectedPullRequest.mergeCommitSha,
+          mergeCommitSha,
           configuredMergeMethod: preflight.mergeMethod,
           observedMergeMethod: reconciledMergeMethod,
           reason: reconcile.reason,

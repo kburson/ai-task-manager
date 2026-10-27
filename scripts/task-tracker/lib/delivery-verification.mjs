@@ -2,6 +2,7 @@
 // Independent live verification for governed pull-request delivery.
 
 import { createHash } from 'node:crypto';
+import { buildCommitTextFromTokens } from './delivery-attribution.mjs';
 import { verifyDelivery } from './evidence-v2/delivery.mjs';
 import { verifyObservedIntegration } from './delivery-integration-proof.mjs';
 
@@ -229,10 +230,15 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-function mergeCommitSha(pullRequest) {
-  if (typeof pullRequest?.mergeCommitSha === 'string') return pullRequest.mergeCommitSha;
-  if (typeof pullRequest?.mergeCommit?.oid === 'string') return pullRequest.mergeCommit.oid;
-  return null;
+export function resolveDeliveryMergeCommitSha(pullRequest) {
+  const flat = pullRequest?.mergeCommitSha;
+  const nested = pullRequest?.mergeCommit?.oid;
+  if (flat != null && nested != null && flat !== nested) {
+    throw verificationError('merge-commit-sha', undefined, {
+      predicate: 'merge-commit-source-disagreement',
+    });
+  }
+  return flat ?? nested ?? null;
 }
 
 function sha256(value) {
@@ -461,7 +467,7 @@ function assertMergedPullRequest(pullRequest, intent, waiver, failures) {
     }
     mergeMethodObservation = pullRequest.mergeMethod;
   }
-  const sha = mergeCommitSha(pullRequest);
+  const sha = resolveDeliveryMergeCommitSha(pullRequest);
   evaluateDeliveryPredicate({
     category: 'merge-commit-sha',
     observedFailure: typeof sha !== 'string' || !SHA_RE.test(sha),
@@ -724,6 +730,30 @@ function provesDefaultMergeBodyAttribution({ intent, inspection }) {
   return true;
 }
 
+// Recovery may observe an exact governed delivery owned by another issue in
+// the same source inventory. Match the entire original envelope, not token sets.
+function provesCanonicalSharedDelivery(inspection, intent) {
+  if (intent.provider !== 'external') return false;
+  const owner = /^\[#([1-9][0-9]*)\] Governed PR delivery$/.exec(inspection.commitTitle);
+  if (!owner || !intent.attributionTokens.includes(`#${owner[1]}`)) return false;
+  try {
+    const canonical = buildCommitTextFromTokens(
+      {
+        issueNumber: Number(owner[1]),
+        prNumber: intent.prNumber,
+        expectedHeadSha: intent.expectedHeadSha,
+      },
+      intent.attributionTokens
+    );
+    return (
+      inspection.commitTitle === canonical.commitTitle &&
+      inspection.commitMessage === canonical.commitMessage
+    );
+  } catch {
+    return false;
+  }
+}
+
 function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSquash, options = {}) {
   const topLevelToken = `#${intent.issueNumber}`;
   const messageTokens = [
@@ -752,6 +782,7 @@ function assertMergeCommitAttribution(inspection, intent, provenSingleSourceSqua
   }
   const attributionLines = lines.filter((line) => line.startsWith('Attribution:'));
   if (attributionLines.length === 1 && lines.at(-1) === expectedLine) return [];
+  if (provesCanonicalSharedDelivery(inspection, intent)) return [];
   if (provesExactLegacyEscapedAttribution({ intent, inspection, provenSingleSourceSquash })) {
     return ['missing-merge-attribution-trailer'];
   }
