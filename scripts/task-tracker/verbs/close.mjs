@@ -2129,6 +2129,25 @@ export async function runReopenedCloseRecovery({
     },
   });
 
+  if (resumeRecord && backed.supersessions.length > 0) {
+    // The root authorizes the history; the canonical successor chain names
+    // the active tip. Fresh historical/current delivery and live-state checks
+    // above still apply, but the root must not be compared to a synthetic
+    // historical-to-tip recovery intent or replaced by another record.
+    if (
+      newAcceptedSha !== activeTransaction.acceptedSha ||
+      authorization.newReviewAuthority !== activeTransaction.reviewAuthority ||
+      !isRecoveryBackedTransaction({
+        recoveryRecord: resumeRecord,
+        supersessionRecords: backed.supersessions,
+        transaction: activeTransaction,
+      })
+    ) {
+      throw new Error('reopened-close-recovery:audit-authority');
+    }
+    return { body: convergeBody, transaction: activeTransaction, record: resumeRecord };
+  }
+
   const record = createReopenedCloseRecoveryRecord(authorization, {
     now: (ctx.reopenedCloseNow ?? (() => new Date().toISOString()))(),
     randomUUIDFn: ctx.randomUUIDFn ?? randomUUID,

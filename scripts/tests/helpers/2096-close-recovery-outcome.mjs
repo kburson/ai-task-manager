@@ -39,6 +39,44 @@ const comment = (body, id) => ({
   issue_url: `https://api.github.com/repos/${repository}/issues/${issue}`,
 });
 
+export async function canonicalSupersession({
+  repository: repo,
+  issueNumber,
+  oldTransaction,
+  newAcceptedSha,
+  replacementTransactionId,
+  newReviewAuthority = 'human-gate',
+}) {
+  let created;
+  const evidence = await ensureDeliveredCloseSupersession({
+    authorization: {
+      repository: repo,
+      issueNumber,
+      oldTransaction,
+      newAcceptedSha,
+      newReviewAuthority,
+      reason: 'accepted-sha-corrective-amend',
+    },
+    deps: {
+      randomUUIDFn: () => replacementTransactionId,
+      listComments: async () => [],
+      createComment: async (body) => {
+        created = {
+          id: 42,
+          body,
+          user: { login: 'owner' },
+          created_at: instant,
+          updated_at: instant,
+          issue_url: `https://api.github.com/repos/${repo}/issues/${issueNumber}`,
+        };
+        return created;
+      },
+      readComment: async () => created,
+    },
+  });
+  return { ...evidence, comment: created };
+}
+
 export async function fixture({ depth = 2 } = {}) {
   const records = [];
   const comments = [];

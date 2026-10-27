@@ -31,7 +31,7 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
-import { ensureDeliveredCloseSupersession } from '../../../../task-tracker/lib/delivered-close-supersession.mjs';
+import { canonicalSupersession } from '../../../helpers/2096-close-recovery-outcome.mjs';
 import { renderReopenedCloseRecoveryComment } from '../../../../task-tracker/lib/reopened-close-recovery.mjs';
 import {
   permitsReopenedOutcomeCorrection,
@@ -364,33 +364,12 @@ test('#1490: outcome correction accepts only the exact recovery-to-supersession 
     transactionId: NEXT_TX,
     acceptedSha: NEXT_SHA,
   };
-  const comments = [];
-  const evidence = await ensureDeliveredCloseSupersession({
-    authorization: {
-      repository: REPO,
-      issueNumber: ISSUE,
-      oldTransaction: recovered.transaction,
-      newAcceptedSha: NEXT_SHA,
-      newReviewAuthority: 'human-gate',
-      reason: 'accepted-sha-corrective-amend',
-    },
-    deps: {
-      randomUUIDFn: () => NEXT_TX,
-      listComments: async () => comments,
-      createComment: async (body) => {
-        const entry = {
-          id: 42,
-          body,
-          user: { login: 'kburson' },
-          created_at: NOW,
-          updated_at: NOW,
-          issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}`,
-        };
-        comments.push(entry);
-        return entry;
-      },
-      readComment: async () => comments[0],
-    },
+  const evidence = await canonicalSupersession({
+    repository: REPO,
+    issueNumber: ISSUE,
+    oldTransaction: recovered.transaction,
+    newAcceptedSha: NEXT_SHA,
+    replacementTransactionId: NEXT_TX,
   });
   const supersessionRecord = evidence.record;
 
@@ -421,27 +400,50 @@ test('#1490: outcome correction accepts only the exact recovery-to-supersession 
   }
 });
 
-test('#1490: the primary estimation step consumes the durable reopened-recovery authority', () => {
-  const source = readFileSync(
-    new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),
-    'utf8'
-  );
-  const recoveryAssignment = source.indexOf('reopenedCloseRecoveryRecord = recovered.record');
-  const estimationStep = source.indexOf("if (needsDeliveredCloseStep('estimation'))");
-  const authorityUse = source.indexOf(
-    'supersedeExisting: mayCorrectCloseOutcome()',
-    estimationStep
-  );
-
-  assert.ok(recoveryAssignment > 0, 'recovery must retain its durable record');
-  assert.ok(
-    estimationStep > recoveryAssignment,
-    'estimation must run after recovery authorization'
-  );
-  assert.ok(
-    authorityUse > estimationStep,
-    'estimation must consume only matched recovery authority'
-  );
+test('#2096: explicit reopened retry preserves a canonical supersession tip at zero and nonzero prefixes', async () => {
+  const seeded = harness();
+  const recovered = await runReopenedCloseRecovery(seeded.args);
+  const successor = await canonicalSupersession({
+    repository: REPO,
+    issueNumber: ISSUE,
+    oldTransaction: recovered.transaction,
+    newAcceptedSha: NEXT_SHA,
+    replacementTransactionId: NEXT_TX,
+  });
+  const rootComment = {
+    id: 900,
+    body: renderReopenedCloseRecoveryComment(recovered.record),
+    issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}`,
+  };
+  for (const completedSteps of [[], ['timing', 'estimation']]) {
+    const tip = {
+      ...recovered.transaction,
+      transactionId: NEXT_TX,
+      acceptedSha: NEXT_SHA,
+      reviewAuthority: 'human-gate',
+      completedSteps,
+    };
+    const { args, calls } = harness({
+      convergeBody: bodyWith(tip),
+      acceptedSha: NEXT_SHA,
+      acceptedMergeSha: NEXT_MERGE,
+      acceptedPrNumber: 1495,
+      acceptedIntentId: NEXT.intent.intentId,
+      acceptedReceipt: NEXT.receipt,
+      pullRequests: [
+        pullRequestFor(OLD_SHA, OLD_MERGE, 1491),
+        pullRequestFor(NEXT_SHA, NEXT_MERGE, 1495),
+      ],
+      deliveryComments: [...HISTORICAL.comments, ...NEXT.comments],
+      recoveryComments: [rootComment, successor.comment],
+    });
+    const result = await runReopenedCloseRecovery(args);
+    assert.deepEqual(result.transaction, tip);
+    assert.deepEqual(result.record, recovered.record);
+    assert.equal(result.body, args.convergeBody);
+    assert.equal(calls.createdComments.length, 0);
+    assert.equal(calls.bodyWrites.length, 0);
+  }
 });
 
 test('#1490: gate-resolved Test and Review SHAs are the exact values used', async () => {
