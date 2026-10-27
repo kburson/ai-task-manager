@@ -136,3 +136,81 @@ test('#2098: nested reconciliation still refuses absent SHA and false declared m
     assert.equal(harness.calls.createIssueComment, 0);
   }
 });
+
+function contentReconciliationHarness(equal = true) {
+  const base = 'd'.repeat(40);
+  const tree = 'e'.repeat(40);
+  const harness = makeHarness({
+    prState: 'MERGED',
+    prMergeMethod: 'merge',
+    historyMergeMethod: 'merge',
+    configuredMergeMethod: 'squash',
+    prSourceEvidence: [{ oid: HEAD, parents: [base], tree, message: '[#939] source' }],
+  });
+  harness.deps.inspectMergeCommit = async ({ mergeCommitSha }) => {
+    assert.equal(mergeCommitSha, MERGE_HEAD);
+    return {
+      parents: [base, HEAD],
+      tree,
+      commitTitle: '[#939] Governed PR delivery',
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
+    };
+  };
+  const isAncestor = harness.deps.isAncestor;
+  harness.deps.isAncestor = async (input) => {
+    if (input.descendant === MERGE_HEAD) {
+      assert.equal(input.ancestor, MERGE_HEAD);
+      return true;
+    }
+    return isAncestor(input);
+  };
+  harness.deps.resolveLocalTrunkHeadSha = async () => MERGE_HEAD;
+  harness.deps.compareDeliveryContent = async (input) => {
+    assert.deepEqual(input, {
+      method: 'merge',
+      sourceBase: base,
+      sourceHead: HEAD,
+      integrationBase: base,
+      integrationHead: MERGE_HEAD,
+    });
+    return equal;
+  };
+  return harness;
+}
+
+test('#2098: current recovery persists and replays v5 observed content proof', async () => {
+  const harness = contentReconciliationHarness();
+  const first = await deliver(harness, { reconcile: currentReconcile });
+  assert.equal(first.receipt.schema, 'aitm.delivery-receipt/v5');
+  assert.equal(first.action, null);
+  assert.deepEqual(first.receipt.observedIntegration.contentProof, {
+    kind: 'equivalent-delta',
+    sourceBase: 'd'.repeat(40),
+    sourceHead: HEAD,
+    integrationBase: 'd'.repeat(40),
+    integrationHead: MERGE_HEAD,
+  });
+  const replay = await deliver(harness);
+  assert.equal(replay.status, 'already-delivered');
+  assert.deepEqual(replay.receipt, first.receipt);
+  harness.deps.compareDeliveryContent = async () => false;
+  await assert.rejects(
+    () => deliver(harness),
+    (error) =>
+      error.category === 'merge-method-evidence' &&
+      error.cause?.message === 'delivery-integration:content-mismatch'
+  );
+  assert.equal(harness.calls.createIssueComment, 3);
+});
+
+test('#2098: current recovery refuses unequal content before any ledger write', async () => {
+  const harness = contentReconciliationHarness(false);
+  await assert.rejects(
+    () => deliver(harness, { reconcile: currentReconcile }),
+    (error) =>
+      error.category === 'merge-method-evidence' &&
+      error.cause?.message === 'delivery-integration:content-mismatch'
+  );
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
