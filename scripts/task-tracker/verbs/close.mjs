@@ -3486,7 +3486,7 @@ export async function verbClose(ctx) {
       if (!restartedDeliveredCloseTransaction) {
         resumeDeliveredCloseTransaction = decisionInput.closeTransactions[0];
         resumeConvergeBody = convergeBody;
-        resolvedReviewAuthorization = {
+        resolvedReviewAuthorization ??= {
           mode:
             resumeDeliveredCloseTransaction.reviewAuthority === 'human-gate'
               ? 'human'

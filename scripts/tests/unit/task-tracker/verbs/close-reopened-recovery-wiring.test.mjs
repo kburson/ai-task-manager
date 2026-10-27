@@ -834,3 +834,41 @@ test('#2096: separately fetched historical artifact inventory refuses absent or 
     assert.equal(calls.createdComments.length, 0);
   }
 });
+
+test('#2096: native reopened Close preserves fresh approval through the pre-timing authority fence', async () => {
+  const seeded = harness();
+  const gate = seeded.args.resolvedDeliveryGateRef();
+  const testMarker = `<!-- aitm-verification-receipt stage="test" data="${Buffer.from(JSON.stringify({ stage: 'test', commitSha: NEW_SHA })).toString('base64url')}" -->`;
+  const approval = `<!-- aitm-review-approved ts="${NOW}" approved-sha="${NEW_SHA}" full-auto="yes" signals="session=1" -->`;
+  const body = upsertDeliveredCloseTransaction(
+    [closeBody(), testMarker, approval].join('\n'),
+    oldTransaction()
+  );
+  let outcomes = 0;
+  const run = await runClose({
+    issueNumber: ISSUE,
+    repository: REPO,
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: 'reopened' },
+    body,
+    acceptedSha: NEW_SHA,
+    liveLabels: [],
+    terminalDisposition: 'Delivered',
+    bindingReleaseStatus: 'conflict',
+    bindingOwnership: { authorized: true, disposition: 'own-post-close-claim' },
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test-evidence' },
+    deliveryGateInput: gate.gateInput,
+    extraRest: ['--restart-reopened-transaction'],
+    contextOverrides: { ...seeded.args.ctx, verifyCloseDeliveryReceipt: async () => gate.receipt },
+    createEstimationOutcomeWriter: () => ({
+      ensure: async () => {
+        outcomes++;
+        throw new Error('intentional interruption after authority fence');
+      },
+    }),
+  });
+  assert.equal(outcomes, 1);
+  assert.deepEqual(readDeliveredCloseTransactions(run.body)[0].completedSteps, ['timing']);
+  assert.equal(run.calls.issueCloses, 0);
+});
