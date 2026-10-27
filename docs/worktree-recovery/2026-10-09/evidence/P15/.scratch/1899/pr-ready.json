@@ -1,0 +1,10 @@
+{
+  "args": [
+    "pr",
+    "ready",
+    "1900"
+  ],
+  "status": 0,
+  "stdout": "",
+  "stderr": "✓ Pull request kburson/ai-task-manager#1900 is marked as \"ready for review\"\n"
+}

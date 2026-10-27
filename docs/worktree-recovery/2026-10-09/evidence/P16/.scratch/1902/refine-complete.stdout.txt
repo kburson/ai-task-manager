@@ -1,0 +1,11 @@
+✓ Issue #1902 moved to: ready-for-plan
+✓ move #1902 refine→ready-for-plan complete
+  exit flush  : refine row closed (verified)
+  entry stamp : aitm-entered-ready-for-plan present (verified)
+  entry row   : ready-for-plan row opened (verified)
+  status      : Status == Ready-for-plan (verified)
+  sentinel    : aitm-move-complete state=ready-for-plan (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #1902 promoted: refine → ready-for-plan (direct)
+  ↳ posted "### 🛠 Refine estimate" comment
+✓ #1902 refined: size=XS, estimate=2h, priority=P0; moved refine → Ready for Planning

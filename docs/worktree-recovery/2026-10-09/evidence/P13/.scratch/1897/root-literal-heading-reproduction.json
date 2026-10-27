@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-05T22:03:29.403Z",
+  "results": [
+    {
+      "name": "backtick",
+      "labels": [
+        "Literal example AC"
+      ],
+      "actualCheckbox": null,
+      "actualGate": {
+        "kind": "pass"
+      }
+    },
+    {
+      "name": "tilde",
+      "labels": [
+        "Literal example AC"
+      ],
+      "actualCheckbox": null,
+      "actualGate": {
+        "kind": "pass"
+      }
+    },
+    {
+      "name": "html-comment",
+      "labels": [
+        "Literal example AC"
+      ],
+      "actualCheckbox": null,
+      "actualGate": {
+        "kind": "pass"
+      }
+    }
+  ]
+}

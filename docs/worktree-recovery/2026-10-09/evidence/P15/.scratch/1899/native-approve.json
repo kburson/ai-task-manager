@@ -1,0 +1,10 @@
+{
+  "args": [
+    "aitm",
+    "approve",
+    "1899"
+  ],
+  "status": 0,
+  "stdout": "✓ Review approved for #1899 at 2026-10-05T23:16:39.791Z. `/task close #1899` may now proceed.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' approve 1899\n"
+}

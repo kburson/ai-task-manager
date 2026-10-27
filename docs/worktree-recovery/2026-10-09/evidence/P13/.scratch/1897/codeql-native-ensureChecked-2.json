@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "ensureChecked",
+    "Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes."
+  ],
+  "status": 0,
+  "stdout": "[task-tracker] ✓ Checked \"Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes.\" on #1897\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes.\n",
+  "capturedAt": "2026-10-05T23:57:43.909Z",
+  "metadataNote": "Wrapper capture time after command return; actual native verifier timestamps remain unchanged in stdout/live marker."
+}

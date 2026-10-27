@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node scripts/maintenance/verify-ci-receipts.mjs` <!-- id=3 -->\n",
+  "replacement": ""
+}

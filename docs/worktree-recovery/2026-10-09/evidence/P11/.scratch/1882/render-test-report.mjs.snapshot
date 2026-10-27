@@ -1,0 +1,8 @@
+import {execFileSync} from 'node:child_process';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {parseTestEntriesFromDiff,buildNewAutomatedTestsComment} from '../../scripts/task-tracker/lib/new-automated-tests-comment.mjs';
+const diff=execFileSync('git',['diff','--no-renames','24f8b2ab322a59a4caed027f93170ea699e5478f','HEAD','--','*.test.mjs'],{encoding:'utf8'});
+const entries=parseTestEntriesFromDiff(diff);
+if(!entries.length)throw new Error('No genuine test declarations found');
+const report=buildNewAutomatedTestsComment(entries)+'\n\n'+readFileSync('.scratch/gh/1882-completion-report.md','utf8').replace('### New Automated Tests','### Execution evidence');
+writeFileSync('.scratch/gh/1882-structured-test-report.md',report);console.log(JSON.stringify({files:[...new Set(entries.map(e=>e.file))],testDeclarations:entries.length}));

@@ -1,0 +1,9 @@
+import { pathToFileURL } from 'node:url';
+const root='/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration';
+const cli='/Users/kpburson/.codex/worktrees/story-140-http/ai-peer-review/.scratch/107-tool-recovery/runtime/node_modules/@kburson/ai-task-manager/bin/aitm.mjs';
+process.chdir(root);
+process.env.PATH='/Users/kpburson/.nvm/versions/node/v24.20.0/bin:'+process.env.PATH;
+process.env.CODEX_SESSION_ID='01a1045d-6c19-7102-a39e-c92ebfe45cce';
+process.env.TT_FULL_AUTO='1';
+process.argv=['node',cli,...process.argv.slice(2)];
+await import(pathToFileURL(cli));

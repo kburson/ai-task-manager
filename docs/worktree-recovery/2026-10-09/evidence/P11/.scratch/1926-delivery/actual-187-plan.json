@@ -1,0 +1,159 @@
+{
+  "status": "read-only-plan",
+  "inserted": 1,
+  "observations": [
+    {
+      "ms": 1791485385000,
+      "callId": "call_1dbc1ded35174448b121da5b2c325c56",
+      "line": 3065
+    }
+  ],
+  "transcriptSha": "c019d0b2c1714d4845cc41126589c14a2c6cc7effa42fa6c501927220abc7e0e",
+  "prefixBytes": 298769735,
+  "accounting": {
+    "engagedMs": 35003610,
+    "byActor": {
+      "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd": {
+        "engagedMs": 35003610,
+        "words": 8106
+      }
+    },
+    "byPhase": {
+      "refine": {
+        "engagedMs": 39000
+      },
+      "ready-for-plan": {
+        "engagedMs": 334814
+      },
+      "plan": {
+        "engagedMs": 858000
+      },
+      "develop": {
+        "engagedMs": 33069000
+      },
+      "test": {
+        "engagedMs": 206962
+      },
+      "review": {
+        "engagedMs": 464107
+      }
+    },
+    "intervals": [
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791457001273,
+        "endMs": 1791457028588,
+        "activeEstimateSec": null,
+        "wordStart": 57678,
+        "wordEnd": 57705,
+        "fullWordStart": 3722484,
+        "fullWordEnd": 3723530
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791457028588,
+        "endMs": 1791457067555,
+        "activeEstimateSec": null,
+        "wordStart": 57705,
+        "wordEnd": 57708,
+        "fullWordStart": 3723530,
+        "fullWordEnd": 3725587
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791457067555,
+        "endMs": 1791457089087,
+        "activeEstimateSec": null,
+        "wordStart": 57708,
+        "wordEnd": 57709,
+        "fullWordStart": 3725587,
+        "fullWordEnd": 3725611
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791469636273,
+        "endMs": 1791469818363,
+        "activeEstimateSec": null,
+        "wordStart": 60127,
+        "wordEnd": 60167,
+        "fullWordStart": 3815604,
+        "fullWordEnd": 3822416
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791469818363,
+        "endMs": 1791470484997,
+        "activeEstimateSec": null,
+        "wordStart": 60167,
+        "wordEnd": 60311,
+        "fullWordStart": 3822416,
+        "fullWordEnd": 3834016
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791470484997,
+        "endMs": 1791470614955,
+        "activeEstimateSec": null,
+        "wordStart": 60311,
+        "wordEnd": 60348,
+        "fullWordStart": 3834016,
+        "fullWordEnd": 3834458
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791470614955,
+        "endMs": 1791470796666,
+        "activeEstimateSec": null,
+        "wordStart": 60348,
+        "wordEnd": 60373,
+        "fullWordStart": 3834458,
+        "fullWordEnd": 3835777
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791470796666,
+        "endMs": 1791503873910,
+        "activeEstimateSec": null,
+        "wordStart": 60373,
+        "wordEnd": 67951,
+        "fullWordStart": 3835777,
+        "fullWordEnd": 4138591
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791503873910,
+        "endMs": 1791504041703,
+        "activeEstimateSec": null,
+        "wordStart": 67951,
+        "wordEnd": 68005,
+        "fullWordStart": 4138591,
+        "fullWordEnd": 4139640
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791504096741,
+        "endMs": 1791504135514,
+        "activeEstimateSec": null,
+        "wordStart": 68005,
+        "wordEnd": 68061,
+        "fullWordStart": 4139640,
+        "fullWordEnd": 4140664
+      },
+      {
+        "actorKey": "v1:2301805de780fc6cbaa519b4495bbc9c5197050e39be7963bad275ecf0cfc7cd",
+        "startMs": 1791504135514,
+        "endMs": 1791504607107,
+        "activeEstimateSec": null,
+        "wordStart": 68061,
+        "wordEnd": 68202,
+        "fullWordStart": 4140664,
+        "fullWordEnd": 4154541
+      }
+    ],
+    "incompleteActors": [],
+    "unknownRows": 1,
+    "failures": [],
+    "complete": false
+  },
+  "actorKey": "IC_kwDOUTbzDs8AAAABaRroYA"
+}

@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-05T20:46:01.359Z",
+  "status": 0,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":\"promote\",\"status\":\"indeterminate\",\"blockers\":[{\"args\":{\"reason\":\"invalid\",\"source\":\"issue-body\",\"subject\":{\"issue\":1897}},\"code\":\"authority-read-failed\",\"guardId\":\"authority-collection\",\"noAutomaticRemediation\":{\"reason\":\"authority-investigation-required\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1897,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"authority-collection\",\"code\":\"authority-read-failed\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --json\n"
+}

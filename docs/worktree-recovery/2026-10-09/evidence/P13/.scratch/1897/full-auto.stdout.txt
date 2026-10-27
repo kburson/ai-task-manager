@@ -1,0 +1,1 @@
+✓ auto-mode: all gates OFF (Full-Auto)

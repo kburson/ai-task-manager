@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-05T22:30:08.461Z",
+  "status": 0,
+  "stdout": "Paused #1897: +Unknown active min (wall 15), +305 words. Use \"/task resume\" to resume.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' pause --reason switch-out:separate-cloud-coverage-defect\n"
+}

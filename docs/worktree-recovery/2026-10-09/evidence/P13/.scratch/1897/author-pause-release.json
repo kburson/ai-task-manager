@@ -1,0 +1,91 @@
+{
+  "sid": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+  "binding": null,
+  "before": [
+    {
+      "path": ".tmp/aitm/sessions/01a10a24-0dc2-7e31-86bc-0f63380e50d6/timing/b723947f9b141b5f35fd74e98604b622ef5e5f16a091533fbb68e5dcc2b4107f.json",
+      "data": {
+        "schema": "aitm.actor-timing-state/v1",
+        "actor": "v1:b723947f9b141b5f35fd74e98604b622ef5e5f16a091533fbb68e5dcc2b4107f",
+        "provider": "codex",
+        "sid": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+        "state": {
+          "active": null,
+          "lastActive": "#1897",
+          "entryStartTs": null,
+          "wordsAtEntryStart": 0,
+          "fullWordsAtEntryStart": 612323,
+          "totalActiveMinutes": 0,
+          "discoverBucket": null,
+          "lastWordMarker": 7590,
+          "lastFullWordMarker": 612323,
+          "pausedAtTs": "2026-10-05T21:15:03.680Z",
+          "paused": true,
+          "pauseReasonSlug": "other",
+          "pauseReasonText": "Native Plan forecast repeated gh exited null after source/record read-back and one supported retry; no current approval or Develop admission, implementation untouched."
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "label": "release",
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "#1897"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "startedAt": "2026-10-05T21:16:31.888Z",
+      "endedAt": "2026-10-05T21:16:33.084Z",
+      "exitCode": 0,
+      "stdout": "Released occupancy #1897: provider=codex sid=01a10a24-0dc worktree=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release #1897\n"
+    },
+    {
+      "label": "repeat-release",
+      "command": [
+        "npx",
+        "aitm",
+        "occupancy",
+        "--release",
+        "#1897"
+      ],
+      "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "startedAt": "2026-10-05T21:16:33.084Z",
+      "endedAt": "2026-10-05T21:16:34.011Z",
+      "exitCode": 0,
+      "stdout": "Occupancy #1897: no claim found.\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release #1897\n"
+    }
+  ],
+  "after": [
+    {
+      "path": ".tmp/aitm/sessions/01a10a24-0dc2-7e31-86bc-0f63380e50d6/timing/b723947f9b141b5f35fd74e98604b622ef5e5f16a091533fbb68e5dcc2b4107f.json",
+      "data": {
+        "schema": "aitm.actor-timing-state/v1",
+        "actor": "v1:b723947f9b141b5f35fd74e98604b622ef5e5f16a091533fbb68e5dcc2b4107f",
+        "provider": "codex",
+        "sid": "01a10a24-0dc2-7e31-86bc-0f63380e50d6",
+        "state": {
+          "active": null,
+          "lastActive": "#1897",
+          "entryStartTs": null,
+          "wordsAtEntryStart": 0,
+          "fullWordsAtEntryStart": 612323,
+          "totalActiveMinutes": 0,
+          "discoverBucket": null,
+          "lastWordMarker": 7590,
+          "lastFullWordMarker": 612323,
+          "pausedAtTs": "2026-10-05T21:15:03.680Z",
+          "paused": true,
+          "pauseReasonSlug": "other",
+          "pauseReasonText": "Native Plan forecast repeated gh exited null after source/record read-back and one supported retry; no current approval or Develop admission, implementation untouched."
+        }
+      }
+    }
+  ],
+  "exception": "Documented foreign-worktree scope exception for actual own isolated1897; no SID override or state mutation"
+}

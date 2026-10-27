@@ -1,0 +1,17 @@
+{
+  "args": [
+    "run",
+    "list",
+    "--workflow",
+    "ci.yml",
+    "--branch",
+    "codex/1899-cloud-coverage",
+    "--limit",
+    "4",
+    "--json",
+    "databaseId,event,status,conclusion,headSha"
+  ],
+  "status": 0,
+  "stdout": "[{\"conclusion\":\"\",\"databaseId\":37384898357,\"event\":\"pull_request\",\"headSha\":\"ecc0e1dfe9f9984de602488c6e85c534d35bc31a\",\"status\":\"in_progress\"}]\n",
+  "stderr": ""
+}

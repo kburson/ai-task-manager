@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "close",
+    "1897"
+  ],
+  "startedAt": "2026-10-06T00:07:05.058Z",
+  "completedAt": "2026-10-06T00:09:53.756Z",
+  "status": 0,
+  "stdout": "Issue #1897: 56 timing rows\n  Engaged: Unknown\n  Session: Unknown\n  Review: Unknown\n  Plan: Unknown\n  Known engagement lower bound: 7259.642 seconds\n  Unavailable: legacy-attribution-unknown\n  Stage Time (per visit):\n    backlog#1: 2m 08s\n    backlog#2: 7m 08s\n    refine#1: 2m 29s\n    ready-for-plan#1: 50s\n    plan#1: 8m 19s\n    ready-for-plan#2: 58s\n    plan#2: 24m 11s\n    develop#1: 45m 19s\n    test#1: 1h 10m 38s\n    develop#2: 13m 24s\n    test#2: 8m 14s\n    develop#3: 12m 37s\n    test#3: 2m 53s\n    review#1: open\n  Stage Time (totals):\n    backlog: 9m 16s\n    refine: 2m 29s\n    ready-for-plan: 1m 48s\n    plan: 32m 30s\n    develop: 1h 11m 20s\n    test: 1h 21m 45s\nAITM_TIMING_RESULT {\"schema\":\"aitm.timing-field-result/v1\",\"status\":\"incomplete\",\"reasons\":[\"legacy-attribution-unknown\"],\"knownEngagedSec\":7259.642,\"values\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"secondsByKey\":{\"engagedTime\":null,\"sessionTime\":null,\"reviewTime\":null,\"planTime\":null},\"unknownFields\":[\"engagedTime\",\"sessionTime\",\"reviewTime\",\"planTime\"],\"issue\":1897,\"repository\":\"kburson/ai-task-manager\",\"sourceCommentId\":\"IC_kwDOSU6LgM8AAAABZcg2zg\"}\nFields updated on GitHub Projects board.\nClosed #1897.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' close 1897\n"
+}

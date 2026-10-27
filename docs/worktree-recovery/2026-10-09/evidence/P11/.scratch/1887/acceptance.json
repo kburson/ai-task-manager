@@ -1,0 +1,29 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "38abaa92-64bb-4242-8d6b-e5a746568fe7",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "bin/aitm.mjs",
+    "ac-stamp",
+    "--label",
+    "After an authorized rebase, stale genuine legacy Test receipts no longer deadlock Test entry; Explain is read-only and canonical Test retires only the eligible exact receipt before ordinary entry gates and fresh verification."
+  ],
+  "sourceCommit": "469593566084c14e821f1493299ca0763ad2d0c8",
+  "dirtyPaths": [],
+  "dirtyDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:16:08.113Z",
+  "stdout": ".scratch/1887/acceptance.log",
+  "finishedAt": "2026-10-05T02:16:10.421Z",
+  "exitCode": 1,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "a6c6399d76384fda7cd6682e425b18e75c576384f19a5627ef520726e4c46dfa"
+}

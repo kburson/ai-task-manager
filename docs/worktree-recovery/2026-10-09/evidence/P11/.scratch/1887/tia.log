@@ -1,0 +1,1110 @@
+docs/guides/workflow.md [no-verification-impact] path has no source, test, fixture, runner, dependency, or verification impact
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-v5.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close-waiver.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator-large-graph.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator-local-trunk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-review.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/shelve.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/gh/gh-client-injection.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/cli-help-flag.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/command-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/docs-only-lane-skip-completeness.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/handle-migrate-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/move-state-structured-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/phase-events.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/runtime-move-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/state-machine-self-transition.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/backfill-holes.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/close-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/entry-marker-contiguity-recovery.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/lifecycle-history-actions.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/local-trunk-close-receipt.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-sentinel-write.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-profiles.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-worktree-trunk-ref.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/review-probe-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/terminal-disposition.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/lib/verification-receipt-carry-forward.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-authority-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-binding-cleanup.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-child-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring-finalize.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-refusal.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-contract.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-lifecycle-tick-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-no-commit-delivery.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-pexec-offline.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-projected-guard-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-recovery-backed-stale-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-transaction-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/park.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-spawn-timeout.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-review-alias.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-background-profile.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-multistep-walk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-atomic-rollback.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fields-cache-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fresh-body-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-sandbox-demote-slug.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-timing-monotonic.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-unverified-tick-hatch.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-plan-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/action-decision/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-v5.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close-waiver.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator-large-graph.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator-local-trunk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-review.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/deliver-close.integration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/shelve.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/gh/gh-client-injection.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/cli-help-flag.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/command-manifest.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/docs-only-lane-skip-completeness.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/handle-migrate-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/move-state-structured-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/phase-events.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/runtime-move-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/state-machine-self-transition.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/backfill-holes.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/close-repair.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/entry-marker-contiguity-recovery.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/lifecycle-history-actions.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/local-trunk-close-receipt.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-regression.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-sentinel-write.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-profiles.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/move-state/move-state-worktree-trunk-ref.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/review-derive-rescan.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/review-probe-policy.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/terminal-disposition.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/verification-receipt-carry-forward.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs [basename] conventional basename compatibility mapping
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-authority-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-binding-cleanup.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-child-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring-finalize.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-refusal.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-contract.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-lifecycle-tick-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-no-commit-delivery.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-pexec-offline.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-projected-guard-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-recovery-backed-stale-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/close-transaction-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/demote-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/demote-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/demote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/park.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-spawn-timeout.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-review-alias.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-background-profile.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-multistep-walk.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/refine-atomic-rollback.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fields-cache-refresh.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fresh-body-retry.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/refine-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/review-sandbox-demote-slug.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/review-timing-monotonic.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/review-unverified-tick-hatch.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-inprocess.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-verb.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/verb-plan-promote.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/lib/verification-receipt-retirement.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [import-transitive] test transitively imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/ac-stamp.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/action-ledger.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/assign.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/block-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/board-and-project-guard.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/check.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-authority-refresh.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-binding-cleanup.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-child-refresh.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring-finalize.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivered-idempotence.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-input.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-gate-refusal.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-contract.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-false-delivery-recovery-wiring.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-lifecycle-tick-retry.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-no-commit-delivery.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-occupancy-cleanup.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-pexec-offline.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-projected-guard-refresh.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-recovery-backed-stale-wiring.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-reopened-recovery-wiring.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/close-transaction-refresh.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/comment.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/commit-trace-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-auto.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-check.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-config.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-evidence-markers.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-plan-approve.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-default-squash-recovery.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-historical-reconstruction.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-lineage-adapter.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-merged-source-attribution.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-multiple-pr-records.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-no-commit.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-pr-selection.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-reconcile-args.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-review-waiver.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-single-source-squash.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver-source-inventory.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/deliver.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote-inprocess.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/demote.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/develop-state-action.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/epic-reconcile.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/fleet-closed-bindings.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/functional-dod-gate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/help.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/incident-ledger.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/inflate-estimate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/issue-body.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/migrate-dependencies.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/new-help-probe-guard.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/new-routes-create-issue.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/new.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/next-alias.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/park.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/plan-approve-collapse.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/plan-estimate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-inprocess.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-spawn-timeout.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-review-alias.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-background-profile.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-inprocess.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-multistep-walk.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/reconcile-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-atomic-rollback.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fields-cache-refresh.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-fresh-body-retry.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/refine-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/reject.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-receipt-lane-skip.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-sandbox-demote-slug.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-timing-monotonic.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/review-unverified-tick-hatch.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/state-cursor-promotion-parity.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-inprocess.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/supersede-verb.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-state-action.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/unassign.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/user-story.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-discover-help.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-plan-promote.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [import-direct] test statically imports changed path
+scripts/task-tracker/verbs/test.mjs -> scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs [manifest] CLI subprocess coverage is not completely visible through static imports
+scripts/tests/integration/task-tracker/lib/action-test.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/integration/task-tracker/lib/action-test.test.mjs -> scripts/tests/integration/task-tracker/lib/action-test.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs -> scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs [changed-test] changed or newly discovered test
+scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs -> scripts/tests/integration/meta/test-tree-layout.test.mjs [manifest] current test tree authority change
+scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs -> scripts/tests/unit/task-tracker/lib/verification-receipt-retirement.test.mjs [changed-test] changed or newly discovered test
+✔ layout audit rejects a discovered test outside the canonical lane tree (119.563459ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (44.777625ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (48.557084ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (149.173916ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (1.819667ms)
+✔ current test-tree baseline is well formed (1.339209ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.368291ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.347292ms)
+✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (4.197458ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (8.825375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 472.874167
+Closed #9184. Delivery merge-method waived (requirement=delivery.verification.merge-method).
+✔ no grant preserves the original merged method refusal without terminal writes (9.183542ms)
+✔ exact grant produces one v3 intent, immutable burn, one v4 receipt, and idempotent retry (33.85125ms)
+✔ synthetic historical waiver reaches the close receipt gate with method visibly waived (49.689333ms)
+✔ grant expiry after v3 intent readback refuses the burn and leaves no receipt (10.486167ms)
+✔ revocation observed at the effect boundary leaves the confirmed intent unburned (7.937958ms)
+✔ two independent verification failures refuse before intent reservation (2.668125ms)
+✔ scope drift before intent reservation prevents any journal write (4.289333ms)
+✔ fresh approval after pre-reservation issue re-scoping selects the revised grant (14.353792ms)
+✔ scope drift after v3 readback leaves approval unburned and no receipt (5.030917ms)
+✔ confirmed burn and receipt remain replayable after the grant expires (19.664958ms)
+✔ advanced local HEAD still replays the pinned v4 receipt without publication (18.840208ms)
+✔ advanced local HEAD resumes an exact confirmed burn before receipt publication (17.757917ms)
+✔ completed receipt uses pinned provider observation when retry read omits it (20.890125ms)
+✔ revocation recorded after the burn leaves the historical receipt verifiable (20.062375ms)
+✔ unresolved receipt publication burns approval and never posts on retry (18.154417ms)
+✔ two concurrent deliver contenders project one v3 successor and one burn (14.783084ms)
+✔ lost v3 intent response is resolved from exact comment readback (11.894584ms)
+✔ another host completing v4 between intent confirmation and readback is adopted exactly (28.140875ms)
+✔ two authorized operations naming one predecessor refuse before either reserves it (2.861792ms)
+✔ stale per-host grant views for distinct operations still reserve one predecessor (14.523292ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 506.881
+✔ production delivery reader resolves empty or omitted trunkRef for an attributed epic child (15.285ms)
+✔ production delivery reader follows the shared local and configured-remote fallback authority (0.897042ms)
+✔ production child close resolves an omitted trunkRef and keeps parent attribution blockers (13.346208ms)
+✔ production child close projects the same gate outcome with explicit and default trunk refs (9.310083ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 195.925
+✔ local parent closes ready with absent remote parent (458.406ms)
+✔ local parent closes ready with divergent remote parent (474.948083ms)
+✔ missing opaque parent walks to the surviving registered ancestor (372.093042ms)
+✔ absent parents fall back to trunk and cannot attribute an undelivered child (368.373ms)
+✔ local delivery rejects false numeric-prefix attribution (382.298625ms)
+✔ missing local commit objects fail closed without remote substitution (441.445084ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2646.660583
+✔ completed local-trunk receipt makes advisory close ready without effects (3.393708ms)
+✔ completed receipt still refuses when fresh trunk and PR proof drifts (0.945959ms)
+✔ unconsumed local grant stays blocked in advisory close (0.597291ms)
+✔ production local receipt reader verifies exact journal and comment without writes (3.497709ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.86175
+✔ Close preserves unchecked reasons after delivered authority with old attachments removed (80.904833ms)
+✔ Close preserves unchecked reasons after local-trunk authority with old attachments removed (20.221334ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.828458
+fatal: Not a valid object name ffffffffffffffffffffffffffffffffffffffff^{commit}
+✔ production read-only v5 proof is ready on exact base and leaves Git and worktree bytes unchanged (472.445625ms)
+✔ production read-only v5 proof is ready on disjoint advanced base and leaves Git and worktree bytes unchanged (437.0005ms)
+✔ production v5 proof refuses changed content and overlapping base changes (854.41675ms)
+✔ production v5 proof refuses unavailable accepted objects and conflicting receipt bytes (486.587541ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2408.603708
+✔ production close guard adapter verifies a pinned v4 receipt through read-only ports (26.530375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 181.067375
+✔ production child reader retains complete paginated child identity and refuses malformed pages (2.259791ms)
+✔ production worktree reader compares binding identity and observes dirty paths without writing (0.314458ms)
+✔ production delivery reader uses canonical parent lineage and current receipt evidence (2.421625ms)
+✔ production delivery rejects evidence-v2 without invoking its mutating close runner (0.149625ms)
+✔ production guard adapter reads dependencies and refuses missing local commit objects (0.546792ms)
+✔ production close reaches ready with fresh authority and only read transports (9.007792ms)
+✔ production close collector and terminal authority guard refuse changed delivery after ready (3.3385ms)
+✔ production close observes workflow policy when a guard requires enrichment (3.927625ms)
+✔ production close cannot select ordinary completion for a CLOSED GitHub issue in Review (2.025666ms)
+✔ production close refuses issue-body changes even when semantic scope is unchanged (1.225166ms)
+✔ production close refuses a changed issue revision with byte-identical body (0.998667ms)
+✔ production close cannot bypass pending recovery on an OPEN issue in Review (2.100042ms)
+✔ production close retains immutable initial and current issue revisions (1.135958ms)
+✔ ordinary close collects current authority without effects (1.796083ms)
+✔ close fails closed on missing objects and retains independent guard blockers (1.102833ms)
+✔ close cannot convert a missing receipt or child read into readiness (1.482959ms)
+✔ production close adapter fails closed without read-only delivery and guard seams (0.869083ms)
+✔ production guards pin both child and epic delivery proofs to the verified immutable tip (1.969709ms)
+✔ collector preserves all seven fields on read failure and does not execute effects (0.342666ms)
+✔ epic child refusals and independent child approval requests survive close collection (0.379042ms)
+✔ close preserves approval requests alongside attribution investigation (0.66425ms)
+✔ incorporated and malformed evidence-v2 authority cannot select a special close lane (0.658417ms)
+✔ a current Review state selects sanctioned close navigation (0.043166ms)
+✔ Done remains terminal and cannot select another close (0.035167ms)
+✔ Review promotion delegates to the close collector (0.532042ms)
+✔ close retains approval and investigation requests simultaneously (0.67275ms)
+✔ missing workflow-policy reader is a typed indeterminate result (0.319042ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 209.156209
+✔ open-PR delivery explanation shares actual preflight and performs no effects (7.599ms)
+✔ stale PR head is blocked by the same exact-head preflight as execution (1.174709ms)
+✔ missing provider capability blocks without shell merge guidance (1.206416ms)
+✔ an unreadable delivery authority observation is indeterminate (1.017167ms)
+✔ simultaneous unreadable sources retain both typed causes (0.890166ms)
+✔ merged PR without a delivery receipt cannot claim ready from PR state alone (0.852208ms)
+✔ merged PR reconstruction does not infer a provider action (0.6895ms)
+✔ merged PR with a live intent and exact read-only trunk proof is explainable (7.87475ms)
+✔ merged PR without an intent is explainable when read-only external proof succeeds (1.319ms)
+✔ merged external proof retains source-attribution metadata warnings (1.95ms)
+✔ merged PR with a matching receipt remains explainable without new records (4.571875ms)
+✔ default merged proof ports observe remote and local trunk without fetching refs (0.668875ms)
+✔ default delivery dependency advertises only the configured provider-action capability (0.112583ms)
+✔ a stale local trunk mirror cannot prove merged delivery readiness (2.910917ms)
+✔ merged intent cannot explain ready after configured method diverges (2.425417ms)
+✔ issue-resident no-commit delivery is explainable without a merge provider (0.975125ms)
+✔ production reader selects the current head among historical branch PRs (0.685375ms)
+✔ production reader reports an unavailable initial issue without throwing or effects (0.634083ms)
+✔ delivery body drift between observed issue and preflight snapshot is indeterminate (0.525083ms)
+✔ delivery snapshot cannot claim ready at a different observed worktree HEAD (0.466708ms)
+✔ missing exact-head human PR approval is a typed request, not ready (0.5455ms)
+✔ ineligible manual code reviewer blocks rather than becoming indeterminate (0.498ms)
+✔ missing complete delivery-record inventory cannot explain ready (0.460541ms)
+✔ historical recovery is not silently offered as a ready default delivery (0.625916ms)
+✔ malformed v2 evidence marker cannot fall through to v1 delivery readiness (1.150792ms)
+✔ an existing intent whose authorized merge method diverges cannot explain ready (0.983125ms)
+✔ a prior-head intent may be superseded by fresh exact-head execution (0.790667ms)
+✔ an existing no-commit delivery record with a different accepted head blocks readiness (1.017875ms)
+✔ execution refuses a changed PR head after a prior ready explanation (1.075334ms)
+✔ execution refuses revoked review authorization after a prior ready explanation (1.223417ms)
+✔ execution refuses withdrawn exact-head human PR approval after explanation (2.699584ms)
+✔ execution refuses changed CI after a prior ready explanation (1.543042ms)
+✔ execution refuses changed ledger after a prior ready explanation (1.195708ms)
+✔ execution refreshes PR head after preflight and before posting an intent (0.416167ms)
+✔ execution refreshes lineage before posting an intent (0.348916ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 204.752041
+✔ exact remote tip checks a large graph without buffering its object list (0.930084ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.948375
+✔ local trunk authority refuses refs/remotes/origin/trunk without a git read (0.791208ms)
+✔ local trunk authority refuses origin/trunk without a git read (0.163333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.631208
+✔ complete shared guards skip policy transport on a ready baseline (1.223417ms)
+✔ qualifying refusal loads policy once and replaces the entire baseline result (0.22375ms)
+✔ a non-applicable exception does not erase an ordinary guard refusal (0.166959ms)
+✔ failed required policy collection is indeterminate and preserves known refusals (0.133917ms)
+✔ malformed complete guard output never passes shared execution (0.096209ms)
+✔ a completed promotion adapter without an outer effect ledger is indeterminate (7.351667ms)
+✔ a complete read-only adapter can report ready from one observed body (0.616292ms)
+✔ an adapter without an outer effect ledger cannot claim readiness (0.365625ms)
+✔ an ineligible action cannot become ready through a supplied target (0.38025ms)
+✔ lazy guard reads join the same attempt and memoize one physical read (0.739375ms)
+✔ waivable explanation observes one body and one policy transport, then replaces guards (0.732583ms)
+✔ a scope-incompatible policy waiver cannot turn a known refusal ready (0.847917ms)
+✔ failed required policy read retains the known refusal and adds an indeterminate cause (0.995291ms)
+✔ a throwing shared read-only guard is indeterminate, not a ready result (0.418291ms)
+✔ a thrown shared evaluator is a typed guard-error (0.463041ms)
+✔ a malformed adapter result is separately classified as invalid (0.418042ms)
+✔ incompatible issue body fails before any guard is evaluated (0.385583ms)
+✔ missing required body source is an authority failure, not a skipped success (0.356167ms)
+✔ known blocked refusal, warning and human request remain complete (0.571667ms)
+✔ the complete result retains normalization intent and hashes its inputs (0.430708ms)
+✔ an attempted effect stays visible outside guard conversion and forbids readiness (1.757917ms)
+✔ exact remote tip needs a complete non-shallow local graph without fetch (0.440792ms)
+✔ missing or shallow remote-tip history is attribution-unavailable (0.23ms)
+✔ exact tip is admitted only as a pinned delivery observation (0.279875ms)
+✔ complete exact remote tip scopes the existing attribution predicate to its SHA (0.202542ms)
+✔ incomplete exact remote history never invokes attribution (0.069375ms)
+✔ configured local trunk ref retains explicit local provenance and scopes attribution (0.156375ms)
+✔ bare local trunk fallback resolves only the qualified local branch (0.103916ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.699208
+✔ ready execution persists the current projection with proof-introduction authority and verified readback (3.998458ms)
+✔ the versioned mutation callback remains synchronous so proof guards inspect its body (0.923083ms)
+✔ the real versioned body boundary rejects the same proof-introducing edit without evidenceStamp (4.307292ms)
+✔ blocked fresh readiness preserves its envelope with pending normalization (0.382542ms)
+✔ blocked fresh readiness preserves its envelope without pending normalization (0.08975ms)
+✔ indeterminate fresh readiness preserves its envelope with pending normalization (0.134542ms)
+✔ indeterminate fresh readiness preserves its envelope without pending normalization (0.071833ms)
+✔ real registry completeness labels survive normalization (0.116833ms)
+✔ indeterminate readiness on a fresh versioned base is retained before persistence (0.387625ms)
+✔ malformed non-ready envelope is invalid with normalization (0.23325ms)
+✔ malformed non-ready envelope is invalid without normalization (0.062583ms)
+✔ successful normalization keeps persisted truth when readback becomes blocked (0.654583ms)
+✔ a thrown fresh authority evaluation is drift, not a write transport failure (0.50625ms)
+✔ post-write readback failure refuses while preserving the fact that a write occurred (0.36575ms)
+✔ write transport failure is named and stops before post-write authority or later effects (0.196791ms)
+✔ changed execution HEAD refuses even if projected decision intent would be identical (0.072417ms)
+✔ a changed HEAD during a versioned retry refuses before another push (0.398875ms)
+✔ an empty authority body is a failed readback, never an idempotent no-op (0.070542ms)
+✔ a version conflict re-evaluates the fresh body and refuses a now-blocked retry (0.808375ms)
+✔ a non-overlapping version conflict recomputes and preserves the concurrent edit (0.833917ms)
+✔ readback rejects a proof marker attributed to the wrong execution HEAD (0.361542ms)
+✔ test-to-review rescan preserves projected refusal before any derived write (1.753042ms)
+✔ a concurrent HEAD change wins over an otherwise valid blocked retry (0.416583ms)
+✔ remaining projection drift wins over a blocked post-write guard (0.646416ms)
+✔ normalization retains warnings and human requests separately from normalization warnings (1.196ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 187.504084
+✔ aggregate parity matrix covers every lifecycle action and required scenario (3.206625ms)
+✔ aggregate parity executes the seven action suites, not only their metadata (13031.100333ms)
+✔ authority cost evidence matches fresh physical reads before A2 certification (96.775042ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (1.562375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13546.529792
+✔ real Review projection preserves completeness checkbox labels in action output (9.370375ms)
+✔ Review consumes normalized typed labels before transitions or reviewer work (90.719ms)
+✔ real registry preserves reviewed-scope-current-missing without an unclassified fallback (2.481208ms)
+✔ real registry preserves reviewed-scope-stale without an unclassified fallback (1.171292ms)
+✔ real registry preserves reviewed-scope-comment-invalid without an unclassified fallback (1.112541ms)
+✔ real registry preserves reviewed-scope-wrong-checkout without an unclassified fallback (1.269708ms)
+✔ real registry preserves reviewed-scope-read-unavailable without an unclassified fallback (0.802083ms)
+✔ reviewed Scope guard is registered only in Test exit (0.093417ms)
+✔ read-only Review collector threads explicit execution and invoking directories (0.953667ms)
+✔ Review evaluator retains injected authoritative reviewed Scope ports (1.994416ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 264.31075
+
+⛔ Refusing to move #1667 to Review:
+   BLOCKED: Test receipt SHA no longer matches HEAD
+
+Resolve the blockers above, then retry `/task review #1667`.
+
+✔ direct Review and Test-state Promote share ready evidence without effects (8.473875ms)
+✔ Review routing uses its complete collector even when generic guards are available (0.841916ms)
+✔ Review guards receive project config and a read-only dependency reconciliation port (0.694791ms)
+▶ Review explanation refuses stale HEAD, unreadable evidence, and board drift
+  ✔ stale HEAD (1.112125ms)
+  ✔ unreadable preflight (0.697ms)
+  ✔ board drift (1.279375ms)
+✔ Review explanation refuses stale HEAD, unreadable evidence, and board drift (3.379375ms)
+✔ Review preserves simultaneous typed preflight refusals without exposing prose (0.956125ms)
+✔ Review retains independent preflight and completeness blockers together (0.699458ms)
+✔ Review does not accept a contradictory successful preflight carrying refusals (0.734875ms)
+✔ Review refuses a stale exact-HEAD Test receipt even when preflight and guards pass (1.497542ms)
+✔ Review execution refuses a stale Test receipt after a ready collector decision (102.118958ms)
+✔ Review refuses a preflight computed from a different issue-body revision (0.8935ms)
+✔ Review reports a projected Functional DoD normalization without persistence (2.837334ms)
+✔ Review guards receive the current directory-backed Test evidence from preflight (0.618791ms)
+✔ Review refuses contradictory directory Test evidence read at one boundary (1.389333ms)
+✔ real Test-to-Review guards refuse missing exact-HEAD Test proof and incomplete ACs (312.848334ms)
+✔ Review resident reruns only incomplete evidence and does not recommend close (1.455041ms)
+✔ Review-state Promote delegates to Close rather than a Review rerun (2.231083ms)
+✔ live Review read adapter refreshes issue, board, HEAD, and preflight at this boundary (1.090167ms)
+✔ live Review-state adapter selects a rerun only after current semantic policy is read (2.297583ms)
+✔ live Review-state policy read failure is typed indeterminate, never a rerun grant (0.869542ms)
+✔ initial Review authority read failure is typed indeterminate (0.103208ms)
+✔ resident ledger comment reader fetches the exact GitHub comment read-only (0.143959ms)
+✔ active semantic waiver with failed Review marker selects self-rerun (1.323792ms)
+✔ Review re-entry with a clean older ledger head still selects current resident work (1.896625ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 599.26225
+✔ rebind remains a cursor trigger, not a session action (0.973125ms)
+✔ read-only bind reports skipped required authority as indeterminate (1.667083ms)
+✔ the execution TT_SKIP_NETWORK setting skips required explanation reads (0.582167ms)
+✔ disabled assignee match remains ready only with complete matching board and marker (0.671125ms)
+✔ disabled assignee match does not conceal a missing board read (0.443292ms)
+✔ a body without a last-known-state marker is indeterminate (0.590875ms)
+✔ a board and body-marker disagreement blocks bind readiness (0.427125ms)
+✔ a mismatched worktree blocks bind readiness (0.697083ms)
+✔ an unreadable worktree match is indeterminate, not ready (0.887ms)
+✔ a conflicting occupancy blocks bind before any claim (1.061166ms)
+✔ an implicit resume cannot target a different active issue (0.613334ms)
+✔ no-argument resume is not ready without a paused session (0.381416ms)
+✔ no-argument resume is ready for its paused last issue (0.3425ms)
+✔ migration freeze blocks a complete session decision without a side effect (0.403583ms)
+✔ enabled ownership check blocks a foreign owner (0.46425ms)
+✔ enabled ownership check blocks multiple owners and treats unknown identity as indeterminate (0.6975ms)
+✔ a conflicting local configuration observation cannot yield a ready decision (0.351667ms)
+✔ missing repository configuration is indeterminate even with a complete board fixture (1.035542ms)
+✔ observed state drift and migration freeze agree with the execution preflight (0.765042ms)
+✔ production session reads and execution refresh the same changed board authority (0.699875ms)
+✔ cold numeric bind, switch, and explicit resume select the same fresh target (1.638834ms)
+✔ foreign ownership blocks both production explanation and execution preflight (0.853167ms)
+✔ another issue occupying the target worktree blocks readiness and the real claim (96.896708ms)
+✔ a body changing between scope selection and observation is indeterminate (0.794625ms)
+✔ a readable stub body without scope sections is an issue-body authority failure (0.526417ms)
+✔ real injected resume execution refreshes freeze and preserves its exit 14 refusal (299.128375ms)
+✔ early promotion readiness retains an unmapped complete-guard refusal (24.381292ms)
+✔ typed plan approval remediation survives complete guard projection (24.823917ms)
+✔ unknown and conflicting early state authority never yields a target grant (0.43675ms)
+✔ early promotion readiness follows all four canonical forward edges (79.7975ms)
+✔ a migration freeze discovered after explanation blocks early promotion readiness (0.503792ms)
+✔ terminal Done has no executable early promotion target (0.085ms)
+✔ later promotion delegate stays pending with a valid navigation blocker (0.157792ms)
+✔ skipped remote authority cannot yield ready early promotion (0.104458ms)
+✔ TT_SKIP_NETWORK also skips early promotion authority without a caller flag (0.16425ms)
+✔ read-only dependency readiness does not reconcile disposition (29.153125ms)
+✔ a ready early explanation is not a grant after dependency readiness changes (39.199416ms)
+✔ a migration freeze activated before locked execution refuses without reading or moving (0.094791ms)
+✔ early readiness shares execution session policy and story-intent resolver (0.229875ms)
+✔ a real plan-approval guard refuses the same missing marker in explanation and execution (0.8895ms)
+✔ complete production early registry retains field, parent, dependency, contiguity, and plan refusals (8998.225167ms)
+✔ production evaluator routes a complete bind collector and finishes one v2 attempt (2.675792ms)
+✔ production evaluator routes complete early promotion without an effect (23.710125ms)
+✔ production evaluator routes explicit resume through complete session authority (0.826125ms)
+✔ v2 navigation rejects rebind and unresolved state while keeping Done terminal (4.852875ms)
+✔ terminal Done refuses an effect, stale authority, and rebind without a false grant (1.955875ms)
+✔ a ready v2 explanation never authorizes stale promotion execution (44.984625ms)
+✔ v2 early promotion preserves typed plan-approval remediation and human request (23.674084ms)
+✔ matching recorded and live state selects one canonical early edge (26.749458ms)
+✔ missing effect ledger does not erase unknown navigation authority (0.930292ms)
+✔ session navigation refuses a stale proposed state despite internally matching board and marker (0.701667ms)
+✔ network-skipped early promotion emits valid v2 uncertainty without remote reads (0.363292ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9904.081333
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (7.02225ms)
+  ✔ direct Test self-rerun from Test (1.171ms)
+  ✔ Promote from Develop (0.818209ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (9.642167ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.309416ms)
+✔ Review-state Test request is not advertised as runnable (0.7235ms)
+✔ Test entry needs an explicit project directory for command and provider authority (0.891417ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.701042ms)
+✔ Test explanation reports missing Verification Commands without effects (1.843375ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.800584ms)
+✔ Test entry aggregates independent binding and declaration blockers (0.608208ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.793292ms)
+  ✔ session binding (0.616833ms)
+  ✔ claimed receipt (0.831584ms)
+✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (2.556166ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.6425ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.285375ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.743875ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.760708ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.546833ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (3866.219542ms)
+✔ Test entry retains registered guard warnings while remaining blocked (0.694ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.469041ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (5.403542ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (1.73ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (1.215167ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.137ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.156125ms)
+✔ rebased Test readiness audits the projected body without changing observed authority (3.476459ms)
+✔ current wrong-tree Test provenance remains a readiness refusal (1.900458ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4058.226333
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (344.029417ms)
+✔ question reply ambiguity retains the original row and replays before resuming (284.420959ms)
+✔ question marker cannot substitute another event for the frozen resume (279.487625ms)
+✔ question hook respects its own manual pause without creating a resume marker (147.520208ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (190.191125ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (173.875709ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (248.794166ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (415.240083ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (182.768125ms)
+✔ Test interlock records actual verification engagement from a paused own binding (216.615791ms)
+✔ status distinguishes missing activity observation from zero work (122.032666ms)
+✔ failed Test execution retains both its failure and actual actor work (209.09975ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (171.742209ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (354.941167ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (120.978417ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (184.713709ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (268.743416ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (306.9185ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (208.10975ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (487.993208ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5091.507834
+✔ cold retry converges timing after before-effect (2.531917ms)
+✔ cold retry converges timing after after-effect-before-response (1.157833ms)
+✔ cold retry converges timing after after-response-before-checkpoint (1.915208ms)
+✔ cold retry converges estimation after before-effect (0.398292ms)
+✔ cold retry converges estimation after after-effect-before-response (0.3965ms)
+✔ cold retry converges estimation after after-response-before-checkpoint (0.359334ms)
+✔ cold retry converges lifecycle after before-effect (0.285209ms)
+✔ cold retry converges lifecycle after after-effect-before-response (0.260167ms)
+✔ cold retry converges lifecycle after after-response-before-checkpoint (0.3095ms)
+✔ cold retry converges board after before-effect (0.367541ms)
+✔ cold retry converges board after after-effect-before-response (0.427833ms)
+✔ cold retry converges board after after-response-before-checkpoint (0.462375ms)
+✔ cold retry converges disposition after before-effect (0.454584ms)
+✔ cold retry converges disposition after after-effect-before-response (0.387292ms)
+✔ cold retry converges disposition after after-response-before-checkpoint (0.423ms)
+✔ cold retry converges issue after before-effect (0.466792ms)
+✔ cold retry converges issue after after-effect-before-response (0.458208ms)
+✔ cold retry converges issue after after-response-before-checkpoint (0.243125ms)
+✔ cold retry converges labels after before-effect (0.498958ms)
+✔ cold retry converges labels after after-effect-before-response (0.348625ms)
+✔ cold retry converges labels after after-response-before-checkpoint (0.47025ms)
+✔ cold retry converges cleanup after before-effect (0.560916ms)
+✔ cold retry converges cleanup after after-effect-before-response (0.256459ms)
+✔ cold retry converges cleanup after after-response-before-checkpoint (0.513667ms)
+✔ pre-close contention refuses effects while a post-completion race is cleanup pending (0.60125ms)
+✔ public close dispatcher selects marked synthetic v2 and ignores unmarked v1 (490.884375ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 678.208541
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (421.375125ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (12937.987667ms)
+✔ dynamic issue-bind route cannot bypass admission (531.995416ms)
+✔ direct verb hub refuses invalid guidance before context construction (356.817041ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (2133.578167ms)
+✔ direct verb help-shaped arguments cannot bypass admission (3007.38225ms)
+✔ unsupported direct-hub recovery words are admitted as operational (732.472333ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.755209ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.427791ms)
+✔ package installer refuses invalid guidance before init writes (335.91275ms)
+✔ direct support-script path refuses invalid guidance before its own parser (325.499042ms)
+✔ guidance validation remains a routed recovery command (474.707708ms)
+✔ top-level help remains available while the selected catalog is invalid (315.3415ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (832.182334ms)
+✔ admission inventory accounts for every canonical command, alias, and classified executable (107.655334ms)
+✔ every registered operational token refuses an invalid catalog (24714.483458ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (13235.100333ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60659.005083
+✔ pairs separate Explain and executor attempts with equal physical authority reads (90.75725ms)
+✔ isolates named refresh, waivable policy enrichment, and post-success annotation effects (63.722041ms)
+✔ seals timing provenance and regenerates the committed authority artifact (102.894541ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 451.441125
+✔ strict parser accepts canonical and mutation-alias explanation forms (1.022917ms)
+✔ strict parser rejects missing json, singleton duplication, and malformed shapes (0.396208ms)
+✔ one evaluation feeds routine and diagnostic projection without effects (2.976042ms)
+✔ matching receipt suppresses only agent expansion while evaluation remains fresh (0.310541ms)
+✔ actual command-core traffic covers receipt, source, reset, blocked, and diagnostic lanes (2.326583ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 224.597708
+✔ generates current paired artifacts while preserving the frozen comparison (1178.261458ms)
+✔ public meter certifies final installed bytes and the paired report (4846.834833ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6244.44475
+✔ delivery Explain exposes only named read ports (0.483708ms)
+✔ archived recertification retains its observed authority and original runner provenance (12.0315ms)
+✔ current recertification captures complete simulated authority without executing actions (15361.558334ms)
+✔ current recertification replays start from identical current authority bytes (18543.256125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34066.69275
+
+Interrupted while running:
+
+⚠ scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs (scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:1:1)
+✖ scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs (16434.9165ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 1
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16436.715667
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs:1:1
+✖ scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs (16434.9165ms)
+  'Promise resolution is still pending but the event loop has already resolved'

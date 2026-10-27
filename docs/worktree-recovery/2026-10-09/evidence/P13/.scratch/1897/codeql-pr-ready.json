@@ -1,0 +1,13 @@
+{
+  "cmd": "gh",
+  "args": [
+    "pr",
+    "ready",
+    "1898"
+  ],
+  "startedAt": "2026-10-06T00:04:05.637Z",
+  "completedAt": "2026-10-06T00:04:06.840Z",
+  "status": 0,
+  "stdout": "",
+  "stderr": "✓ Pull request kburson/ai-task-manager#1898 is marked as \"ready for review\"\n"
+}

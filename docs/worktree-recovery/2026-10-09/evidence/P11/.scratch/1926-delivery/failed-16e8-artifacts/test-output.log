@@ -1,0 +1,150 @@
+
+> @kburson/ai-task-manager@0.1.0 test:integration
+> node scripts/run-tests.mjs --lane integration --shard 2/3
+
+▶ lane=integration (82 files)
+
+▶ scripts/tests/integration/gh/gh-call-census.test.mjs ... ok (324ms)
+▶ scripts/tests/integration/meta/captured-commit-bytes.test.mjs ... ok (165ms)
+▶ scripts/tests/integration/providers/transcript-resolver.test.mjs ... ok (285ms)
+▶ scripts/tests/integration/review/peer-review-decommission.test.mjs ... ok (468ms)
+▶ scripts/tests/integration/review/peer-review-migration-guard.test.mjs ... ok (242ms)
+▶ scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs ... ok (106ms)
+▶ scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs ... ok (57ms)
+▶ scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs ... ok (997ms)
+▶ scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs ... ok (158ms)
+▶ scripts/tests/integration/task-tracker/delivery-waiver-merge-method.integration.test.mjs ... ok (592ms)
+▶ scripts/tests/integration/task-tracker/graphql-usage-baseline.test.mjs ... ok (337ms)
+▶ scripts/tests/integration/task-tracker/graphql-usage-collection.test.mjs ... ok (5.7s)
+▶ scripts/tests/integration/task-tracker/graphql-usage-dispatch.test.mjs ... ok (61ms)
+▶ scripts/tests/integration/task-tracker/graphql-usage-report.test.mjs ... ok (538ms)
+▶ scripts/tests/integration/task-tracker/graphql-usage-storage.test.mjs ... ok (491ms)
+▶ scripts/tests/integration/task-tracker/hooks/coverage-codex-prompt-timestamp.test.mjs ... ok (95ms)
+▶ scripts/tests/integration/task-tracker/lib/active-time-provider.test.mjs ... ok (52ms)
+▶ scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs ... ok (724ms)
+▶ scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs ... ok (113ms)
+▶ scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs ... ok (3.5s)
+▶ scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs ... ok (903ms)
+▶ scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs ... ok (153ms)
+▶ scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs ... ok (97ms)
+▶ scripts/tests/integration/task-tracker/lib/duplicate-child-guard.test.mjs ... ok (893ms)
+▶ scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs ... ok (72ms)
+▶ scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs ... ok (162ms)
+▶ scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs ... ok (1.9s)
+▶ scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs ... ok (2.5s)
+▶ scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs ... ok (103ms)
+▶ scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs ... ok (106ms)
+▶ scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs ... ok (93ms)
+▶ scripts/tests/integration/task-tracker/lib/governed-issue-record-writes.test.mjs ... ok (78ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs ... ok (100ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs ... ok (363ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs ... ok (4.9s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs ... ok (8.0s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs ... ok (2.4s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs ... ok (124ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs ... ok (171ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-legacy-transport.test.mjs ... ok (256ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs ... ok (4.2s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs ... ok (17.6s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs ... ok (551ms)
+▶ scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs ... ok (22.8s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs ... ok (16.8s)
+▶ scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs ... ok (1.5s)
+▶ scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs ... ok (384ms)
+▶ scripts/tests/integration/task-tracker/lib/lint-doc-anchors.test.mjs ... ok (140ms)
+▶ scripts/tests/integration/task-tracker/lib/lint-fleet-sandbox-isolation.test.mjs ... ok (40ms)
+▶ scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs ... ok (955ms)
+▶ scripts/tests/integration/task-tracker/lib/move-state/event-field-sync-noop.test.mjs ... ok (2.1s)
+▶ scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs ... ok (129ms)
+▶ scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs ... ok (3.2s)
+▶ scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs ... ok (3.3s)
+▶ scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs ... ok (3.2s)
+▶ scripts/tests/integration/task-tracker/lib/process-timeouts.test.mjs ... ok (436ms)
+▶ scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs ... ok (239ms)
+▶ scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs ... ok (3.7s)
+▶ scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs ... ok (354ms)
+▶ scripts/tests/integration/task-tracker/lib/runtime-repair-target.test.mjs ... ok (427ms)
+▶ scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs ... ok (547ms)
+▶ scripts/tests/integration/task-tracker/lib/scratch-dir-prototype.test.mjs ... ok (268ms)
+▶ scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs ... ok (278ms)
+▶ scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs ... ok (251ms)
+▶ scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs ... ok (287ms)
+▶ scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs ... ok (387ms)
+▶ scripts/tests/integration/task-tracker/lib/word-counter-bounded-memory.test.mjs ... ok (239ms)
+▶ scripts/tests/integration/task-tracker/maintenance/lib/heal-stage-rollups-cli.test.mjs ... ok (256ms)
+▶ scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs ... ok (506ms)
+▶ scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs ... ok (69ms)
+▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-preflight.test.mjs ... ok (834ms)
+▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception-receipt.test.mjs ... ok (291ms)
+▶ scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs ... ok (696ms)
+▶ scripts/tests/integration/task-tracker/verbs/delivery-waiver-authority.test.mjs ... ok (272ms)
+▶ scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs ... ok (382ms)
+▶ scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs ... ok (169ms)
+▶ scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs ... ok (184ms)
+▶ scripts/tests/integration/task-tracker/verbs/local-trunk-close-authority.test.mjs ... ok (130ms)
+▶ scripts/tests/integration/task-tracker/verbs/resume-binding-generation.test.mjs ... ok (514ms)
+▶ scripts/tests/integration/task-tracker/verbs/workflow-exception.test.mjs ... ok (204ms)
+▶ scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs ... ok (217ms)
+
+1 of 82 test file(s) failed:
+
+── scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs ──
+✔ tracked invalid override refuses a read-only operational route before normal dispatch (246.038988ms)
+✔ invalid catalog refuses before GitHub, lock, or session effects without network skip (9766.482364ms)
+✔ dynamic issue-bind route cannot bypass admission (211.790907ms)
+✔ direct verb hub refuses invalid guidance before context construction (245.314543ms)
+✔ direct verb executables refuse invalid guidance before their own main paths (1694.668312ms)
+✔ direct verb help-shaped arguments cannot bypass admission (1688.168106ms)
+✔ unsupported direct-hub recovery words are admitted as operational (432.081311ms)
+✔ session annotation requires a durable issue write, not a zero-exit or local change (0.57558ms)
+✔ timing-post observation distinguishes durable issue writes from queued rows (0.342826ms)
+✔ package installer refuses invalid guidance before init writes (263.582496ms)
+✔ direct support-script path refuses invalid guidance before its own parser (205.175053ms)
+✔ guidance validation remains a routed recovery command (349.385747ms)
+✔ top-level help remains available while the selected catalog is invalid (331.40969ms)
+✔ command help, guidance source, and package version remain effect-free recovery routes (880.819495ms)
+✖ admission inventory accounts for every canonical command, alias, and classified executable (127.44782ms)
+✔ every registered operational token refuses an invalid catalog (15080.876006ms)
+✔ every supported direct operational entrypoint refuses an invalid catalog (9145.324745ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 16
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 40676.07335
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:316:1
+✖ admission inventory accounts for every canonical command, alias, and classified executable (127.44782ms)
+  AssertionError [ERR_ASSERTION]: scripts/task-tracker/heal-timing-log.mjs
+  + actual - expected
+  
+    [
+      './lib/direct-guidance-admission.mjs',
+      './gh-timing-comment.mjs',
+  +   './lib/heal-timing-continuity.mjs',
+      './lib/heal-actor-opener-replays.mjs',
+      './locks.mjs',
+      './paths.mjs',
+      './config.mjs',
+      '../gh/lib/github-projects.mjs',
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs:342:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [Array],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+

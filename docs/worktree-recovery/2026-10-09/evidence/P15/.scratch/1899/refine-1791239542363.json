@@ -1,0 +1,20 @@
+{
+  "args": [
+    "aitm",
+    "refine",
+    "1899",
+    "--size",
+    "S",
+    "--estimate",
+    "3",
+    "--priority",
+    "p0",
+    "--rank",
+    "1",
+    "--reason",
+    "Confirmed provider appends declared host full suites after cloud verifier; bounded explicit coverage mapping with fail-closed validation and compatibility tests"
+  ],
+  "status": 0,
+  "stdout": "✓ Issue #1899 moved to: refine\n✓ move #1899 backlog→refine complete\n  exit flush  : backlog row closed (verified)\n  entry stamp : aitm-entered-refine present (verified)\n  entry row   : refine row opened (verified)\n  status      : Status == Refine (verified)\n  sentinel    : aitm-move-complete state=refine (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #1899 promoted: backlog → refine (direct)\n✓ #1899 refined: size=S, estimate=3h, priority=P0; moved backlog → Refine\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' refine 1899 --size S --estimate 3 --priority p0 --rank 1 --reason Confirmed provider appends declared host full suites after cloud verifier; bounded explicit coverage mapping with fail-closed validation and compatibility tests\n"
+}

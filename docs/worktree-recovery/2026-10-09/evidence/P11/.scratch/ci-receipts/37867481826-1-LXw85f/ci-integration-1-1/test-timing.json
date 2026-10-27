@@ -1,0 +1,643 @@
+{
+  "schema": 5,
+  "generatedAt": "2026-10-09T01:02:11.199Z",
+  "lane": "integration",
+  "command": "node scripts/run-tests.mjs --lane integration --shard 1/3",
+  "commit": "cda27d936b55933312b09191f48cceb148c0c11d",
+  "runnerProfile": {
+    "label": "GitHub Actions 1000148473",
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "24.21.0",
+    "logicalCpuCount": 4
+  },
+  "discoveryInventory": [
+    "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+    "scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs",
+    "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
+    "scripts/tests/integration/meta/audit-story-tags.test.mjs",
+    "scripts/tests/integration/package/doctor-cli.test.mjs",
+    "scripts/tests/integration/package/install-health.test.mjs",
+    "scripts/tests/integration/package/install-manifest.test.mjs",
+    "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+    "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+    "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+    "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-v5.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close-waiver.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-deliver-effect-boundaries.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-evaluator-large-graph.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-evaluator-local-trunk.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-promote-reviewed-scope.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/acceptance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/eligibility.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-enrollment.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-shapes.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/provider-contract.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/local-trunk-close-journal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+    "scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs",
+    "scripts/tests/integration/task-tracker/verbs/switch-binding-generation.test.mjs"
+  ],
+  "count": 83,
+  "elapsed": {
+    "runnerMs": 99848.8,
+    "poolMs": 0.1,
+    "subprocessPoolMs": 0,
+    "slowPoolMs": 0,
+    "serialMs": 99848.6
+  },
+  "sums": {
+    "fileWallMs": 99847.7,
+    "inProcessMs": 83196.1,
+    "estimatedSpawnIoMs": 16651.6
+  },
+  "pareto": {
+    "p50": 7,
+    "p80": 24
+  },
+  "slowBucket": {
+    "thresholdMs": 2000,
+    "overThreshold": 12,
+    "slowBucketFiles": 0,
+    "slowBucketStillSlow": 0,
+    "slowBucketNowFast": 0,
+    "fastLaneOverThreshold": 12,
+    "demotionCandidates": [],
+    "promotionCandidates": [
+      "scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs",
+      "scripts/tests/integration/package/doctor-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/local-trunk-close-journal.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+      "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+      "scripts/tests/integration/task-tracker/verbs/help.test.mjs"
+    ]
+  },
+  "files": {
+    "scripts/tests/integration/fixtures/feature-fixtures.test.mjs": {
+      "label": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+      "wallMs": 243.6,
+      "inProcMs": 173.2,
+      "status": 0
+    },
+    "scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs": {
+      "label": "scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs",
+      "wallMs": 6140.1,
+      "inProcMs": 6080.9,
+      "status": 0
+    },
+    "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs": {
+      "label": "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
+      "wallMs": 505.4,
+      "inProcMs": 450.6,
+      "status": 0
+    },
+    "scripts/tests/integration/meta/audit-story-tags.test.mjs": {
+      "label": "scripts/tests/integration/meta/audit-story-tags.test.mjs",
+      "wallMs": 409.4,
+      "inProcMs": 355.8,
+      "status": 0
+    },
+    "scripts/tests/integration/package/doctor-cli.test.mjs": {
+      "label": "scripts/tests/integration/package/doctor-cli.test.mjs",
+      "wallMs": 2849.9,
+      "inProcMs": 2648,
+      "status": 0
+    },
+    "scripts/tests/integration/package/install-health.test.mjs": {
+      "label": "scripts/tests/integration/package/install-health.test.mjs",
+      "wallMs": 145.8,
+      "inProcMs": 61.1,
+      "status": 0
+    },
+    "scripts/tests/integration/package/install-manifest.test.mjs": {
+      "label": "scripts/tests/integration/package/install-manifest.test.mjs",
+      "wallMs": 247.8,
+      "inProcMs": 45.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs",
+      "wallMs": 386.5,
+      "inProcMs": 330.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-heal-timing-starts-sweep.test.mjs",
+      "wallMs": 400.4,
+      "inProcMs": 361.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-verify-epic-114.test.mjs",
+      "wallMs": 76.2,
+      "inProcMs": 38.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/coverage-verify-sweep-comment.test.mjs",
+      "wallMs": 111.4,
+      "inProcMs": 73.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+      "wallMs": 180.4,
+      "inProcMs": 69.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs",
+      "wallMs": 287.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+      "wallMs": 522.3,
+      "inProcMs": 424,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
+      "wallMs": 283,
+      "inProcMs": 106.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-default.test.mjs",
+      "wallMs": 269.2,
+      "inProcMs": 82.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-local-parent.test.mjs",
+      "wallMs": 1069.5,
+      "inProcMs": 880.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-local-trunk.test.mjs",
+      "wallMs": 213,
+      "inProcMs": 28.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs",
+      "wallMs": 311.9,
+      "inProcMs": 105.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs",
+      "wallMs": 3601.6,
+      "inProcMs": 3546.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-v5.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-v5.test.mjs",
+      "wallMs": 1026.8,
+      "inProcMs": 836.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-waiver.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close-waiver.test.mjs",
+      "wallMs": 257.9,
+      "inProcMs": 61.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-close.test.mjs",
+      "wallMs": 297.8,
+      "inProcMs": 89.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-deliver-effect-boundaries.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-deliver-effect-boundaries.test.mjs",
+      "wallMs": 244.9,
+      "inProcMs": 115.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-deliver.test.mjs",
+      "wallMs": 306.3,
+      "inProcMs": 117,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-evaluator-large-graph.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-evaluator-large-graph.test.mjs",
+      "wallMs": 200.3,
+      "inProcMs": 13.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-evaluator-local-trunk.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-evaluator-local-trunk.test.mjs",
+      "wallMs": 194.9,
+      "inProcMs": 13,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-evaluator.test.mjs",
+      "wallMs": 234.9,
+      "inProcMs": 45.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-normalization.test.mjs",
+      "wallMs": 245.1,
+      "inProcMs": 49.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+      "wallMs": 3324.5,
+      "inProcMs": 3137.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-promote-reviewed-scope.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-promote-reviewed-scope.test.mjs",
+      "wallMs": 262.8,
+      "inProcMs": 221.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+      "wallMs": 111.3,
+      "inProcMs": 13.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs",
+      "wallMs": 336.4,
+      "inProcMs": 140.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-review.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+      "wallMs": 376.6,
+      "inProcMs": 178.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+      "wallMs": 1990.7,
+      "inProcMs": 1766.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/action-test.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+      "wallMs": 895.8,
+      "inProcMs": 692.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs",
+      "wallMs": 14327.6,
+      "inProcMs": 14172,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+      "wallMs": 289.4,
+      "inProcMs": 180.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+      "wallMs": 135.8,
+      "inProcMs": 78.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+      "wallMs": 120.5,
+      "inProcMs": 63.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs",
+      "wallMs": 497.3,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs",
+      "wallMs": 968.5,
+      "inProcMs": 914.4,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs",
+      "wallMs": 929.2,
+      "inProcMs": 832.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs",
+      "wallMs": 676.3,
+      "inProcMs": 618.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+      "wallMs": 355.2,
+      "inProcMs": 267.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+      "wallMs": 6838.8,
+      "inProcMs": 6780.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/acceptance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/acceptance.test.mjs",
+      "wallMs": 218.4,
+      "inProcMs": 103.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs",
+      "wallMs": 345.1,
+      "inProcMs": 114,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/eligibility.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/eligibility.test.mjs",
+      "wallMs": 348.6,
+      "inProcMs": 237.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-enrollment.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-enrollment.test.mjs",
+      "wallMs": 57.9,
+      "inProcMs": 12,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-shapes.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-shapes.test.mjs",
+      "wallMs": 892.6,
+      "inProcMs": 762.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/provider-contract.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/evidence-v2/provider-contract.test.mjs",
+      "wallMs": 1129.6,
+      "inProcMs": 1008.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/exclusive-ownership-policy.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/exclusive-ownership-policy.test.mjs",
+      "wallMs": 253.8,
+      "inProcMs": 19.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
+      "wallMs": 937.9,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
+      "wallMs": 960.8,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/issue-body-verifier.test.mjs",
+      "wallMs": 12837,
+      "inProcMs": 12768.3,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+      "wallMs": 230.4,
+      "inProcMs": 175.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/local-trunk-close-journal.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/local-trunk-close-journal.test.mjs",
+      "wallMs": 2206.1,
+      "inProcMs": 2131.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+      "wallMs": 1103.2,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+      "wallMs": 334.9,
+      "inProcMs": 203.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+      "wallMs": 885.2,
+      "inProcMs": 650.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/reviewed-scope-flow.test.mjs",
+      "wallMs": 4718.3,
+      "inProcMs": 4545.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+      "wallMs": 244.8,
+      "inProcMs": 28.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs",
+      "wallMs": 250.4,
+      "inProcMs": 33.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs",
+      "wallMs": 326.8,
+      "inProcMs": 115,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/start-time-sync.test.mjs",
+      "wallMs": 1260.1,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/test-impact-selector.test.mjs",
+      "wallMs": 2733.8,
+      "inProcMs": 2672.9,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+      "wallMs": 316,
+      "inProcMs": 107.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs",
+      "wallMs": 401.1,
+      "inProcMs": 189.8,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+      "wallMs": 626.6,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+      "wallMs": 376.6,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs",
+      "wallMs": 444.4,
+      "inProcMs": 232.6,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs",
+      "wallMs": 1266.9,
+      "inProcMs": 1217.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+      "wallMs": 498.2,
+      "inProcMs": 441.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+      "wallMs": 678.8,
+      "inProcMs": null,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/local-trunk-close.integration.test.mjs",
+      "wallMs": 525.1,
+      "inProcMs": 332.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+      "wallMs": 3659.8,
+      "inProcMs": 3486,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs",
+      "wallMs": 2035.4,
+      "inProcMs": 1856.7,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/adopt-github-records.test.mjs",
+      "wallMs": 119.3,
+      "inProcMs": 20.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/child-close-telemetry.integration.test.mjs",
+      "wallMs": 314.6,
+      "inProcMs": 108.5,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/help.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/help.test.mjs",
+      "wallMs": 2109,
+      "inProcMs": 2043.1,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/report-verb-496.test.mjs",
+      "wallMs": 119.1,
+      "inProcMs": 65.2,
+      "status": 0
+    },
+    "scripts/tests/integration/task-tracker/verbs/switch-binding-generation.test.mjs": {
+      "label": "scripts/tests/integration/task-tracker/verbs/switch-binding-generation.test.mjs",
+      "wallMs": 380.8,
+      "inProcMs": 253.8,
+      "status": 0
+    }
+  },
+  "shard": {
+    "index": 1,
+    "total": 3
+  }
+}

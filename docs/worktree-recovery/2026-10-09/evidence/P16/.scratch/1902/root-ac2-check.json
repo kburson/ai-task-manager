@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "[task-tracker] ✓ Checked \"Divergent-child rebase/conflict behavior, verification failures, post-verification head races, parent-checkout authority and preserve-worktree behavior retain their current fail-closed guarantees.\" on #1902\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked Divergent-child rebase/conflict behavior, verification failures, post-verification head races, parent-checkout authority and preserve-worktree behavior retain their current fail-closed guarantees.\n"
+  ],
+  "pid": 76004,
+  "stdout": "[task-tracker] ✓ Checked \"Divergent-child rebase/conflict behavior, verification failures, post-verification head races, parent-checkout authority and preserve-worktree behavior retain their current fail-closed guarantees.\" on #1902\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked Divergent-child rebase/conflict behavior, verification failures, post-verification head races, parent-checkout authority and preserve-worktree behavior retain their current fail-closed guarantees.\n"
+}

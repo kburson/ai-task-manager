@@ -1,0 +1,32 @@
+✔ /task test audits a stale Develop-final receipt before one replacement finalization (39.172291ms)
+✖ /task test audits every Develop-final reuse refusal family before one new finalization (2.240708ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 233.873833
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs:107:1
+✖ /task test audits every Develop-final reuse refusal family before one new finalization (2.240708ms)
+  AssertionError [ERR_ASSERTION]: issue-mismatch
+  + actual - expected
+  
+  + 'receipt-retirement-failed'
+  - 'develop-final-invalid'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs:165:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'receipt-retirement-failed',
+    expected: 'develop-final-invalid',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
