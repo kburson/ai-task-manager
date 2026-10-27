@@ -31,6 +31,7 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
+import { ensureDeliveredCloseSupersession } from '../../../../task-tracker/lib/delivered-close-supersession.mjs';
 import { renderReopenedCloseRecoveryComment } from '../../../../task-tracker/lib/reopened-close-recovery.mjs';
 import {
   permitsReopenedOutcomeCorrection,
@@ -363,14 +364,35 @@ test('#1490: outcome correction accepts only the exact recovery-to-supersession 
     transactionId: NEXT_TX,
     acceptedSha: NEXT_SHA,
   };
-  const supersessionRecord = {
-    schema: 'aitm.delivered-close-supersession/v1',
-    issueNumber: ISSUE,
-    oldTransactionId: recovered.transaction.transactionId,
-    oldAcceptedSha: recovered.transaction.acceptedSha,
-    replacementTransactionId: currentTransaction.transactionId,
-    newAcceptedSha: currentTransaction.acceptedSha,
-  };
+  const comments = [];
+  const evidence = await ensureDeliveredCloseSupersession({
+    authorization: {
+      repository: REPO,
+      issueNumber: ISSUE,
+      oldTransaction: recovered.transaction,
+      newAcceptedSha: NEXT_SHA,
+      newReviewAuthority: 'human-gate',
+      reason: 'accepted-sha-corrective-amend',
+    },
+    deps: {
+      randomUUIDFn: () => NEXT_TX,
+      listComments: async () => comments,
+      createComment: async (body) => {
+        const entry = {
+          id: 42,
+          body,
+          user: { login: 'kburson' },
+          created_at: NOW,
+          updated_at: NOW,
+          issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}`,
+        };
+        comments.push(entry);
+        return entry;
+      },
+      readComment: async () => comments[0],
+    },
+  });
+  const supersessionRecord = evidence.record;
 
   assert.equal(
     permitsReopenedOutcomeCorrection({
@@ -407,7 +429,7 @@ test('#1490: the primary estimation step consumes the durable reopened-recovery 
   const recoveryAssignment = source.indexOf('reopenedCloseRecoveryRecord = recovered.record');
   const estimationStep = source.indexOf("if (needsDeliveredCloseStep('estimation'))");
   const authorityUse = source.indexOf(
-    'supersedeExisting: permitsReopenedOutcomeCorrection({',
+    'supersedeExisting: mayCorrectCloseOutcome()',
     estimationStep
   );
 

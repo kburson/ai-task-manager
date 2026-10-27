@@ -118,6 +118,7 @@ import {
   createReopenedCloseRecoveryRecord,
   oldTransactionFromRecord,
   findRecoveryBackedReplacement,
+  isRecoveryBackedTransaction,
   authorizeTerminalBindingRelease,
   renderReopenedCloseRecoveryComment,
   replaceCompletedDeliveredCloseTransaction,
@@ -1210,34 +1211,22 @@ export async function ensureCloseEstimationOutcome({
 export function permitsReopenedOutcomeCorrection({
   recoveryRecord,
   supersessionRecord = null,
+  supersessionRecords = null,
   transaction,
 } = {}) {
-  const direct =
-    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
-    transaction?.schema === 'aitm.delivered-close/v1' &&
-    recoveryRecord.issueNumber === transaction.issueNumber &&
-    recoveryRecord.replacementTransactionId === transaction.transactionId &&
-    recoveryRecord.newAcceptedSha === transaction.acceptedSha;
-  if (direct) return true;
-
-  const falseDeliveryDirect =
+  if (recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1') {
+    return isRecoveryBackedTransaction({
+      recoveryRecord,
+      supersessionRecords: supersessionRecords ?? (supersessionRecord ? [supersessionRecord] : []),
+      transaction,
+    });
+  }
+  return (
     recoveryRecord?.schema === FALSE_DELIVERY_CLOSE_RECOVERY_SCHEMA &&
     transaction?.schema === 'aitm.delivered-close/v1' &&
     recoveryRecord.issueNumber === transaction.issueNumber &&
     recoveryRecord.replacementTransactionId === transaction.transactionId &&
-    recoveryRecord.deliveryHeadSha === transaction.acceptedSha;
-  if (falseDeliveryDirect) return true;
-
-  return (
-    recoveryRecord?.schema === 'aitm.reopened-close-recovery/v1' &&
-    supersessionRecord?.schema === 'aitm.delivered-close-supersession/v1' &&
-    transaction?.schema === 'aitm.delivered-close/v1' &&
-    recoveryRecord.issueNumber === supersessionRecord.issueNumber &&
-    supersessionRecord.issueNumber === transaction.issueNumber &&
-    recoveryRecord.replacementTransactionId === supersessionRecord.oldTransactionId &&
-    recoveryRecord.newAcceptedSha === supersessionRecord.oldAcceptedSha &&
-    supersessionRecord.replacementTransactionId === transaction.transactionId &&
-    supersessionRecord.newAcceptedSha === transaction.acceptedSha
+    recoveryRecord.deliveryHeadSha === transaction.acceptedSha
   );
 }
 
@@ -2505,6 +2494,7 @@ export async function verbClose(ctx) {
   // #1878: only the validated convergence decision sets this authority. All
   // later refreshes, including estimation, must retain that durable provenance.
   let resumeDeliveredCloseTransaction = null;
+  let deliveredCloseTransaction = null;
   let closeLifecycleEvidenceLoaded = false;
   let cachedCloseLifecycleEvidence = null;
   const loadCloseLifecycleEvidence = async (body) => {
@@ -2862,6 +2852,7 @@ export async function verbClose(ctx) {
         issueNum: closeIssueNum,
         estimationOutcomeWriter,
         acceptedSha: resolvedDeliveryGate?.gateInput?.acceptedSha,
+        supersedeExisting: mayCorrectCloseOutcome(),
       });
     }
     return body;
@@ -2903,9 +2894,18 @@ export async function verbClose(ctx) {
   // classified as delivered, dead, or unauthorized before any mutation.
   let restartedDeliveredCloseTransaction = false;
   let resumeClosedIssue = false;
+  let isReopenedIssue = false;
   let reopenedCloseRecoveryRecord = null;
   let falseDeliveryCloseRecoveryRecord = null;
   let deliveredCloseSupersessionRecord = null;
+  let recoverySupersessionRecords = null;
+  const mayCorrectCloseOutcome = () =>
+    permitsReopenedOutcomeCorrection({
+      recoveryRecord: reopenedCloseRecoveryRecord ?? falseDeliveryCloseRecoveryRecord,
+      supersessionRecord: deliveredCloseSupersessionRecord,
+      supersessionRecords: recoverySupersessionRecords,
+      transaction: deliveredCloseTransaction ?? resumeDeliveredCloseTransaction,
+    });
   let resumeMarkerlessOpenDone = false;
   let resumeConvergeBody = null;
   if (!SKIP_NETWORK && closeIssueNum) {
@@ -2923,6 +2923,8 @@ export async function verbClose(ctx) {
               : { issueClosed: null, stateReason: undefined }
           ),
     ]);
+    isReopenedIssue =
+      closeSnapshot.issueClosed === false && closeSnapshot.stateReason === 'reopened';
     const decisionInput = {
       boardState,
       issueClosed: closeSnapshot.issueClosed,
@@ -3297,7 +3299,39 @@ export async function verbClose(ctx) {
         const comments = await supersessionDeps.listComments();
         let oldTransaction = activeTransaction;
         let recoveryBacking = null;
-        if (activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha) {
+        const activeBacking = findRecoveryBackedReplacement({
+          body: convergeBody,
+          comments,
+          repository: cfg.repo,
+          issueNumber: Number(closeIssueNum),
+        });
+        if (activeBacking.status === 'ambiguous') {
+          throw new Error('delivered-close-supersession:recovery-backing-ambiguous');
+        }
+        if (
+          activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha &&
+          activeBacking.status === 'found' &&
+          activeBacking.supersessions.length > 0
+        ) {
+          const links = activeBacking.supersessions;
+          const record = links.at(-1);
+          oldTransaction = {
+            schema: 'aitm.delivered-close/v1',
+            transactionId: record.oldTransactionId,
+            issueNumber: record.issueNumber,
+            acceptedSha: record.oldAcceptedSha,
+            reviewAuthority:
+              links.at(-2)?.newReviewAuthority ?? activeBacking.record.newReviewAuthority,
+            completedSteps: [...record.completedSteps],
+          };
+          recoveryBacking = { ...activeBacking, supersessions: links.slice(0, -1) };
+          reopenedCloseRecoveryRecord = activeBacking.record;
+          deliveredCloseSupersessionRecord = record;
+        }
+        if (
+          !recoveryBacking &&
+          activeTransaction.acceptedSha === resolvedDeliveryGate.gateInput.acceptedSha
+        ) {
           const replacementEvidence = comments
             .map((comment) =>
               parseDeliveredCloseSupersessionComment(comment, {
@@ -3384,6 +3418,10 @@ export async function verbClose(ctx) {
               !permitsReopenedOutcomeCorrection({
                 recoveryRecord: recoveryBacking.record,
                 supersessionRecord: deliveredCloseSupersessionRecord,
+                supersessionRecords: [
+                  ...recoveryBacking.supersessions,
+                  deliveredCloseSupersessionRecord,
+                ],
                 transaction: activeTransaction,
               })
             ) {
@@ -3409,6 +3447,7 @@ export async function verbClose(ctx) {
               repository: cfg.repo,
               issueNumber: Number(closeIssueNum),
               recoveryRecord: recoveryBacking.record,
+              supersessionRecords: recoveryBacking.supersessions,
               activeTransaction: oldTransaction,
               newAcceptedSha: resolvedDeliveryGate.gateInput.acceptedSha,
               newReviewAuthority: terminalReviewAuthority(),
@@ -4167,7 +4206,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  let deliveredCloseTransaction = null;
   const persistDeliveredCloseTransaction = async (transaction) => {
     if (typeof mutateBody !== 'function') {
       throw new Error('delivered close transaction requires issueBodyMutator.mutate');
@@ -4267,6 +4305,43 @@ export async function verbClose(ctx) {
         reviewAuthority: terminalReviewAuthority(),
         completedSteps: [],
       });
+    }
+  }
+  if (
+    deliveredCloseTransaction &&
+    !falseDeliveryCloseRecoveryRecord &&
+    (reopenedCloseRecoveryRecord ||
+      deliveredCloseSupersessionRecord ||
+      (resumeDeliveredCloseTransaction &&
+        (isReopenedIssue || parseIssueFieldDb(closeBody).values?.engagedTime === null)))
+  ) {
+    const comments = await (
+      ctx.listReopenedCloseRecoveryComments ??
+      ctx.listDeliveredCloseSupersessionComments ??
+      (async () => {
+        const { stdout } = await pexec(
+          'gh',
+          ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        return JSON.parse(String(stdout || '[]')).flat();
+      })
+    )();
+    const backing = findRecoveryBackedReplacement({
+      body: closeBody,
+      comments,
+      repository: cfg.repo,
+      issueNumber: Number(closeIssueNum),
+    });
+    if (
+      backing.status === 'ambiguous' ||
+      (reopenedCloseRecoveryRecord && backing.status !== 'found')
+    ) {
+      throw new Error('reopened-close-recovery:outcome-authority');
+    }
+    if (backing.status === 'found') {
+      reopenedCloseRecoveryRecord = backing.record;
+      recoverySupersessionRecords = backing.supersessions;
     }
   }
   if (needsDeliveredCloseStep('timing')) {
@@ -4546,6 +4621,7 @@ export async function verbClose(ctx) {
         estimationOutcomeWriter,
         acceptedSha: resolvedDeliveryGate?.gateInput?.acceptedSha,
         timingProjection,
+        supersedeExisting: mayCorrectCloseOutcome(),
       });
     }
     await markDeliveredCloseStep('timing');
@@ -4558,11 +4634,7 @@ export async function verbClose(ctx) {
         issueNumber: closeIssueNum,
         body: closeBody,
         writer: estimationOutcomeWriter,
-        supersedeExisting: permitsReopenedOutcomeCorrection({
-          recoveryRecord: reopenedCloseRecoveryRecord ?? falseDeliveryCloseRecoveryRecord,
-          supersessionRecord: deliveredCloseSupersessionRecord,
-          transaction: deliveredCloseTransaction,
-        }),
+        supersedeExisting: mayCorrectCloseOutcome(),
       });
     } catch (err) {
       console.error(
@@ -5021,6 +5093,7 @@ export async function assertFieldsPersisted({
   estimationOutcomeWriter,
   acceptedSha,
   timingProjection,
+  supersedeExisting = false,
 }) {
   let body = '';
   try {
@@ -5056,6 +5129,7 @@ export async function assertFieldsPersisted({
         issueNumber: issueNum,
         body,
         writer: estimationOutcomeWriter,
+        supersedeExisting,
       });
       const record = result.record;
       const payload = record?.envelope?.payload;

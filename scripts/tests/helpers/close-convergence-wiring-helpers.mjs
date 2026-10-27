@@ -96,6 +96,7 @@ export async function runClose({
   supersessionComments = [],
   supersessionCommentListError = null,
   supersessionCommentCreateError = null,
+  onSupersessionCommentCreated = null,
   supersessionCommentReadError = null,
   supersessionCommentReadTransform = null,
   replacementTransactionId = 'replacement-close-transaction',
@@ -307,6 +308,7 @@ export async function runClose({
               issue_url: `https://api.github.com/repos/${repository}/issues/${issueNumber}`,
             };
             liveSupersessionComments.push(comment);
+            onSupersessionCommentCreated?.(structuredClone(comment));
             return structuredClone(comment);
           },
           readDeliveredCloseSupersessionComment: async (id) => {
