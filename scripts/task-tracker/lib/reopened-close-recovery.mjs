@@ -38,6 +38,10 @@ import {
   resolveBindingAuthorityMain,
 } from './worktree-binding-lifecycle.mjs';
 import { readOccupancy } from './occupancy.mjs';
+import {
+  parseDeliveredCloseSupersessionComment,
+  renderDeliveredCloseSupersessionComment,
+} from './delivered-close-supersession.mjs';
 
 function defaultReadLedger(mainWorktreePath) {
   return readClosedBindingLedger(mainWorktreePath);
@@ -496,6 +500,7 @@ export function authorizeRecoveryBackedDeliveredCloseRestart(input = {}) {
     repository,
     issueNumber,
     recoveryRecord,
+    supersessionRecords = [],
     activeTransaction,
     newAcceptedSha,
     newReviewAuthority,
@@ -525,9 +530,13 @@ export function authorizeRecoveryBackedDeliveredCloseRestart(input = {}) {
     activeTransaction.issueNumber !== issueNumber ||
     typeof activeTransaction.transactionId !== 'string' ||
     activeTransaction.transactionId.length === 0 ||
-    activeTransaction.transactionId !== backing.replacementTransactionId ||
-    activeTransaction.acceptedSha !== backing.newAcceptedSha ||
-    activeTransaction.reviewAuthority !== backing.newReviewAuthority ||
+    !isRecoveryBackedTransaction({
+      recoveryRecord: backing,
+      supersessionRecords,
+      // The existing terminal-prefix guard below owns checkpoint validation
+      // and its refusal category; this comparison only resolves lineage.
+      transaction: { ...activeTransaction, completedSteps: [] },
+    }) ||
     !Array.isArray(activeTransaction.completedSteps)
   ) {
     fail('recovery-backed-transaction');
@@ -809,24 +818,101 @@ export function replaceCompletedDeliveredCloseTransaction(body, authorization, r
  * both `runReopenedCloseRecovery` and the verb's binding step; two copies of an
  * identity rule is how the two drift apart.
  */
+export function isRecoveryBackedTransaction({
+  recoveryRecord,
+  supersessionRecords = [],
+  transaction,
+} = {}) {
+  try {
+    const root = validateReopenedCloseRecoveryRecord(recoveryRecord);
+    if (!Array.isArray(supersessionRecords) || !hasExactKeys(transaction, CLOSE_TRANSACTION_KEYS))
+      return false;
+    let id = root.replacementTransactionId;
+    let sha = root.newAcceptedSha;
+    let authority = root.newReviewAuthority;
+    const seen = new Set([root.oldTransactionId, id]);
+    for (const record of supersessionRecords) {
+      // Reuse the canonical validator; never project a synthetic recovery record.
+      renderDeliveredCloseSupersessionComment(record);
+      if (
+        record.repository !== root.repository ||
+        record.issueNumber !== root.issueNumber ||
+        record.oldTransactionId !== id ||
+        record.oldAcceptedSha !== sha ||
+        record.newReviewAuthority !== 'human-gate' ||
+        seen.has(record.replacementTransactionId)
+      )
+        return false;
+      id = record.replacementTransactionId;
+      sha = record.newAcceptedSha;
+      authority = record.newReviewAuthority;
+      seen.add(id);
+    }
+    return (
+      transaction.schema === 'aitm.delivered-close/v1' &&
+      transaction.issueNumber === root.issueNumber &&
+      transaction.transactionId === id &&
+      transaction.acceptedSha === sha &&
+      transaction.reviewAuthority === authority &&
+      Array.isArray(transaction.completedSteps) &&
+      transaction.completedSteps.length <= TERMINAL_CLOSE_STEPS.length &&
+      transaction.completedSteps.every((step, index) => step === TERMINAL_CLOSE_STEPS[index])
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function findRecoveryBackedReplacement({ body, comments, repository, issueNumber } = {}) {
   const transactions = readDeliveredCloseTransactions(typeof body === 'string' ? body : '');
-  if (transactions.length !== 1)
-    return deepFreeze({ status: 'none', record: null, transaction: null });
+  const absent = (status, transaction = null) =>
+    deepFreeze({ status, record: null, transaction, supersessions: [] });
+  if (transactions.length !== 1) return absent('none');
   const transaction = transactions[0];
-  const matches = (Array.isArray(comments) ? comments : [])
+  const input = Array.isArray(comments) ? comments : [];
+  const roots = input
     .map((comment) => parseReopenedCloseRecoveryComment(comment, { repository, issueNumber }))
-    .filter((entry) => entry !== null)
-    .filter(
-      (entry) =>
-        entry.record.replacementTransactionId === transaction.transactionId &&
-        entry.record.newAcceptedSha === transaction.acceptedSha
-    );
-  // Ambiguity is never resolved by picking one, and it is reported distinctly from
-  // absence: absence is the ordinary non-recovery close, ambiguity is an error.
-  if (matches.length > 1) return deepFreeze({ status: 'ambiguous', record: null, transaction });
-  if (matches.length === 0) return deepFreeze({ status: 'none', record: null, transaction });
-  return deepFreeze({ status: 'found', record: matches[0].record, transaction });
+    .filter(Boolean)
+    .map((entry) => entry.record);
+  const links = input
+    .map((comment) => parseDeliveredCloseSupersessionComment(comment, { repository, issueNumber }))
+    .filter(Boolean)
+    .map((entry) => entry.record);
+  const reversed = [];
+  const seen = new Set();
+  let id = transaction.transactionId;
+  let sha = transaction.acceptedSha;
+  while (!seen.has(id)) {
+    seen.add(id);
+    const matches = roots.filter((root) => root.replacementTransactionId === id);
+    const incoming = links.filter((link) => link.replacementTransactionId === id);
+    if (matches.length + incoming.length > 1) return absent('ambiguous', transaction);
+    if (matches.length === 1) {
+      const record = matches[0];
+      const supersessions = [...reversed].reverse();
+      if (
+        record.newAcceptedSha !== sha ||
+        !isRecoveryBackedTransaction({
+          recoveryRecord: record,
+          supersessionRecords: supersessions,
+          transaction,
+        })
+      )
+        return absent('none', transaction);
+      return deepFreeze({ status: 'found', record, transaction, supersessions });
+    }
+    if (incoming.length !== 1) return absent('none', transaction);
+    const link = incoming[0];
+    if (link.newAcceptedSha !== sha || link.newReviewAuthority !== 'human-gate')
+      return absent('none', transaction);
+    // A fork on the traversed ancestry is not resolved by choosing a branch.
+    if (links.filter((entry) => entry.oldTransactionId === link.oldTransactionId).length !== 1)
+      return absent('ambiguous', transaction);
+    reversed.push(link);
+    id = link.oldTransactionId;
+    sha = link.oldAcceptedSha;
+  }
+  return absent('ambiguous', transaction);
 }
 
 /**

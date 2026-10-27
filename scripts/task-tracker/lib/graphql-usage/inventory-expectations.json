@@ -687,7 +687,7 @@
     "scripts/task-tracker/verbs/approve.mjs|78|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/cancel-plan.mjs|109|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/cancel-plan.mjs|126|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/close.mjs|943|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/close.mjs|944|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/deliver.mjs|2390|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/deliver.mjs|2458|uncovered|uncovered",
     "scripts/task-tracker/verbs/deliver.mjs|2518|uncovered|uncovered",
