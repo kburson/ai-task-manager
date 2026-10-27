@@ -1,0 +1,14 @@
+node_modules/
+coverage/
+*.tgz
+!vendors/kburson-ai-task-manager-1.0.0.tgz
+.scratch/peer-review/
+
+# ai-task-manager — local edit backups (do not commit)
+.ai-task-manager/.cache/
+.ai-task-manager/templates/*.bak
+.ai-task-manager/templates/references/*.bak
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.tmp/

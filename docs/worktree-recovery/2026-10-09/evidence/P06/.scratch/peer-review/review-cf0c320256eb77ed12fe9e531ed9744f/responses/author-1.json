@@ -1,0 +1,35 @@
+{
+  "schema": "ai-peer-review.response/v1",
+  "review_id": "review-cf0c320256eb77ed12fe9e531ed9744f",
+  "role": "author",
+  "turn": 1,
+  "commit_mode": "normal",
+  "authority_assurance": "unavailable",
+  "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+  "artifact_commit": "98bdbb4ea6dd00468886a38c4150d9d8049a44c3",
+  "artifact_blob": "0fb2aaeb4955afb41629e9b2e4f3de930fb9be33",
+  "artifact_digest": "sha256:58a41985ff691814e0374a27e32d097a34ed95390d459321c0391121cec1b125",
+  "agent": {
+    "host": "codex",
+    "provider": "openai",
+    "model_id": "gpt-6-astra",
+    "model_display": "GPT-6 Astra",
+    "session_fingerprint": "sha256:43cb4fd5092989dd837ce1e68485335a8fe08ae750ec96419a461e45e172381b",
+    "identity_source": "runtime"
+  },
+  "started_at": "2026-09-20T20:51:09.519Z",
+  "submitted_at": null,
+  "finding_ids": [],
+  "answered_finding_ids": [
+    "R1-F001",
+    "R1-F002",
+    "R1-F003",
+    "R1-F004",
+    "R1-F005",
+    "R1-F006",
+    "R1-F007",
+    "R1-F008",
+    "R1-F009"
+  ],
+  "acknowledged_supplement_ids": []
+}

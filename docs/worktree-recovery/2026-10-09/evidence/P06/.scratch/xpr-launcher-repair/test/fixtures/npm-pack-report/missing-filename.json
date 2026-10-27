@@ -1,0 +1,6 @@
+{
+  "ai-peer-review": {
+    "name": "ai-peer-review",
+    "files": [{ "path": "package.json" }]
+  }
+}

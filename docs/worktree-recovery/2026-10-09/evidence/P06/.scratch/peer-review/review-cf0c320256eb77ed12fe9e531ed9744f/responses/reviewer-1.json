@@ -1,0 +1,25 @@
+{
+  "schema": "ai-peer-review.response/v1",
+  "review_id": "review-cf0c320256eb77ed12fe9e531ed9744f",
+  "role": "reviewer",
+  "turn": 1,
+  "commit_mode": "normal",
+  "authority_assurance": "unavailable",
+  "artifact_path": "docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md",
+  "artifact_commit": "98bdbb4ea6dd00468886a38c4150d9d8049a44c3",
+  "artifact_blob": "0fb2aaeb4955afb41629e9b2e4f3de930fb9be33",
+  "artifact_digest": "sha256:58a41985ff691814e0374a27e32d097a34ed95390d459321c0391121cec1b125",
+  "agent": {
+    "host": "claude-code",
+    "provider": "anthropic",
+    "model_id": "claude-opus-5",
+    "model_display": "Claude Opus 5",
+    "session_fingerprint": "sha256:456928280c0bc2616a47beee48666759265dd646d2bd64bbb311fe952beb12b3",
+    "identity_source": "declared"
+  },
+  "started_at": "2026-09-20T20:51:32.151Z",
+  "submitted_at": null,
+  "finding_ids": [],
+  "answered_finding_ids": [],
+  "acknowledged_supplement_ids": []
+}

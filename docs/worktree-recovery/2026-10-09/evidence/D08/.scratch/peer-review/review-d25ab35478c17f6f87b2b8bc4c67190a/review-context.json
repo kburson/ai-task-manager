@@ -1,0 +1,12 @@
+{
+  "artifact_kind": "spec",
+  "artifact_name": "2026-09-20-aitm-mcp-adapter-architecture-design",
+  "issue": null,
+  "record_id": "review-d25ab35478c17f6f87b2b8bc4c67190a",
+  "repository_root": "/Users/kpburson/.codex/worktrees/aitm-xpr-first-fresh/ai-task-manager",
+  "review_date": "2026-09-20",
+  "review_id": "review-d25ab35478c17f6f87b2b8bc4c67190a",
+  "review_path_template": "<kind>/<date>-<name>-<record-id>",
+  "reviews_root": "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR",
+  "schema": "ai-peer-review.context/v1"
+}
