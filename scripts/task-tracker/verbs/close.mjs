@@ -3926,6 +3926,23 @@ export async function verbClose(ctx) {
       };
     }
     const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
+    const closeGateDeps = { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) };
+    // #2099: the executed projection must consume the same verified shared proof.
+    if (
+      resolvedDeliveryGate?.receipt?.receipt?.schema === 'aitm.delivery-receipt/v5' &&
+      resolvedDeliveryGate.gateInput?.lineage?.parentIssueNumber === null &&
+      resolvedDeliveryGate.gateInput.records?.liveIntent?.record?.provider === 'external'
+    ) {
+      const { createVerifiedCloseAttribution } = await import('../lib/action-decision/close.mjs');
+      closeGateDeps.attributingCommits = createVerifiedCloseAttribution({
+        issue: Number(closeIssueNum),
+        cfg,
+        projectDir,
+        artifactSubject: ctx.artifactSubject,
+        gateInput: resolvedDeliveryGate.gateInput,
+        run: pexec,
+      });
+    }
     const { guardResult } = await evaluateCompleteGuards({
       fromState: 'review',
       toState: 'done',
@@ -3939,7 +3956,7 @@ export async function verbClose(ctx) {
         lifecycleEvidence: projectedLifecycleEvidence,
         cfg,
         projectDir,
-        deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
+        deps: { closeGates: closeGateDeps },
       },
       runGuards,
       loadPolicy: async ({ requirementIds }) =>

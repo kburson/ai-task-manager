@@ -1,3 +1,4 @@
+import { buildCommitTextFromTokens } from '../delivery-attribution.mjs';
 import { sourceCommit } from '../artifact-subject.mjs';
 // @story #1669
 // @story #1767
@@ -373,20 +374,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
       dependency: { ...dependency, states: [...dependency.states] },
     };
   };
-  const runReadOnlyGuards = async (from, to, context, authority) => {
-    if (
-      from !== 'review' ||
-      to !== 'done' ||
-      !authority ||
-      !Array.isArray(context.children) ||
-      !Array.isArray(context.delivery?.graph) ||
-      !SHA.test(context.attribution?.tip?.sha ?? '')
-    )
-      throw new TypeError('close-readiness:guard-authority-unavailable');
-    const nodes = new Map(context.delivery.graph);
-    const own = nodes.get(issue);
-    if (!own || own.authorityError || own.parentAuthorityError)
-      throw new TypeError('close-readiness:guard-lineage-unavailable');
+  const verifyDeliveryAuthority = async (context) => {
     const tip = context.attribution.tip.sha;
     const gateInput = context.delivery.gateInput;
     const localProof = context.delivery.localTrunkProof;
@@ -474,6 +462,24 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
         },
       });
     }
+    return receiptGate;
+  };
+  const runReadOnlyGuards = async (from, to, context, authority) => {
+    if (
+      from !== 'review' ||
+      to !== 'done' ||
+      !authority ||
+      !Array.isArray(context.children) ||
+      !Array.isArray(context.delivery?.graph) ||
+      !SHA.test(context.attribution?.tip?.sha ?? '')
+    )
+      throw new TypeError('close-readiness:guard-authority-unavailable');
+    const nodes = new Map(context.delivery.graph);
+    const own = nodes.get(issue);
+    if (!own || own.authorityError || own.parentAuthorityError)
+      throw new TypeError('close-readiness:guard-lineage-unavailable');
+    const tip = context.attribution.tip.sha;
+    await verifyDeliveryAuthority(context);
     await import('../guard-bootstrap.mjs');
     return runGuards(from, to, {
       ...context,
@@ -524,9 +530,43 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
       },
     });
   };
-  const hasAttributingCommit = async (_issue, { refs, cwd }) => {
+  // #2099: only live-verified canonical shared v5 delivery may supplement
+  // subject attribution. Generic historical matching remains unchanged.
+  const hasAttributingCommit = async (_issue, { refs, cwd }, delivery) => {
     const { hasAttributingCommit: read } = await import('../commit-attribution.mjs');
-    return read(_issue, { refs, cwd, pexec: run });
+    if (await read(_issue, { refs, cwd, pexec: run })) return true;
+    if (!delivery || delivery.mode !== 'ordinary') return false;
+    const input = delivery.gateInput;
+    if (_issue !== issue || input?.issueNumber !== issue || refs.length !== 1)
+      throw new TypeError('close-readiness:shared-attribution-scope');
+    const gate = requireDeliveryReceipt(input);
+    if (gate.skipped || gate.receipt?.schema !== 'aitm.delivery-receipt/v5') return false;
+    const intent = input.records.liveIntent.record;
+    const observed = gate.receipt.observedIntegration;
+    const owner = /^\[#([1-9][0-9]*)\] Governed PR delivery$/.exec(observed.commitTitle);
+    if (
+      intent.provider !== 'external' ||
+      !owner ||
+      Number(owner[1]) === issue ||
+      !intent.attributionTokens.includes(`#${issue}`) ||
+      !intent.attributionTokens.includes(`#${owner[1]}`)
+    )
+      throw new TypeError('close-readiness:shared-attribution-claim');
+    const canonical = buildCommitTextFromTokens(
+      {
+        issueNumber: Number(owner[1]),
+        prNumber: intent.prNumber,
+        expectedHeadSha: intent.expectedHeadSha,
+      },
+      intent.attributionTokens
+    );
+    if (
+      canonical.commitTitle !== observed.commitTitle ||
+      canonical.commitMessage !== observed.commitMessage
+    )
+      throw new TypeError('close-readiness:shared-attribution-claim');
+    await verifyDeliveryAuthority({ delivery, attribution: { tip: { sha: refs[0] } } });
+    return true;
   };
   return {
     readWorktree,
@@ -1013,7 +1053,9 @@ export async function evaluateCloseReadiness({
       } else if (request.identity === `evidence:${issue}:2`) {
         const target = delivery?.gateInput?.lineage?.deliveryTarget;
         if (typeof target !== 'string') throw new TypeError('close-readiness:target');
-        let hasAttributingCommit = deps.hasAttributingCommit ?? production.hasAttributingCommit;
+        let hasAttributingCommit =
+          deps.hasAttributingCommit ??
+          ((number, options) => production.hasAttributingCommit(number, options, delivery));
         if (!deps.hasAttributingCommit && parseIssueKind(body) === 'epic') {
           hasAttributingCommit = async (_number, { refs }) => {
             const nodes = new Map(delivery.graph ?? []);
@@ -1153,5 +1195,47 @@ export async function evaluateCloseReadiness({
         inputDigest,
       })),
     }),
+  };
+}
+
+// #2099: effectful Close uses the same immutable attribution authority.
+export function createVerifiedCloseAttribution({
+  issue,
+  cfg,
+  projectDir,
+  artifactSubject,
+  gateInput,
+  run,
+}) {
+  const ports = createCloseReadOnlyPorts({
+    issue,
+    cfg,
+    projectDir,
+    artifactSubject,
+    deps: { run },
+  });
+  return async (number, { refs, cwd }) => {
+    if (number !== issue || cwd !== projectDir || refs.length !== 1)
+      throw new TypeError('close-shared-attribution:scope');
+    const result = await evaluateExactTrunkAttribution({
+      issue,
+      cwd,
+      remote: cfg.trunkRemote?.trim() || 'origin',
+      ref: `refs/heads/${gateInput.lineage.deliveryTarget}`,
+      execGit: ports.execGit,
+      hasAttributingCommit: (n, options) =>
+        ports.hasAttributingCommit(n, options, {
+          mode: 'ordinary',
+          gateInput,
+          authority: { remote: cfg.trunkRemote?.trim() || 'origin' },
+        }),
+    });
+    if (!['attributed', 'not-attributed'].includes(result.status))
+      throw new TypeError('close-shared-attribution:authority-unavailable');
+    const named = (
+      await ports.execGit(['rev-parse', '--verify', `${refs[0]}^{commit}`], { cwd })
+    ).stdout.trim();
+    if (named !== result.tip.sha) throw new TypeError('close-shared-attribution:target-drift');
+    return result.status === 'attributed' ? [{ sha: result.tip.sha }] : [];
   };
 }
