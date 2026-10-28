@@ -595,7 +595,7 @@
     "scripts/task-tracker/heal-refine-entry-marker.mjs|95|uncovered|uncovered",
     "scripts/task-tracker/heal-timing-starts-sweep.mjs|77|gh-api-graphql|planned",
     "scripts/task-tracker/hook-handler.mjs|79|uncovered|uncovered",
-    "scripts/task-tracker/lib/action-decision/close.mjs|934|uncovered|uncovered",
+    "scripts/task-tracker/lib/action-decision/close.mjs|974|uncovered|uncovered",
     "scripts/task-tracker/lib/action-decision/review.mjs|92|uncovered|uncovered",
     "scripts/task-tracker/lib/action-decision/test.mjs|163|gh-api-graphql|planned",
     "scripts/task-tracker/lib/assigned-status-migration.mjs|127|gh-api-graphql|planned",

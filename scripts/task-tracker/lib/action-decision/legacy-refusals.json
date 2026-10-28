@@ -811,7 +811,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/action-decision/close.mjs",
-          "line": 1082,
+          "line": 1124,
           "fingerprint": "sha256:29ab192a2d91255b4af9c4ce8825c47b08f17e74821df6fcd239015563d88b7a",
           "kind": "refusal"
         },
@@ -944,7 +944,7 @@
         },
         {
           "file": "scripts/task-tracker/verbs/close.mjs",
-          "line": 5244,
+          "line": 5261,
           "fingerprint": "sha256:1f4f84c9a23cb774cb3a3dfaaee72679c500fda0cfad70ac870ef7feb2c887ee",
           "kind": "refusal"
         }
