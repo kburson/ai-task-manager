@@ -144,7 +144,9 @@ export function registerRankRecoveryCases({ cfg, makeRunner, actualTether }) {
           await actualTether({ cfg, issueNumber: 1987, rank, runGql, deps: fixture });
           if (scenario === 'pending-drift') {
             const records = readDecompositionRecords(body);
-            records.publication.updatedAt = '2026-10-29T12:00:00Z';
+            records.publication.updatedAt = new Date(
+              Date.parse(records.publication.updatedAt) + 1000
+            ).toISOString();
             body = replaceDecompositionRecords(body, records);
           }
         },
