@@ -1045,6 +1045,7 @@ export function createEstimationOutcomeRuntime({
   projectDir,
   resolveVerificationSha,
   resolveDeliveryAuthority,
+  resolvePartialCloseOutcomeCorrection,
   deps = {},
 } = {}) {
   if (!cfg?.repo || !projectDir) fail('outcome-config');
@@ -1514,6 +1515,7 @@ export function createEstimationOutcomeRuntime({
         verificationSha: acceptedVerificationSha,
         forecastRecordId: outcomeForecast?.recordId ?? null,
       });
+      let partialCorrection = null;
       if (canonicalSource) {
         const active = activeEstimationOutcomes(
           records.filter((record) => record.envelope.recordType === 'estimation-outcome')
@@ -1521,6 +1523,33 @@ export function createEstimationOutcomeRuntime({
         if (active.length > 1) fail('outcome-duplicate');
         const previous = active[0]?.envelope.payload;
         if (isIncompleteOutcome(previous)) {
+          if (
+            !supersedeExisting &&
+            typeof resolvePartialCloseOutcomeCorrection === 'function' &&
+            previous.schema === INCOMPLETE_OUTCOME_SCHEMA &&
+            (previous.telemetry.verificationSha !== acceptedVerificationSha ||
+              !(await sameVerificationProof(
+                previous.telemetry.verification,
+                verificationProvenance
+              )))
+          ) {
+            const input = {
+              issueNumber,
+              previousRecord: structuredClone(active[0]),
+              currentVerification: structuredClone(verificationProvenance),
+            };
+            const authority = await resolvePartialCloseOutcomeCorrection({
+              ...input,
+              phase: 'prepare',
+            });
+            if (
+              authority?.status !== 'authorized' ||
+              authority.predecessorRecordId !== active[0].envelope.recordId
+            )
+              fail('outcome-partial-correction-authority');
+            partialCorrection = input;
+            supersedeExisting = true;
+          }
           validateOutcomeTimingSource(previous, {
             ...sourceContext(canonicalSource),
             verificationSha: supersedeExisting
@@ -1568,15 +1597,21 @@ export function createEstimationOutcomeRuntime({
             (await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber })).filter(
               (record) => record.envelope.recordType === 'estimation-outcome'
             ),
-          createOutcomeEnvelope: ({ issue, payload, supersedes = null }) =>
-            createAitmRecordEnvelope({
+          createOutcomeEnvelope: ({ issue, payload, supersedes = null }) => {
+            if (
+              partialCorrection &&
+              supersedes !== partialCorrection.previousRecord.envelope.recordId
+            )
+              fail('outcome-partial-correction-predecessor');
+            return createAitmRecordEnvelope({
               recordType: 'estimation-outcome',
               repository: cfg.repo,
               issue,
               payload,
               actor: 'aitm/close',
               supersedes,
-            }),
+            });
+          },
           writeOutcome: async ({ envelope }) => {
             if (artifactContext) {
               const fresh = await resolveDeliveryAuthority({ issueNumber, refresh: true });
@@ -1587,6 +1622,26 @@ export function createEstimationOutcomeRuntime({
                 issueNumber,
                 operatorContext: artifactContext.operatorContext,
               });
+            }
+            if (partialCorrection) {
+              const canonical = await readCanonical();
+              validateOutcomeTimingSource(partialCorrection.previousRecord.envelope.payload, {
+                ...sourceContext(canonical),
+                verificationSha:
+                  partialCorrection.previousRecord.envelope.payload.telemetry.verificationSha,
+              });
+              validateOutcomeTimingSource(outcomePayload, sourceContext(canonical));
+            }
+            if (partialCorrection) {
+              const authority = await resolvePartialCloseOutcomeCorrection({
+                ...structuredClone(partialCorrection),
+                phase: 'publication',
+              });
+              if (
+                authority?.status !== 'authorized' ||
+                authority.predecessorRecordId !== envelope.supersedes
+              )
+                fail('outcome-partial-correction-authority');
             }
             return io.write({ envelope });
           },

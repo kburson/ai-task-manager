@@ -1,6 +1,10 @@
 // @story #1466
 
 import { randomUUID } from 'node:crypto';
+import {
+  validateEstimationOutcome,
+  INCOMPLETE_OUTCOME_SCHEMA,
+} from './estimation/outcome-record.mjs';
 
 import {
   readDeliveredCloseTransactions,
@@ -332,6 +336,111 @@ export function authorizeDeliveredCloseRestart(input = {}) {
     reason: DELIVERED_CLOSE_RESTART_REASON,
     live: structuredClone(live),
   });
+}
+
+// #2100: validate ordinary partial recovery without granting a generic correction lane.
+export function authorizePartialCloseOutcomeCorrection(input = {}) {
+  const {
+    repository,
+    issueNumber,
+    transaction,
+    comments,
+    previousRecord,
+    currentVerification,
+    live,
+  } = input;
+  if (!validRepository(repository) || !validIssueNumber(issueNumber) || !Array.isArray(comments))
+    fail('outcome-input');
+  if (
+    !hasExactKeys(transaction, CLOSE_TRANSACTION_KEYS) ||
+    transaction.schema !== 'aitm.delivered-close/v1' ||
+    transaction.issueNumber !== issueNumber ||
+    typeof transaction.transactionId !== 'string' ||
+    !transaction.transactionId ||
+    !SHA_RE.test(transaction.acceptedSha || '') ||
+    !REVIEW_AUTHORITIES.has(transaction.reviewAuthority) ||
+    !Array.isArray(transaction.completedSteps) ||
+    transaction.completedSteps.length > 1 ||
+    !transaction.completedSteps.every((step, i) => step === TERMINAL_CLOSE_STEPS[i])
+  )
+    fail('outcome-transaction');
+  if (
+    !hasNativeBoardAuthority({ ...input, newAcceptedSha: transaction.acceptedSha }) ||
+    live?.boardState !== 'review' ||
+    live.issueClosed !== false ||
+    live.terminalDisposition !== null ||
+    live.bindingStatus !== 'pending'
+  )
+    fail('outcome-live-authority');
+  const old = previousRecord?.envelope;
+  const previous = old?.payload;
+  validateEstimationOutcome(previous, { expectedIssue: issueNumber });
+  if (
+    old?.repository !== repository ||
+    old.issue !== issueNumber ||
+    old.recordType !== 'estimation-outcome' ||
+    !/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(old.recordId || '') ||
+    previous.schema !== INCOMPLETE_OUTCOME_SCHEMA ||
+    previous.kind !== 'story' ||
+    previous.telemetry.source.repository !== repository ||
+    previous.telemetry.verification.mode !== 'exact-test' ||
+    previous.telemetry.verification.issueKind !== 'code' ||
+    previous.telemetry.verification.acceptedSha !== previous.telemetry.verificationSha ||
+    currentVerification?.mode !== 'exact-test' ||
+    currentVerification.issueKind !== 'code' ||
+    currentVerification.acceptedSha !== transaction.acceptedSha ||
+    currentVerification.recordId !== input.nativeBoardAuthority.testReceiptId ||
+    !/^[0-9a-f]{64}$/.test(currentVerification.recordDigest || '')
+  )
+    fail('outcome-proof');
+  const evidence = comments
+    .map((comment) => parseDeliveredCloseSupersessionComment(comment, { repository, issueNumber }))
+    .filter(Boolean);
+  if (!evidence.length) fail('outcome-chain-missing');
+  const incoming = new Map();
+  const outgoing = new Set();
+  const ids = new Set();
+  const receipts = new Set();
+  for (const item of evidence) {
+    const r = item.record;
+    if (
+      incoming.has(r.replacementTransactionId) ||
+      outgoing.has(r.oldTransactionId) ||
+      ids.has(item.commentId) ||
+      receipts.has(r.supersessionId)
+    )
+      fail('outcome-chain-ambiguous');
+    incoming.set(r.replacementTransactionId, r);
+    outgoing.add(r.oldTransactionId);
+    ids.add(item.commentId);
+    receipts.add(r.supersessionId);
+  }
+  let id = transaction.transactionId;
+  let sha = transaction.acceptedSha;
+  const seen = new Set([id]);
+  const sources = [];
+  let count = 0;
+  while (incoming.has(id)) {
+    const r = incoming.get(id);
+    if (
+      r.newAcceptedSha !== sha ||
+      (count === 0 && r.newReviewAuthority !== transaction.reviewAuthority) ||
+      seen.has(r.oldTransactionId)
+    )
+      fail('outcome-chain-lineage');
+    id = r.oldTransactionId;
+    sha = r.oldAcceptedSha;
+    seen.add(id);
+    sources.push(sha);
+    count += 1;
+  }
+  if (
+    count !== evidence.length ||
+    outgoing.has(transaction.transactionId) ||
+    sources.filter((source) => source === previous.telemetry.verificationSha).length !== 1
+  )
+    fail('outcome-chain-lineage');
+  return deepFreeze({ status: 'authorized', predecessorRecordId: old.recordId });
 }
 
 export function renderDeliveredCloseSupersessionComment(record) {

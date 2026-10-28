@@ -86,6 +86,7 @@ import { deriveAndRescan } from '../lib/review-derive-rescan.mjs';
 import { projectFunctionalDod } from '../lib/functional-dod-project.mjs';
 import { evaluateCompleteGuards } from '../lib/action-decision/evaluate.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { outcomeProofDigest } from '../lib/estimation/outcome-delivery-proof.mjs';
 import { parseAitmRecord } from '../lib/github-records/record-envelope.mjs';
 import { createDeliveryWaiverJournal } from '../lib/delivery-waiver-journal.mjs';
 import { consumeLocalTrunkClose } from '../lib/delivery-waiver-consumption.mjs';
@@ -110,6 +111,7 @@ import {
 } from '../lib/close-convergence.mjs';
 import {
   authorizeDeliveredCloseRestart,
+  authorizePartialCloseOutcomeCorrection,
   observeNativeCloseRestartAuthority,
   ensureDeliveredCloseSupersession,
   parseDeliveredCloseSupersessionComment,
@@ -2761,6 +2763,7 @@ export async function verbClose(ctx) {
       requireDedicated = false,
       resolveVerificationSha,
       resolveDeliveryAuthority,
+      resolvePartialCloseOutcomeCorrection,
       allowIncompleteTiming = false,
     } = {}
   ) => {
@@ -2783,9 +2786,95 @@ export async function verbClose(ctx) {
       projectDir: outcomeProjectDir,
       ...(resolveVerificationSha === undefined ? {} : { resolveVerificationSha }),
       ...(resolveDeliveryAuthority === undefined ? {} : { resolveDeliveryAuthority }),
+      ...(resolvePartialCloseOutcomeCorrection === undefined
+        ? {}
+        : { resolvePartialCloseOutcomeCorrection }),
+    });
+  };
+  const resolvePartialCloseOutcomeCorrection = async ({
+    issueNumber,
+    previousRecord,
+    currentVerification,
+  }) => {
+    if (issueNumber !== Number(closeIssueNum)) throw new TypeError('close-partial-outcome:issue');
+    const gate = await ensureDeliveryAuthorized({ refresh: true });
+    const transactions = readDeliveredCloseTransactions(gate.deliveryBody);
+    const expected = deliveredCloseTransaction ?? resumeDeliveredCloseTransaction;
+    if (
+      transactions.length !== 1 ||
+      !expected ||
+      canonicalRecordJson(transactions[0]) !== canonicalRecordJson(expected)
+    )
+      throw new TypeError('close-partial-outcome:journal');
+    const transaction = transactions[0];
+    const test = parseVerificationReceipt(gate.deliveryBody, 'test');
+    const proof = {
+      mode: 'exact-test',
+      issueKind: 'code',
+      recordId: test?.receiptId,
+      recordDigest: outcomeProofDigest(test),
+      acceptedSha: gate.gateInput.acceptedSha,
+    };
+    if (canonicalRecordJson(currentVerification) !== canonicalRecordJson(proof))
+      throw new TypeError('close-partial-outcome:test-proof');
+    const comments = await (
+      ctx.listDeliveredCloseSupersessionComments ??
+      (async () => {
+        const { stdout } = await pexec(
+          'gh',
+          ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${closeIssueNum}/comments`],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        return JSON.parse(String(stdout || '[]')).flat();
+      })
+    )();
+    const nativeBoardAuthority = await observeNativeCloseRestartAuthority({
+      cfg,
+      issueNumber,
+      projectDir,
+      gate,
+      artifactSubject: ctx.artifactSubject,
+      deps: ctx.nativeCloseRestartAuthorityDeps,
+    });
+    const [boardState, snapshot, disposition, binding, dirty] = await Promise.all([
+      getIssueBoardState(closeIssueNum),
+      getIssueCloseSnapshot(closeIssueNum),
+      dispositionReader({ cfg, issueNumber }),
+      bindingReleaseInspector({ projectDir, issue: closeTarget }),
+      inspectDirty({ cwd: projectDir }),
+    ]);
+    const fresh = await ensureDeliveryAuthorized({ refresh: true });
+    if (
+      canonicalRecordJson(readDeliveredCloseTransactions(fresh.deliveryBody)) !==
+      canonicalRecordJson([transaction])
+    )
+      throw new TypeError('close-partial-outcome:journal-changed');
+    assertNativeArtifactOperator({
+      projectDir,
+      issueNumber,
+      operatorContext: nativeBoardAuthority.operatorContext,
+    });
+    return authorizePartialCloseOutcomeCorrection({
+      repository: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+      operatorContext: gate.gateInput.operatorContext,
+      nativeBoardAuthority,
+      transaction,
+      comments,
+      previousRecord,
+      currentVerification,
+      live: {
+        boardState,
+        issueClosed: snapshot.issueClosed,
+        terminalDisposition: disposition || null,
+        bindingStatus: binding?.status,
+        dirty: dirty?.dirty,
+      },
     });
   };
   const closeOutcomeOptions = {
+    resolvePartialCloseOutcomeCorrection,
     resolveDeliveryAuthority: async ({ issueNumber }) => {
       if (Number(issueNumber) !== Number(closeIssueNum)) {
         throw new TypeError('close-estimation-delivery-authority:issue-mismatch');
