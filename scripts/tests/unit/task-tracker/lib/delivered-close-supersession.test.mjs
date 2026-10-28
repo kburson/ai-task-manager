@@ -272,3 +272,97 @@ test('refuses a comment that carries more than one supersession marker', () => {
     /malformed-comment/
   );
 });
+
+// @story #2100
+function nativeRestartInput() {
+  const operatorContext = {
+    sessionId: 'own-session',
+    worktreePath: '/fixture',
+    branch: 'feature/1461',
+    headSha: NEW_SHA,
+    boundIssue: 1461,
+    bindingGenerationId: 'own-generation',
+  };
+  return {
+    ...restartInput(),
+    projectId: 'PVT_native',
+    operatorContext,
+    oldTransaction: staleTransaction(['timing', 'estimation', 'lifecycle']),
+    live: { ...restartInput().live, labels: ['plan:native-recovery-delivery'], dirty: false },
+    nativeBoardAuthority: {
+      repository: 'kburson/ai-task-manager',
+      issueNumber: 1461,
+      projectId: 'PVT_native',
+      projectItemId: 'PVTI_native',
+      boardState: 'review',
+      acceptedSha: NEW_SHA,
+      testReceiptId: '01ARZ3NDEKTSV4RRFFQ69G5FAT',
+      testReceiptSha: NEW_SHA,
+      reviewApprovedSha: NEW_SHA,
+      deliveryIntentId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      deliveryAcceptedSha: NEW_SHA,
+      operatorContext: { ...operatorContext },
+    },
+  };
+}
+
+test('native board authority permits an unlabeled three-step corrective restart', () => {
+  const authority = authorizeDeliveredCloseRestart(nativeRestartInput());
+  assert.deepEqual(authority.oldTransaction.completedSteps, ['timing', 'estimation', 'lifecycle']);
+  const { record } = resolveDeliveredCloseSupersession({
+    authorization: authority,
+    comments: [],
+    randomUUIDFn: () => 'native-replacement',
+  });
+  const replaced = replaceStaleDeliveredCloseTransaction(
+    upsertDeliveredCloseTransaction('', authority.oldTransaction),
+    authority,
+    record
+  );
+  assert.deepEqual(replaced.transaction.completedSteps, []);
+  assert.equal(replaced.transaction.acceptedSha, NEW_SHA);
+  assert.equal(record.oldAcceptedSha, OLD_SHA);
+  assert.deepEqual(record.completedSteps, ['timing', 'estimation', 'lifecycle']);
+});
+
+test('native restart refuses incomplete or cross-scope authority and preserves legacy rules', () => {
+  const input = nativeRestartInput();
+  for (const patch of [
+    { repository: 'foreign/repo' },
+    { issueNumber: 9 },
+    { projectId: 'PVT_other' },
+    { projectItemId: '' },
+    { boardState: 'done' },
+    { acceptedSha: OLD_SHA },
+    { testReceiptSha: OLD_SHA },
+    { reviewApprovedSha: OLD_SHA },
+    { deliveryAcceptedSha: OLD_SHA },
+    { deliveryIntentId: '' },
+    { operatorContext: { ...input.operatorContext, boundIssue: 9 } },
+    { operatorContext: { ...input.operatorContext, bindingGenerationId: 'foreign' } },
+    { extra: true },
+  ]) {
+    assert.throws(() =>
+      authorizeDeliveredCloseRestart({
+        ...input,
+        nativeBoardAuthority: { ...input.nativeBoardAuthority, ...patch },
+      })
+    );
+  }
+  assert.throws(() =>
+    authorizeDeliveredCloseRestart({ ...input, nativeBoardAuthority: undefined })
+  );
+  assert.throws(() =>
+    authorizeDeliveredCloseRestart({ ...input, live: { ...input.live, dirty: true } })
+  );
+  assert.throws(() =>
+    authorizeDeliveredCloseRestart({ ...input, live: { ...input.live, bindingStatus: 'released' } })
+  );
+  assert.throws(() =>
+    authorizeDeliveredCloseRestart({
+      ...input,
+      oldTransaction: staleTransaction(['timing', 'estimation', 'lifecycle', 'board']),
+    })
+  );
+  assert.doesNotThrow(() => authorizeDeliveredCloseRestart(restartInput()));
+});

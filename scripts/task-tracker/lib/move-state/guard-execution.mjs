@@ -1,3 +1,9 @@
+import { attributingCommits } from '../commit-attribution.mjs';
+import {
+  createCloseReadOnlyPorts,
+  createVerifiedCloseAttribution,
+} from '../action-decision/close.mjs';
+import { PROTOCOL_MARKER_RE } from '../evidence-v2/protocol.mjs';
 import { captureIssueProofAuthority } from '../issue-proof-authority.mjs';
 import { captureArtifactOperator } from '../artifact-execution.mjs';
 // INTERNAL — library module for the state-movement boundary (#559).
@@ -47,10 +53,92 @@ import {
 // logic. `cfg.trunkRef` still wins if explicitly set (handled inside
 // `resolveCloseTrunkRef`). Returns `undefined` for any move other than
 // `→ done`, matching `runGuards`'s existing no-override default.
-export async function buildCloseGatesDeps({ stateArg, pexec, projectDir } = {}) {
+export async function buildCloseGatesDeps({
+  stateArg,
+  pexec,
+  projectDir,
+  issueNumber,
+  cfg,
+  body,
+  artifactSubject,
+  fetchPullRequestEvidence,
+} = {}) {
   if (stateArg !== 'done') return undefined;
   const inWorktree = await detectLinkedWorktree({ pexec, cwd: projectDir });
-  return { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } };
+  const closeGates = { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) };
+  const result = { closeGates };
+  if (
+    !issueNumber ||
+    !cfg ||
+    typeof body !== 'string' ||
+    PROTOCOL_MARKER_RE.test(body) ||
+    /aitm-incorporated-close/.test(body)
+  )
+    return result;
+  // Defer discovery until the real lineage gate requests attribution. This
+  // preserves no-trail lanes and the native structured refusal pipeline.
+  closeGates.attributingCommits = async (number, options) => {
+    // Preserve the ordinary subject-attribution lane. Shared canonical-body
+    // attribution needs independently rediscovered immutable delivery evidence.
+    const ordinary = await attributingCommits(number, { ...options, pexec });
+    if (ordinary.length) return ordinary;
+    const commentsOut = await pexec(
+      'gh',
+      ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+      { cwd: projectDir }
+    );
+    const pages = JSON.parse(commentsOut.stdout);
+    if (
+      !Array.isArray(pages) ||
+      pages.some((page) => !Array.isArray(page)) ||
+      pages.flat().some((comment) => typeof comment?.body !== 'string')
+    )
+      throw new TypeError('close-shared-attribution:comment-pages');
+    // Discovery only, never proof: the production parser and gate below validate
+    // every claimed record. No applicable claim preserves the existing lane.
+    if (
+      !pages
+        .flat()
+        .some(
+          ({ body: text }) =>
+            /<!--\s*aitm-delivery-(?:intent|receipt)\b/.test(text) &&
+            /"(?:provider|schema)"\s*:\s*"(?:external|aitm\.delivery-receipt\/v5)"/.test(text)
+        )
+    )
+      return ordinary;
+    const ports = createCloseReadOnlyPorts({
+      issue: issueNumber,
+      cfg,
+      projectDir,
+      artifactSubject,
+      deps: { run: pexec, fetchPullRequestEvidence },
+    });
+    const delivery = await ports.readDelivery({ body });
+    if (
+      delivery.mode === 'ordinary' &&
+      delivery.authority.remote &&
+      delivery.gateInput.lineage.parentIssueNumber === null &&
+      delivery.gateInput.records?.liveIntent?.record?.provider === 'external' &&
+      delivery.gateInput.records?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v5'
+    ) {
+      if (
+        artifactSubject &&
+        JSON.stringify(captureArtifactOperator({ projectDir, issueNumber })) !==
+          JSON.stringify(delivery.gateInput.operatorContext)
+      )
+        throw new TypeError('close-shared-attribution:operator-drift');
+      return createVerifiedCloseAttribution({
+        issue: issueNumber,
+        cfg,
+        projectDir,
+        artifactSubject,
+        gateInput: delivery.gateInput,
+        run: pexec,
+      })(number, options);
+    }
+    return ordinary;
+  };
+  return result;
 }
 
 // Shelve deliberately withdraws refined work instead of advancing it. Only
@@ -195,7 +283,15 @@ export async function runGuardExecution(ctx) {
     // consumed today only by promote.mjs's inline pre-flight (which still runs
     // ahead of move-state spawn), so the in-registry assignment is harmless.
     const projectDir = ctx.projectDir ?? getProjectDir();
-    const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir });
+    const deps = await buildCloseGatesDeps({
+      stateArg,
+      pexec,
+      projectDir,
+      issueNumber: Number(issueArg),
+      cfg,
+      body: guardBody,
+      artifactSubject: ctx.artifactSubject,
+    });
 
     if (ctx.artifactSubject) {
       ctx.artifactTransitionAuthority = {

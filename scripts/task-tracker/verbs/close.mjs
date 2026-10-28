@@ -5,7 +5,10 @@ import {
   artifactReceiptMatches,
   sourceCommit,
 } from '../lib/artifact-subject.mjs';
-import { captureArtifactOperator } from '../lib/artifact-execution.mjs';
+import {
+  captureArtifactOperator,
+  assertNativeArtifactOperator,
+} from '../lib/artifact-execution.mjs';
 import { randomUUID } from 'node:crypto';
 import { pexec as closePexec } from '../../gh/lib/gh-client.mjs';
 
@@ -107,6 +110,7 @@ import {
 } from '../lib/close-convergence.mjs';
 import {
   authorizeDeliveredCloseRestart,
+  observeNativeCloseRestartAuthority,
   ensureDeliveredCloseSupersession,
   parseDeliveredCloseSupersessionComment,
   replaceStaleDeliveredCloseTransaction,
@@ -870,7 +874,7 @@ export async function loadCloseDeliveryGateInput({
       waivedIntent ||
       records.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v5'
     ) {
-      const deliverDeps = createDefaultDeliverDeps({ cfg, projectDir });
+      const deliverDeps = createDefaultDeliverDeps({ cfg, projectDir }, { exec: pexec });
       const fetchEvidence = ctx.fetchClosePullRequestEvidence ?? deliverDeps.fetchPullRequest;
       const evidenced = await fetchEvidence({ prNumber: selectedPullRequest.number });
       if (
@@ -3430,6 +3434,7 @@ export async function verbClose(ctx) {
         }
 
         let authorization;
+        let nativeBoardAuthority;
         if (recoveryBacking.status === 'found') {
           if (deliveredCloseSupersessionRecord) {
             if (
@@ -3482,7 +3487,20 @@ export async function verbClose(ctx) {
           }
           reopenedCloseRecoveryRecord = recoveryBacking.record;
         } else {
+          nativeBoardAuthority = labels.some((label) => ['ToDo', 'BLOCKED'].includes(label))
+            ? undefined
+            : await observeNativeCloseRestartAuthority({
+                cfg,
+                issueNumber: Number(closeIssueNum),
+                projectDir,
+                gate: resolvedDeliveryGate,
+                artifactSubject: ctx.artifactSubject,
+                deps: ctx.nativeCloseRestartAuthorityDeps,
+              });
           authorization = authorizeDeliveredCloseRestart({
+            projectId: cfg.projectId,
+            operatorContext: resolvedDeliveryGate.gateInput.operatorContext,
+            nativeBoardAuthority,
             repository: cfg.repo,
             issueNumber: Number(closeIssueNum),
             oldTransaction,
@@ -3493,14 +3511,24 @@ export async function verbClose(ctx) {
               issueClosed: closeSnapshot.issueClosed,
               terminalDisposition: terminalDisposition || null,
               labels,
+              dirty: dirty.dirty,
               bindingStatus: binding?.status,
             },
           });
         }
+        const assertRestartOperator = () => {
+          if (nativeBoardAuthority)
+            assertNativeArtifactOperator({
+              projectDir,
+              issueNumber: Number(closeIssueNum),
+              operatorContext: nativeBoardAuthority.operatorContext,
+            });
+        };
         const evidence = await ensureDeliveredCloseSupersession({
           authorization,
           deps: { ...supersessionDeps, listComments: async () => comments },
         });
+        assertRestartOperator();
         deliveredCloseSupersessionRecord = evidence.record;
         if (typeof mutateBody !== 'function') {
           throw new Error('delivered-close-supersession:body-write');
@@ -3508,8 +3536,10 @@ export async function verbClose(ctx) {
         const mutation = await mutateBody({
           issueNumber: Number(closeIssueNum),
           repo: cfg.repo,
-          mutate: (base) =>
-            replaceStaleDeliveredCloseTransaction(base, authorization, evidence.record).body,
+          mutate: (base) => {
+            assertRestartOperator();
+            return replaceStaleDeliveredCloseTransaction(base, authorization, evidence.record).body;
+          },
         });
         if (mutation?.status !== 'ok' || typeof mutation.body !== 'string') {
           throw new Error('delivered-close-supersession:body-write');

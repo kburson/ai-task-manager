@@ -310,6 +310,7 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
       lifecycleEvidence,
       ctx: {
         artifactSubject,
+        fetchClosePullRequestEvidence: deps.fetchPullRequestEvidence,
         resolveCloseParentIssue: async () => graph.get(issue).parent,
         loadWorkflowBoundary: deps.loadWorkflowBoundary,
         workflowPolicyRuntime: deps.workflowPolicyRuntime,

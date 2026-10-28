@@ -105,6 +105,9 @@ export async function runClose({
   createEstimationOutcomeWriter = null,
   trackEstimationOutcomes = false,
   contextOverrides = {},
+  beforeBodyMutation = null,
+  operatorProjectDir = null,
+  configOverrides = {},
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
   const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
@@ -153,9 +156,10 @@ export async function runClose({
       repo: repository,
       trunkRef: 'trunk',
       fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
+      ...configOverrides,
     },
     statePath,
-    projectDir: dir,
+    projectDir: operatorProjectDir ?? dir,
     SKIP_NETWORK: false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
@@ -237,6 +241,7 @@ export async function runClose({
     mutate: async ({ mutate }) => {
       calls.mutations += 1;
       calls.order.push('body:mutate');
+      await beforeBodyMutation?.();
       const nextBody = mutate(liveBody);
       const result =
         typeof mutationResult === 'function'
