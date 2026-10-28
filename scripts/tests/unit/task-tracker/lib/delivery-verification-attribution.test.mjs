@@ -601,3 +601,76 @@ test('#1619: verification failures expose distinct immutable-evidence predicates
     }
   );
 });
+
+// @story #2098 — recover another attributed issue's exact governed delivery.
+const SHARED_MESSAGE = `PR #1391\nSource: ${HEAD}\n\nAttribution: [#1392] [#1380] [#939]`;
+
+function sharedRecovery(commitTitle = COMMIT_TITLE, commitMessage = SHARED_MESSAGE) {
+  const input = liveInput(commitMessage);
+  delete input.intentCreatedAt;
+  delete input.recovery;
+  input.inspectMergeCommit = async () => ({
+    parents: ['c'.repeat(40)],
+    commitTitle,
+    commitMessage,
+  });
+  return { ...input, intentInput: { ...externalIntentInput(), issueNumber: 939 } };
+}
+
+test('#2098: secondary issue recovers and replays exact canonical shared delivery bytes', async () => {
+  const input = sharedRecovery();
+  const verified = await verifyExternalDeliveredPullRequest(input);
+  assert.equal(verified.intent.issueNumber, 939);
+  assert.equal(verified.intent.provider, 'external');
+  assert.equal(verified.intent.commitTitle, '[#1392] Governed PR delivery');
+  assert.equal(verified.intent.commitMessage, SHARED_MESSAGE);
+  assert.equal(verified.receiptInput.mergeCommitSha, MERGE_HEAD);
+  assert.equal(Object.hasOwn(verified.receiptInput, 'metadataWarnings'), false);
+  const { intentInput: _proposal, ...replay } = input;
+  const repeated = await verifyDeliveredPullRequest({
+    ...replay,
+    intent: verified.intent,
+    intentCreatedAt: MERGED_AT,
+    recovery: true,
+  });
+  assert.deepEqual(repeated.receiptInput, verified.receiptInput);
+});
+
+test('#2098: shared recovery refuses incomplete or noncanonical governed bytes', async (t) => {
+  for (const [name, title, message] of [
+    ['foreign owner', '[#999] Governed PR delivery', SHARED_MESSAGE],
+    ['wrong title', '[#1392] Other delivery', SHARED_MESSAGE],
+    ['wrong PR', COMMIT_TITLE, SHARED_MESSAGE.replace('PR #1391', 'PR #1390')],
+    ['wrong source', COMMIT_TITLE, SHARED_MESSAGE.replace(HEAD, 'f'.repeat(40))],
+    ['missing token', COMMIT_TITLE, SHARED_MESSAGE.replace(' [#939]', '')],
+    ['duplicate token', COMMIT_TITLE, `${SHARED_MESSAGE} [#939]`],
+    ['foreign token', COMMIT_TITLE, `${SHARED_MESSAGE} [#999]`],
+    ['reordered tail', COMMIT_TITLE, SHARED_MESSAGE.replace('[#1380] [#939]', '[#939] [#1380]')],
+    ['nonterminal claim', COMMIT_TITLE, `${SHARED_MESSAGE}\nextra text`],
+    ['duplicate claim', COMMIT_TITLE, `${SHARED_MESSAGE}\nAttribution: [#1392] [#1380] [#939]`],
+    ['disguised claim', COMMIT_TITLE, SHARED_MESSAGE.replace('Attribution:', ' Attribution:')],
+  ]) {
+    await t.test(name, async () => {
+      await assert.rejects(
+        () => verifyExternalDeliveredPullRequest(sharedRecovery(title, message)),
+        (error) => error.category === 'attribution'
+      );
+    });
+  }
+});
+
+test('#2098: provider authorization cannot adopt a different canonical primary owner', async () => {
+  const input = liveInput(SHARED_MESSAGE);
+  input.inspectMergeCommit = sharedRecovery().inspectMergeCommit;
+  const authorized = buildDeliveryIntent({
+    ...externalIntentInput(),
+    provider: 'codex',
+    issueNumber: 939,
+    commitTitle: '[#939] Governed PR delivery',
+    commitMessage: `PR #1391\nSource: ${HEAD}\n\nAttribution: [#939] [#1380] [#1392]`,
+  });
+  await assert.rejects(
+    () => verifyDeliveredPullRequest({ ...input, intent: authorized }),
+    (error) => error.category === 'merge-commit-bytes'
+  );
+});
