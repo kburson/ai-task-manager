@@ -1,3 +1,4 @@
+import { registerRankRecoveryCases } from './project-rank-recovery.cases.mjs';
 import { publishFieldEstimateRevision } from '../../../../../task-tracker/lib/decomposition-field-writer.mjs';
 import { currentIssueLockOwner } from '../../../../../task-tracker/issue-mutator-lock.mjs';
 // @story #2091 — omitted rank, real snapshots and exact publication retry.
@@ -15,6 +16,7 @@ import {
 import { parseIssueFieldDb } from '../../../../../task-tracker/issue-field-db.mjs';
 import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
 export function registerTetherPublicationCases({ cfg, makeRunner, actualTether }) {
+  registerRankRecoveryCases({ cfg, makeRunner, actualTether });
   test('unsized initial tether preserves an absent field cache and performs no numeric setters', async () => {
     const body = '## Scope\nUnestimated initial idea.\n';
     let numeric = 0;
