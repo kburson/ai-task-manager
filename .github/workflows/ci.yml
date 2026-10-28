@@ -195,7 +195,7 @@ jobs:
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$files" | grep -Eqv '^(docs/|.+\.md$|\.gitignore$)'; then
+          if grep -Eqv '^(docs/|.+\.md$|\.gitignore$)' <<< "$files"; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
           else
             echo "docs_only=true" >> "$GITHUB_OUTPUT"
