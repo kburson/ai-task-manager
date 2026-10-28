@@ -398,7 +398,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'docs/guides/decomposition-recovery.md',
   ];
   for (const entry of compositionProofEntries) assert.ok(files.includes(entry));
+  // #2089/#2103: exactly one standalone unactivated field transport adapter.
+  const dateTransportEntries = ['scripts/task-tracker/lib/story-cache/provider-adapters.mjs'];
+  for (const entry of dateTransportEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    dateTransportEntries.length +
     ENTRY_CEILING +
     estimatePublicationEntries.length +
     recoveryEntryAllowance +
