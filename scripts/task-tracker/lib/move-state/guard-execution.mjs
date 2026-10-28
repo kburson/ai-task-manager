@@ -75,65 +75,69 @@ export async function buildCloseGatesDeps({
     /aitm-incorporated-close/.test(body)
   )
     return result;
-  // Preserve the ordinary subject-attribution lane. Shared canonical-body
-  // attribution needs independently rediscovered immutable delivery evidence.
-  const trunk = await closeGates.resolveTrunkRef({ cfg, projectDir });
-  if ((await attributingCommits(issueNumber, { cwd: projectDir, refs: [trunk], pexec })).length)
-    return result;
-  const commentsOut = await pexec(
-    'gh',
-    ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
-    { cwd: projectDir }
-  );
-  const pages = JSON.parse(commentsOut.stdout);
-  if (
-    !Array.isArray(pages) ||
-    pages.some((page) => !Array.isArray(page)) ||
-    pages.flat().some((comment) => typeof comment?.body !== 'string')
-  )
-    throw new TypeError('close-shared-attribution:comment-pages');
-  // Discovery only, never proof: the production parser and gate below validate
-  // every claimed record. No applicable claim preserves the existing lane.
-  if (
-    !pages
-      .flat()
-      .some(
-        ({ body: text }) =>
-          /<!--\s*aitm-delivery-(?:intent|receipt)\b/.test(text) &&
-          /"(?:provider|schema)"\s*:\s*"(?:external|aitm\.delivery-receipt\/v5)"/.test(text)
-      )
-  )
-    return result;
-  const ports = createCloseReadOnlyPorts({
-    issue: issueNumber,
-    cfg,
-    projectDir,
-    artifactSubject,
-    deps: { run: pexec, fetchPullRequestEvidence },
-  });
-  const delivery = await ports.readDelivery({ body });
-  if (
-    delivery.mode === 'ordinary' &&
-    delivery.authority.remote &&
-    delivery.gateInput.lineage.parentIssueNumber === null &&
-    delivery.gateInput.records?.liveIntent?.record?.provider === 'external' &&
-    delivery.gateInput.records?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v5'
-  ) {
+  // Defer discovery until the real lineage gate requests attribution. This
+  // preserves no-trail lanes and the native structured refusal pipeline.
+  closeGates.attributingCommits = async (number, options) => {
+    // Preserve the ordinary subject-attribution lane. Shared canonical-body
+    // attribution needs independently rediscovered immutable delivery evidence.
+    const ordinary = await attributingCommits(number, { ...options, pexec });
+    if (ordinary.length) return ordinary;
+    const commentsOut = await pexec(
+      'gh',
+      ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+      { cwd: projectDir }
+    );
+    const pages = JSON.parse(commentsOut.stdout);
     if (
-      artifactSubject &&
-      JSON.stringify(captureArtifactOperator({ projectDir, issueNumber })) !==
-        JSON.stringify(delivery.gateInput.operatorContext)
+      !Array.isArray(pages) ||
+      pages.some((page) => !Array.isArray(page)) ||
+      pages.flat().some((comment) => typeof comment?.body !== 'string')
     )
-      throw new TypeError('close-shared-attribution:operator-drift');
-    closeGates.attributingCommits = createVerifiedCloseAttribution({
+      throw new TypeError('close-shared-attribution:comment-pages');
+    // Discovery only, never proof: the production parser and gate below validate
+    // every claimed record. No applicable claim preserves the existing lane.
+    if (
+      !pages
+        .flat()
+        .some(
+          ({ body: text }) =>
+            /<!--\s*aitm-delivery-(?:intent|receipt)\b/.test(text) &&
+            /"(?:provider|schema)"\s*:\s*"(?:external|aitm\.delivery-receipt\/v5)"/.test(text)
+        )
+    )
+      return ordinary;
+    const ports = createCloseReadOnlyPorts({
       issue: issueNumber,
       cfg,
       projectDir,
       artifactSubject,
-      gateInput: delivery.gateInput,
-      run: pexec,
+      deps: { run: pexec, fetchPullRequestEvidence },
     });
-  }
+    const delivery = await ports.readDelivery({ body });
+    if (
+      delivery.mode === 'ordinary' &&
+      delivery.authority.remote &&
+      delivery.gateInput.lineage.parentIssueNumber === null &&
+      delivery.gateInput.records?.liveIntent?.record?.provider === 'external' &&
+      delivery.gateInput.records?.matchingReceipt?.record?.schema === 'aitm.delivery-receipt/v5'
+    ) {
+      if (
+        artifactSubject &&
+        JSON.stringify(captureArtifactOperator({ projectDir, issueNumber })) !==
+          JSON.stringify(delivery.gateInput.operatorContext)
+      )
+        throw new TypeError('close-shared-attribution:operator-drift');
+      return createVerifiedCloseAttribution({
+        issue: issueNumber,
+        cfg,
+        projectDir,
+        artifactSubject,
+        gateInput: delivery.gateInput,
+        run: pexec,
+      })(number, options);
+    }
+    return ordinary;
+  };
   return result;
 }
 
