@@ -1,4 +1,4 @@
-// @story #1674
+// @story #1674 #2086
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -200,16 +200,23 @@ function coldCompile({
   need,
   profile,
   candidatePath,
+  firstObservation,
 }) {
   let publicationMismatch = false;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const selectedBefore = observeGuidanceSource({ projectRoot, moduleUrl, publishedOnly });
-    const before = observeCacheIdentity({
-      selected: selectedBefore,
-      projectRoot,
-      profile,
-      candidatePath,
-    });
+    // The warm lookup already observed this invocation's source and identity.
+    // Caller-selected inputs cannot supply cold authority; retries reobserve.
+    const initial = attempt === 0 ? firstObservation : null;
+    const selectedBefore =
+      initial?.selected ?? observeGuidanceSource({ projectRoot, moduleUrl, publishedOnly });
+    const before =
+      initial?.identity ??
+      observeCacheIdentity({
+        selected: selectedBefore,
+        projectRoot,
+        profile,
+        candidatePath,
+      });
     if (before.decision === 'indeterminate') {
       return { valid: false, code: before.code, source: selectedBefore };
     }
@@ -311,5 +318,6 @@ export function loadGuidance({
     need,
     profile,
     candidatePath,
+    firstObservation: selected === null ? { selected: observation, identity } : null,
   });
 }
