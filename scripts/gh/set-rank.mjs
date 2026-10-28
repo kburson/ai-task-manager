@@ -1,22 +1,17 @@
 #!/usr/bin/env node
 import { enforceDirectGuidance } from '../task-tracker/lib/direct-guidance-admission.mjs';
 enforceDirectGuidance(import.meta.url, 'set-rank');
-// Set the Rank (number) field on an existing GitHub issue's project item.
-// Usage: node scripts/gh/set-rank.mjs <issue#> <n>
-//
-// Rank is the wave-ordering / sequence number read by wave-admission.mjs. It is
-// writable at issue-creation time, but there was no dedicated setter for an
-// already-open issue — Priority has set-priority.mjs and Status has
-// move-state.mjs. This mirrors set-priority.mjs one-for-one, but the write is a
-// number field, so it delegates to the shared, already-exercised
-// tetherIssueToProject rank branch rather than hand-rolling a mutation.
+// @story #2092 #2104
+// Independently verify configured board Rank and synchronize only its body cache.
+// Pending Refine recovery retains the exact original sealed key and operation.
+// Usage: set-rank <issue#> <n> [--refine-key-file <path>]
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { tetherIssueToProject } from './lib/project-tether.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { readFileSync } from 'node:fs';
 import { pexec } from './lib/gh-client.mjs';
-import { projectValuesForIssue } from './lib/github-projects.mjs';
+import { fetchIssueProjectMembership } from './lib/project-membership.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 import { parseIssueFieldDb, formatIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
@@ -59,7 +54,7 @@ function readRefineKey(file) {
   return key;
 }
 // Compatibility is evidence about the existing intent, never permission to replace it.
-function compatibility(body, cfg, issue, rank, key) {
+function compatibility(body, cfg, issue, rank, key, itemId) {
   const publication = readDecompositionRecords(body).publication;
   if (publication?.status !== 'pending') {
     if (key) refuse('refine-key-without-pending-intent');
@@ -76,6 +71,7 @@ function compatibility(body, cfg, issue, rank, key) {
     publication.subject.repository !== cfg.repo ||
     publication.subject.issue !== Number(issue) ||
     publication.subject.projectId !== cfg.projectId ||
+    publication.subject.projectItemId !== itemId ||
     !before ||
     before.writerId !== 'refine' ||
     before.operationId !== publication.operationId ||
@@ -123,13 +119,28 @@ async function fetchBody({ repo, issueNumber }) {
   );
   return String(stdout || '');
 }
+// One complete provider observation binds rank to the current configured item.
 async function readRank({ cfg, issueNumber }) {
-  const fields = await projectValuesForIssue({
-    cfg: { ...cfg, fieldIds: { ...cfg.fieldIds, rank: resolveRankFieldId(cfg) } },
-    fieldDefs: [{ key: 'rank' }],
+  const { item } = await fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
     issueNumber,
+    itemFields: `fieldValues(first: 100) {
+      nodes { ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { id } } } }
+      pageInfo { hasNextPage }
+    }`,
   });
-  return fields.rank;
+  if (
+    !item?.id ||
+    !Array.isArray(item.fieldValues?.nodes) ||
+    item.fieldValues.pageInfo?.hasNextPage !== false
+  )
+    refuse('rank-observation-incomplete');
+  const values = item.fieldValues.nodes.filter(
+    (value) => value.field?.id === resolveRankFieldId(cfg)
+  );
+  if (values.length > 1) refuse('rank-observation-ambiguous');
+  return { itemId: item.id, rank: values[0]?.number ?? null };
 }
 
 // Same precedence writeFields() in project-tether.mjs uses to resolve the Rank
@@ -180,7 +191,12 @@ export async function main(argv, deps = {}) {
 
   const rank = Number(rankArg);
   if (!Number.isSafeInteger(rank)) return usage();
-  const cfg = load();
+  const loaded = load();
+  // Match resolveEstimateWriterSubject, including its sealed target prefixes.
+  const cfg = {
+    ...loaded,
+    repo: typeof loaded.repo === 'string' ? loaded.repo.toLowerCase() : loaded.repo,
+  };
 
   // Unconfigured Rank field: warn and exit 0 without a write, matching
   // project-tether.mjs (which WARNs and skips rather than throwing).
@@ -200,16 +216,25 @@ export async function main(argv, deps = {}) {
   const mutateBody = deps.mutateBody || mutateIssueBody;
   const initial = await getBody({ repo: cfg.repo, issueNumber: issueArg });
   fieldCache(initial);
-  const expected = compatibility(initial, cfg, issueArg, rank, key);
-  await tether({ cfg, issueNumber: issueArg, rank });
+  const observedInitial = await observeRank({ cfg, issueNumber: issueArg });
+  const itemId = observedInitial?.itemId;
+  if (typeof itemId !== 'string' || !itemId) refuse('project-item-unavailable');
+  const expected = compatibility(initial, cfg, issueArg, rank, key, itemId);
+  const written = await tether({ cfg, issueNumber: issueArg, rank });
+  if (written?.itemId && written.itemId !== itemId) refuse('project-item-write-drift');
   const verifyBoard = async () => {
     const observed = await observeRank({ cfg, issueNumber: issueArg });
-    if (typeof observed !== 'number' || !Number.isFinite(observed) || observed !== rank)
+    if (observed?.itemId !== itemId) refuse('project-item-readback-drift');
+    if (
+      typeof observed.rank !== 'number' ||
+      !Number.isFinite(observed.rank) ||
+      observed.rank !== rank
+    )
       refuse('rank-readback-unverified');
   };
   await verifyBoard();
   const validateFresh = async (base) => {
-    if (compatibility(base, cfg, issueArg, rank, key) !== expected)
+    if (compatibility(base, cfg, issueArg, rank, key, itemId) !== expected)
       refuse('pending-refine-intent-drift');
     fieldCache(base);
     await verifyBoard();

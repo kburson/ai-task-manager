@@ -22,6 +22,9 @@ export function registerRankRecoveryCases({ cfg, makeRunner, actualTether }) {
   for (const scenario of [
     'omitted',
     'explicit',
+    'mixed-case',
+    'replaced-item',
+    'replacement-during-write',
     'missing-key',
     'wrong-key',
     'extra-key',
@@ -124,10 +127,18 @@ export function registerRankRecoveryCases({ cfg, makeRunner, actualTether }) {
         loadConfig: () => ({
           ...cfg,
           ...(scenario === 'foreign-repository' ? { repo: 'foreign/repository' } : {}),
+          ...(scenario === 'mixed-case' ? { repo: 'KBurson/AI-Task-Manager' } : {}),
           ...(scenario === 'foreign-project' ? { projectId: 'OTHER_PROJECT' } : {}),
         }),
         fetchBody: async () => body,
-        readRank: async () => board.rank,
+        readRank: async () => ({
+          itemId:
+            scenario === 'replaced-item' ||
+            (scenario === 'replacement-during-write' && rankWrites > 0)
+              ? 'REPLACEMENT_ITEM'
+              : 'ITEM_1987',
+          rank: board.rank,
+        }),
         tetherIssueToProject: async ({ rank }) => {
           rankWrites++;
           await actualTether({ cfg, issueNumber: 1987, rank, runGql, deps: fixture });
@@ -150,13 +161,16 @@ export function registerRankRecoveryCases({ cfg, makeRunner, actualTether }) {
         String(wanted),
         ...(scenario === 'missing-key' ? [] : ['--refine-key-file', keyFile]),
       ];
-      if (!['omitted', 'explicit'].includes(scenario)) {
+      if (!['omitted', 'explicit', 'mixed-case'].includes(scenario)) {
         await assert.rejects(
           () => setRank(command, setter),
           new RegExp('set-rank:|estimate-publication:')
         );
         assert.equal(parseIssueFieldDb(body).values.rank, null);
-        assert.equal(rankWrites, scenario === 'pending-drift' ? 1 : 0);
+        assert.equal(
+          rankWrites,
+          ['pending-drift', 'replacement-during-write'].includes(scenario) ? 1 : 0
+        );
         if (scenario !== 'pending-drift') assert.equal(body, before);
         assert.equal(readDecompositionRecords(body).publication.operationId, pending.operationId);
         return;

@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { main as setRank } from '../../../../gh/set-rank.mjs';
+import { stampBodyVersion } from '../../../../task-tracker/lib/body-version.mjs';
 import { mutateIssueBody } from '../../../../task-tracker/lib/issue-body-mutate.mjs';
 import { formatIssueFieldDb, parseIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 
@@ -238,7 +239,10 @@ function rankHarness(options = {}) {
     readRank: async () => {
       state.reads++;
       if (options.readError) throw new Error('provider read unavailable');
-      return options.mismatch || (options.drift && state.reads > 1) ? 7 : state.rank;
+      return {
+        itemId: 'ITEM_2092',
+        rank: options.mismatch || (options.drift && state.reads > 1) ? 7 : state.rank,
+      };
     },
     mutateBody: (args) =>
       mutateIssueBody({
@@ -248,7 +252,10 @@ function rankHarness(options = {}) {
           pushBody: async (_repo, _issue, next) => {
             state.pushes++;
             if (options.bodyError) throw new Error('body write unavailable');
-            if (!options.lostBody) state.body = next;
+            if (options.rebaseDrift && state.pushes === 1) {
+              state.rank = 7;
+              state.body = stampBodyVersion(state.body + '\nConcurrent unrelated text.\n', 1);
+            } else if (!options.lostBody) state.body = next;
           },
         },
       }),
@@ -288,5 +295,14 @@ test('#2092: network suppression cannot print verified success', async () => {
     setRank(['node', SCRIPT, '2092', '8'], { ...deps, skipNetwork: true })
   );
   assert.equal(state.writes, 0);
+  assert.deepEqual(state.logs, []);
+});
+
+test('#2092: a rebased write rechecks board authority before another push', async () => {
+  const { state, deps } = rankHarness({ rebaseDrift: true });
+  await assert.rejects(() => setRank(['node', SCRIPT, '2092', '8'], deps));
+  assert.equal(state.pushes, 1, 'no stale rebased body is published');
+  assert.equal(parseIssueFieldDb(state.body).values.rank, null);
+  assert.match(state.body, /Concurrent unrelated text/);
   assert.deepEqual(state.logs, []);
 });
