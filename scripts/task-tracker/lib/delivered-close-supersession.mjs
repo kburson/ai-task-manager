@@ -15,6 +15,11 @@ import {
   fingerprint,
 } from './resident-action-ledger-codec.mjs';
 
+import { captureArtifactOperator } from './artifact-execution.mjs';
+import { artifactReceiptMatches, validateArtifactSubject } from './artifact-subject.mjs';
+import { parseVerificationReceipt } from './verification-receipt.mjs';
+import { fetchIssueProjectMembership } from '../../gh/lib/project-membership.mjs';
+
 export const DELIVERED_CLOSE_SUPERSESSION_SCHEMA = 'aitm.delivered-close-supersession/v1';
 export const DELIVERED_CLOSE_RESTART_REASON = 'accepted-sha-corrective-amend';
 
@@ -159,6 +164,123 @@ function createRecord(authorization, randomUUIDFn = randomUUID) {
   });
 }
 
+// Observe fresh native authority only for the unlabeled corrective-restart lane.
+// The caller has already verified the delivery gate; never manufacture Review authority.
+export async function observeNativeCloseRestartAuthority({
+  cfg,
+  issueNumber,
+  projectDir,
+  gate,
+  artifactSubject,
+  deps = {},
+}) {
+  if (!artifactSubject) fail('native-artifact-required');
+  validateArtifactSubject({ projectDir, artifactSubject });
+  const operatorContext = captureArtifactOperator({ projectDir, issueNumber });
+  const acceptedSha = artifactSubject.commitSha;
+  const test = parseVerificationReceipt(gate?.deliveryBody, 'test');
+  const delivery = gate?.receipt?.receipt;
+  if (
+    gate?.gateInput?.repository !== cfg.repo ||
+    gate.gateInput.issueNumber !== issueNumber ||
+    gate.gateInput.acceptedSha !== acceptedSha ||
+    !sameValue(gate.gateInput.operatorContext, operatorContext) ||
+    test?.issue !== issueNumber ||
+    !artifactReceiptMatches({ receipt: test, artifactSubject, operatorContext }) ||
+    gate.testReceiptSha !== acceptedSha ||
+    gate.recoveryReviewApprovedSha !== acceptedSha ||
+    delivery?.schema !== 'aitm.delivery-receipt/v5' ||
+    delivery.issueNumber !== issueNumber ||
+    delivery.expectedHeadSha !== acceptedSha
+  )
+    fail('native-source-authority');
+  const { issue, item } = await fetchIssueProjectMembership({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+    ...(deps.runGql ? { runGql: deps.runGql } : {}),
+  });
+  if (
+    issue.number !== issueNumber ||
+    item?.project?.id !== cfg.projectId ||
+    item.fieldValueByName?.name !== 'Review'
+  )
+    fail('native-board-authority');
+  const finalOperator = captureArtifactOperator({ projectDir, issueNumber });
+  if (!sameValue(operatorContext, finalOperator)) fail('native-operator-drift');
+  const authority = {
+    repository: cfg.repo,
+    issueNumber,
+    projectId: cfg.projectId,
+    projectItemId: item.id,
+    boardState: 'review',
+    acceptedSha,
+    testReceiptId: test.receiptId,
+    testReceiptSha: test.commitSha,
+    reviewApprovedSha: gate.recoveryReviewApprovedSha,
+    deliveryIntentId: delivery.intentId,
+    deliveryAcceptedSha: delivery.expectedHeadSha,
+    operatorContext,
+  };
+  if (
+    !hasNativeBoardAuthority({
+      nativeBoardAuthority: authority,
+      repository: cfg.repo,
+      issueNumber,
+      projectId: cfg.projectId,
+      operatorContext,
+      newAcceptedSha: acceptedSha,
+      live: { dirty: false },
+    })
+  )
+    fail('native-authority');
+  return deepFreeze(authority);
+}
+
+// #2100: a board-managed recovery must carry independent exact-source authority.
+function hasNativeBoardAuthority(input) {
+  const a = input.nativeBoardAuthority;
+  const own = input.operatorContext;
+  if (
+    !hasExactKeys(a, [
+      'repository',
+      'issueNumber',
+      'projectId',
+      'projectItemId',
+      'boardState',
+      'acceptedSha',
+      'testReceiptId',
+      'testReceiptSha',
+      'reviewApprovedSha',
+      'deliveryIntentId',
+      'deliveryAcceptedSha',
+      'operatorContext',
+    ])
+  )
+    return false;
+  const recordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+  return (
+    a.repository === input.repository &&
+    a.issueNumber === input.issueNumber &&
+    /^PVT_[A-Za-z0-9_]+$/.test(input.projectId || '') &&
+    a.projectId === input.projectId &&
+    /^PVTI_[A-Za-z0-9_]+$/.test(a.projectItemId || '') &&
+    a.boardState === 'review' &&
+    ['acceptedSha', 'testReceiptSha', 'reviewApprovedSha', 'deliveryAcceptedSha'].every(
+      (key) => a[key] === input.newAcceptedSha
+    ) &&
+    recordId.test(a.testReceiptId || '') &&
+    recordId.test(a.deliveryIntentId || '') &&
+    own?.boundIssue === input.issueNumber &&
+    SHA_RE.test(own.headSha || '') &&
+    ['sessionId', 'worktreePath', 'branch', 'bindingGenerationId'].every(
+      (key) => typeof own[key] === 'string' && own[key].length > 0
+    ) &&
+    sameValue(a.operatorContext, own) &&
+    input.live?.dirty === false
+  );
+}
+
 export function authorizeDeliveredCloseRestart(input = {}) {
   const { repository, issueNumber, oldTransaction, newAcceptedSha, newReviewAuthority, live } =
     input;
@@ -195,7 +317,8 @@ export function authorizeDeliveredCloseRestart(input = {}) {
     live.issueClosed !== false ||
     live.terminalDisposition !== null ||
     !Array.isArray(live.labels) ||
-    !live.labels.some((label) => CLOSE_MANAGED_LABELS.has(label)) ||
+    (!live.labels.some((label) => CLOSE_MANAGED_LABELS.has(label)) &&
+      !hasNativeBoardAuthority(input)) ||
     live.bindingStatus !== 'pending'
   ) {
     fail('live-terminal-state');

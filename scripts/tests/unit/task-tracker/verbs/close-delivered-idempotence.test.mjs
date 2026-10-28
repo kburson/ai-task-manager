@@ -751,3 +751,31 @@ test('lost transaction-checkpoint response is adopted without repeating durable 
     }
   }
 });
+
+// @story #2100
+// Missing immutable selection must refuse before an unlabeled restart writes audit/body.
+test('unlabeled corrective restart requires explicit immutable native authority before audit', async () => {
+  const stale = {
+    ...transaction(['timing', 'estimation', 'lifecycle']),
+    issueNumber: 925,
+    acceptedSha: 'b'.repeat(40),
+  };
+  const run = await runClose({
+    boardState: 'review',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    body: upsertDeliveredCloseTransaction(closeBody(), stale),
+    restartStaleTransaction: true,
+    acceptedSha: HEAD,
+    liveLabels: ['plan:native-recovery-delivery'],
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
+  });
+  assert.equal(run.exitCode, 1);
+  assert.equal(run.calls.supersessionCommentCreates, 0);
+  assert.equal(run.calls.movesToDone.length, 0);
+  assert.deepEqual(readDeliveredCloseTransactions(run.body)[0].completedSteps, [
+    'timing',
+    'estimation',
+    'lifecycle',
+  ]);
+});
