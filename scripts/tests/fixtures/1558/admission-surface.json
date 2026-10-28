@@ -1238,7 +1238,17 @@
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "../task-tracker/config.mjs",
         "./lib/project-tether.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "node:fs",
+        "./lib/gh-client.mjs",
+        "./lib/project-membership.mjs",
+        "../task-tracker/lib/process-timeouts.mjs",
+        "../task-tracker/lib/issue-body-mutate.mjs",
+        "../task-tracker/issue-field-db.mjs",
+        "../task-tracker/lib/decomposition-records.mjs",
+        "../task-tracker/lib/decomposition-assessment.mjs",
+        "../task-tracker/lib/decomposition-publication.mjs",
+        "../task-tracker/lib/estimate-writer-publication.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",

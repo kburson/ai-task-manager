@@ -84,7 +84,7 @@ const ROUTABLE_SELF_DOC = {
     path: 'scripts/gh/set-rank.mjs',
     synopsis: "Set the Rank (wave-order) number field on an existing issue's project item.",
     audience: 'AI/operator re-ranking an open issue. Rank is the wave-ordering value.',
-    usage: 'aitm set-rank <issue#> <n>',
+    usage: 'aitm set-rank <issue#> <n> [--refine-key-file <path>]',
   },
   'update-event-fields': {
     group: 'GitHub',
@@ -303,7 +303,13 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('<p0|p1|p2|p3>', 'Priority value.'),
     argument('--cascade', 'Apply to descendants.'),
   ],
-  'set-rank': [argument('<issue#> <n>', 'Issue and numeric wave rank.')],
+  'set-rank': [
+    argument('<issue#> <n>', 'Issue and numeric wave rank.'),
+    argument(
+      '--refine-key-file <path>',
+      'Closed original Refine key, required for compatible pending recovery.'
+    ),
+  ],
   'update-event-fields': [
     argument('<issue#> <state>', 'Issue and lifecycle event state.'),
     argument('--item-id <id>', 'GitHub Project item id.'),
@@ -494,10 +500,13 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['set-rank', 'project-tether'],
   }),
   'set-rank': routableContract({
-    output: ['Prints the issue and numeric Rank written, or a configured-field warning.'],
+    effects: [
+      'Writes board Rank, independently verifies it, and persists only the verified rank in the fresh body cache. Pending refinement requires its compatible original closed key.',
+    ],
+    output: ['Prints Rank only after board and body verification, or a configured-field warning.'],
     exitCodes: [
       exitCode(0, 'rank updated or no Rank field was configured'),
-      exitCode(1, 'usage, configuration, or GitHub update failed'),
+      exitCode(1, 'usage, compatibility, provider observation, or body verification failed'),
     ],
     examples: ['npx aitm set-rank 1023 1'],
     relatedCommands: ['set-priority', 'project-tether'],
