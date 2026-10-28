@@ -268,7 +268,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:37a21f07b0558aa1ea9c7320a9c3626fd08fd5fa6b0aa0e4010a019fdc046a46"
+        "sitesSha256": "sha256:77fc274219f350dcdfb433a9d2a2ba0c8879e2685659141e624a8c6ee7883426"
       },
       "rationale": "Close-gate refusals and warnings combine delivery, approval, and timing authority."
     },
