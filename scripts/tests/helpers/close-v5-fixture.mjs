@@ -21,6 +21,7 @@ export function fixture({
   changed = false,
   shared = false,
   claim = null,
+  historyDepth = 1,
 } = {}) {
   const dir = mkdtempProjectIsolated('close-v5-');
   const git = (args, input) =>
@@ -35,12 +36,28 @@ export function fixture({
   git(['commit', '-qm', 'base']);
   const base = git(['rev-parse', 'HEAD']);
   git(['checkout', '-qb', 'feature/1878']);
+  const evidence = [];
+  for (let i = 1; i < historyDepth; i += 1) {
+    const parent = git(['rev-parse', 'HEAD']);
+    writeFileSync(path.join(dir, 'file with space.txt'), `intermediate${i}\n`);
+    git(['add', '.']);
+    const message = `[#1878] intermediate ${i}`;
+    git(['commit', '-qm', message]);
+    evidence.push({
+      oid: git(['rev-parse', 'HEAD']),
+      parents: [parent],
+      tree: git(['rev-parse', 'HEAD^{tree}']),
+      message,
+    });
+  }
+  const sourceParent = git(['rev-parse', 'HEAD']);
   writeFileSync(path.join(dir, 'file with space.txt'), 'accepted\n');
   git(['add', '.']);
   const sourceMessage = shared ? '[#1877] [#1878] accepted source' : '[#1878] accepted source';
   git(['commit', '-qm', sourceMessage]);
   const head = git(['rev-parse', 'HEAD']);
   const sourceTree = git(['rev-parse', 'HEAD^{tree}']);
+  evidence.push({ oid: head, parents: [sourceParent], tree: sourceTree, message: sourceMessage });
   git(['checkout', '-q', 'trunk']);
   if (advanced) {
     writeFileSync(path.join(dir, overlap ? 'file with space.txt' : 'other.txt'), 'trunk advance\n');
@@ -56,7 +73,7 @@ export function fixture({
     issueNumber: shared ? 1877 : ISSUE,
     prNumber: 99,
     expectedHeadSha: head,
-    commitSubjects: [sourceMessage],
+    commitSubjects: evidence.map((c) => c.message),
   });
   const text = { ...canonical };
   if (claim === 'prose') text.commitMessage = 'Mention [#1878] without a canonical claim';
@@ -84,7 +101,6 @@ export function fixture({
     sessionId: 'fixture-v5',
     clientCreatedAt: NOW,
   });
-  const evidence = [{ oid: head, parents: [base], tree: sourceTree, message: sourceMessage }];
   const receipt = buildDeliveryReceipt({
     intentId: intent.intentId,
     issueNumber: ISSUE,
@@ -106,7 +122,7 @@ export function fixture({
       tree,
       commitTitle: text.commitTitle,
       commitMessage: text.commitMessage,
-      sourceMapping: [{ source: head, integrated: merged }],
+      sourceMapping: evidence.map((c) => ({ source: c.oid, integrated: merged })),
       contentProof: {
         kind: 'equivalent-delta',
         sourceBase: base,
@@ -138,7 +154,7 @@ export function fixture({
     mergeMethod: 'squash',
     sourceCommitsComplete: true,
     sourceCommitsHeadSha: head,
-    sourceCommits: [{ oid: head, messageHeadline: evidence[0].message }],
+    sourceCommits: evidence.map((c) => ({ oid: c.oid, messageHeadline: c.message })),
     sourceCommitEvidence: evidence,
     headRefDeleted: false,
   };

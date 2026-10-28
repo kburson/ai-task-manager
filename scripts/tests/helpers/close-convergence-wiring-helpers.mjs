@@ -108,6 +108,7 @@ export async function runClose({
   beforeBodyMutation = null,
   operatorProjectDir = null,
   configOverrides = {},
+  initializeNativeAuthority = null,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), `aitm-${issueNumber}-close-wiring-`));
   const statePath = join(dir, '.tmp', 'aitm', 'state', 'state.json');
@@ -277,8 +278,9 @@ export async function runClose({
     process.env.TT_SKIP_DIRTY_CHECK = '1';
     process.exitCode = 0;
     result = await withUnitRuntimeRoot(
-      () =>
-        verbClose({
+      async () => {
+        if (initializeNativeAuthority) liveBody = await initializeNativeAuthority();
+        return verbClose({
           rest: [
             `#${issueNumber}`,
             ...(restartStaleTransaction ? ['--restart-stale-transaction'] : []),
@@ -450,7 +452,8 @@ export async function runClose({
               }
             : {}),
           ...contextOverrides,
-        }),
+        });
+      },
       { projectRoot: dir }
     );
     return {
