@@ -81,6 +81,8 @@ function nodeEvalCommand(program) {
   return `node -e "${program.replace(/[\\"$`]/g, '\\$&')}"`;
 }
 
+// source-edit-gate uses an isMain check; its loader must provide argv[1].
+// Keep the three top-level guards' invocation profile unchanged.
 export function guardBootstrapCommand(name) {
   const candidates = JSON.stringify(guardEntrypointCandidates(name));
   const program =
