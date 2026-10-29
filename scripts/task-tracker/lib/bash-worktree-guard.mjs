@@ -174,7 +174,10 @@ function classifySegment(segment) {
   ) {
     return { guarded: true, kind: 'git-mutation', segment, override };
   }
-  if (['npm', 'npx', 'node', 'aitm', 'task'].includes(executable) || executable === '/task') {
+  if (
+    ['npm', 'npx', 'node', 'aitm', 'aitm.mjs', 'task'].includes(executable) ||
+    executable === '/task'
+  ) {
     return { guarded: true, kind: 'verification-or-task', segment, override };
   }
   return { guarded: false, segment, override: false };

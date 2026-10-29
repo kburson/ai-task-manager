@@ -112,10 +112,15 @@ async function evaluate(input) {
     await import('./lib/bash-worktree-guard.mjs');
   const { readWorktreeIdentity, resolveCurrentSessionWorktreeBinding } =
     await import('./lib/worktree-binding-guard.mjs');
+  const { branchRenewalCommand, inspectNativeBranchRenewal } =
+    await import('./lib/native-branch-renewal.mjs');
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
+  const { occupancyPath } = await import('./paths.mjs');
+  const { readOccupancy } = await import('./lib/occupancy.mjs');
+  const { readPhysicalRuntimeIdentity } = await import('./lib/runtime-storage.mjs');
   const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
     await import('./lib/mutation-context.mjs');
 
@@ -167,7 +172,41 @@ async function evaluate(input) {
       invoking,
       classification: worktreeClassification,
     });
-    if (worktreeResult.block) block(worktreeResult.reason);
+    const branchMismatch =
+      input.session_id !== undefined &&
+      bound &&
+      invoking &&
+      bound.worktreePath === invoking.worktreePath &&
+      bound.worktreeBranch !== invoking.worktreeBranch;
+    const nativeBranchMismatch =
+      branchMismatch &&
+      (process.env.CODEX_THREAD_ID ||
+        process.env.CODEX_SESSION_ID ||
+        (() => {
+          const identity = readPhysicalRuntimeIdentity(projectRoot);
+          const row = readOccupancy(occupancyPath(identity.mainRoot))[String(bound.issueNumber)];
+          return row?.provider === 'codex' && row.sid === input.session_id;
+        })());
+    if (nativeBranchMismatch) {
+      const request = branchRenewalCommand(rawCommand);
+      if (!request)
+        block(
+          (worktreeResult.reason || 'Native branch mismatch.') +
+            '\n  For a clean same-commit branch-only change, use: ' +
+            'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start ' +
+            bound.issueNumber +
+            ' --role agent --confirm-relocation'
+        );
+      try {
+        await inspectNativeBranchRenewal({
+          request,
+          root: projectRoot,
+          sessionId: input.session_id,
+        });
+      } catch (error) {
+        block(error.message);
+      }
+    } else if (worktreeResult.block) block(worktreeResult.reason);
   }
 
   // Write-allowed prefixes — project root only. `./.scratch/` lives inside the
