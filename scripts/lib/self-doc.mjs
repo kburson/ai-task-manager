@@ -45,7 +45,7 @@ const ROUTABLE_SELF_DOC = {
     path: 'scripts/package/doctor.mjs',
     synopsis: 'Report read-only bootstrap health for the installed AITM project contract.',
     audience: 'Maintainer or CI validating committed AITM bootstrap artifacts before tests.',
-    usage: 'aitm doctor [--json]',
+    usage: 'aitm doctor [--json [--binding-proof <nonce> | --runtime-proof <nonce>]]',
   },
   'create-issue': {
     group: 'GitHub',
@@ -221,7 +221,17 @@ const STANDARD_EXIT_CODES = Object.freeze([
 ]);
 
 const ROUTABLE_ARGUMENTS = Object.freeze({
-  doctor: [argument('--json', 'Emit exactly one aitm.doctor/v1 JSON document.')],
+  doctor: [
+    argument('--json', 'Emit one JSON health or requested diagnostic document.'),
+    argument(
+      '--binding-proof <nonce>',
+      'Compare a fresh actual native hook observation with the CLI binding.'
+    ),
+    argument(
+      '--runtime-proof <nonce>',
+      'Compare actual observed helper bytes; this is not whole-runtime authority.'
+    ),
+  ],
   'create-issue': [
     argument('--title <text>', 'Issue title.'),
     argument('--body-file <path>', 'Use an already assembled canonical issue body.'),
@@ -432,8 +442,12 @@ const routableContract = ({
 const ROUTABLE_CONTRACTS = Object.freeze({
   doctor: routableContract({
     preconditions: ['Run inside the Git worktree whose committed AITM installation is inspected.'],
-    effects: ['Reads package, project files, and local Git metadata; writes nothing.'],
-    output: ['Prints equivalent human or aitm.doctor/v1 JSON health rows.'],
+    effects: [
+      'Ordinary health reads package, project files and local Git metadata without writes. Diagnostic forms consume their matching fresh hook nonce; they grant no mutation authority.',
+    ],
+    output: [
+      'Prints equivalent human or aitm.doctor/v1 JSON health rows, or the explicitly requested binding/helper diagnostic.',
+    ],
     exitCodes: [
       exitCode(0, 'every required installation check is healthy'),
       exitCode(1, 'a complete report contains one or more unhealthy required checks'),
