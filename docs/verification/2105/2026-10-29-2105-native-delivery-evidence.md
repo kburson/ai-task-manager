@@ -69,6 +69,8 @@ artifact's checks do not constitute a new-head receipt for this document.
 
 ## Separate original and wrapper authority
 
+<!-- cspell:ignore KAWGC -->
+
 Original #2093 reached CLOSED and board Done at 2026-10-29T14:37:07Z through
 its own native gates. Its v5 receipt is `01M641562C5MRT73KAWGC00GAS`; Close
 transaction `8dc11215-ca2d-49aa-a2b4-d301b6b7f53d` independently verified all
