@@ -5,7 +5,15 @@ import { parseEpicWaveArgs, runEpicWave } from '../../../../task-tracker/verbs/e
 import { COMMAND_CATALOG } from '../../../../task-tracker/lib/command-surface/catalog.mjs';
 
 test('closed command arguments accept every registered operation and reject unknown or duplicate inputs', () => {
-  for (const action of ['prepare', 'record', 'resume', 'refresh', 'show', 'revoke']) {
+  for (const action of [
+    'prepare',
+    'record',
+    'resume',
+    'refresh',
+    'show',
+    'revoke',
+    'restore-worktree',
+  ]) {
     assert.equal(
       parseEpicWaveArgs([action, '107', '--input-file', '.scratch/gh/wave.json', '--json']).action,
       action

@@ -104,7 +104,7 @@ export async function prepareRankWave({
   }
 }
 
-async function history(runtime, epic) {
+export async function history(runtime, epic) {
   const records = await runtime.listRecords(epic);
   if (!Array.isArray(records) || records.some((r) => !r?.commentNodeId || !r.wave))
     throw new Error('comment history unreadable');
@@ -134,7 +134,7 @@ function sourceNotBefore(record, previous) {
     return previous.expiresAt;
   return previous.createdAt;
 }
-async function verifyHistorySources(comments, { repository, epic, rank, now, runtime }) {
+export async function verifyHistorySources(comments, { repository, epic, rank, now, runtime }) {
   const selected = selectRankWaveRecord(
     comments.map((c) => c.wave),
     { repository, epic, rank, now }
