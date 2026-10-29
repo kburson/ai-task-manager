@@ -1,15 +1,18 @@
 // @story #2106
+// cspell:ignore gpgsign
 // @story #2088
 // Offline installation/selection fixtures, never genuine native-worker evidence.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import {
   cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -41,7 +44,7 @@ function files(root, prefix = '') {
     })
     .sort();
 }
-function hook(command, cwd, input) {
+function hook(command, cwd, input, toolName = 'Bash') {
   const env = { ...process.env, CODEX_THREAD_ID: sid, CODEX_SESSION_ID: sid };
   for (const key of [
     'AI_TASK_MANAGER_SESSION_ID',
@@ -60,8 +63,8 @@ function hook(command, cwd, input) {
     input: JSON.stringify({
       session_id: sid,
       cwd,
-      tool_name: 'Bash',
-      tool_input: { command: input },
+      tool_name: toolName,
+      tool_input: typeof input === 'string' ? { command: input } : input,
     }),
   });
 }
@@ -71,6 +74,106 @@ function observation(command, cwd, nonce) {
   const output = JSON.parse(result.stdout);
   assert.notEqual(output.decision, 'block', result.stdout);
   return JSON.parse(output.hookSpecificOutput.additionalContext).runtimeObservation;
+}
+
+const productionDependencies = [
+  'acorn',
+  'acorn-jsx',
+  'argparse',
+  'eslint-visitor-keys',
+  'espree',
+  'js-yaml',
+];
+function qualifyDependencies(packageRoot) {
+  const privateModules = realpathSync(path.join(packageRoot, 'node_modules'));
+  const lock = JSON.parse(readFileSync(path.join(packageRoot, 'package-lock.json'), 'utf8'));
+  const visited = new Map();
+  function visit(parent) {
+    const pkg = JSON.parse(readFileSync(path.join(parent, 'package.json'), 'utf8'));
+    const resolve = createRequire(path.join(parent, 'package.json'));
+    for (const name of Object.keys(pkg.dependencies ?? {})) {
+      const entry = realpathSync(resolve.resolve(name));
+      assert.equal(
+        entry.startsWith(privateModules + path.sep),
+        true,
+        `private dependency escaped: ${name}`
+      );
+      let directory = path.dirname(entry);
+      while (
+        !existsSync(path.join(directory, 'package.json')) ||
+        JSON.parse(readFileSync(path.join(directory, 'package.json'), 'utf8')).name !== name
+      ) {
+        const next = path.dirname(directory);
+        assert.notEqual(next, directory);
+        directory = next;
+      }
+      if (visited.has(name)) {
+        assert.equal(visited.get(name).root, directory);
+        continue;
+      }
+      const metadata = JSON.parse(readFileSync(path.join(directory, 'package.json'), 'utf8'));
+      const lockKey = path.relative(packageRoot, directory).split(path.sep).join('/');
+      assert.equal(metadata.version, lock.packages[lockKey].version, name);
+      const inventory = files(directory).map((relative) => ({
+        path: relative,
+        sha256: digest(path.join(directory, relative)),
+      }));
+      assert.ok(inventory.length > 0, name);
+      visited.set(name, { name, version: metadata.version, root: directory, entry, inventory });
+      visit(directory);
+    }
+  }
+  visit(packageRoot);
+  assert.deepEqual([...visited.keys()].sort(), productionDependencies);
+  const imports = JSON.parse(
+    run(
+      process.execPath,
+      [
+        '--input-type=module',
+        '-e',
+        'process.stdout.write(JSON.stringify(process.argv.slice(1).map(name=>({name,url:import.meta.resolve(name)}))));',
+        ...productionDependencies,
+      ],
+      packageRoot
+    )
+  );
+  for (const { name, url } of imports)
+    assert.equal(
+      realpathSync(fileURLToPath(url)).startsWith(privateModules + path.sep),
+      true,
+      name
+    );
+  return [...visited.values()];
+}
+function qualifyStage(packageRoot, report) {
+  for (const entry of report.files)
+    assert.equal(
+      digest(path.join(packageRoot, entry.path)),
+      digest(path.join(source, entry.path)),
+      entry.path
+    );
+  return qualifyDependencies(packageRoot);
+}
+function publishStage(staged, live, report) {
+  assert.equal(existsSync(live), false, 'never overwrite a selected package');
+  qualifyStage(staged, report);
+  mkdirSync(path.dirname(live), { recursive: true });
+  renameSync(staged, live);
+}
+function admitted(result) {
+  assert.equal(result.status, 0, result.stderr);
+  if (result.stdout.trim())
+    assert.notEqual(JSON.parse(result.stdout).decision, 'block', result.stdout);
+}
+function refused(result) {
+  assert.equal(
+    result.status === 2 ||
+      (result.status === 0 &&
+        result.stdout.trim() &&
+        JSON.parse(result.stdout).decision === 'block'),
+    true,
+    result.stderr + result.stdout
+  );
 }
 
 test('complete package staging and atomic hook selection preserve safe interruption boundaries', async (t) => {
@@ -155,6 +258,39 @@ test('complete package staging and atomic hook selection preserve safe interrupt
     const command = configuration.hooks.PreToolUse.flatMap((entry) => entry.hooks).find((entry) =>
       entry.command.includes('activity-guard.mjs')
     ).command;
+    const configuredGuards = configuration.hooks.PreToolUse.flatMap((entry) =>
+      entry.hooks.map((item) => ({ matcher: entry.matcher, command: item.command }))
+    );
+    assert.equal(configuredGuards.length, 4);
+    const guardCases = configuredGuards.map((entry) => {
+      const script = ['bash-guard.mjs', 'activity-guard.mjs', 'source-edit-gate.mjs'].find((name) =>
+        entry.command.includes(name)
+      );
+      assert.ok(script);
+      const edit = entry.matcher.includes('apply_patch');
+      return {
+        ...entry,
+        script,
+        edit,
+        tool: edit ? 'apply_patch' : 'Bash',
+        positive: edit
+          ? {
+              command:
+                '*** Begin Patch\n*** Add File: .scratch/fixture-proof.md\n+proof\n*** End Patch',
+            }
+          : 'git status --short',
+        negative: edit
+          ? {
+              command:
+                '*** Begin Patch\n*** Add File: src/unauthorized.mjs\n+unauthorized\n*** End Patch',
+            }
+          : script === 'bash-guard.mjs'
+            ? 'gh issue create --title forbidden'
+            : 'touch unauthorized.mjs',
+      };
+    });
+    const qualified = qualifyStage(staged, report);
+    assert.equal(qualified.length, 6);
     const expected = (root) =>
       pathToFileURL(path.join(root, 'scripts/task-tracker/lib/native-runtime-observation.mjs'))
         .href;
@@ -171,42 +307,43 @@ test('complete package staging and atomic hook selection preserve safe interrupt
       assert.equal(existsSync(path.join(fixture, 'unauthorized.mjs')), false);
     });
     await t.test(
-      'partial package and missing private dependency cannot satisfy complete staging qualification',
+      'every configured enforcement hook runs through source fallback before publication',
       () => {
-        const file = path.join(staged, 'scripts/task-tracker/activity-guard.mjs');
-        const backup = readFileSync(file);
-        rmSync(file);
-        assert.equal(existsSync(file), false);
-        assert.equal(
-          observation(command, fixture, '2'.repeat(32)).helperModule.url,
-          expected(fixture)
-        );
-        writeFileSync(file, backup, { mode: 0o755 });
-        const dependency = path.join(staged, 'node_modules', 'espree');
-        renameSync(dependency, dependency + '.held');
-        const probe = run(
-          process.execPath,
-          [
-            '--input-type=module',
-            '-e',
-            "import {createRequire} from 'node:module'; const r=createRequire(process.cwd()+'/package.json'); process.stdout.write(r.resolve('espree'));",
-          ],
-          staged
-        );
-        assert.equal(
-          probe.startsWith(path.join(staged, 'node_modules') + path.sep),
-          false,
-          'missing private dependency escapes the staged closure and must not be published'
-        );
-        renameSync(dependency + '.held', dependency);
-        assert.equal(existsSync(live), false);
+        for (const item of guardCases) {
+          admitted(hook(item.command, fixture, item.positive, item.tool));
+          refused(hook(item.command, fixture, item.negative, item.tool));
+        }
+      }
+    );
+    await t.test(
+      'missing entry or any locked private dependency refuses publication without selecting a partial stage',
+      () => {
+        for (const script of ['bash-guard.mjs', 'activity-guard.mjs', 'source-edit-gate.mjs']) {
+          const entry = path.join(staged, 'scripts/task-tracker', script);
+          renameSync(entry, entry + '.held');
+          try {
+            assert.throws(() => publishStage(staged, live, report));
+            assert.equal(existsSync(live), false);
+          } finally {
+            renameSync(entry + '.held', entry);
+          }
+        }
+        for (const name of productionDependencies) {
+          const dependency = path.join(staged, 'node_modules', name);
+          renameSync(dependency, dependency + '.held');
+          try {
+            assert.throws(() => publishStage(staged, live, report));
+            assert.equal(existsSync(live), false);
+          } finally {
+            renameSync(dependency + '.held', dependency);
+          }
+        }
       }
     );
     await t.test(
       'one filesystem rename selects the whole qualified package including private dependencies',
       () => {
-        mkdirSync(path.dirname(live), { recursive: true });
-        renameSync(staged, live);
+        publishStage(staged, live, report);
         assert.equal(existsSync(staged), false);
         assert.equal(
           observation(command, fixture, '3'.repeat(32)).helperModule.url,
@@ -235,6 +372,49 @@ test('complete package staging and atomic hook selection preserve safe interrupt
       }
     );
     await t.test(
+      'every configured enforcement hook selects the actual package, preserves installed self-edit refusal and fails closed with both entries absent',
+      () => {
+        for (const item of guardCases) {
+          const fallback = path.join(fixture, 'scripts/task-tracker', item.script);
+          const installed = path.join(live, 'scripts/task-tracker', item.script);
+          renameSync(fallback, fallback + '.held');
+          try {
+            admitted(hook(item.command, fixture, item.positive, item.tool));
+            refused(hook(item.command, fixture, item.negative, item.tool));
+            if (item.edit) {
+              const target = path
+                .join('node_modules', packageName, 'scripts/task-tracker/activity-guard.mjs')
+                .split(path.sep)
+                .join('/');
+              const result = hook(
+                item.command,
+                fixture,
+                {
+                  command: `*** Begin Patch\n*** Update File: ${target}\n@@\n-old\n+new\n*** End Patch`,
+                },
+                item.tool
+              );
+              refused(result);
+              assert.match(JSON.parse(result.stdout).reason, /installed guard/i);
+            }
+            renameSync(installed, installed + '.held');
+            try {
+              assert.equal(
+                hook(item.command, fixture, item.positive, item.tool).status,
+                2,
+                'missing both configured entries must fail closed'
+              );
+            } finally {
+              renameSync(installed + '.held', installed);
+            }
+          } finally {
+            renameSync(fallback + '.held', fallback);
+          }
+        }
+        assert.equal(qualifyDependencies(live).length, 6);
+      }
+    );
+    await t.test(
       'missing package entry and whole-package deletion select the verified source fallback',
       () => {
         const guard = path.join(live, 'scripts/task-tracker/activity-guard.mjs');
@@ -256,22 +436,13 @@ test('complete package staging and atomic hook selection preserve safe interrupt
     await t.test(
       'dependency loss during recovery cannot turn an unbound write into an unblocked hook error',
       () => {
-        for (const modules of [
-          path.join(live, 'node_modules'),
-          path.join(fixture, 'node_modules'),
-        ]) {
-          const espree = path.join(modules, 'espree');
-          if (existsSync(espree)) renameSync(espree, espree + '.held');
-        }
-        const result = hook(command, fixture, 'touch unauthorized.mjs');
-        const blocked =
-          result.status === 2 ||
-          (result.status === 0 && JSON.parse(result.stdout).decision === 'block');
-        assert.equal(
-          blocked,
-          true,
-          `missing dependency produced exit${result.status} without blocking decision: ${result.stderr}`
-        );
+        for (const modules of [path.join(live, 'node_modules'), path.join(fixture, 'node_modules')])
+          for (const name of productionDependencies) {
+            const dependency = path.join(modules, name);
+            if (existsSync(dependency)) renameSync(dependency, dependency + '.held');
+          }
+        for (const item of guardCases)
+          refused(hook(item.command, fixture, item.negative, item.tool));
       }
     );
   } finally {

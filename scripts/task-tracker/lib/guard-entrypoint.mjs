@@ -91,6 +91,7 @@ export function guardBootstrapCommand(name) {
     `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
     `if(!p){process.stderr.write('aitm ${name}: guard entrypoint unresolved ` +
     `(scoped package + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
+    (name === 'source-edit-gate' ? `process.argv=[process.argv[0],p];` : '') +
     `import(pathToFileURL(p).href);`;
   return nodeEvalCommand(program);
 }

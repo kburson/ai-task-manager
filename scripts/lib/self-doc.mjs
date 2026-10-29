@@ -443,7 +443,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   doctor: routableContract({
     preconditions: ['Run inside the Git worktree whose committed AITM installation is inspected.'],
     effects: [
-      'Ordinary health reads package, project files and local Git metadata without writes. Diagnostic forms consume their matching fresh hook nonce; they grant no mutation authority.',
+      'Ordinary health reads package, project files and local Git metadata; writes nothing. Diagnostic forms consume their matching fresh hook nonce; they grant no mutation authority.',
     ],
     output: [
       'Prints equivalent human or aitm.doctor/v1 JSON health rows, or the explicitly requested binding/helper diagnostic.',

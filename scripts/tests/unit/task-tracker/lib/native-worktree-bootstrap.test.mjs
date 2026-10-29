@@ -121,3 +121,11 @@ test('public doctor help advertises the accepted diagnostic nonce arguments', as
   assert.match(output, /--runtime-proof/);
   assert.match(output, /<nonce>/);
 });
+
+test('binding diagnostic nonce and command reject every trailing line terminator', () => {
+  const command = 'npx aitm doctor --json --binding-proof ' + nonce;
+  for (const ending of ['\n', '\r', '\r\n', '\u2028', '\u2029']) {
+    assert.equal(validateBindingNonce(nonce + ending), false);
+    assert.equal(bindingProofNonce(command + ending), null);
+  }
+});
