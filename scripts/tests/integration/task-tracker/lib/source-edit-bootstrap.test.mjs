@@ -72,3 +72,58 @@ test('the generated native source-edit loader actually executes the installed-ta
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('canonical hook writer replaces exactly the known dormant command and preserves user hooks', async () => {
+  const { readFileSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { patchCodexHooksJson } = await import('../../../../../bin/cli.mjs');
+  const predecessor = JSON.parse(
+    readFileSync(
+      new URL('../../../fixtures/2106-source-edit-predecessor.json', import.meta.url),
+      'utf8'
+    )
+  );
+  const root = createRuntimeRootFixture('source-edit-upgrade-');
+  try {
+    const file = path.join(root, '.codex', 'hooks.json');
+    mkdirSync(path.dirname(file), { recursive: true });
+    const user = {
+      matcher: 'apply_patch',
+      hooks: [{ type: 'command', command: 'echo user-owned-check' }],
+    };
+    writeFileSync(
+      file,
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'apply_patch|Edit|Write|NotebookEdit',
+              hooks: [{ type: 'command', command: predecessor.command }],
+            },
+            user,
+          ],
+        },
+      })
+    );
+    patchCodexHooksJson(file);
+    const hooks = JSON.parse(readFileSync(file, 'utf8')).hooks.PreToolUse;
+    const managed = hooks
+      .flatMap((entry) => entry.hooks)
+      .filter(
+        (entry) =>
+          entry.command === predecessor.command ||
+          entry.command === guardBootstrapCommand('source-edit-gate')
+      );
+    assert.equal(
+      managed.length,
+      1,
+      'canonical upgrade must replace the old managed command rather than leave two profiles'
+    );
+    assert.equal(managed[0].command, guardBootstrapCommand('source-edit-gate'));
+    assert.ok(hooks.some((entry) => JSON.stringify(entry) === JSON.stringify(user)));
+    const once = readFileSync(file, 'utf8');
+    patchCodexHooksJson(file);
+    assert.equal(readFileSync(file, 'utf8'), once, 'canonical upgrade is idempotent');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

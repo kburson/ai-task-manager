@@ -98,8 +98,13 @@ export function guardBootstrapCommand(name) {
   return nodeEvalCommand(program);
 }
 
-// #869 — bootstrap command for the lifecycle HOOKS. Unlike the guards (which run
-// at top-level module scope), hooks gate their main block on process.argv[1]
+// Exact predecessor spelling, recognized only for canonical managed-hook migration.
+export const LEGACY_SOURCE_EDIT_BOOTSTRAP_COMMAND = guardBootstrapCommand(
+  'source-edit-gate'
+).replace('process.argv=[process.argv[0],p];', '');
+
+// #869 — bootstrap command for lifecycle hooks. Unlike top-level guard entries
+// (with source-edit-gate handled above), hooks gate main on process.argv[1]
 // matching their own filename and read positional args from process.argv[2+]
 // (e.g. on-ask `pause`/`resume`). So before importing we rewrite process.argv to
 // [argv0, resolvedPath, ...extraArgs] — this makes the module's isMain check

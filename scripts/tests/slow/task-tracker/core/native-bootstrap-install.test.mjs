@@ -237,7 +237,10 @@ test('complete package staging and atomic hook selection preserve safe interrupt
     cpSync(path.join(source, 'package.json'), path.join(fixture, 'package.json'));
     mkdirSync(path.join(fixture, '.codex'), { recursive: true });
     cpSync(path.join(source, '.codex/hooks.json'), path.join(fixture, '.codex/hooks.json'));
-    writeFileSync(path.join(fixture, '.gitignore'), '.tmp/\nnode_modules/\n.ai-task-manager/\n');
+    writeFileSync(
+      path.join(fixture, '.gitignore'),
+      '.tmp/\nnode_modules/\n.ai-task-manager/runtime/\n'
+    );
     run('git', ['add', '.'], fixture);
     run(
       'git',
@@ -369,6 +372,49 @@ test('complete package staging and atomic hook selection preserve safe interrupt
           JSON.parse(hook(command, fixture, 'touch unauthorized.mjs').stdout).decision,
           'block'
         );
+      }
+    );
+    await t.test(
+      'the installed public installer upgrades the exact predecessor hook and publishes its own manifest',
+      () => {
+        const file = path.join(fixture, '.codex/hooks.json');
+        const before = JSON.parse(readFileSync(file, 'utf8'));
+        const predecessor = JSON.parse(
+          readFileSync(
+            path.join(source, 'scripts/tests/fixtures/2106-source-edit-predecessor.json'),
+            'utf8'
+          )
+        );
+        for (const entry of before.hooks.PreToolUse)
+          for (const item of entry.hooks)
+            if (item.command.includes('source-edit-gate.mjs')) item.command = predecessor.command;
+        writeFileSync(file, JSON.stringify(before, null, 2) + '\n');
+        run(
+          process.execPath,
+          [
+            path.join(live, 'bin/cli.mjs'),
+            'install',
+            '--agent',
+            'codex',
+            '--link-mode',
+            'stub',
+            '--target',
+            fixture,
+          ],
+          fixture
+        );
+        const actual = JSON.parse(readFileSync(file, 'utf8'))
+          .hooks.PreToolUse.flatMap((entry) => entry.hooks)
+          .filter((item) => item.command.includes('source-edit-gate.mjs'));
+        assert.equal(actual.length, 1);
+        assert.equal(
+          actual[0].command,
+          guardCases.find((item) => item.script === 'source-edit-gate.mjs').command
+        );
+        const manifest = JSON.parse(
+          readFileSync(path.join(fixture, '.ai-task-manager/install-manifest.json'), 'utf8')
+        );
+        assert.deepEqual(manifest.intent.providers, ['codex']);
       }
     );
     await t.test(
