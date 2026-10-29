@@ -405,6 +405,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   const bootstrapEntries = [
     'native-bootstrap-inputs',
     'native-worktree-bootstrap',
+    'native-branch-renewal',
     'native-binding-proof',
     'native-runtime-observation',
     'native-runtime-proof',

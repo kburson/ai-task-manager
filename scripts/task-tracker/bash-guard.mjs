@@ -112,6 +112,8 @@ async function evaluate(input) {
     await import('./lib/bash-worktree-guard.mjs');
   const { readWorktreeIdentity, resolveCurrentSessionWorktreeBinding } =
     await import('./lib/worktree-binding-guard.mjs');
+  const { branchRenewalCommand, inspectNativeBranchRenewal } =
+    await import('./lib/native-branch-renewal.mjs');
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
@@ -167,7 +169,29 @@ async function evaluate(input) {
       invoking,
       classification: worktreeClassification,
     });
-    if (worktreeResult.block) block(worktreeResult.reason);
+    const nativeBranchMismatch =
+      input.session_id !== undefined &&
+      bound &&
+      invoking &&
+      bound.worktreePath === invoking.worktreePath &&
+      bound.worktreeBranch !== invoking.worktreeBranch;
+    if (nativeBranchMismatch) {
+      const request = branchRenewalCommand(rawCommand);
+      if (!request)
+        block(
+          worktreeResult.reason ||
+            'Native branch mismatch requires the exact same-issue Start renewal.'
+        );
+      try {
+        await inspectNativeBranchRenewal({
+          request,
+          root: projectRoot,
+          sessionId: input.session_id,
+        });
+      } catch (error) {
+        block(error.message);
+      }
+    } else if (worktreeResult.block) block(worktreeResult.reason);
   }
 
   // Write-allowed prefixes — project root only. `./.scratch/` lives inside the
