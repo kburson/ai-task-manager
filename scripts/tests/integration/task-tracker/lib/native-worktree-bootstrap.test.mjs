@@ -99,6 +99,8 @@ function fixture() {
     ].join(path.delimiter),
     CODEX_THREAD_ID: sid,
     CODEX_SESSION_ID: sid,
+    // Suppress ambient system filters; global/worktree execution config remains checked.
+    GIT_CONFIG_NOSYSTEM: '1',
   });
   for (const key of [
     'AI_TASK_MANAGER_SESSION_ID',
@@ -678,6 +680,42 @@ test('payload SID detects a foreign fleet binding when hook executor variables a
     delete hookEnv.CODEX_SESSION_ID;
     assert.equal(run(f.root, hookEnv)?.decision, 'block');
     assert.deepEqual(getActiveTask(sid, other), before);
+  } finally {
+    rmSync(f.parent, { recursive: true, force: true });
+  }
+});
+
+test('only exact system Git configuration suppression is admitted and other overrides remain refused', () => {
+  const f = fixture();
+  try {
+    assert.equal(run(f.root, { ...f.env, GIT_CONFIG_NOSYSTEM: '1' }), null);
+    const ambientEnv = { ...f.env };
+    delete ambientEnv.GIT_CONFIG_NOSYSTEM;
+    const settings = execFileSync('git', ['-C', f.root, 'config', '--null', '--list'], {
+      env: ambientEnv,
+      encoding: 'utf8',
+    });
+    const hasSystemFilters = settings.split('\0').some((entry) => entry.startsWith('filter.'));
+    const ordinary = run(f.root, ambientEnv);
+    if (hasSystemFilters) {
+      assert.equal(ordinary?.decision, 'block');
+      assert.match(ordinary.reason, /Git execution configuration/);
+    } else assert.equal(ordinary, null);
+    for (const value of ['0', 'true', 'yes', '2', '1\n', 'foreign-config']) {
+      const result = run(f.root, { ...f.env, GIT_CONFIG_NOSYSTEM: value });
+      assert.equal(result?.decision, 'block', value);
+      assert.match(result.reason, /execution environment injection/);
+    }
+    for (const change of [
+      { GIT_CONFIG_SYSTEM: 'foreign-config' },
+      { GIT_CONFIG_GLOBAL: 'foreign-config' },
+      { GIT_CONFIG_COUNT: '1' },
+      { GIT_SSH_COMMAND: 'foreign-command' },
+    ]) {
+      const result = run(f.root, { ...f.env, GIT_CONFIG_NOSYSTEM: '1', ...change });
+      assert.equal(result?.decision, 'block');
+      assert.match(result.reason, /execution environment injection/);
+    }
   } finally {
     rmSync(f.parent, { recursive: true, force: true });
   }

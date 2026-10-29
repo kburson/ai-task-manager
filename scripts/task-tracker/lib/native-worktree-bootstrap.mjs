@@ -135,6 +135,7 @@ export function assertBootstrapHost({ root, env = process.env }) {
     if (
       value &&
       !['GIT_PAGER', 'GIT_TERMINAL_PROMPT'].includes(key) &&
+      !(key === 'GIT_CONFIG_NOSYSTEM' && value === '1') &&
       (new RegExp(
         '^(?:BASH_ENV|ENV|NODE_OPTIONS|SHELLOPTS|BASHOPTS|CDPATH|LD_PRELOAD|DYLD_.*|GIT_.*)$',
         'i'
