@@ -1,4 +1,5 @@
 // @story #2093 #2105
+// cspell:words fsmonitor SHELLOPTS BASHOPTS CDPATH DYLD onloadscript
 // Read-only admission for one native Start; existing bind writers own all effects.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -7,7 +8,7 @@ import path from 'node:path';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
-import { occupancyPath } from '../paths.mjs';
+import { occupancyPath, configPath } from '../paths.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { loadConfig } from '../config.mjs';
 import { readOccupancy } from './occupancy.mjs';
@@ -69,6 +70,8 @@ function physicalParents(root, target) {
 
 // Git plumbing and raw object bytes avoid executing clean filters or fsmonitor.
 function inspectCleanCheckout(root, identity, oldBranch, newBranch, git) {
+  if (git('for-each-ref', '--format=%(refname)', 'refs/replace/').trim())
+    refuse('Git replacement objects');
   for (const branch of [oldBranch, newBranch]) {
     if (typeof branch !== 'string' || branch === 'HEAD') refuse('detached or missing branch');
     git('check-ref-format', 'refs/heads/' + branch);
@@ -208,7 +211,15 @@ export async function inspectNativeBranchRenewal({
   const git = (...args) =>
     (deps.execFileSync ?? execFileSync)(
       tools.git,
-      ['--no-optional-locks', '-c', 'core.fsmonitor=false', '-C', root, ...args],
+      [
+        '--no-replace-objects',
+        '--no-optional-locks',
+        '-c',
+        'core.fsmonitor=false',
+        '-C',
+        root,
+        ...args,
+      ],
       { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] }
     );
   const head = inspectCleanCheckout(
@@ -218,8 +229,7 @@ export async function inspectNativeBranchRenewal({
     invoking.worktreeBranch,
     git
   );
-  const configuration =
-    cfg ?? loadConfig({ projectPath: path.join(root, '.ai-task-manager/task-tracker.json') });
+  const configuration = cfg ?? loadConfig({ projectPath: configPath(root) });
   const remote = await (deps.readRemote ?? readRemote)(request.issueNumber, configuration);
   const state = remote.snapshot?.state;
   const owners = ownershipDecision({
@@ -271,13 +281,13 @@ export async function enforceNativeBranchRenewalEntry({ argv, root, cfg, env = p
   if (!env.CODEX_THREAD_ID && !env.CODEX_SESSION_ID) return null;
   if (argv?.[0] !== 'start') return null;
   const sid = currentSessionId();
-  assertNativeSession(sid, env);
   const record = getActiveTask(sid, root);
   if (
     !record?.issue ||
     record.worktreeBranch === readWorktreeIdentity({ projectDir: root }).worktreeBranch
   )
     return null;
+  assertNativeSession(sid, env);
   const request = branchRenewalArgv(argv);
   if (!request) refuse('unsupported Start renewal');
   return inspectNativeBranchRenewal({

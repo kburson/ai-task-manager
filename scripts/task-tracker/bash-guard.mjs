@@ -118,6 +118,9 @@ async function evaluate(input) {
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
+  const { occupancyPath } = await import('./paths.mjs');
+  const { readOccupancy } = await import('./lib/occupancy.mjs');
+  const { readPhysicalRuntimeIdentity } = await import('./lib/runtime-storage.mjs');
   const { resolveInvocationDirectory, parseDirectGit, inspectQuotedHeredocs } =
     await import('./lib/mutation-context.mjs');
 
@@ -169,12 +172,21 @@ async function evaluate(input) {
       invoking,
       classification: worktreeClassification,
     });
-    const nativeBranchMismatch =
+    const branchMismatch =
       input.session_id !== undefined &&
       bound &&
       invoking &&
       bound.worktreePath === invoking.worktreePath &&
       bound.worktreeBranch !== invoking.worktreeBranch;
+    const nativeBranchMismatch =
+      branchMismatch &&
+      (process.env.CODEX_THREAD_ID ||
+        process.env.CODEX_SESSION_ID ||
+        (() => {
+          const identity = readPhysicalRuntimeIdentity(projectRoot);
+          const row = readOccupancy(occupancyPath(identity.mainRoot))[String(bound.issueNumber)];
+          return row?.provider === 'codex' && row.sid === input.session_id;
+        })());
     if (nativeBranchMismatch) {
       const request = branchRenewalCommand(rawCommand);
       if (!request)

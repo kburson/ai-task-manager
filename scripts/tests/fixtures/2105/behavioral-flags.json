@@ -1,0 +1,49 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "flags": [
+    {
+      "flag": "AITM_EVIDENCE_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/native-branch-renewal.mjs",
+          "symbol": "native renewal admission",
+          "excerpt": "if (hasUnsupportedGitEnvironment(env) || env.TT_SKIP_NETWORK === '1' || env.AITM_EVIDENCE_CONTEXT)",
+          "fingerprint": "sha256:01ce2e5b061c5768d22f32e9b42068edb1d9db84d12b15b508c5701477405646"
+        }
+      ],
+      "defaultBehavior": "Renewal uses live native identity and GitHub observations",
+      "nondefaultBehavior": "Renewal refuses recorded execution context and network suppression",
+      "changes": {
+        "predicate": true,
+        "effect": false
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "A refusal boundary, never permission to skip native checks",
+      "ownerTask": "#2105",
+      "verifier": "scripts/tests/integration/task-tracker/lib/native-branch-observation.test.mjs"
+    },
+    {
+      "flag": "TT_SKIP_NETWORK",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/native-branch-renewal.mjs",
+          "symbol": "native renewal admission",
+          "excerpt": "if (hasUnsupportedGitEnvironment(env) || env.TT_SKIP_NETWORK === '1' || env.AITM_EVIDENCE_CONTEXT)",
+          "fingerprint": "sha256:01ce2e5b061c5768d22f32e9b42068edb1d9db84d12b15b508c5701477405646"
+        }
+      ],
+      "defaultBehavior": "Renewal uses live native identity and GitHub observations",
+      "nondefaultBehavior": "Renewal refuses recorded execution context and network suppression",
+      "changes": {
+        "predicate": true,
+        "effect": false
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "A refusal boundary, never permission to skip native checks",
+      "ownerTask": "#2105",
+      "verifier": "scripts/tests/integration/task-tracker/lib/native-branch-observation.test.mjs"
+    }
+  ]
+}

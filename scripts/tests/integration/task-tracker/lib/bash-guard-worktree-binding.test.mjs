@@ -54,12 +54,19 @@ function makeRepo() {
   return { root, child };
 }
 
-async function runGuard({ cwd, payloadCwd = cwd, command, sessionId, native = false }) {
+async function runGuard({
+  cwd,
+  payloadCwd = cwd,
+  command,
+  sessionId,
+  native = false,
+  claude = false,
+}) {
   const payload = JSON.stringify({
     tool_name: 'Bash',
     cwd: payloadCwd,
     tool_input: { command },
-    ...(native ? { session_id: sessionId } : {}),
+    ...(native || claude ? { session_id: sessionId } : {}),
   });
   const env = { ...process.env };
   if (native) {
@@ -80,6 +87,11 @@ async function runGuard({ cwd, payloadCwd = cwd, command, sessionId, native = fa
     env.CODEX_THREAD_ID = sessionId;
     env.CODEX_SESSION_ID = sessionId;
   } else {
+    if (claude) {
+      delete env.CODEX_THREAD_ID;
+      delete env.CODEX_SESSION_ID;
+      env.AI_TASK_MANAGER_APP_NAME = 'claude';
+    }
     env.AI_TASK_MANAGER_PROJECT_DIR = payloadCwd;
     env.AI_TASK_MANAGER_SESSION_ID = sessionId;
   }
@@ -184,6 +196,42 @@ test('native same-commit branch Start reaches the renewal path', async (t) => {
     const refusal = await runGuard({ cwd: child, sessionId: sid, native: true, command });
     assert.equal(JSON.parse(refusal.stdout).decision, 'block', command);
   }
+});
+
+test('Claude payload session retains its explicit branch-mismatch override', async (t) => {
+  const fixture = makeRepo();
+  const root = realpathSync(fixture.root),
+    child = realpathSync(fixture.child);
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const sid = 'claude-branch-fixture';
+  setActiveTask(
+    sid,
+    {
+      issue: '#2105',
+      worktreePath: child,
+      worktreeBranch: 'feature/child/1166',
+      worktreeResolvedAt: new Date().toISOString(),
+    },
+    child
+  );
+  writeFleet(fleetPath(root), {
+    '#2105': {
+      worktreePath: child,
+      branch: 'feature/child/1166',
+      status: 'active',
+      kind: 'worktree',
+    },
+  });
+  git(child, 'switch', '-q', '-c', 'feature/claude-renewal');
+  const result = await runGuard({
+    cwd: child,
+    sessionId: sid,
+    claude: true,
+    command: 'npm test -- --allow-foreign-worktree',
+  });
+  assert.equal(result.code, 0, result.stderr);
+  const decision = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+  assert.notEqual(decision.decision, 'block', decision.reason);
 });
 
 const bound = {

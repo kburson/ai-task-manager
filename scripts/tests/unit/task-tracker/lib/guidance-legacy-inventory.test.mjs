@@ -21,6 +21,7 @@ function liveFlags() {
   for (const row of [
     ...loadJson(extensionPath).flags,
     ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1837/behavioral-flags.json')).flags,
+    ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/2105/behavioral-flags.json')).flags,
   ]) {
     const previous = flags.get(row.flag);
     flags.set(row.flag, previous ? { ...previous, reads: [...previous.reads, ...row.reads] } : row);
