@@ -1,5 +1,5 @@
 // @story #2093 #2105
-// cspell:words NOSYSTEM
+// cspell:words NOSYSTEM userconfig globalconfig
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
