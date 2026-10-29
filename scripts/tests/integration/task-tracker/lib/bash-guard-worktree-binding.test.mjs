@@ -2,8 +2,9 @@
 
 import { strict as assert } from 'node:assert';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -84,6 +85,8 @@ async function runGuard({
       )
         delete env[key];
     }
+    delete env.npm_command;
+    delete env.npm_lifecycle_event;
     env.CODEX_THREAD_ID = sessionId;
     env.CODEX_SESSION_ID = sessionId;
   } else {
@@ -136,7 +139,7 @@ test('native same-commit branch Start reaches the renewal path', async (t) => {
   mkdirSync(path.join(child, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(child, '.gitignore'),
-    '.tmp/\n.ai-task-manager/runtime/\n.ai-task-manager/sessions/\n'
+    '.tmp/\nnode_modules/\n.ai-task-manager/runtime/\n.ai-task-manager/sessions/\n'
   );
   writeFileSync(
     path.join(child, '.ai-task-manager/task-tracker.json'),
@@ -147,6 +150,12 @@ test('native same-commit branch Start reaches the renewal path', async (t) => {
   );
   git(child, 'add', '.gitignore', '.ai-task-manager/task-tracker.json');
   git(child, 'commit', '-q', '-m', 'seed native fixture profile');
+  mkdirSync(path.join(child, 'node_modules/@kburson'), { recursive: true });
+  symlinkSync(
+    fileURLToPath(new URL('../../../../..', import.meta.url)),
+    path.join(child, 'node_modules/@kburson/ai-task-manager'),
+    'dir'
+  );
   const claim = claimOccupancy({
     projectDir: child,
     issue: '#2105',
@@ -180,18 +189,20 @@ test('native same-commit branch Start reaches the renewal path', async (t) => {
     cwd: child,
     sessionId: sid,
     native: true,
-    command: 'npx aitm start 2105 --role orchestrator --confirm-relocation',
+    command:
+      'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation',
   });
   assert.equal(result.code, 0, result.stderr + result.stdout);
   const decision = result.stdout.trim() ? JSON.parse(result.stdout) : {};
   assert.notEqual(decision.decision, 'block', decision.reason);
   for (const command of [
+    'npx aitm start 2105 --role orchestrator --confirm-relocation',
     'npm test',
     'touch unauthorized',
     'npx aitm start 2106 --role orchestrator --confirm-relocation',
     'npx aitm start 2105 --role solo --confirm-relocation',
-    'npx aitm start 2105 --role orchestrator --confirm-relocation --allow-foreign-worktree',
-    'npx aitm start 2105 --role orchestrator --confirm-relocation && touch unauthorized',
+    'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation --allow-foreign-worktree',
+    'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation && touch unauthorized',
   ]) {
     const refusal = await runGuard({ cwd: child, sessionId: sid, native: true, command });
     assert.equal(JSON.parse(refusal.stdout).decision, 'block', command);

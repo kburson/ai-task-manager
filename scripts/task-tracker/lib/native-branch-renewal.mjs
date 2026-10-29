@@ -3,7 +3,8 @@
 // Read-only admission for one native Start; existing bind writers own all effects.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { getActiveTask } from '../session-state.mjs';
@@ -25,7 +26,6 @@ import {
 } from './native-worktree-bootstrap.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 
-const states = new Set(['backlog', 'refine', 'ready-for-plan', 'plan', 'develop']);
 const sha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 function refuse(reason) {
   throw new Error('native-branch-renewal: ' + reason);
@@ -49,7 +49,7 @@ export function branchRenewalArgv(argv) {
 export function branchRenewalCommand(command) {
   if (typeof command !== 'string') return null;
   const match = command.match(
-    /^(?:npx aitm|node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs) start ([1-9]\d*) --role (agent|orchestrator) --confirm-relocation$/
+    /^node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs start ([1-9]\d*) --role (agent|orchestrator) --confirm-relocation$/
   );
   return match?.[0] === command
     ? branchRenewalArgv(['start', match[1], '--role', match[2], '--confirm-relocation'])
@@ -180,6 +180,16 @@ export async function inspectNativeBranchRenewal({
       refuse('execution environment injection');
   }
   const tools = resolveNativeReadTools({ root, env });
+  // Closed public carrier: npm/npx resolution is never part of renewal.
+  const entry = path.join(root, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs');
+  const selectedEntry = fileURLToPath(new URL('../../../bin/aitm.mjs', import.meta.url));
+  if (
+    realpathSync(entry) !== realpathSync(selectedEntry) ||
+    readFileSync(entry, 'utf8').split('\n')[0] !== '#!/usr/bin/env node'
+  )
+    refuse('public entry does not match the selected runtime');
+  if (env.npm_command === 'exec' || env.npm_lifecycle_event === 'npx')
+    refuse('npm transport is not admitted for branch renewal');
   const identity = (deps.readIdentity ?? readPhysicalRuntimeIdentity)(root);
   if (identity.projectRoot !== root || path.resolve(root) !== root)
     refuse('foreign or aliased root');
@@ -191,7 +201,7 @@ export async function inspectNativeBranchRenewal({
     !record.worktreeBranch ||
     record.worktreeBranch === invoking.worktreeBranch ||
     invoking.worktreePath !== root ||
-    !states.has(record.kanbanState) ||
+    record.kanbanState !== 'develop' ||
     !Number.isFinite(Date.parse(record.entryStartTs)) ||
     !record.bindingGenerationId ||
     record.closedAt

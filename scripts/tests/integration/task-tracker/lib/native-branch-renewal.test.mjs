@@ -1,7 +1,7 @@
 // @story #2093 #2105
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -23,7 +23,13 @@ for (const scenario of ['dirty', 'unsupported-flags', 'offline'])
     git('config', 'user.email', 'fixture@example.test');
     git('checkout', '-q', '-b', 'native-old');
     mkdirSync(path.join(root, '.ai-task-manager'), { recursive: true });
-    writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+    writeFileSync(path.join(root, '.gitignore'), '.tmp/\nnode_modules/\n');
+    mkdirSync(path.join(root, 'node_modules/@kburson'), { recursive: true });
+    symlinkSync(
+      fileURLToPath(new URL('../../../../..', import.meta.url)),
+      path.join(root, 'node_modules/@kburson/ai-task-manager'),
+      'dir'
+    );
     writeFileSync(path.join(root, 'README.md'), 'same source\n');
     writeFileSync(
       path.join(root, '.ai-task-manager/task-tracker.json'),
@@ -55,6 +61,8 @@ for (const scenario of ['dirty', 'unsupported-flags', 'offline'])
     git('switch', '-q', '-c', 'native-new');
     if (scenario === 'dirty') writeFileSync(path.join(root, 'README.md'), 'dirty\n');
     const env = { ...process.env, CODEX_THREAD_ID: sid, CODEX_SESSION_ID: sid };
+    delete env.npm_command;
+    delete env.npm_lifecycle_event;
     for (const key of Object.keys(env))
       if (
         key.startsWith('GIT_') ||

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { getActiveTask, setActiveTask } from '../../../../task-tracker/session-state.mjs';
@@ -23,7 +24,13 @@ function fixture(t) {
   git('config', 'user.email', 'fixture@example.test');
   git('checkout', '-q', '-b', 'native-old');
   writeFileSync(path.join(root, 'README.md'), 'same source\n');
-  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+  writeFileSync(path.join(root, '.gitignore'), '.tmp/\nnode_modules/\n');
+  mkdirSync(path.join(root, 'node_modules/@kburson'), { recursive: true });
+  symlinkSync(
+    fileURLToPath(new URL('../../../../..', import.meta.url)),
+    path.join(root, 'node_modules/@kburson/ai-task-manager'),
+    'dir'
+  );
   git('add', 'README.md', '.gitignore');
   git('commit', '-q', '-m', 'seed');
   const sid = 'native-branch-unit-fixture';
@@ -47,6 +54,8 @@ function fixture(t) {
     root
   );
   const env = { ...process.env, CODEX_THREAD_ID: sid, CODEX_SESSION_ID: sid };
+  delete env.npm_command;
+  delete env.npm_lifecycle_event;
   for (const key of Object.keys(env))
     if (
       key.startsWith('GIT_') ||
@@ -291,6 +300,14 @@ for (const [name, change] of [
       setActiveTask(f.sid, { ...f.record, kanbanState: 'test' }, f.root);
     },
   ],
+  [
+    'pre-Develop state',
+    (f) => {
+      setActiveTask(f.sid, { ...f.record, kanbanState: 'plan' }, f.root);
+      f.remote.snapshot.state = 'plan';
+      f.remote.issue.body = f.remote.issue.body.replace('state="develop"', 'state="plan"');
+    },
+  ],
 ])
   test('renewal refuses ' + name, async (t) => {
     const f = fixture(t);
@@ -298,70 +315,22 @@ for (const [name, change] of [
     await assert.rejects(inspectNativeBranchRenewal(f.options));
   });
 
-test('ordinary npx metadata does not become a bootstrap request', async (t) => {
+test('direct renewal refuses a substituted public executable', async (t) => {
   const f = fixture(t);
-  f.options.env.npm_config_user_agent = 'npm/12 node/v26';
-  assert.equal((await inspectNativeBranchRenewal(f.options)).head, f.git('rev-parse', 'HEAD'));
-});
-
-test('real npm lifecycle metadata preserves read-only native renewal', (t) => {
-  const f = fixture(t);
-  mkdirSync(path.join(f.root, '.tmp'), { recursive: true });
-  const moduleUrl = new URL(
-    '../../../../task-tracker/lib/native-branch-renewal.mjs',
-    import.meta.url
-  ).href;
+  const packageRoot = path.join(f.root, 'node_modules/@kburson/ai-task-manager');
+  rmSync(packageRoot);
+  mkdirSync(path.join(packageRoot, 'bin'), { recursive: true });
   writeFileSync(
-    path.join(f.root, '.tmp/probe.mjs'),
-    `import {inspectNativeBranchRenewal} from ${JSON.stringify(moduleUrl)}; const options=${JSON.stringify(f.options)}; options.env=process.env; options.deps={readRemote:async()=>(${JSON.stringify(f.remote)})}; await inspectNativeBranchRenewal(options);`
+    path.join(packageRoot, 'bin/aitm.mjs'),
+    '#!/usr/bin/env node\nthrow Error("foreign executable");\n'
   );
-  writeFileSync(
-    path.join(f.root, 'package.json'),
-    JSON.stringify({
-      name: 'native-renewal-fixture',
-      version: '1.0.0',
-      scripts: { probe: JSON.stringify(process.execPath) + ' .tmp/probe.mjs' },
-    })
-  );
-  f.git('add', 'package.json');
-  f.git('commit', '-q', '-m', 'fixture lifecycle');
-  f.git('branch', '-f', 'native-old', 'HEAD');
-  f.git('switch', '-q', 'native-old');
-  f.git('switch', '-q', 'native-new');
-  const result = spawnSync('npm', ['run', 'probe'], {
-    cwd: f.root,
-    env: f.options.env,
-    encoding: 'utf8',
-    timeout: 20000,
-  });
-  assert.equal(result.status, 0, result.stderr + result.stdout);
+  await assert.rejects(inspectNativeBranchRenewal(f.options), /public entry/);
 });
 
-test('renewal refuses a shadow npx before executing it', async (t) => {
+test('direct CLI renewal refuses an npm exec carrier', async (t) => {
   const f = fixture(t);
-  const directory = path.join(f.root, '.tmp/tools');
-  mkdirSync(directory, { recursive: true });
-  writeFileSync(path.join(directory, 'npx'), '#!/bin/sh\nexit 91\n', { mode: 0o755 });
-  f.options.env.PATH = directory + path.delimiter + f.options.env.PATH;
-  await assert.rejects(inspectNativeBranchRenewal(f.options), /untrusted executable/);
-});
-
-for (const key of ['userconfig', 'globalconfig', 'prefix', 'call', 'package'])
-  test('renewal refuses npm selector ' + key, async (t) => {
-    const f = fixture(t);
-    f.options.env['npm_config_' + key] = '/foreign-selection';
-    await assert.rejects(inspectNativeBranchRenewal(f.options), /npm execution configuration/);
-  });
-
-test('renewal refuses npm script-shell configuration before execution', async (t) => {
-  const f = fixture(t);
-  writeFileSync(path.join(f.root, '.npmrc'), 'script-shell=/must-not-execute\n');
-  f.git('add', '.npmrc');
-  f.git('commit', '-q', '-m', 'fixture npm configuration');
-  f.git('branch', '-f', 'native-old', 'HEAD');
-  f.git('switch', '-q', 'native-old');
-  f.git('switch', '-q', 'native-new');
-  await assert.rejects(inspectNativeBranchRenewal(f.options), /npm execution configuration/);
+  f.options.env.npm_command = 'exec';
+  await assert.rejects(inspectNativeBranchRenewal(f.options), /npm transport/);
 });
 
 test('renewal refuses Git replacement objects that disguise changed source', async (t) => {

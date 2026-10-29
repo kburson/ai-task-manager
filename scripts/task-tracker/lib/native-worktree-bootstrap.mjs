@@ -83,8 +83,8 @@ function toolOutsideProject(name, root, env) {
       '/opt/homebrew/opt',
       path.dirname(realpathSync(process.execPath)),
     ];
-    if (name === 'npm' || name === 'npx') trusted.push('/usr/share/nodejs/npm');
-    if (name === 'npm' || name === 'npx')
+    if (name === 'npm') trusted.push('/usr/share/nodejs/npm');
+    if (name === 'npm')
       trusted.push(
         path.resolve(path.dirname(realpathSync(process.execPath)), '../lib/node_modules/npm')
       );
@@ -100,7 +100,7 @@ function toolOutsideProject(name, root, env) {
   }
   refuse('missing external tool');
 }
-function checkNpmConfig(file, additionalForbidden = []) {
+function checkNpmConfig(file) {
   if (!existsSync(file)) return;
   ordinary(file);
   const forbidden = new Set([
@@ -115,7 +115,6 @@ function checkNpmConfig(file, additionalForbidden = []) {
     'workspace',
     'workspaces',
     'includeworkspaceroot',
-    ...additionalForbidden,
   ]);
   for (const raw of readFileSync(file, 'utf8').split(/\r?\n/)) {
     const line = raw.trim();
@@ -133,89 +132,9 @@ function checkNpmConfig(file, additionalForbidden = []) {
 // Read-only native operations need the same trusted executables, without
 // treating ordinary npx metadata as a package-install request.
 export function resolveNativeReadTools({ root, env = process.env }) {
-  const tools = Object.fromEntries(
-    ['git', 'node', 'gh', 'npm', 'npx'].map((name) => [name, toolOutsideProject(name, root, env)])
+  return Object.fromEntries(
+    ['git', 'node', 'env', 'gh'].map((name) => [name, toolOutsideProject(name, root, env)])
   );
-  const nodeDirectory = path.dirname(realpathSync(process.execPath));
-  for (const name of ['npm', 'npx']) {
-    const nominal = path.join(nodeDirectory, name);
-    if (!existsSync(nominal) || realpathSync(nominal) !== tools[name])
-      refuse(name + ' is not paired with the Node runtime');
-  }
-  const npmRoot = path.resolve(path.dirname(tools.npm), '..');
-  const npmPackage = JSON.parse(readFileSync(path.join(npmRoot, 'package.json'), 'utf8'));
-  if (npmPackage.name !== 'npm' || Number(npmPackage.version.split('.')[0]) < 11)
-    refuse('supported npm runtime required');
-  for (const name of ['npm', 'npx'])
-    if (realpathSync(path.join(npmRoot, npmPackage.bin[name])) !== tools[name])
-      refuse('ambiguous npm executable');
-  for (const [key, value] of Object.entries(env)) {
-    if (!value) continue;
-    if (/^npm_config_/i.test(key)) {
-      const normalized = key.slice(11).toLowerCase().replace(/[-_]/g, '');
-      // These are selectors or execution requests, not ordinary npx metadata.
-      if (
-        new Set([
-          'scriptshell',
-          'nodeoptions',
-          'onloadscript',
-          'global',
-          'location',
-          'workspace',
-          'workspaces',
-          'includeworkspaceroot',
-          'call',
-          'package',
-          'packages',
-          'shell',
-        ]).has(normalized)
-      )
-        refuse('npm execution configuration: ' + key);
-    }
-    if (key === 'npm_execpath' && ![tools.npm, tools.npx].includes(realpathSync(value)))
-      refuse('foreign npm runtime');
-    if (key === 'npm_node_execpath' && realpathSync(value) !== tools.node)
-      refuse('foreign npm Node runtime');
-  }
-  const check = (file) => checkNpmConfig(file, ['call', 'package', 'packages', 'shell']);
-  for (let cursor = root; ; cursor = path.dirname(cursor)) {
-    check(path.join(cursor, '.npmrc'));
-    if (cursor === path.dirname(cursor)) break;
-  }
-  check(path.join(os.homedir(), '.npmrc'));
-  check(path.join(npmRoot, 'npmrc'));
-  // npm itself exports default user/global config paths to lifecycle children.
-  // Compare those metadata values with an independent default observation;
-  // never let an inherited selector choose the files inspected here.
-  const selector = /^npm_config_(?:userconfig|globalconfig|prefix)$/i;
-  const configEnv = Object.fromEntries(Object.entries(env).filter(([key]) => !selector.test(key)));
-  const configKeys = ['userconfig', 'globalconfig', 'prefix'];
-  const configLines = execFileSync(tools.npm, ['config', 'get', ...configKeys], {
-    cwd: root,
-    env: configEnv,
-    encoding: 'utf8',
-    timeout: 10000,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-    .trim()
-    .split(/\r?\n/);
-  if (
-    configLines.length !== configKeys.length ||
-    configLines.some((line, index) => !line.startsWith(configKeys[index] + '='))
-  )
-    refuse('ambiguous npm configuration');
-  const configPaths = configLines.map((line, index) => line.slice(configKeys[index].length + 1));
-  if (configPaths.some((file) => !path.isAbsolute(file)))
-    refuse('ambiguous npm global configuration');
-  for (const [key, value] of Object.entries(env))
-    if (
-      value &&
-      selector.test(key) &&
-      value !== configPaths[/userconfig$/i.test(key) ? 0 : /globalconfig$/i.test(key) ? 1 : 2]
-    )
-      refuse('npm execution configuration: ' + key);
-  for (const file of configPaths.slice(0, 2)) check(file);
-  return tools;
 }
 
 export function assertBootstrapHost({ root, env = process.env }) {

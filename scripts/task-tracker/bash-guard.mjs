@@ -191,8 +191,11 @@ async function evaluate(input) {
       const request = branchRenewalCommand(rawCommand);
       if (!request)
         block(
-          worktreeResult.reason ||
-            'Native branch mismatch requires the exact same-issue Start renewal.'
+          (worktreeResult.reason || 'Native branch mismatch.') +
+            '\n  For a clean same-commit branch-only change, use: ' +
+            'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start ' +
+            bound.issueNumber +
+            ' --role agent --confirm-relocation'
         );
       try {
         await inspectNativeBranchRenewal({
