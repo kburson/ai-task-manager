@@ -401,7 +401,17 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2089/#2103: exactly one standalone unactivated field transport adapter.
   const dateTransportEntries = ['scripts/task-tracker/lib/story-cache/provider-adapters.mjs'];
   for (const entry of dateTransportEntries) assert.ok(files.includes(entry));
+  // #2088/#2106: five exact bootstrap and diagnostic runtime leaves.
+  const bootstrapEntries = [
+    'native-bootstrap-inputs',
+    'native-worktree-bootstrap',
+    'native-binding-proof',
+    'native-runtime-observation',
+    'native-runtime-proof',
+  ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
+  for (const entry of bootstrapEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    bootstrapEntries.length +
     dateTransportEntries.length +
     ENTRY_CEILING +
     estimatePublicationEntries.length +

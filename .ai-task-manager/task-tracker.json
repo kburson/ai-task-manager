@@ -83,13 +83,31 @@
       "declaredCommandCoverage": [
         {
           "command": "npm test",
-          "requires": ["test-cloud-complete"]
+          "requires": [
+            "test-cloud-complete"
+          ]
         },
         {
           "command": "npm run test:slow",
-          "requires": ["test-cloud-complete"]
+          "requires": [
+            "test-cloud-complete"
+          ]
         }
       ]
     }
+  },
+  "preferences": {
+    "noPushToOrigin": false,
+    "mainThreadOnly": false,
+    "driveSubIssuesToReview": true,
+    "pauseTimerOnBlockingQuestion": true,
+    "noConfirmAfterDeepDive": true,
+    "askGatesBeforeParallel": true,
+    "gateAssigneeMatch": true,
+    "formatting": {
+      "noEmojis": true,
+      "currencyInBackticks": true
+    },
+    "scratchDir": "./.scratch/"
   }
 }

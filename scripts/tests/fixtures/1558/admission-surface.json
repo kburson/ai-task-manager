@@ -1422,7 +1422,9 @@
       "staticImports": [
         "../task-tracker/lib/direct-guidance-admission.mjs",
         "../lib/self-doc.mjs",
-        "./install-observer.mjs"
+        "../task-tracker/lib/native-binding-proof.mjs",
+        "./install-observer.mjs",
+        "../task-tracker/lib/native-runtime-observation.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",
@@ -1532,6 +1534,10 @@
       "command": null,
       "staticImports": [
         "node:fs",
+        "./lib/native-binding-proof.mjs",
+        "./lib/native-runtime-proof.mjs",
+        "./lib/native-runtime-observation.mjs",
+        "./lib/native-worktree-bootstrap.mjs",
         "node:path",
         "./lib/decomposition-activity.mjs",
         "./lib/decomposition-local-targets.mjs",
@@ -2282,6 +2288,16 @@
       "firstPotentialEffect": "internal invocation",
       "gateCall": null,
       "exception": "Hook plumbing or a guarded internal boundary; not a direct agent command.",
+      "fixtureId": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/native-runtime-observation.mjs",
+      "classification": "internal-library-or-orchestration",
+      "command": null,
+      "staticImports": ["node:fs", "node:path", "node:crypto", "node:url"],
+      "firstPotentialEffect": "internal invocation",
+      "gateCall": null,
+      "exception": "Internal library, dispatcher, configuration helper, or orchestration support.",
       "fixtureId": null
     },
     {
