@@ -1,0 +1,199 @@
+{
+  "schema": "aitm.install-manifest/v1",
+  "intent": {
+    "providers": [
+      "codex"
+    ],
+    "linkMode": "stub",
+    "features": {
+      "memoryIndex": false,
+      "codexSuperpowers": false,
+      "codexSuperpowersGlobal": false
+    },
+    "memoryFiles": []
+  },
+  "generatedBy": {
+    "packageName": "@kburson/ai-task-manager",
+    "packageVersion": "0.1.0",
+    "contractDigest": "da8d3376f9c84cd216d4f61ba45af2f0ef54cde6907d8fe14c46f8bd7a9dde29"
+  },
+  "artifacts": [
+    {
+      "id": "config.activity-policy",
+      "path": ".ai-task-manager/activity-policy.json",
+      "kind": "json-fragment",
+      "ownership": "reference",
+      "required": true,
+      "contract": "activity-policy",
+      "digest": "836b09df5fa1b65f463dda8726eba2639329457ce7507bff93c1131a27ed7470"
+    },
+    {
+      "id": "config.project-field-events",
+      "path": ".ai-task-manager/project-field-events.json",
+      "kind": "json-fragment",
+      "ownership": "reference",
+      "required": true,
+      "contract": "project-field-events",
+      "digest": "16c87bed7c9090c5d1d5694fc11e0c57e785c2168d44d96318a1219f300c7ae3"
+    },
+    {
+      "id": "config.project-fields",
+      "path": ".ai-task-manager/project-fields.json",
+      "kind": "json-fragment",
+      "ownership": "reference",
+      "required": true,
+      "contract": "project-fields",
+      "digest": "b5e86c63430f994abfbe32ee51ad05b509844cd0370093798c1f3e444daebc84"
+    },
+    {
+      "id": "config.task-tracker",
+      "path": ".ai-task-manager/task-tracker.json",
+      "kind": "json-fragment",
+      "ownership": "managed-fragment",
+      "required": true,
+      "contract": "task-tracker-preferences"
+    },
+    {
+      "id": "project.gitignore",
+      "path": ".gitignore",
+      "kind": "managed-block",
+      "ownership": "managed-fragment",
+      "required": true,
+      "contract": "aitm-gitignore"
+    },
+    {
+      "id": "provider.codex.hooks",
+      "path": ".codex/hooks.json",
+      "kind": "json-fragment",
+      "ownership": "managed-fragment",
+      "required": true,
+      "contract": "codex-hooks"
+    },
+    {
+      "id": "provider.codex.skill",
+      "path": ".agents/skills/task/SKILL.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "codex-skill",
+      "digest": "036a8cadc334c8ade9650f1068e9ef1e336798e065f9dbb5af075e99eb4ced1c"
+    },
+    {
+      "id": "reference.deep-dive-procedure.md",
+      "path": ".ai-task-manager/templates/references/deep-dive-procedure.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "b6586af8590b88dcc9193457f42e14a9e7a6cad024f51a7b9935c2734bf01ecc"
+    },
+    {
+      "id": "reference.pickup-directive-rationale.md",
+      "path": ".ai-task-manager/templates/references/pickup-directive-rationale.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "df79f9938b79af5cd8531a5f7affa68feb07a235886fd4497cc6764c330f1b79"
+    },
+    {
+      "id": "reference.status-reporting.md",
+      "path": ".ai-task-manager/templates/references/status-reporting.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "fae62fe807c08f7e4f4c4efc43e73ab10c2fc449678cf0be5918f7fbcb3bbf90"
+    },
+    {
+      "id": "template.defect-body.md",
+      "path": ".ai-task-manager/templates/defect-body.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "e1c2396c67f8d758fe047e41fff889fe28f3182aef38716d3822284321debef8"
+    },
+    {
+      "id": "template.definition-of-done.md",
+      "path": ".ai-task-manager/templates/definition-of-done.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "cb28a8055b067f2d5e1c2da21ab29fcaf2af33e08831df8d7492aaa9ab98bc24"
+    },
+    {
+      "id": "template.epic-body.md",
+      "path": ".ai-task-manager/templates/epic-body.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "e70082613fb7a2b340b5090be395aecd8123f46199a534a391256ab600877aff"
+    },
+    {
+      "id": "template.pickup-directive.md",
+      "path": ".ai-task-manager/templates/pickup-directive.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "79ebbff818aee872e1fcd0b56458efd4f75a70d09d8ef5ca32861811364b3e23"
+    },
+    {
+      "id": "template.plan-file.md",
+      "path": ".ai-task-manager/templates/plan-file.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "eed3dc0ccbd73842ed7859dc3b7838228aee8ad0aff493a5bade4f20a80688be"
+    },
+    {
+      "id": "template.session-boot.md",
+      "path": ".ai-task-manager/templates/session-boot.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "daed4c2237d36f6af8a063f8d45bc4230c60c669fb1aae8948894da6a2d8ffb9"
+    },
+    {
+      "id": "template.session-state-template.md",
+      "path": ".ai-task-manager/templates/session-state-template.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "28a33025427da58124f3dc4487151ed0b27e334f08111aca1a0f64ba3066ae5f"
+    },
+    {
+      "id": "template.solo-issue-body.md",
+      "path": ".ai-task-manager/templates/solo-issue-body.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "31235ba0a7cea06011181a87224192dd688bc9aea279e63886b09ffa3cdf5217"
+    },
+    {
+      "id": "template.sub-issue-body.md",
+      "path": ".ai-task-manager/templates/sub-issue-body.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "f54c2a3c2073d7499fd26654d3e19636938cb70ac7a17f3044ca8a784f76e6c8"
+    },
+    {
+      "id": "template.worker-report.md",
+      "path": ".ai-task-manager/templates/worker-report.md",
+      "kind": "file",
+      "ownership": "generated",
+      "required": true,
+      "contract": "exact",
+      "digest": "c843a4cf122bfd6e62734d0a8befcc802946d3a26078664e8175af3ee55649e1"
+    }
+  ]
+}
