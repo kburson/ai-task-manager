@@ -12,6 +12,13 @@
 
 **Spec:** Original #2014 Scope and human-approved bounded design in `docs/superpowers/plans/2026-10-14-2014-retained-worktree-recovery.md` at retained commit `17ddbd70e299cb6461ac04f4713afc345edc36a2`. That historical adaptive estimate is excluded. This is a current execution plan for the same behavior, not a new authority design.
 
+## Story Intent
+
+- **Beneficiary:** Delivery operator overseeing epics and their completed child work.
+- **Capability:** Restore a genuinely missing retained completed-child checkout through the existing guarded epic-wave flow.
+- **Need:** Missing folders prevent safe access/continuation although completed work and its saved branch remain retained.
+- **Value or failure prevented:** Regain access without losing refs, overwriting work, manufacturing ownership or changing lifecycle authority.
+
 ## Global constraints
 
 - Continue in the attached isolated worktree; preserve all branches, source, ignored evidence, predecessor runtime and historical Unknown.
