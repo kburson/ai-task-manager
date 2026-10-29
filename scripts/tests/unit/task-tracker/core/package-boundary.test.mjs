@@ -411,7 +411,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'native-runtime-proof',
   ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
   for (const entry of bootstrapEntries) assert.ok(files.includes(entry));
+  // #2014/#2108 ships exactly one retained completed-child recovery module.
+  const retainedRecoveryEntries = ['scripts/task-tracker/lib/epic-rank-wave-restore-worktree.mjs'];
+  for (const entry of retainedRecoveryEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    retainedRecoveryEntries.length +
     bootstrapEntries.length +
     dateTransportEntries.length +
     ENTRY_CEILING +
