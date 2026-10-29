@@ -666,7 +666,7 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'epic-wave': contract(
     [
-      'Authority mutations require genuine parent authority, exact source context and the common physical parent admission lock; lock-release requires exact dead-holder evidence. Restore-worktree requires an active genuine orchestrator, strict completed-Done direct child, authenticated retained history and unchanged recorded location; its closed aitm.epic-wave-restore-worktree/v1 selector has schema, rank, child, retainedDigest and expectedHead only.',
+      'Authority mutations require genuine parent authority, exact source context and the common physical parent admission lock; lock-release requires exact dead-holder evidence. Restore-worktree requires --role orchestrator on this invocation and an active genuine orchestrator, strict completed-Done direct child, authenticated retained history and unchanged recorded location; its closed aitm.epic-wave-restore-worktree/v1 selector has schema, rank, child, retainedDigest and expectedHead only.',
     ],
     [
       'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment; lock-show inspects ownership and lock-release requires genuine parent authority and exact dead-holder evidence. Restore-worktree recreates only the recorded checkout from its existing exact-head branch under the same lock, verifies clean read-back and unchanged refs, and preserves uncertain effects. No lifecycle state is changed.',
