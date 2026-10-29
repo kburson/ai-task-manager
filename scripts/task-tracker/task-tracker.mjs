@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { buildContext, handleMigrateResult } from './runtime.mjs';
+import { enforceNativeBranchRenewalEntry } from './lib/native-branch-renewal.mjs';
 import { currentSessionId, jsonlPath, countWords } from './word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import {
@@ -503,6 +504,11 @@ if (_isMain)
         : null;
     let annotationVerbResult;
     try {
+      await enforceNativeBranchRenewalEntry({
+        argv: process.argv.slice(2),
+        root: process.cwd(),
+        cfg: ctx.cfg,
+      });
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
         rest: ctx.rest,

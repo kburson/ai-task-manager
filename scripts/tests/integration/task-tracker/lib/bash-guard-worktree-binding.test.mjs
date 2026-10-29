@@ -2,8 +2,9 @@
 
 import { strict as assert } from 'node:assert';
 import { execFileSync, spawn } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -15,6 +16,7 @@ import { writeFleet } from '../../../../task-tracker/fleet-registry.mjs';
 import { fleetPath } from '../../../../task-tracker/paths.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 import { mkdtempOutsideRepo } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { claimOccupancy } from '../../../../task-tracker/lib/occupancy.mjs';
 
 const GUARD = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
@@ -53,16 +55,61 @@ function makeRepo() {
   return { root, child };
 }
 
-async function runGuard({ cwd, payloadCwd = cwd, command, sessionId }) {
-  const payload = JSON.stringify({ tool_name: 'Bash', cwd: payloadCwd, tool_input: { command } });
+async function runGuard({
+  cwd,
+  payloadCwd = cwd,
+  command,
+  sessionId,
+  native = false,
+  claude = false,
+}) {
+  const payload = JSON.stringify({
+    tool_name: 'Bash',
+    cwd: payloadCwd,
+    tool_input: { command },
+    ...(native || claude ? { session_id: sessionId } : {}),
+  });
+  const env = { ...process.env };
+  if (native) {
+    for (const key of Object.keys(env)) {
+      if (
+        key.startsWith('GIT_') ||
+        key.startsWith('AITM_') ||
+        [
+          'AI_TASK_MANAGER_SESSION_ID',
+          'AI_TASK_MANAGER_PROJECT_DIR',
+          'TASK_TRACKER_PROJECT_DIR',
+          'CLAUDE_PROJECT_DIR',
+          'TT_SKIP_NETWORK',
+        ].includes(key)
+      )
+        delete env[key];
+    }
+    delete env.npm_command;
+    delete env.npm_lifecycle_event;
+    env.CODEX_THREAD_ID = sessionId;
+    env.CODEX_SESSION_ID = sessionId;
+  } else {
+    if (claude) {
+      delete env.CODEX_THREAD_ID;
+      delete env.CODEX_SESSION_ID;
+      env.AI_TASK_MANAGER_APP_NAME = 'claude';
+    }
+    env.AI_TASK_MANAGER_PROJECT_DIR = payloadCwd;
+    env.AI_TASK_MANAGER_SESSION_ID = sessionId;
+  }
   return await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [GUARD], {
+    const args = native
+      ? [
+          '--experimental-test-module-mocks',
+          '--import',
+          new URL('../../../helpers/2105-branch-hook-github.mjs', import.meta.url).href,
+          GUARD,
+        ]
+      : [GUARD];
+    const child = spawn(process.execPath, args, {
       cwd,
-      env: {
-        ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: payloadCwd,
-        AI_TASK_MANAGER_SESSION_ID: sessionId,
-      },
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -82,6 +129,121 @@ async function runGuard({ cwd, payloadCwd = cwd, command, sessionId }) {
     child.stdin.end(payload);
   });
 }
+
+test('native same-commit branch Start reaches the renewal path', async (t) => {
+  const fixture = makeRepo();
+  const root = realpathSync(fixture.root),
+    child = realpathSync(fixture.child);
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const sid = 'native-renewal-offline-fixture';
+  mkdirSync(path.join(child, '.ai-task-manager'), { recursive: true });
+  writeFileSync(
+    path.join(child, '.gitignore'),
+    '.tmp/\nnode_modules/\n.ai-task-manager/runtime/\n.ai-task-manager/sessions/\n'
+  );
+  writeFileSync(
+    path.join(child, '.ai-task-manager/task-tracker.json'),
+    JSON.stringify({
+      repo: 'kburson/ai-task-manager',
+      projectId: 'PVT_native_branch_fixture',
+    })
+  );
+  git(child, 'add', '.gitignore', '.ai-task-manager/task-tracker.json');
+  git(child, 'commit', '-q', '-m', 'seed native fixture profile');
+  mkdirSync(path.join(child, 'node_modules/@kburson'), { recursive: true });
+  symlinkSync(
+    fileURLToPath(new URL('../../../../..', import.meta.url)),
+    path.join(child, 'node_modules/@kburson/ai-task-manager'),
+    'dir'
+  );
+  const claim = claimOccupancy({
+    projectDir: child,
+    issue: '#2105',
+    sid,
+    provider: 'codex',
+    worktreePath: child,
+  });
+  setActiveTask(
+    sid,
+    {
+      issue: '#2105',
+      worktreePath: child,
+      worktreeBranch: 'feature/child/1166',
+      worktreeResolvedAt: new Date().toISOString(),
+      entryStartTs: new Date().toISOString(),
+      kanbanState: 'develop',
+      bindingGenerationId: claim.row.bindingGenerationId,
+    },
+    child
+  );
+  writeFleet(fleetPath(root), {
+    '#2105': {
+      worktreePath: child,
+      branch: 'feature/child/1166',
+      status: 'active',
+      kind: 'worktree',
+    },
+  });
+  git(child, 'switch', '-q', '-c', 'codex/native-renewal-fixture');
+  const result = await runGuard({
+    cwd: child,
+    sessionId: sid,
+    native: true,
+    command:
+      'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation',
+  });
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  const decision = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+  assert.notEqual(decision.decision, 'block', decision.reason);
+  for (const command of [
+    'npx aitm start 2105 --role orchestrator --confirm-relocation',
+    'npm test',
+    'touch unauthorized',
+    'npx aitm start 2106 --role orchestrator --confirm-relocation',
+    'npx aitm start 2105 --role solo --confirm-relocation',
+    'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation --allow-foreign-worktree',
+    'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start 2105 --role orchestrator --confirm-relocation && touch unauthorized',
+  ]) {
+    const refusal = await runGuard({ cwd: child, sessionId: sid, native: true, command });
+    assert.equal(JSON.parse(refusal.stdout).decision, 'block', command);
+  }
+});
+
+test('Claude payload session retains its explicit branch-mismatch override', async (t) => {
+  const fixture = makeRepo();
+  const root = realpathSync(fixture.root),
+    child = realpathSync(fixture.child);
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const sid = 'claude-branch-fixture';
+  setActiveTask(
+    sid,
+    {
+      issue: '#2105',
+      worktreePath: child,
+      worktreeBranch: 'feature/child/1166',
+      worktreeResolvedAt: new Date().toISOString(),
+    },
+    child
+  );
+  writeFleet(fleetPath(root), {
+    '#2105': {
+      worktreePath: child,
+      branch: 'feature/child/1166',
+      status: 'active',
+      kind: 'worktree',
+    },
+  });
+  git(child, 'switch', '-q', '-c', 'feature/claude-renewal');
+  const result = await runGuard({
+    cwd: child,
+    sessionId: sid,
+    claude: true,
+    command: 'npm test -- --allow-foreign-worktree',
+  });
+  assert.equal(result.code, 0, result.stderr);
+  const decision = result.stdout.trim() ? JSON.parse(result.stdout) : {};
+  assert.notEqual(decision.decision, 'block', decision.reason);
+});
 
 const bound = {
   issueNumber: 1166,

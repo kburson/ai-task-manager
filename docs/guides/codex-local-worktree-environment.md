@@ -172,6 +172,28 @@ the automatic environment setup script.
 
 ## Verify or Repair an Existing Worktree
 
+### Renew a Native Binding After a Branch-Only Switch
+
+If a native Codex session changes only the branch name at the same commit,
+renew its existing issue binding from that same physical worktree:
+
+```bash
+node_modules/@kburson/ai-task-manager/bin/aitm.mjs start <issue-number> --role agent --confirm-relocation
+```
+
+Use the existing `orchestrator` role instead when that is the session's role.
+The public executable must resolve to the selected runtime. The hook and CLI
+check the actual session, current issue, active timer, ownership, binding
+generation, durable location and clean original Git objects before Start
+updates the branch through its normal writers. Both branch refs and HEAD must
+still identify the same commit, with the real branch-only checkout recorded.
+
+During that mismatch, `npx`, wrappers, extra flags, ordinary writes and
+verification stay refused. npm resolution is outside this closed recovery
+path. Missing or changed authority also refuses; do not edit binding files or
+use a foreign-worktree override. Older runtimes that lack this admission need
+qualified runtime delivery before this command can recover the binding.
+
 Run the non-mutating verifier:
 
 ```bash

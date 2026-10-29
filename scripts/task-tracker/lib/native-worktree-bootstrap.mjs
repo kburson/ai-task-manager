@@ -129,6 +129,14 @@ function checkNpmConfig(file) {
       refuse('npm execution configuration');
   }
 }
+// Read-only native operations need the same trusted executables, without
+// treating ordinary npx metadata as a package-install request.
+export function resolveNativeReadTools({ root, env = process.env }) {
+  return Object.fromEntries(
+    ['git', 'node', 'env', 'gh'].map((name) => [name, toolOutsideProject(name, root, env)])
+  );
+}
+
 export function assertBootstrapHost({ root, env = process.env }) {
   for (const [key, value] of Object.entries(env)) {
     if (key.startsWith('BASH_FUNC_')) refuse('exported shell function');

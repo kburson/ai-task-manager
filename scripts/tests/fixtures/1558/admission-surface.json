@@ -2498,6 +2498,7 @@
         "node:child_process",
         "node:fs",
         "./runtime.mjs",
+        "./lib/native-branch-renewal.mjs",
         "./word-counter.mjs",
         "./lib/process-timeouts.mjs",
         "./lib/worktree-binding-guard.mjs",
