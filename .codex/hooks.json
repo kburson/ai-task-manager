@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/@kburson/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs\\\",\\\"scripts/task-tracker/source-edit-gate.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm source-edit-gate: guard entrypoint unresolved (scoped package + repo-relative both absent) — failing closed\\\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/@kburson/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs\\\",\\\"scripts/task-tracker/source-edit-gate.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm source-edit-gate: guard entrypoint unresolved (scoped package + repo-relative both absent) — failing closed\\\\n');process.exit(2);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ],
         "matcher": "apply_patch|Edit|Write|NotebookEdit"

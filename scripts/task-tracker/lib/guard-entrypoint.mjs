@@ -81,6 +81,8 @@ function nodeEvalCommand(program) {
   return `node -e "${program.replace(/[\\"$`]/g, '\\$&')}"`;
 }
 
+// source-edit-gate uses an isMain check; its loader must provide argv[1].
+// Keep the three top-level guards' invocation profile unchanged.
 export function guardBootstrapCommand(name) {
   const candidates = JSON.stringify(guardEntrypointCandidates(name));
   const program =
@@ -91,12 +93,18 @@ export function guardBootstrapCommand(name) {
     `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
     `if(!p){process.stderr.write('aitm ${name}: guard entrypoint unresolved ` +
     `(scoped package + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
+    (name === 'source-edit-gate' ? `process.argv=[process.argv[0],p];` : '') +
     `import(pathToFileURL(p).href);`;
   return nodeEvalCommand(program);
 }
 
-// #869 — bootstrap command for the lifecycle HOOKS. Unlike the guards (which run
-// at top-level module scope), hooks gate their main block on process.argv[1]
+// Exact predecessor spelling, recognized only for canonical managed-hook migration.
+export const LEGACY_SOURCE_EDIT_BOOTSTRAP_COMMAND = guardBootstrapCommand(
+  'source-edit-gate'
+).replace('process.argv=[process.argv[0],p];', '');
+
+// #869 — bootstrap command for lifecycle hooks. Unlike top-level guard entries
+// (with source-edit-gate handled above), hooks gate main on process.argv[1]
 // matching their own filename and read positional args from process.argv[2+]
 // (e.g. on-ask `pause`/`resume`). So before importing we rewrite process.argv to
 // [argv0, resolvedPath, ...extraArgs] — this makes the module's isMain check

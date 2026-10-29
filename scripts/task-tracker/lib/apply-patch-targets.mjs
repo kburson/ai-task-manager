@@ -27,7 +27,7 @@ export function extractApplyPatchText(toolInput) {
   if (!toolInput || typeof toolInput !== 'object' || Array.isArray(toolInput)) {
     throw new MutationParseError('invalid patch payload');
   }
-  const supplied = ['patch', 'input', 'text']
+  const supplied = ['patch', 'input', 'text', 'command']
     .filter((key) => Object.hasOwn(toolInput, key))
     .map((key) => toolInput[key]);
   if (supplied.some((value) => typeof value !== 'string')) {

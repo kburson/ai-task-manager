@@ -63,6 +63,7 @@ import { writeInstallManifest } from '../scripts/package/install-manifest-store.
 import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
+  LEGACY_SOURCE_EDIT_BOOTSTRAP_COMMAND,
   failClosedHookBootstrapCommand,
   guardBootstrapCommand,
   hookBootstrapCommand,
@@ -272,7 +273,7 @@ const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
 const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.flatMap((name) => [
   `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`,
   historicalBootstrapCommand('guard', `scripts/task-tracker/${name}.mjs`),
-]);
+]).concat(LEGACY_SOURCE_EDIT_BOOTSTRAP_COMMAND);
 
 function existingMemoryIndexEvents(config, managedCommands) {
   return new Set(

@@ -5,14 +5,35 @@ enforceDirectGuidance(import.meta.url, 'doctor');
 // Standalone, read-only installation health command. This is not a task verb.
 
 import { emitSelfDoc, isDirectInvocation, wantsHelp } from '../lib/self-doc.mjs';
+import {
+  inspectNativeBindingProof,
+  validateBindingNonce,
+} from '../task-tracker/lib/native-binding-proof.mjs';
 import { diagnoseInstallation } from './install-observer.mjs';
+import { observeRuntimeProvenance } from '../task-tracker/lib/native-runtime-observation.mjs';
 
 export class DoctorUsageError extends Error {}
 
 export function parseDoctorArgs(argv) {
   if (argv.length === 0) return { json: false };
   if (argv.length === 1 && argv[0] === '--json') return { json: true };
-  throw new DoctorUsageError('Usage: npx aitm doctor [--json]');
+  if (
+    argv.length === 3 &&
+    argv[0] === '--json' &&
+    argv[1] === '--binding-proof' &&
+    validateBindingNonce(argv[2])
+  )
+    return { json: true, bindingProof: argv[2] };
+  if (
+    argv.length === 3 &&
+    argv[0] === '--json' &&
+    argv[1] === '--runtime-proof' &&
+    validateBindingNonce(argv[2])
+  )
+    return { json: true, runtimeProof: argv[2] };
+  throw new DoctorUsageError(
+    'Usage: npx aitm doctor [--json [--binding-proof <nonce> | --runtime-proof <nonce>]]'
+  );
 }
 
 export function renderDoctorJson(report) {
@@ -44,7 +65,27 @@ export function runDoctor({
     return 0;
   }
   try {
-    const { json } = parseDoctorArgs(argv);
+    const { json, bindingProof, runtimeProof } = parseDoctorArgs(argv);
+    if (runtimeProof) {
+      const cliRuntimeObservation = observeRuntimeProvenance({
+        projectRoot: cwd,
+        callerModuleUrl: import.meta.url,
+        configPaths: ['.codex/hooks.json'],
+      });
+      const proof = inspectNativeBindingProof({
+        cwd,
+        nonce: runtimeProof,
+        runtimeMode: true,
+        cliRuntimeObservation,
+      });
+      stdout(renderDoctorJson(proof));
+      return proof.diagnosticPassed ? 0 : 1;
+    }
+    if (bindingProof) {
+      const proof = inspectNativeBindingProof({ cwd, nonce: bindingProof });
+      stdout(renderDoctorJson(proof));
+      return proof.healthy ? 0 : 1;
+    }
     const report = (deps.diagnose || diagnoseInstallation)({ cwd, deps });
     stdout(json ? renderDoctorJson(report) : renderDoctorHuman(report));
     return report.healthy ? 0 : 1;
