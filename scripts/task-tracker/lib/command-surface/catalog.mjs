@@ -666,13 +666,16 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'epic-wave': contract(
     [
-      'Authority mutations require genuine parent authority, exact source context and the common physical parent admission lock; lock-release instead requires exact dead-holder evidence.',
+      'Authority mutations require genuine parent authority, exact source context and the common physical parent admission lock; lock-release requires exact dead-holder evidence. Restore-worktree requires --role orchestrator on this invocation and an active genuine orchestrator, strict completed-Done direct child, authenticated retained history and unchanged recorded location; its closed aitm.epic-wave-restore-worktree/v1 selector has schema, rank, child, retainedDigest and expectedHead only.',
     ],
     [
-      'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment; lock-show inspects ownership and lock-release requires genuine parent authority and exact dead-holder evidence. No lifecycle state is changed.',
+      'Prepare/show read authority; record/revoke/refresh append immutable scoped records; resume repairs the same operation without another comment; lock-show inspects ownership and lock-release requires genuine parent authority and exact dead-holder evidence. Restore-worktree recreates only the recorded checkout from its existing exact-head branch under the same lock, verifies clean read-back and unchanged refs, and preserves uncertain effects. No lifecycle state is changed.',
     ],
     ['Prints typed proposal, publication, refusal or indeterminate results.'],
-    [exit(4, 'wave obligation refused'), exit(6, 'original comment write outcome indeterminate')]
+    [
+      exit(4, 'wave obligation refused'),
+      exit(6, 'comment write or attempted restoration outcome indeterminate'),
+    ]
   ),
   'decompose-check': contract(
     ['The target issue and its board planning fields must be readable.'],
@@ -895,7 +898,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'epic-wave': Object.freeze([
     positional(
-      '<prepare|record|resume|refresh|show|revoke|lock-show|lock-release>',
+      '<prepare|record|resume|refresh|show|revoke|lock-show|lock-release|restore-worktree>',
       'Rank-wave operation.'
     ),
     positional('<epic>', 'Exact parent issue number.'),

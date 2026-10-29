@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { getProvider } from '../../providers/index.mjs';
 import { resolveTranscriptPath } from '../../providers/transcript-resolver.mjs';
 import { getActiveTask } from '../session-state.mjs';
@@ -54,7 +55,7 @@ export function nativeRankWaveTranscript(binding, { home = homedir() } = {}) {
     cwd: binding.worktree,
   });
 }
-export async function observeRankWaveNative(binding, { home = homedir() } = {}) {
+async function readRankWaveNative(binding, { home = homedir() } = {}) {
   const file = nativeRankWaveTranscript(binding, { home });
   if (!file) throw new Error('rank-wave: native transcript unavailable');
   const events = (await readFile(file, 'utf8'))
@@ -74,6 +75,48 @@ export async function observeRankWaveNative(binding, { home = homedir() } = {}) 
     if (!records.length) throw new Error('rank-wave: native identity unavailable');
     cwd = records[0].cwd;
   } else throw new Error('rank-wave: native identity adapter unavailable');
+  return { cwd, events };
+}
+export async function observeRetainedRankWaveNative(binding, options = {}) {
+  const { cwd, events } = await readRankWaveNative(binding, options);
+  if (cwd !== binding.worktree) {
+    // A genuine session may start in the primary checkout and execute later in
+    // its retained worktree. Require the original same-repository provenance
+    // and host-recorded cwd evidence, never command text or message content.
+    if (binding.provider !== 'codex' || discoverRankWaveCommonDir(cwd) !== binding.commonDir)
+      throw new Error('rank-wave: retained native repository mismatch');
+    const metadataIndex = events.findIndex((event) => event.type === 'session_meta');
+    const witnessed = events.slice(metadataIndex + 1).some((event) => {
+      if (event.type === 'turn_context') return event.payload?.cwd === binding.worktree;
+      const payload = event.payload,
+        item = payload?.item;
+      if (
+        event.type !== 'event_msg' ||
+        payload?.type !== 'item_completed' ||
+        payload.thread_id !== binding.sessionId ||
+        typeof payload.turn_id !== 'string' ||
+        !payload.turn_id ||
+        item?.type !== 'CommandExecution' ||
+        typeof item.id !== 'string' ||
+        !item.id ||
+        item.status !== 'completed' ||
+        !Number.isInteger(item.exit_code) ||
+        typeof item.cwd !== 'string'
+      )
+        return false;
+      try {
+        const observed = item.cwd.startsWith('file:') ? fileURLToPath(item.cwd) : item.cwd;
+        return observed === binding.worktree;
+      } catch {
+        return false;
+      }
+    });
+    if (!witnessed) throw new Error('rank-wave: retained native location mismatch');
+  }
+  return { verified: true, sessionId: binding.sessionId };
+}
+export async function observeRankWaveNative(binding, options = {}) {
+  const { cwd } = await readRankWaveNative(binding, options);
   if (discoverRankWavePhysical(cwd).commonDir !== binding.commonDir)
     throw new Error('rank-wave: native repository mismatch');
   return { verified: true, sessionId: binding.sessionId };

@@ -1,9 +1,12 @@
 // @story #1872
+import { verifyWorktreeRecoveryParent } from './epic-rank-wave-restore-worktree.mjs';
+import { execFileSync } from 'node:child_process';
+import { parseEpicOrchestrationPlan } from './epic-orchestration-plan.mjs';
 import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { reconcileRankWaveRefinement } from './epic-rank-wave-refinement.mjs';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 import { pexec as run } from '../../gh/lib/gh-client.mjs';
-import { readFileSync, mkdirSync, writeFileSync, realpathSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, realpathSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { getProvider } from '../../providers/index.mjs';
@@ -11,7 +14,7 @@ import { resolveTranscriptPath } from '../../providers/transcript-resolver.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
 import { aiAppName, currentSessionId } from '../word-counter.mjs';
 import { getActiveTask } from '../session-state.mjs';
-import { getProjectDir } from '../paths.mjs';
+import { getProjectDir, activeTaskPath } from '../paths.mjs';
 import { fetchEpicChildren, enrichChildrenWithBlockedBy } from './epic-children-gate.mjs';
 import { readOccupancy } from './occupancy.mjs';
 import { occupancyPath } from '../paths.mjs';
@@ -23,12 +26,15 @@ import {
   observeRankWaveDischarge,
   verifyRankWaveBindings,
   rankWaveGitEnv,
+  observeRetainedRankWaveNative,
 } from './epic-rank-wave-bindings.mjs';
 import { createRankWaveSourceLoader, verifyRankWaveSource } from './epic-rank-wave-source.mjs';
 import {
   withEpicAdmissionLock,
   inspectEpicAdmissionLock,
   releaseEpicAdmissionLock,
+  assertEpicAdmissionLock,
+  currentEpicAdmissionLock,
 } from './epic-admission-lock.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import {
@@ -181,29 +187,122 @@ export function createRankWaveRuntime(ctx, { admissionLockContext = null, ports 
         : oldParent;
     return { body, children, bindings, parent };
   }
+  async function assertParent(epic) {
+    assertGovernedMutationSession(loadState(ctx.statePath), epic);
+    const rows = rowsAt();
+    const active = getActiveTask(sid, projectDir),
+      claim = rows[String(epic)];
+    if (
+      active?.issue !== `#${epic}` ||
+      claim?.sid !== sid ||
+      claim.provider !== provider ||
+      claim.bindingGenerationId !== active.bindingGenerationId
+    ) {
+      throw new Error('rank-wave: genuine parent binding required');
+    }
+    const binding = bindingFor(
+      epic,
+      { worktreePath: active.worktreePath, worktreeBranch: active.worktreeBranch },
+      claim
+    );
+    const observation = await observeRankWaveBinding(binding);
+    if (!observation.native.verified)
+      throw new Error('rank-wave: parent native identity unavailable');
+    return { binding, native: observation.native };
+  }
   return {
+    projectDir,
     recordingActor: `${provider}/session:${sid}`,
     async assertParent(epic) {
-      assertGovernedMutationSession(loadState(ctx.statePath), epic);
-      const rows = rowsAt();
+      await assertParent(epic);
+    },
+    async assertRecoveryParent(epic) {
+      const observed = await assertParent(epic);
       const active = getActiveTask(sid, projectDir),
-        claim = rows[String(epic)];
-      if (
-        active?.issue !== `#${epic}` ||
-        claim?.sid !== sid ||
-        claim.provider !== provider ||
-        claim.bindingGenerationId !== active.bindingGenerationId
-      ) {
-        throw new Error('rank-wave: genuine parent binding required');
-      }
-      const binding = bindingFor(
-        epic,
-        { worktreePath: active.worktreePath, worktreeBranch: active.worktreeBranch },
-        claim
+        claim = rowsAt()[String(epic)];
+      const observedRepository = await rankWaveRepositoryAt(projectDir);
+      const user = JSON.parse((await transport('gh', ['api', 'user'])).stdout);
+      const issue = JSON.parse(
+        (
+          await transport('gh', [
+            'issue',
+            'view',
+            String(epic),
+            '-R',
+            repository,
+            '--json',
+            'number,state,body,assignees',
+          ])
+        ).stdout
       );
-      const observation = await observeRankWaveBinding(binding);
-      if (!observation.native.verified)
-        throw new Error('rank-wave: parent native identity unavailable');
+      const binding = observed.binding;
+      return verifyWorktreeRecoveryParent({
+        epic,
+        role: ctx.role,
+        sid,
+        provider,
+        repository,
+        observedRepository,
+        active,
+        claim,
+        user,
+        issue,
+        binding,
+        native: observed.native,
+        parentContract: parseEpicOrchestrationPlan(issue.body),
+        location: resolveCurrentIssueWorktreeLocation(issue.body),
+      });
+    },
+    verifyRetainedNative: observeRetainedRankWaveNative,
+    async readRecoveryClaims(binding) {
+      const file = activeTaskPath(binding.sessionId, binding.worktree);
+      let stat;
+      try {
+        stat = lstatSync(file);
+      } catch (error) {
+        if (error.code === 'ENOENT') return rowsAt();
+        throw new Error('rank-wave: retained worker timer unreadable', { cause: error });
+      }
+      let active;
+      try {
+        if (!stat.isFile() || stat.uid !== process.getuid?.()) throw new Error('unsafe file');
+        active = JSON.parse(readFileSync(file, 'utf8'));
+        if (
+          !active ||
+          typeof active !== 'object' ||
+          Array.isArray(active) ||
+          !Object.hasOwn(active, 'issue') ||
+          !(active.issue === null || /^#[1-9][0-9]*$/.test(active.issue)) ||
+          !Object.hasOwn(active, 'entryStartTs') ||
+          ['entryStartTs', 'pausedAtTs', 'closedAt'].some(
+            (key) =>
+              Object.hasOwn(active, key) &&
+              active[key] !== null &&
+              (typeof active[key] !== 'string' || !Number.isFinite(Date.parse(active[key])))
+          ) ||
+          (active.issue === null && active.entryStartTs !== null)
+        )
+          throw new Error('uncertain timer shape');
+      } catch (error) {
+        throw new Error('rank-wave: retained worker timer unreadable', { cause: error });
+      }
+      if (active.entryStartTs && !active.pausedAtTs && !active.closedAt)
+        throw new Error('rank-wave: retained worker timer active');
+      return rowsAt();
+    },
+    addRestoredWorktree(binding) {
+      assertEpicAdmissionLock({
+        projectDir,
+        epic: ctx.waveEpic,
+        context: currentEpicAdmissionLock(),
+      });
+      return execFileSync('git', ['worktree', 'add', '--', binding.worktree, binding.branch], {
+        cwd: projectDir,
+        env: rankWaveGitEnv(),
+        encoding: 'utf8',
+        timeout: 30000,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
     },
     inspectLock: () => inspectEpicAdmissionLock({ projectDir, epic: ctx.waveEpic }),
     releaseLock: (observation) =>
