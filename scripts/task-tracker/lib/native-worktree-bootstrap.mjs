@@ -1,6 +1,6 @@
 // @story #2088
 // @story #2106
-// cspell:words attributesfile hookspath userconfig globalconfig SHELLOPTS BASHOPTS CDPATH DYLD fsmonitor nonordinary scriptshell nodeoptions onloadscript includeworkspaceroot
+// cspell:words attributesfile hookspath userconfig globalconfig SHELLOPTS BASHOPTS CDPATH DYLD fsmonitor nonordinary scriptshell nodeoptions onloadscript includeworkspaceroot NOSYSTEM
 // A closed bootstrap operation, never a general unbound-shell allowance.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';

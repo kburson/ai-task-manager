@@ -1,5 +1,5 @@
 // @story #2088
-// cspell:words globalconfig LOGNAME SYSTEMROOT WINDIR
+// cspell:words globalconfig LOGNAME SYSTEMROOT WINDIR NOSYSTEM
 // These are offline hook-process fixtures, not evidence of a live native worker.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
