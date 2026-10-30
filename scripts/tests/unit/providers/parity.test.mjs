@@ -175,10 +175,10 @@ test('#939: shared router discovers the deliver JIT rule and installed stubs rea
   const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
   assert.match(router, /`\/task deliver #N`\s*\|\s*`rules\/deliver\.md`/);
   assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.1\.0/);
-  for (const installed of ['.agents/skills/task/SKILL.md', '.claude/skills/task/SKILL.md']) {
+  for (const installed of [codexStub(), claudeStub()]) {
     assert.match(
-      readFileSync(path.join(REPO_ROOT, installed), 'utf8'),
-      /node_modules\/ai-task-manager\/skill\/adapters\/(?:codex|claude)\/SKILL\.md/
+      installed,
+      /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/(?:codex|claude)\/SKILL\.md/
     );
   }
 });
