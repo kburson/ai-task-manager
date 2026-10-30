@@ -22,7 +22,14 @@ function invoke(cwd, args) {
   return spawnSync(process.execPath, [aitm, 'doctor', ...args], {
     cwd,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH, HOME: process.env.HOME },
+    // Fixtures live inside the source repository. Do not let the missing-Git
+    // case discover that real parent; initialized consumer fixtures still own
+    // their independent Git root below this ceiling.
+    env: {
+      PATH: process.env.PATH,
+      HOME: process.env.HOME,
+      GIT_CEILING_DIRECTORIES: scratch,
+    },
   });
 }
 
@@ -75,7 +82,7 @@ test('doctor CLI reports a committed install identically without writes or task 
   );
 });
 
-test('doctor CLI reserves exit 2 for usage errors and reports missing Git context as health', () => {
+test('doctor CLI reserves exit 2 for usage errors after guidance admission', () => {
   const nonGit = path.join(scratch, 'not-a-repository');
   mkdirSync(nonGit, { recursive: true });
 
@@ -83,12 +90,32 @@ test('doctor CLI reserves exit 2 for usage errors and reports missing Git contex
   assert.equal(help.status, 0, help.stdout + help.stderr);
   assert.match(help.stdout, /aitm doctor/);
 
-  const unknown = invoke(nonGit, ['--unknown']);
+  const unknown = invoke(root, ['--unknown']);
   assert.equal(unknown.status, 2, unknown.stdout + unknown.stderr);
 
+  // Operational CLI admission requires a readable Git root. A missing root
+  // refuses guidance before doctor runs; it must not borrow the parent repo.
   const health = invoke(nonGit, ['--json']);
   assert.equal(health.status, 1, health.stdout + health.stderr);
-  assert.equal(JSON.parse(health.stdout).healthy, false);
+  assert.equal(health.stdout, '');
+  assert.match(health.stderr, /AITM guidance catalog is invalid/);
+
+  // Exercise the diagnostic observer separately against the same real missing
+  // Git context, preserving its health contract without bypassing CLI admission.
+  const report = diagnoseInstallation({
+    cwd: nonGit,
+    packageRoot: root,
+    deps: {
+      execFileSync: (command, args, options) =>
+        execFileSync(command, args, {
+          ...options,
+          env: { PATH: process.env.PATH, HOME: process.env.HOME, GIT_CEILING_DIRECTORIES: scratch },
+        }),
+    },
+  });
+  assert.equal(report.projectRoot, null);
+  assert.equal(report.healthy, false);
+  assert.equal(report.checks.find(({ id }) => id === 'git.repository').status, 'missing');
 });
 
 test('doctor inspects artifacts declared by a stale manifest rather than mismatched current IDs', async () => {
