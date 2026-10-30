@@ -12,7 +12,12 @@ test('consumer skill stubs omit dogfood worktree seeding instructions', () => {
   }
 });
 
-test('repository Codex skill retains its Step 0 dogfood bootstrap', () => {
+test('repository Codex skill matches the scoped installer stub', () => {
   const repositoryStub = readFileSync('.agents/skills/task/SKILL.md', 'utf8');
-  assert.match(repositoryStub, /## Step 0[\s\S]{0,800}ensure-worktree-seeded/);
+  assert.equal(repositoryStub, codexStub());
+  assert.match(
+    repositoryStub,
+    /node_modules\/@kburson\/ai-task-manager\/skill\/adapters\/codex\/SKILL\.md/
+  );
+  assert.doesNotMatch(repositoryStub, /ensure-worktree-seeded|link:self/);
 });
