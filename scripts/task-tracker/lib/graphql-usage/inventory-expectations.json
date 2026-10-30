@@ -583,7 +583,7 @@
     "scripts/task-tracker/backfill-vc-sections.mjs|101|uncovered|uncovered",
     "scripts/task-tracker/bash-guard.mjs|302|out-of-scope|out-of-scope",
     "scripts/task-tracker/bash-guard.mjs|337|out-of-scope|out-of-scope",
-    "scripts/task-tracker/bash-guard.mjs|434|opaque-gh-cli|opaque",
+    "scripts/task-tracker/bash-guard.mjs|435|opaque-gh-cli|opaque",
     "scripts/task-tracker/codex-superpowers.mjs|136|out-of-scope|out-of-scope",
     "scripts/task-tracker/commit-trail-handler.mjs|157|gh-api-graphql|planned",
     "scripts/task-tracker/draft-branch.mjs|102|opaque-gh-cli|opaque",

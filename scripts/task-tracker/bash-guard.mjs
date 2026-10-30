@@ -391,18 +391,19 @@ async function evaluate(input) {
     const { mergeBackPathCommand, inspectNativeMergeBackPath } =
       await import('./lib/native-merge-back-path.mjs');
     const request = mergeBackPathCommand(rawCommand);
-    if (!request) block('native-merge-back-path: unsupported command');
-    try {
-      registeredPaths.add(
-        await inspectNativeMergeBackPath({
-          request,
-          root: projectRoot,
-          invocationDir,
-          sessionId: input.session_id,
-        })
-      );
-    } catch (error) {
-      block(error.message);
+    if (request && !allowedPath(request.childPath, READ_ALLOWED)) {
+      try {
+        registeredPaths.add(
+          await inspectNativeMergeBackPath({
+            request,
+            root: projectRoot,
+            invocationDir,
+            sessionId: input.session_id,
+          })
+        );
+      } catch (error) {
+        block(error.message);
+      }
     }
   }
   for (const p of allPaths) {
