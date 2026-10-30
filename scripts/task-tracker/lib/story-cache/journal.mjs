@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { canonicalRecordJson as json } from '../github-records/canonical-json.mjs';
 import { validateManifest } from './manifest.mjs';
 import { materializeBodyTemplate } from './body-template.mjs';
+import { compareSnapshots } from './snapshot-compare.mjs';
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const clone = (value) => JSON.parse(json(value));
 const same = (a, b) => json(a) === json(b);
@@ -102,7 +103,7 @@ export function validateRecoveryJournal(record) {
       'bodyTemplate',
       'status',
     ],
-    ['realizedIssue']
+    ['realizedIssue', 'recoveryObservation']
   );
   if (
     ![
@@ -121,6 +122,24 @@ export function validateRecoveryJournal(record) {
     fail('batch');
   const keys = new Set(batch.effects.map((row) => row.key));
   if (keys.size !== batch.effects.length) fail('duplicate-effects');
+  if (batch.recoveryObservation !== undefined) {
+    const observation = batch.recoveryObservation;
+    exact(observation, ['schema', 'snapshot', 'targets']);
+    if (
+      observation.schema !== 'aitm.story-recovery-observation/v1' ||
+      !same(observation.snapshot?.identity, record.generation.identity) ||
+      !Array.isArray(observation.targets) ||
+      observation.targets.length > batch.effects.length ||
+      new Set(observation.targets.map((row) => row.key)).size !== observation.targets.length
+    )
+      fail('recovery-observation');
+    compareSnapshots(observation.snapshot, observation.snapshot);
+    for (const target of observation.targets) {
+      exact(target, ['key', 'value']);
+      if (!batch.effects.some((row) => row.key === target.key && row.attempted))
+        fail('recovery-observation');
+    }
+  }
   for (const row of batch.effects) {
     exact(row, [
       'key',
@@ -172,8 +191,14 @@ export function validateRecoveryJournal(record) {
     batch.effects.some((row) => row.outcome?.state !== 'confirmed')
   )
     fail('aggregate-state-drift');
-  const { batchId, realizedIssue: ignored, ...original } = clone(batch);
+  const {
+    batchId,
+    realizedIssue: ignored,
+    recoveryObservation: observations,
+    ...original
+  } = clone(batch);
   void ignored;
+  void observations;
   original.status = 'frozen';
   original.effects = original.effects.map((row) => ({ ...row, attempted: false, outcome: null }));
   if (batchId !== `batch:${hash(json(original))}`) fail('frozen-intent-drift');
