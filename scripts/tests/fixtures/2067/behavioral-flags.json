@@ -1,0 +1,49 @@
+{
+  "schema": "aitm.guidance-legacy-behavioral-flags/v1",
+  "flags": [
+    {
+      "flag": "AITM_EVIDENCE_CONTEXT",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/native-merge-back-path.mjs",
+          "symbol": "native merge-back operand admission",
+          "excerpt": "if (env.TT_SKIP_NETWORK === '1' || env.AITM_EVIDENCE_CONTEXT) fail('unsupported environment');",
+          "fingerprint": "sha256:d40d6b67605dace8084613b7c76c320d9bf1a5165082119130dacc503d8aab09"
+        }
+      ],
+      "defaultBehavior": "Native merge-back operand admission uses live provider observations",
+      "nondefaultBehavior": "Admission refuses injected evidence context and network suppression",
+      "changes": {
+        "predicate": true,
+        "effect": false
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Refusal preserves native authority; neither flag grants permission",
+      "ownerTask": "#2067",
+      "verifier": "scripts/tests/integration/task-tracker/lib/native-merge-back-path.test.mjs"
+    },
+    {
+      "flag": "TT_SKIP_NETWORK",
+      "reads": [
+        {
+          "path": "scripts/task-tracker/lib/native-merge-back-path.mjs",
+          "symbol": "native merge-back operand admission",
+          "excerpt": "if (env.TT_SKIP_NETWORK === '1' || env.AITM_EVIDENCE_CONTEXT) fail('unsupported environment');",
+          "fingerprint": "sha256:d40d6b67605dace8084613b7c76c320d9bf1a5165082119130dacc503d8aab09"
+        }
+      ],
+      "defaultBehavior": "Native merge-back operand admission uses live provider observations",
+      "nondefaultBehavior": "Admission refuses injected evidence context and network suppression",
+      "changes": {
+        "predicate": true,
+        "effect": false
+      },
+      "purpose": "internal-protocol",
+      "disposition": "retain",
+      "rationale": "Refusal preserves native authority; neither flag grants permission",
+      "ownerTask": "#2067",
+      "verifier": "scripts/tests/integration/task-tracker/lib/native-merge-back-path.test.mjs"
+    }
+  ]
+}
