@@ -397,6 +397,7 @@ async function evaluate(input) {
         await inspectNativeMergeBackPath({
           request,
           root: projectRoot,
+          invocationDir,
           sessionId: input.session_id,
         })
       );

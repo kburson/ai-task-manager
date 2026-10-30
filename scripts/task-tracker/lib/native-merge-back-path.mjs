@@ -94,12 +94,14 @@ async function readRemote({ parent, child, cfg }) {
 export async function inspectNativeMergeBackPath({
   request,
   root,
+  invocationDir,
   sessionId,
   env = process.env,
   cfg,
   deps = {},
 }) {
   try {
+    if (invocationDir !== root) fail('invocation must be the physical parent root');
     if (
       !request ||
       !same(

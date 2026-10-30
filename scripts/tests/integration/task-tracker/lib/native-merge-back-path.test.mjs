@@ -89,6 +89,7 @@ function fixture(t) {
   const options = {
     request: mergeBackPathCommand(command),
     root,
+    invocationDir: root,
     sessionId: sid,
     cfg: { repo: 'fixture/repository', projectId: 'PVT_fixture' },
     env: {
@@ -299,7 +300,7 @@ test('real Bash hook grants only the verified operand and retains other path bou
     }});
   `
   );
-  const run = (command) => {
+  const run = (command, cwd = f.root) => {
     // Policy inputs only: the merge command is never executed by this fixture.
     const result = spawnSync(
       process.execPath,
@@ -310,10 +311,10 @@ test('real Bash hook grants only the verified operand and retains other path bou
         path.join(source, 'scripts/task-tracker/bash-guard.mjs'),
       ],
       {
-        cwd: f.root,
+        cwd,
         env: f.options.env,
         input: JSON.stringify({
-          cwd: f.root,
+          cwd,
           session_id: f.sid,
           tool_name: 'Bash',
           tool_input: { command },
@@ -328,6 +329,15 @@ test('real Bash hook grants only the verified operand and retains other path bou
   };
   const command = `${entry} merge-back 140 ${f.child} --preserve-worktree`;
   assert.equal(run(command), '');
+  const nested = path.join(f.root, '.tmp/shadow');
+  mkdirSync(path.join(nested, path.dirname(entry)), { recursive: true });
+  writeFileSync(
+    path.join(nested, entry),
+    '#!/usr/bin/env node\n// shadow carrier, never executed\n'
+  );
+  const nestedResult = run(command, nested);
+  assert.notEqual(nestedResult, '', 'a descendant cwd must not validate the root carrier');
+  assert.equal(JSON.parse(nestedResult).decision, 'block');
   for (const rejected of [
     `cat ${f.child}/tracked.txt`,
     command + ' /another/private',

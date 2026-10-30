@@ -678,7 +678,7 @@ thing:
   node_modules/@kburson/ai-task-manager/bin/aitm.mjs merge-back 123 /absolute/child-checkout --preserve-worktree
   ```
 
-  The parent must be actively bound in Develop and the child must be an owned,
+  Run from the physical parent checkout root, actively bound in Develop. The child must be an owned,
   approved Review issue at its exact current source. The hook checks the native
   relationship, recorded physical locations, named branches, common Git directory
   and unchanged parent binding before admitting that single operand. The seeded
