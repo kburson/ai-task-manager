@@ -513,3 +513,141 @@ test('unknown outcome properties cannot carry recovery authority', async (t) => 
     { code: 'STORY_RECOVERY_UNAVAILABLE', reason: 'shape' }
   );
 });
+test('an exact late landing after the full snapshot is not trapped as a false conflict', async (t) => {
+  const f = await uncertain(t);
+  const before = await f.f.store.readGeneration();
+  const effect = before.generation.batch.effects.find((row) => row.attempted);
+  const older = structuredClone(f.cloud);
+  const value = observed(effect, effect.candidate.body);
+  const ports = {
+    readSnapshot: async () => structuredClone(f.cloud),
+    observe: async () => {
+      f.cloud.resources[effect.key] = { ...observeContent(value), ownership: 'owned' };
+      return value;
+    },
+  };
+  const result = await context(f.f.root, () =>
+    recover({ store: f.f.store, claim: f.f.claim, ports })
+  );
+  assert.equal(result.status, 'partial');
+  const stored = await f.f.store.readGeneration();
+  assert.equal(stored.generation.conflicts.length, 0);
+  assert.deepEqual(stored.generation.batch.recoveryObservation.snapshot, older);
+  assert.deepEqual(stored.generation.batch.recoveryObservation.targets[0].value, value);
+  assert.equal(
+    (await context(f.f.root, () => recover({ store: f.f.store, claim: f.f.claim, ports }))).status,
+    'partial'
+  );
+  assert.equal(f.writes(), 1);
+});
+test('foreign bytes found after the full snapshot retain their own three-way evidence', async (t) => {
+  const f = await uncertain(t);
+  const before = await f.f.store.readGeneration();
+  const effect = before.generation.batch.effects.find((row) => row.attempted);
+  const older = structuredClone(f.cloud);
+  const foreign = observed(effect, 'external replacement after the snapshot');
+  const result = await context(f.f.root, () =>
+    recover({
+      store: f.f.store,
+      claim: f.f.claim,
+      ports: { readSnapshot: async () => older, observe: async () => foreign },
+    })
+  );
+  assert.equal(result.status, 'conflict');
+  const stored = await f.f.store.readGeneration();
+  const evidence = stored.generation.conflicts.at(-1);
+  assert.deepEqual(evidence.current, older);
+  assert.equal(evidence.observations[0].value.body, foreign.body);
+  assert.deepEqual(evidence.baseline, before.generation.batch.baseline);
+  assert.deepEqual(evidence.working, before.generation.working);
+  assert.equal(f.writes(), 1);
+});
+test('a field landing between full and targeted reads remains a confirmed partial outcome', async (t) => {
+  const f = await uncertain(t, await fieldInput(t, 2), 'project-field-update');
+  const before = await f.f.store.readGeneration();
+  const effect = before.generation.batch.effects.find((row) => row.kind === 'project-field-update');
+  const result = await context(f.f.root, () =>
+    recover({
+      store: f.f.store,
+      claim: f.f.claim,
+      ports: {
+        readSnapshot: async () => structuredClone(f.cloud),
+        observe: async () => {
+          f.cloud.fields = [structuredClone(effect.candidate)];
+          f.cloud.fieldsDigest = hash(
+            json({ canonicalizationVersion: 'aitm.canonical-json/v1', fields: f.cloud.fields })
+          );
+          return { complete: true, identity, field: structuredClone(effect.candidate) };
+        },
+      },
+    })
+  );
+  assert.equal(result.status, 'partial');
+  assert.equal((await f.f.store.readGeneration()).generation.conflicts.length, 0);
+  assert.equal(f.writes(), 2);
+});
+test('a uniquely observed creation after the full inventory is not a false foreign addition', async (t) => {
+  const f = await pendingCreation(t);
+  const before = await f.f.store.readGeneration();
+  const effect = before.generation.batch.effects.find((row) => row.kind === 'comment-create');
+  const result = await context(f.f.root, () =>
+    recover({
+      store: f.f.store,
+      claim: f.f.claim,
+      ports: {
+        readSnapshot: async () => structuredClone(f.cloud),
+        observe: async () => creationObservation(f, effect, ['IC_after_inventory']),
+      },
+    })
+  );
+  assert.equal(result.status, 'partial');
+  const stored = await f.f.store.readGeneration();
+  assert.equal(stored.generation.conflicts.length, 0);
+  assert.equal(
+    stored.generation.batch.recoveryObservation.snapshot.inventory.includes('IC_after_inventory'),
+    false
+  );
+  assert.equal(f.writes(), 2);
+});
+test('a missing required title is incomplete evidence rather than a permanent foreign conflict', async (t) => {
+  const f = await uncertain(t, null, 'issue-update');
+  const before = await f.f.store.readGeneration();
+  const effect = before.generation.batch.effects.find((row) => row.kind === 'issue-update');
+  const incomplete = observed(effect, f.cloud.resources[effect.key].body);
+  delete incomplete.title;
+  const result = await context(f.f.root, () =>
+    recover({
+      store: f.f.store,
+      claim: f.f.claim,
+      ports: { readSnapshot: async () => f.cloud, observe: async () => incomplete },
+    })
+  );
+  assert.equal(result.status, 'uncertain');
+  assert.equal(
+    (await f.f.store.readGeneration()).manifest.payloadDigest,
+    before.manifest.payloadDigest
+  );
+});
+test('a full snapshot for another repository refuses before any targeted observation', async (t) => {
+  const f = await uncertain(t);
+  const foreign = structuredClone(f.cloud);
+  foreign.identity.repository = 'other/repository';
+  let reads = 0;
+  await assert.rejects(
+    context(f.f.root, () =>
+      recover({
+        store: f.f.store,
+        claim: f.f.claim,
+        ports: {
+          readSnapshot: async () => foreign,
+          observe: async () => {
+            reads++;
+            return { complete: false };
+          },
+        },
+      })
+    ),
+    { code: 'STORY_RECOVERY_UNAVAILABLE', reason: 'snapshot-identity' }
+  );
+  assert.equal(reads, 0);
+});
