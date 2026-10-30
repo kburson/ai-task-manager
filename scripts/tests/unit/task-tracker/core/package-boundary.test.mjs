@@ -492,6 +492,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
     18 + // #2039: exact 18 additional retained cache/estimation modules reconciled with delivered R0.
     2 + // #2067: exact recovery and journal modules; no additional package family.
+    1 + // #2067: approved native merge-back operand admission, one runtime module.
     4; // #2096: immutable subject, native source execution and stamp declaration validation.
   for (const module of [
     'artifact-subject',
@@ -504,6 +505,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'native-worktree-bootstrap',
     'native-bootstrap-inputs',
     'native-binding-proof',
+    'native-merge-back-path',
   ])
     assert.ok(files.includes(`scripts/task-tracker/lib/${entry}.mjs`));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
