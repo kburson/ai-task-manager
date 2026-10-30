@@ -1,0 +1,37 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.405167ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (3.583792ms)
+✔ a disconnected operation or unproduced final candidate refuses (0.480125ms)
+✔ caller options and serialized permission unions confer no authority (1.891625ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.393208ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.323292ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.49775ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (0.59225ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.20675ms)
+✔ malformed declarations and malformed operation shapes refuse (0.25975ms)
+✔ synthetic approval markers never become native approval authority (0.112708ms)
+✖ genuine reviewed scope token authorizes only its exact target and survives unrelated edits (7.551ms)
+✔ genuine decomposition capability requires its live native context and exact record delta (30.795583ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 12
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 326.466708
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:112:1
+✖ genuine reviewed scope token authorizes only its exact target and survives unrelated edits (7.551ms)
+  AssertionError [ERR_ASSERTION]: native coordinator did not expose its genuine capability to real mutator
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:141:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

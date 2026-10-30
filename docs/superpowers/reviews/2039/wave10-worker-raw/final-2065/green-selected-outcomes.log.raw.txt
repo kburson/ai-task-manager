@@ -1,0 +1,47 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.94975ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.519875ms)
+✔ v2 rejects off-grid published hours: refine (0.1195ms)
+✔ v2 rejects off-grid published hours: plan (0.090625ms)
+✔ v2 rejects off-grid published hours: p50 (0.09275ms)
+✔ v2 rejects off-grid published hours: p80 (0.058ms)
+✔ v2 rejects off-grid published hours: stage (0.057541ms)
+✔ v2 rejects off-grid published hours: wbs (0.070959ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.151667ms)
+✔ current v3 reads replay retained evidence and require its current selection (13.002083ms)
+✔ current v3 refuses missing or stale provenance: missing (0.969625ms)
+✔ current v3 refuses missing or stale provenance: manifest (1.309791ms)
+✔ current v3 refuses missing or stale provenance: plan (1.536583ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.522875ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.149833ms)
+✔ current authority correlates its configured repository before reading projection (0.683375ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (0.7025ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (0.919208ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (1.933125ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (0.567917ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (0.583959ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (1.439417ms)
+✔ current replay refuses accessor-based issue substitution (0.631375ms)
+✔ local generation includes only explicitly selected retained outcomes in current provenance (6.61775ms)
+✔ forecast-ready marker is canonical, replaceable during Plan, and readable by the exit gate (0.798625ms)
+✔ Plan authority converges Refine history, board Estimate/Size, body fields, and forecast read-back (143.436375ms)
+✔ Plan authority rejects an off-grid forecast before its first write (0.879375ms)
+✔ Plan authority rejects a legacy v1 forecast before its first write (0.843417ms)
+✔ Plan authority publishes the normalized forecast Refine baseline (133.820917ms)
+✔ concurrent Plan convergence claims the forecast generation and appends it once (130.45325ms)
+✔ every interrupted seam replays convergently without duplicating the forecast (1282.105417ms)
+✔ already-converged replay performs no writes (191.287458ms)
+✔ Develop or frozen forecasts reject supersession outside audited demote/replan (5.62975ms)
+✔ conflicting non-superseded forecasts fail closed (4.091125ms)
+✔ audited Plan re-entry may supersede exactly one prior active forecast (146.499375ms)
+✔ local execution replays retained inputs, builds forecast, creates an envelope, and converges authority (1.729167ms)
+✔ legacy baseline adoption freezes only an exact matching Develop projection (185.803666ms)
+✔ legacy baseline adoption refuses mismatches, existing evidence, or non-Develop state (5.832166ms)
+✔ current authority publishes the validated snapshot despite caller mutation during projection read (182.890708ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2585.060542

@@ -1,0 +1,54 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (2.702125ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.925834ms)
+✔ v2 rejects off-grid published hours: refine (0.226417ms)
+✔ v2 rejects off-grid published hours: plan (0.142083ms)
+✔ v2 rejects off-grid published hours: p50 (0.194792ms)
+✔ v2 rejects off-grid published hours: p80 (0.078917ms)
+✔ v2 rejects off-grid published hours: stage (0.101125ms)
+✔ v2 rejects off-grid published hours: wbs (0.084791ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.416583ms)
+✖ current v3 reads replay retained evidence and require its current selection (22.565625ms)
+✔ current v3 refuses missing or stale provenance: missing (4.631709ms)
+✔ current v3 refuses missing or stale provenance: manifest (2.467041ms)
+✔ current v3 refuses missing or stale provenance: plan (14.176ms)
+✔ current v3 refuses missing or stale provenance: unknown (12.609833ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (9.642292ms)
+✔ story estimates ceil to the next half hour without moving downward (1.633625ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (0.868083ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.202208ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (9.266542ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (3.734ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (1.625083ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (2.232458ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (2.144042ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.77ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (2.191166ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (1.405167ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 25
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 442.498375
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:81:1
+✖ current v3 reads replay retained evidence and require its current selection (22.565625ms)
+  Error: Local evidence unavailable: shape
+      at fail (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/local-evidence.mjs:29:23)
+      at exact (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/local-evidence.mjs:41:5)
+      at validateLocalEvidence (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/local-evidence.mjs:334:5)
+      at validateLocalSelection (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/local-runtime.mjs:56:20)
+      at requireCurrentSchema (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/task-tracker/lib/estimation/forecast-legacy.mjs:13:3)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs:84:16)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'LOCAL_EVIDENCE_UNAVAILABLE',
+    reason: 'shape',
+    [cause]: undefined
+  }

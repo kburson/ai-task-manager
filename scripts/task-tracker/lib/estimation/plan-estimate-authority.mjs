@@ -1,8 +1,13 @@
+// @story #2039 #2065
 import {
   publishAdaptivePlanAuthority,
   hasPendingAdaptivePublication,
 } from '../decomposition-adaptive-writer.mjs';
-import { validateEstimationForecast } from './forecast-record.mjs';
+import { requireCurrentSchema } from './forecast-legacy.mjs';
+import { readLocalForecastEvidence } from './forecast-reader.mjs';
+import { parsePlanEstimationInput } from './plan-input.mjs';
+import { validateLocalSelection, localCalculationProvenance } from './local-runtime.mjs';
+export { readForecastVersioned, requireCurrentSchema } from './forecast-legacy.mjs';
 
 function fail(category) {
   throw new Error(`plan-estimate-authority:${category}`);
@@ -29,29 +34,42 @@ export function upsertForecastReadyMarker(body = '', recordId) {
 }
 
 export async function executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps = {} } = {}) {
-  for (const name of [
-    'readRefineEstimate',
-    'loadRubric',
-    'listComparableOutcomes',
-    'buildForecast',
-    'createForecastEnvelope',
-    'applyAuthority',
-  ]) {
+  for (const name of ['buildForecast', 'createForecastEnvelope', 'applyAuthority']) {
     if (typeof deps[name] !== 'function') fail('dependencies');
   }
-  const refine = await deps.readRefineEstimate({ issueNumber, cfg });
-  const rubric = await deps.loadRubric({ issueNumber, cfg });
-  const comparableOutcomes = await deps.listComparableOutcomes({
-    issueNumber,
-    planInput,
-    cfg,
-  });
+  if (!deps.localForecast) fail('local-context-required');
+  const retained = readLocalForecastEvidence(deps.localForecast);
+  const { manifest, planBytes, payloads } = retained;
+  const evidence = { manifest, planBytes, payloads };
+  validateLocalSelection({ evidence, selection: deps.localForecast.selection });
+  if (manifest.issue !== issueNumber || manifest.repository !== cfg.repo) fail('local-identity');
+  const refine = { size: manifest.refine.size, humanHours: manifest.refine.humanHours };
+  const rubric = {
+    recordId: retained.activeRubric.record.recordId,
+    payload: retained.activeRubric.record.payload,
+  };
+  const input = parsePlanEstimationInput(planInput);
+  const available = new Set(retained.activeOutcomes.map(({ record }) => record.issue));
+  if (input.comparableIssueIds.some((issue) => !available.has(issue)))
+    fail('local-comparable-missing');
+  const selectedOutcomes = retained.activeOutcomes.filter(
+    ({ record }) =>
+      !input.comparableIssueIds.length || input.comparableIssueIds.includes(record.issue)
+  );
+  const comparableOutcomes = selectedOutcomes.map(({ record }) => ({
+    recordId: record.recordId,
+    createdAt: record.createdAt,
+    payload: record.payload,
+  }));
   const forecast = deps.buildForecast({
     issue: issueNumber,
     refine,
-    planInput,
+    planInput: input,
     rubric,
     comparableOutcomes,
+    localEvidence: localCalculationProvenance({ ...retained, activeOutcomes: selectedOutcomes }),
+    evidence,
+    repository: manifest.repository,
   });
   const forecastEnvelope = deps.createForecastEnvelope({
     repository: cfg.repo,
@@ -107,10 +125,14 @@ async function applyPlanEstimateAuthorityUnlocked({
   ) {
     fail('input');
   }
-  validateEstimationForecast(forecastEnvelope.payload, {
-    expectedIssue: issueNumber,
-    requireCurrentSchema: true,
-  });
+  forecastEnvelope = {
+    ...forecastEnvelope,
+    payload: requireCurrentSchema(forecastEnvelope.payload, {
+      ...deps.localForecast,
+      expectedIssue: issueNumber,
+      repository: deps.cfg?.repo,
+    }),
+  };
   const state = await read(deps);
   if (state.lifecycleState !== 'plan') fail('not-in-plan');
   if (state.frozenForecastRecordId && state.frozenForecastRecordId !== forecastEnvelope.recordId) {
@@ -147,10 +169,14 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
   ) {
     fail('legacy-adoption-input');
   }
-  validateEstimationForecast(forecastEnvelope.payload, {
-    expectedIssue: issueNumber,
-    requireCurrentSchema: true,
-  });
+  forecastEnvelope = {
+    ...forecastEnvelope,
+    payload: requireCurrentSchema(forecastEnvelope.payload, {
+      ...deps.localForecast,
+      expectedIssue: issueNumber,
+      repository: deps.cfg?.repo,
+    }),
+  };
   const plan = forecastEnvelope.payload.plan;
   const state = await read(deps);
   const appendix = appendixProjection(state.refineAppendix);

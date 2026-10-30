@@ -1,3 +1,10 @@
+// @story #2039 #2065
+import {
+  retainedContext,
+  forecastEnvelopeFixture,
+} from '../../../../helpers/task-2065-forecast-fixture.mjs';
+// @story #2063 #2039 #2065
+import { calculateLocalEstimate } from '../../../../../task-tracker/lib/estimation/local-runtime.mjs';
 // @story #1091
 // @story #1160
 import assert from 'node:assert/strict';
@@ -19,11 +26,10 @@ import { writeEstimationRecord } from '../../../../../task-tracker/lib/estimatio
 import { createBootstrapRubric } from '../../../../../task-tracker/lib/estimation/rubric-model.mjs';
 import { loadOrRefreshRubric } from '../../../../../task-tracker/lib/estimation/rubric-refresh.mjs';
 import {
-  createAdaptivePlanRuntime,
+  createPlanPublicationRuntime,
   createEstimationOutcomeRuntime,
 } from '../../../../../task-tracker/lib/estimation/runtime-adapter.mjs';
 import {
-  createAitmRecordEnvelope,
   createRecordId,
   renderAitmRecord,
 } from '../../../../../task-tracker/lib/github-records/record-envelope.mjs';
@@ -41,8 +47,8 @@ const secondIssue = 1094;
 const RANDOM = (length) => Buffer.alloc(length, 0x35);
 let idClock = 1_722_604_800_000;
 const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
-function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
-  return createAitmRecordEnvelope({
+const envelope = ({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) =>
+  forecastEnvelopeFixture({
     recordType,
     repository,
     issue,
@@ -54,7 +60,6 @@ function envelope({ recordType, issue, payload, predecessor = null, supersedes =
     recordId: nextId(),
     grantId: nextId(),
   });
-}
 
 function fake1070Transport() {
   const comments = new Map();
@@ -122,12 +127,21 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   });
   records.push(bootstrap);
 
+  const retained = retainedContext({
+    repository,
+    rubricIssue,
+    issue: firstIssue,
+    rubric: bootstrapEnvelope,
+    refine: { size: 'M', humanHours: 8 },
+  });
   const firstAuthority = authorityHarness({ issue: firstIssue, transport, recordLog: records });
+  firstAuthority.deps.localForecast = retained.localForecast;
   const first = await executeAdaptivePlanEstimate({
     issueNumber: firstIssue,
-    planInput: planInput(),
+    planInput: { ...planInput(), comparableIssueIds: [] },
     cfg: { repo: repository, estimationRubricIssue: rubricIssue },
     deps: {
+      localForecast: retained.localForecast,
       readRefineEstimate: async () => ({ size: 'M', humanHours: 8 }),
       loadRubric: async () => ({
         recordId: bootstrapEnvelope.recordId,
@@ -146,6 +160,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
         applyPlanEstimateAuthority({ ...input, deps: firstAuthority.deps }),
     },
   });
+  assert.equal(first.status, 'converged', first.reason);
   const firstForecast = records.find(
     (record) => record.envelope.recordId === first.forecastRecordId
   ).envelope;
@@ -449,7 +464,7 @@ test('default close runtime emits a child-referencing epic outcome without using
   ]);
 });
 
-test('production Plan runtime converges board, body, history, forecast, and ready marker with fake GitHub', async () => {
+test('retained local calculation converges board, body, history, forecast and ready marker through publication authority', async () => {
   const cfg = {
     repo: repository,
     projectId: 'PVT_adaptive',
@@ -477,13 +492,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
   const graphql = async ({ query }) => {
     if (query.includes('AitmEstimationCorpus')) {
       corpusReadLocations.push(insideRecordClaim);
-      return {
-        data: {
-          node: {
-            items: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
-          },
-        },
-      };
+      throw new Error('historical corpus transport is prohibited');
     }
     if (query.includes('AitmEstimationProjection')) {
       return {
@@ -551,9 +560,23 @@ test('production Plan runtime converges board, body, history, forecast, and read
       return record;
     },
   };
-  const runtime = createAdaptivePlanRuntime({
+  const localRubric = envelope({
+    recordType: 'estimation-rubric',
+    issue: rubricIssue,
+    payload: createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' }),
+    actor: 'fixture',
+  });
+  const retained = retainedContext({
+    repository,
+    rubricIssue,
+    issue: firstIssue,
+    rubric: localRubric,
+    refine: { size: 'M', humanHours: 8 },
+  });
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
+      localForecast: retained.localForecast,
       ...estimationPublicationFixture({
         cfg,
         issueNumber: firstIssue,
@@ -591,11 +614,26 @@ test('production Plan runtime converges board, body, history, forecast, and read
     },
   });
 
+  // #2063: preparation consumes retained bytes, never the fake cloud corpus/rubric.
+  const input = { ...planInput(), comparableIssueIds: [] };
+  const calculated = calculateLocalEstimate({
+    mode: { mode: 'local' },
+    evidence: retained.evidence,
+    planInput: { selection: retained.selection, input },
+  });
+  assert.equal(calculated.status, 'estimated', calculated.reason);
   const result = await executeAdaptivePlanEstimate({
     issueNumber: firstIssue,
-    planInput: planInput(),
+    planInput: input,
     cfg,
-    deps: runtime,
+    deps: {
+      ...runtime,
+      readRefineEstimate: async () => calculated.forecast.refine,
+      loadRubric: async () => ({ recordId: localRubric.recordId, payload: localRubric.payload }),
+      listComparableOutcomes: async () => [],
+      localForecast: retained.localForecast,
+      buildForecast: buildEstimationForecast,
+    },
   });
 
   assert.equal(result.status, 'converged');
@@ -609,21 +647,21 @@ test('production Plan runtime converges board, body, history, forecast, and read
   assertPublishedForecastOnHalfHourGrid(forecastRecord.envelope.payload);
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,
-    1
+    0
   );
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-forecast').length,
     1
   );
-  assert.deepEqual(corpusReadLocations, [true]);
-  assert.deepEqual(rubricReadLocations, [true]);
+  assert.deepEqual(corpusReadLocations, []);
+  assert.deepEqual(rubricReadLocations, []);
 });
 
 test('production Plan projection paginates raw comments so an older Refine baseline remains readable', async () => {
   const cfg = {
     repo: repository,
     projectId: 'PVT_pagination',
-    estimationRubricIssue: rubricIssue,
+    estimationRubricIssue: 0,
     kanbanFieldId: 'FIELD_status',
     fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
   };
@@ -697,7 +735,7 @@ test('production Plan projection paginates raw comments so an older Refine basel
     }
     throw new Error(`unexpected query: ${query}`);
   };
-  const runtime = createAdaptivePlanRuntime({
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
       graphql,
@@ -770,7 +808,7 @@ test('a new Plan process reuses an equivalent active forecast left before the re
       },
     };
   };
-  const runtime = createAdaptivePlanRuntime({
+  const runtime = createPlanPublicationRuntime({
     cfg,
     deps: {
       graphql,

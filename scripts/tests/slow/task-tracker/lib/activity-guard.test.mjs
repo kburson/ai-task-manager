@@ -1,3 +1,4 @@
+// @story #2088
 // @story #1990
 // @story #1872
 // @story #65
@@ -21,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, chmodSync, symlinkSync } from 'node:fs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
+import { fixtureEnvironment } from '../../../helpers/hook-fixture-environment.mjs';
 // @story #1873
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -68,7 +70,7 @@ function makeRepoNoState() {
   return dir;
 }
 
-function runGuard({ cwd, payload, stdinRaw, env = process.env, guardPath = GUARD }) {
+function runGuard({ cwd, payload, stdinRaw, env = fixtureEnvironment(), guardPath = GUARD }) {
   if (
     providerStates.has(cwd) &&
     (!payload?.cwd || payload.cwd === cwd) &&
@@ -603,7 +605,7 @@ for (const draftingState of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
       writeFileSync(path.join(shim, 'gh'), script);
       chmodSync(path.join(shim, 'gh'), 0o755);
       const env = {
-        ...process.env,
+        ...fixtureEnvironment(),
         AI_TASK_MANAGER_SESSION_ID: sid,
         PATH: shim + path.delimiter + process.env.PATH,
         AITM_GH_TEST_DOUBLE_BIN: shim,
@@ -787,7 +789,7 @@ test('native hook session selects its own state instead of an environment sessio
   try {
     setActiveTask('payload-session', { issue: '#65', kanbanState: 'develop' }, dir);
     setActiveTask('environment-session', { issue: '#65', kanbanState: 'backlog' }, dir);
-    const env = { ...process.env, AI_TASK_MANAGER_SESSION_ID: 'environment-session' };
+    const env = { ...fixtureEnvironment(), AI_TASK_MANAGER_SESSION_ID: 'environment-session' };
     const payload = {
       session_id: 'payload-session',
       tool_name: 'Edit',

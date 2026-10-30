@@ -1,0 +1,7 @@
+{
+  "chunk_id": "a6b175",
+  "wall_time_seconds": 3.338163709,
+  "exit_code": 0,
+  "original_token_count": 308,
+  "output": "[aitm graphql-usage] soft-byte-cap\n[aitm graphql-usage] soft-file-cap\n{\n  \"schema\": \"aitm.native-binding-proof/v1\",\n  \"matches\": true,\n  \"bound\": true,\n  \"healthy\": true,\n  \"nonce\": \"4dff56f897e8f364bdafb792f79452f380633af70e01b16a\",\n  \"cli\": {\n    \"sessionId\": \"01a16382-9511-7401-baed-5dd61fd8a380\",\n    \"root\": \"/Users/kpburson/.codex/worktrees/b187/ai-task-manager\",\n    \"branch\": \"codex/2039-draft\",\n    \"sourceHead\": \"4069e3cbc06b7d89139c2ef3d7d4820132667d65\",\n    \"issue\": \"#2090\",\n    \"bindingGenerationId\": \"98d93a62-cf90-4da9-b213-be792a0793db\",\n    \"state\": \"develop\",\n    \"entryStartTs\": \"2026-10-23T13:20:22.428Z\"\n  },\n  \"hook\": {\n    \"sessionId\": \"01a16382-9511-7401-baed-5dd61fd8a380\",\n    \"root\": \"/Users/kpburson/.codex/worktrees/b187/ai-task-manager\",\n    \"branch\": \"codex/2039-draft\",\n    \"sourceHead\": \"4069e3cbc06b7d89139c2ef3d7d4820132667d65\",\n    \"issue\": \"#2090\",\n    \"bindingGenerationId\": \"98d93a62-cf90-4da9-b213-be792a0793db\",\n    \"state\": \"develop\",\n    \"entryStartTs\": \"2026-10-23T13:20:22.428Z\"\n  },\n  \"mismatches\": [],\n  \"provenance\": \"Local hook diagnostic transport; retain the genuine native tool invocation as origin evidence. This is not a mutation authority or cryptographic attestation.\"\n}\n"
+}

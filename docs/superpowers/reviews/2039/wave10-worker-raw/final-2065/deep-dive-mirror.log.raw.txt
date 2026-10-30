@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' mirror-deep-dive 2065 --from-comment IC_kwDOSU6LgM8AAAABegSFOQ
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+task-tracker error: parseFromCommentArg: cannot extract comment id from "IC_kwDOSU6LgM8AAAABegSFOQ" — expected raw id, #issuecomment-<id>, or full URL

@@ -1,0 +1,44 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.490667ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (3.807084ms)
+✔ a disconnected operation or unproduced final candidate refuses (2.146917ms)
+✔ caller options and serialized permission unions confer no authority (0.556834ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.190625ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.290709ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.58325ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (0.561875ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.129542ms)
+✔ malformed declarations and malformed operation shapes refuse (0.278375ms)
+✔ synthetic approval markers never become native approval authority (0.141542ms)
+✔ genuine reviewed scope token authorizes only its exact target and survives unrelated edits (24.902959ms)
+✔ genuine decomposition capability requires its live native context and exact record delta (25.983334ms)
+✔ unchanged duplicate labels do not invent a new checkbox transition (0.104958ms)
+✔ newly appended checked promises cannot bypass staged proof validation (0.155417ms)
+✖ a changed verifier cannot retain execution proof for the old command (0.84425ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 15
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 305.236958
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:365:1
+✖ a changed verifier cannot retain execution proof for the old command (0.84425ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:368:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /proof-loss/,
+    operator: 'throws',
+    diff: 'simple'
+  }

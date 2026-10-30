@@ -1,0 +1,216 @@
+Issue 2061 actual completed verification outputs
+Node 26.8.1 Darwin. Source remained unchanged during final fast and quality reruns.
+Failed implementation, fixture, getter, subset, package and full-fast trials retained.
+No exact-head CI or local post-candidate slow success is claimed.
+
+adversarial-trial-1.log.gz
+  exit=1 rawBytes=5270 rawSha256=77843622708b67ba52e452ab0fb2306e4931918c2a02f808733984d66bd174c3
+  gzipBytes=1520 gzipSha256=0a4526d79ca638969d4a4d0a66a754beac8d60ed782d2aa414bc8e6404b96364
+
+adversarial-trial-2.log.gz
+  exit=0 rawBytes=1767 rawSha256=079bccb9fb8c9fb26776fcb14a37fe0fac5467f876a57b6c9e637ac966862eac
+  gzipBytes=900 gzipSha256=d3632ed7fb73f78978a471c417ff204e1ed1457e89f67e4fc1ffbf6af35dc0da
+
+fast-final-2.log.gz
+  exit=0 rawBytes=87836 rawSha256=aa938057969e7d8c194599c313293a69328ead970326d0678bc82e518d149d20
+  gzipBytes=11880 gzipSha256=6e0a5f1e3bc26411379477de40292d1e1b1f6ea7757f73959356f339d9bf4c4a
+
+fast-final.log.gz
+  exit=1 rawBytes=92185 rawSha256=eae08180e9dd88fb01b29d73b83f5b861d978a7e6074e2af394b3e68669d3b87
+  gzipBytes=13269 gzipSha256=37b1897059519a42c157ad2e779ec77adc56dfeb6366ff4e8b3f74bfeb565764
+
+format-final-2.log.gz
+  exit=0 rawBytes=159 rawSha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+  gzipBytes=137 gzipSha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+format-final.log.gz
+  exit=0 rawBytes=159 rawSha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+  gzipBytes=137 gzipSha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+green-trial-1.log.gz
+  exit=1 rawBytes=2658 rawSha256=8eef78377c9c06b7f2c1db47ad5ccdbe008ceb286f16fde3a70f9affcbcd8532
+  gzipBytes=1082 gzipSha256=4ead7e5572b84c551b6e5bd71b79cbc51d5a3ca370afbe6628171fd96303d2f6
+
+green-trial-2.log.gz
+  exit=0 rawBytes=1185 rawSha256=7a84466b9234095aa58e7e040f795a720d5a49c8e74b2860bf85e57d62b774b6
+  gzipBytes=661 gzipSha256=dd0b03fc7a7f925b55af93de0e052885a1b637446c43bdc3b0b5fef112aebb22
+
+inventory-green.log.gz
+  exit=0 rawBytes=1254 rawSha256=ba2f0137fa6da7ce09695ba41dbc3253ac3d2cd1cd75f0d8b43831423af07e4b
+  gzipBytes=686 gzipSha256=00bc7ece6f47c59a0ff62f93c06e1e91562e7a7245fe5e1da56629cafc08154b
+
+lint-final-2.log.gz
+  exit=0 rawBytes=26596 rawSha256=02f5cbb623f76516732f3938a04cab6b71ad0fa315a0e0cae4d700182ea7fe00
+  gzipBytes=3660 gzipSha256=303db7e2b95fd6f9a4417d30b62e8a62e32a0c0ed76d6559938519ebcd834e95
+
+lint-final.log.gz
+  exit=0 rawBytes=26596 rawSha256=02f5cbb623f76516732f3938a04cab6b71ad0fa315a0e0cae4d700182ea7fe00
+  gzipBytes=3660 gzipSha256=303db7e2b95fd6f9a4417d30b62e8a62e32a0c0ed76d6559938519ebcd834e95
+
+lint.log.gz
+  exit=0 rawBytes=26596 rawSha256=74d49bd9da556023c271cdcf31e881ead50239ebb785d205b2a58f94ebbec2cc
+  gzipBytes=3658 gzipSha256=75a58c487ad2007051bc50b2c1423af1c04bd2ecb6fe93e1733a768afc923297
+
+package-red.log.gz
+  exit=1 rawBytes=1865 rawSha256=3e14f29620c848e616b9f248b3bffc478ff361cb6a9a3339a775012cc7d4ee0b
+  gzipBytes=828 gzipSha256=50853e670e1941d4564e43e902e434e1a5772da415b2fc7bbd1f74995432957f
+
+pending-subset-green.log.gz
+  exit=0 rawBytes=221 rawSha256=e79f40bc7105fed2d5f1f35ec270a85d587e53a9f01be72afed56d80f0f38659
+  gzipBytes=180 gzipSha256=dfc5085ca7922b5eb1d1f4edfb6c9786e60686863e74efbbbe4f818b5db0adc1
+
+pending-subset-red.log.gz
+  exit=1 rawBytes=1212 rawSha256=095d61a8416c1af576101f12664535f1cf250230e1c59b41ce6c0f165959525a
+  gzipBytes=588 gzipSha256=e3848734528c18e3803c55605a6c590a9f1f069b481abf7c5998b7c7bbee23be
+
+red.log.gz
+  exit=1 rawBytes=17270 rawSha256=487b400acb1160c66ba548a734ad750ee9d3d5b0540e6cc11df400b7d11a7776
+  gzipBytes=1396 gzipSha256=bb63a17272f59b2ef5cda7efb5ed4413cfc3724d76051599c5e702bc0e55c0a9
+
+report-format.log.gz
+  exit=0 rawBytes=148 rawSha256=956b88b3ece5afebfcf27d8409fa3c2a519a411b519f85b0510d78c19d7a16a4
+  gzipBytes=134 gzipSha256=ad72c6aa463f559082eb54b17e628fe7ba96f564d199f5fe7f0bc1646de102ad
+
+report-markdown.log.gz
+  exit=0 rawBytes=1852 rawSha256=ccddedfc779e85f719786bdb935e91e18ac0d1a9aa72a69b027654c5a8c9c6bd
+  gzipBytes=570 gzipSha256=f814e56911c6bcd3f040d7b67f73ad6bb80538560a141678416a0d375ce53816
+
+report-spell.log.gz
+  exit=0 rawBytes=269 rawSha256=7cbbda46c7d2a624f6c07df0bc45620a8a9b422ec3403465b38bc06f3cdeb30a
+  gzipBytes=182 gzipSha256=cbd8d3a05508a54248f19c9073bf99812e72c00954c0549929ad0b4149bedca4
+
+targeted-final-2.log.gz
+  exit=0 rawBytes=8204 rawSha256=a22b8a26e162bfdacc3d8266c18a21311ed9a6ef344fde9fb9f7019f093514dd
+  gzipBytes=3136 gzipSha256=1398590d75dbd6cd7d379f02e4fb287c8bd211eb912e2bab28f1093b38bf1edb
+
+targeted-final.log.gz
+  exit=0 rawBytes=8093 rawSha256=a46d63602d01dd45c438bb41939e8ed98ec7457cb758d154ff6405508b954e8f
+  gzipBytes=3091 gzipSha256=a67d8a51f186bc7fb072c7a1c1c73b011b33f735533b20af2801208460fd24b8
+
+timestamp-getter-green.log.gz
+  exit=0 rawBytes=202 rawSha256=5b9cfe3d60758236dcafea6f47a61159bb8de5cf784c0e3bcc8f3e0312d75f5a
+  gzipBytes=166 gzipSha256=9a730c9f9094ed40fa952b3a109e9085cba112e4e7b8710a41941477655f2009
+
+timestamp-getter-red.log.gz
+  exit=1 rawBytes=1600 rawSha256=6bcfb7fb73532753097f5a966d92f67fd57a88d714b220b539c4d403fd81cfbe
+  gzipBytes=656 gzipSha256=0ed62bbcf41ef9ec97df25bcc6068343a100b73c04b30df7555d16a09639038f
+
+Repair round 1 actual completed outputs. All failures retained.
+
+review-r1-all-final-2.log.gz
+  exit=0 rawBytes=2806 rawSha256=8d20153386cf745515e26546f52974114aee7cc430129b22d756c7e7c014ad0f
+  gzipBytes=1309 gzipSha256=d4640fc827956a9dc5ad63391bc6061db9aa5c1387a75bc6cb22eb8a60604727
+
+review-r1-all-final.log.gz
+  exit=1 rawBytes=3757 rawSha256=e4c4bc235fd2df5b6d6ebd0f47fab46a956e611030b1407e77d83ccc05175a74
+  gzipBytes=1704 gzipSha256=e55752790bba94f6d6612867b6a097aef593241a7c64871fe67b7ff6e7f9e988
+
+review-r1-all-trial-1.log.gz
+  exit=1 rawBytes=3580 rawSha256=4dee322cd19fb5e49158fdf23392c3fcd6fb7d2b4807f8ce66f0b7864aad0aa6
+  gzipBytes=1601 gzipSha256=343ff3a080f7653690eb833bd829f20a7980211fa99075d421bbef1527e782cd
+
+review-r1-fast.log.gz
+  exit=0 rawBytes=87784 rawSha256=3e77e54c9c4d8efdff9184fd9e795db353e126e40f4236ad36d0b2cd94f25e25
+  gzipBytes=11787 gzipSha256=801fad2c6ddcbee851b04527c304e82f2f701670b7a108f57f84a7a6c8d23ab4
+
+review-r1-focused.log.gz
+  exit=0 rawBytes=9085 rawSha256=100c7606c83978ebc3f4a6503589532b24e1bd25a7a9a77394def87ff09be2b5
+  gzipBytes=3479 gzipSha256=3e2d7cb8a37770ac148bd93b22c29154329ad37a59c36b602c5cb8630adbfc7a
+
+review-r1-format-2.log.gz
+  exit=0 rawBytes=370 rawSha256=b8e0b8a4c783ffb3f50ea230403099a745f70455685b2be6472d50b7b881ce8a
+  gzipBytes=168 gzipSha256=79c2ba0d952d5a5bed19f5c5c8517e6f7e8a133ce024d801a09169c22826062e
+
+review-r1-format-check.log.gz
+  exit=0 rawBytes=159 rawSha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+  gzipBytes=137 gzipSha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+review-r1-format-final.log.gz
+  exit=0 rawBytes=592 rawSha256=735696c265d63af49c02598e7a2a150be11a48457fda6a5ec86a67e0e62529ff
+  gzipBytes=211 gzipSha256=2ee14bb6486e0e31eb9c368106c91508503d1f8e43a65c2e59da8128c1d3fd3f
+
+review-r1-format.log.gz
+  exit=0 rawBytes=450 rawSha256=e8be9f48d56521e876f6ec6856c1bea4860b39838585ea29d96658ff4e703f76
+  gzipBytes=179 gzipSha256=f332e8b59e2bad1528aeb16436972c5c1d6b37ea39ef5cd0e8350a44ea92aaa6
+
+review-r1-green-trial-1.log.gz
+  exit=0 rawBytes=920 rawSha256=a8897aca38feec8420afc2f05cec30bd7b09641ded0da5829c390a6453702a73
+  gzipBytes=513 gzipSha256=ce1685bb73b83c5c8d26fc1a77235ac9310eab059f4c1836099a6f67f000fcf9
+
+review-r1-i1-green.log.gz
+  exit=0 rawBytes=211 rawSha256=9c83275eaece41d7be82899aae42316f89a854914417455cab9d188b182b614e
+  gzipBytes=175 gzipSha256=ae5f1db3b0f4cf668ae934fe36fea241a2b663adff692fdb1e44cbbacc46d448
+
+review-r1-i2-green.log.gz
+  exit=0 rawBytes=228 rawSha256=f1549767957d8f87e8096c56e33cda35ed442281aa91b302846cc1e60776d705
+  gzipBytes=186 gzipSha256=386eec0f1ae10e6a869cff407be1ad963000ced1b1f88b05087fbfc5db8d3904
+
+review-r1-i2-unapplied-trial.log.gz
+  exit=1 rawBytes=965 rawSha256=9ecb8e254829f1c8e6be2c1c77a71dd93e7e1a779170983c18b69bea8275dc35
+  gzipBytes=502 gzipSha256=0f6a15f49758ccca39169197b28e9d35e15427d97e9cd619c0487ffed4097ed5
+
+review-r1-i3-green.log.gz
+  exit=0 rawBytes=222 rawSha256=15bb62e863e94e9a751e118ad56d7f38a895d7dcc573cd3f30a486bca2189000
+  gzipBytes=181 gzipSha256=c7586c0c038a0812cf247f12ae121f0f11aea971d8fd90cb5840beedaf8a6a35
+
+review-r1-i3-unapplied-trial.log.gz
+  exit=1 rawBytes=958 rawSha256=fee8d3a7fd654ec0b4fc9d0d14fabeeefdea0c3f7066cec290ad1c7d9765f675
+  gzipBytes=504 gzipSha256=4b0a2846fcb4d14bac9c14dc00ed5b061fd36a2c89e0ce8551ebcc7082695806
+
+review-r1-inventory.log.gz
+  exit=0 rawBytes=1257 rawSha256=1d525a8a01c1b1c5472ead4c963ad39cd2645ba538141fc4e9885568bfd253a3
+  gzipBytes=686 gzipSha256=38d0d6721e46ff5871dde7cd92de62243e6c83acdb0c88bb24d611111d697f9a
+
+review-r1-lint.log.gz
+  exit=0 rawBytes=26596 rawSha256=14824f0bc6c08abe143b5d56c7842f6e62c5e8c48deb85d4ab2c72e99a5fc20d
+  gzipBytes=3659 gzipSha256=f08969a9a5c7a41cf31caa9786d62f0782c972173ef603599ef4c99ad21ef89e
+
+review-r1-m1-green.log.gz
+  exit=0 rawBytes=217 rawSha256=11048ca7ea923a0b3b8e2aedf4dffac8e7d841de916a17c8894a3686fd2d5067
+  gzipBytes=180 gzipSha256=66a1cbb31d4c328b9018d4d818a378d877d113847ed8e84158af3d011608acf2
+
+review-r1-red.log.gz
+  exit=1 rawBytes=14321 rawSha256=74c6fc01b7dbc0c3eabbe91a3cf4dbe8523d58b5d37dbfab7007a8b5b3828ef5
+  gzipBytes=2807 gzipSha256=993fbe48b17d0a05bc495da58c0888d04483741ea513ca4b5948d547796b468c
+
+review-r1-report-format.log.gz
+  exit=0 rawBytes=212 rawSha256=4f96396197f495d7aa2e7fe19d63990119215469809feb881da790ff83abb7d6
+  gzipBytes=146 gzipSha256=c618b4ab65aa2603586b9bc979abb7e4be2805ff034592be8934c9cff8dcd160
+
+review-r1-spell-final.log.gz
+  exit=0 rawBytes=918 rawSha256=31dc2511a34c6a2550193f5e26a442aaa851e3ceaade9218432c4c8ac52b15a2
+  gzipBytes=328 gzipSha256=d4d6a90484aeae1afbfa4068b28b6ba8349023c3fdc10f2074f94f1313d88f2f
+
+review-r1-spell.log.gz
+  exit=1 rawBytes=736 rawSha256=1ec3df6149c0d66c6f44918f28ec504956253eb80754191f870ede1e77d7db26
+  gzipBytes=292 gzipSha256=b4ebabed04ee1105455b3f3390080c4bfd59cabca45530e6f2efffce15ff1ae6
+
+Repair round 2 actual completed outputs, source b17 plus footer repair.
+
+review-r2-fast.log.gz
+  exit=0 rawBytes=87846 rawSha256=6e1c1fba8060b0e31b5f280b15772e88381e4ba14e9e175133bbf7fa4d52579e
+  gzipBytes=11949 gzipSha256=4d0ee3aad76406c074a4556802ae2002fd8639699671f262af6c78e42a99274a
+
+review-r2-footer-green.log.gz
+  exit=0 rawBytes=221 rawSha256=4b899e77b029bc5b6251d1b0b120cc0d3a1305876f65bf88c991d311d9ea3c22
+  gzipBytes=187 gzipSha256=39086e8dee8596cb1c4edbb6b088362a548c3e5bcca395fd89d2418711305791
+
+review-r2-footer-red.log.gz
+  exit=1 rawBytes=1029 rawSha256=1c9a266c45bc449e82a87aa6af2322f84f175b8af97ffca03305bc0b474649b1
+  gzipBytes=590 gzipSha256=13c84f6b19fcf1d2f6411c971dc30195abfc97578b5c9c9dcb2eecfce0256866
+
+review-r2-format-check.log.gz
+  exit=0 rawBytes=159 rawSha256=b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77
+  gzipBytes=137 gzipSha256=2dc045eeb82b83cb779a3e65f94dc34e5a2278bcacc83aadee468e2b2c48a0d7
+
+review-r2-format.log.gz
+  exit=0 rawBytes=370 rawSha256=732c615c05810f3d33bcfb771fa29bda5fba06f6d5742b587b84f08911900b4c
+  gzipBytes=167 gzipSha256=5308a153d03d9c64f8bd393679cf63494ec554819bb6486620e0187447bb7e3d
+
+review-r2-lint.log.gz
+  exit=0 rawBytes=26596 rawSha256=0e68f2b9c6ed617ed34c71f2511dee0daf89ae39e49b3c25a90edeaa32eeb7ca
+  gzipBytes=3658 gzipSha256=014a3ca6dac3764958cb76783dd36984f4e72f83a99fa6b5348046e07f4dc967
+
+review-r2-named.log.gz
+  exit=0 rawBytes=2942 rawSha256=8a953a6ce4c87598e3a0f7a7d522108dcf297dd22c7134b7173b47136c1de834
+  gzipBytes=1383 gzipSha256=1b5c82ba7dc6251e7b039587536cb37c76a6df516faf854095efd4afa7598663

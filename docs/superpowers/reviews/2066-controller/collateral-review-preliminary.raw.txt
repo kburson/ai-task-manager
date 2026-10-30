@@ -1,0 +1,23 @@
+Preliminary logical-content audit of **dc862d83c8d397e4e87600a989fe24af84db9e54** completed. **Packaging is not accepted pending the gzip follow-up.**
+
+Verified:
+
+- Exactly 67 additions under `docs/superpowers/reviews/2066`.
+- All 66 payload hashes match the manifest, with no unlisted additions.
+- All three accepted source hashes remain unchanged.
+- Both complete root reviews—including the original P1 and its qualified closure—are preserved.
+- Earlier creation findings, fixes, independent review, and test output remain separately recorded.
+- Final fast evidence shows exactly the two declared failures: package **980 > 978** and planned GraphQL site **line 121**.
+- Final named evidence shows **27 passed**.
+- Slow evidence shows **57 files passed**, explicitly qualified as starting before the transport fix.
+- Final lint/format logs support the documented results.
+- Develop CLI/hook tuples agree on worker SID, 438b root, branch, c67 invocation HEAD, issue, binding generation, state and entry timestamp.
+- Diagnostic evidence is clearly distinguished from cryptographic or mutation authority.
+
+**Documentation clarification:** explicitly state that `sourceHead` identifies invocation HEAD and does not attest the historically loaded guard module. I found no fabricated loaded-module claim, but this requested qualification is currently implicit.
+
+The known raw-output whitespace failure is honestly recorded; its exclusion-based check does not satisfy final packaging acceptance. Preserve that historical failure while delivering gzip archives, stored/decoded integrity metadata, and an unrestricted clean diff check. Distinguish inherited trunk differences from new #2066 changes.
+
+No additional correctness or provenance finding established. Native origins and command exits remain documented/controller-observed facts; I inspected their copied evidence without replaying commands.
+
+No tests, lifecycle actions, writes, Git mutations, foreign filesystem reads, or delegation. Awaiting the final gzip commit.

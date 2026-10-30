@@ -1,0 +1,42 @@
+✔ forecast-ready marker is canonical, replaceable during Plan, and readable by the exit gate (0.7885ms)
+✔ Plan authority converges Refine history, board Estimate/Size, body fields, and forecast read-back (142.283209ms)
+✔ Plan authority rejects an off-grid forecast before its first write (0.755209ms)
+✔ Plan authority rejects a legacy v1 forecast before its first write (0.339583ms)
+✔ Plan authority publishes the normalized forecast Refine baseline (111.5135ms)
+✔ concurrent Plan convergence claims the forecast generation and appends it once (127.626042ms)
+✔ every interrupted seam replays convergently without duplicating the forecast (1153.209542ms)
+✔ already-converged replay performs no writes (115.063458ms)
+✔ Develop or frozen forecasts reject supersession outside audited demote/replan (2.773417ms)
+✔ conflicting non-superseded forecasts fail closed (1.459291ms)
+✔ audited Plan re-entry may supersede exactly one prior active forecast (100.694208ms)
+✔ adaptive execution refreshes rubric, builds forecast, creates an envelope, and converges authority (0.293459ms)
+✔ legacy baseline adoption freezes only an exact matching Develop projection (102.832292ms)
+✔ legacy baseline adoption refuses mismatches, existing evidence, or non-Develop state (7.205625ms)
+✖ current authority publishes the validated snapshot despite caller mutation during projection read (132.282959ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2178.11525
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs:473:1
+✖ current authority publishes the validated snapshot despite caller mutation during projection read (132.282959ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  999 !== 40
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs:487:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 999,
+    expected: 40,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

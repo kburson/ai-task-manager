@@ -1,0 +1,34 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (1.095666ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.696041ms)
+✔ v2 rejects off-grid published hours: refine (0.191ms)
+✔ v2 rejects off-grid published hours: plan (0.092209ms)
+✔ v2 rejects off-grid published hours: p50 (0.093ms)
+✔ v2 rejects off-grid published hours: p80 (0.062875ms)
+✔ v2 rejects off-grid published hours: stage (0.107667ms)
+✔ v2 rejects off-grid published hours: wbs (0.27ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.260333ms)
+✔ current v3 reads replay retained evidence and require its current selection (15.793291ms)
+✔ current v3 refuses missing or stale provenance: missing (0.852708ms)
+✔ current v3 refuses missing or stale provenance: manifest (2.149875ms)
+✔ current v3 refuses missing or stale provenance: plan (1.861958ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.675209ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.677ms)
+✔ story estimates ceil to the next half hour without moving downward (0.805042ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (0.829833ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.182334ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (3.073792ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (0.936708ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.265209ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.272917ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.212792ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.312ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (0.375917ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (0.669791ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 184.022084

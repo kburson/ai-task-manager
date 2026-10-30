@@ -1,3 +1,8 @@
+// @story #2048 #2066
+// @story #2088
+// @story #2058 #2060 #2064 #2059 #2065 #2047
+// @story #2062
+// @story #2040
 // @story #1986
 // @story #1926
 // @story #1904
@@ -485,6 +490,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
+    18 + // #2039: exact 18 additional retained cache/estimation modules reconciled with delivered R0.
     4; // #2096: immutable subject, native source execution and stamp declaration validation.
   for (const module of [
     'artifact-subject',
@@ -493,6 +499,52 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'issue-proof-authority',
   ])
     assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
+  for (const entry of [
+    'native-worktree-bootstrap',
+    'native-bootstrap-inputs',
+    'native-binding-proof',
+  ])
+    assert.ok(files.includes(`scripts/task-tracker/lib/${entry}.mjs`));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/native-observation.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-reader.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/manifest.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/snapshot-compare.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/store.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/stage-body.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-events.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/retention.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-claim.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/writer-registry.mjs'));
+  for (const entry of [
+    'writer-claim-shape',
+    'writer-handoff',
+    'writer-handoff-bytes',
+    'writer-handoff-io',
+    'writer-handoff-bindings',
+  ])
+    assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-runtime.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/forecast-v3.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/estimation/local-evidence-store.mjs'));
+  for (const entry of [
+    'scripts/task-tracker/lib/story-cache/stage-comment.mjs',
+    'scripts/task-tracker/lib/story-cache/timing-stage.mjs',
+    'scripts/task-tracker/lib/estimation/forecast-reader.mjs',
+    'scripts/task-tracker/lib/estimation/forecast-lineage.mjs',
+  ])
+    assert.ok(files.includes(entry), 'required reviewed wave 9 runtime entry missing: ' + entry);
+  for (const entry of [
+    'scripts/task-tracker/lib/story-cache/stage-capabilities.mjs',
+    'scripts/task-tracker/lib/estimation/forecast-legacy.mjs',
+  ])
+    assert.ok(files.includes(entry), 'required reviewed wave 10 runtime entry missing: ' + entry);
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/completion-receipt.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/publisher.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/lib/story-cache/provider-adapters.mjs'));
+  for (const entry of ['batch', 'body-template'])
+    assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));

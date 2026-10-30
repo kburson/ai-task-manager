@@ -1,0 +1,31 @@
+**Static integration review accepted** for merge **68a0cffbf5da8e88b75c075341ba49d815948c40** and the inspected two-file companion.
+
+**Findings:** no Critical, Important, or required Minor changes.
+
+**Verified integration**
+
+- Merge parents are c67 and accepted `5c90d599dac63e46d5a7908e0f68226b64d29b43`.
+- Merge tree `3250294ef894f32873c63150b28ba1d534fbda08` exactly equals accepted 5c90.
+- All 71 worker collateral files and accepted source bytes remain unchanged; all 70 payload hashes match.
+- Only the package test and GraphQL expectations JSON are modified.
+
+**Companion correctness**
+
+- Package allowance increases exactly **+2**, from **978 to 980**, with explicit inclusions for `publisher.mjs` and `provider-adapters.mjs`.
+- Existing package exclusions, assertions and prior allowances remain intact.
+- GraphQL inventory adds exactly one `gh-api-graphql|planned` surface and exact **line 121** site.
+- Line 121 is the actual `ghClient.execFile` dispatch with explicit GraphQL arguments. Classification matches the unchanged scanner’s semantics.
+- No source is excluded, no dispatch is reclassified as covered or out of scope, and no telemetry or native guard is weakened.
+
+**Exact companion SHA-256**
+
+- Package test: `ccc9d789d0eb07a9c89a0357d18d142419fcb9af0c487eb9e8628c0149e0ec9a`
+- GraphQL expectations: `00c5feac811bc1eb864c849a8c784421224d4b7a66c21fa43b17e26583dd31ad`
+
+The publisher, adapters and named unit retain their previously accepted hashes.
+
+**Recommendations and limits**
+
+Accept these exact bytes subject to controller completion of pending quality/full-fast checks and final committed-byte verification. The reported inventory RED and **42/42** combined GREEN are controller-observed results, not tests executed by this reviewer.
+
+Native binding/doctor provenance, CI, lifecycle acceptance, future edits, and the fresh whole-branch checkpoint after 24 native Done children are outside this bounded review. No tests, lifecycle actions, writes, Git mutations, or foreign filesystem reads were performed.

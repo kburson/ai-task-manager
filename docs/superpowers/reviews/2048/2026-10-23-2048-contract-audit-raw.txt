@@ -1,0 +1,20 @@
+The companion is **contract-compatible and justified**, provided it remains pure within `completion-receipt.mjs` and preserves `validateCompletionReceipt(receipt,{transition,confirmedEffects})`.
+
+The original API can establish frozen completion evidence; it cannot detect later historical edits without later timing bytes. Do not overwrite its original confirmed resource digest with the current full-comment digest. Task 25 expressly requires older completion evidence to survive appends (active plan lines 784–809; original Task 9 lines 598–629).
+
+Required checks:
+
+- **Frozen receipt:** exact supported schema, native executable non-noop transition, matching ID/from/to/actor/positive visit, actual confirmed prerequisite keys/digests, unique effects, actual timing provider identity, and confirmed outcome digest matching frozen intended bytes. Synthetic creation-intent keys must not become provider identity.
+- **Event correlation:** verify receipt IDs/digest against the frozen candidate’s actual event subset. #2061 records **all pending events**, potentially including ordinary backdated events—not just the transition pair (`timing-candidate.mjs:247–252`; test lines 242–305). Preserve that concrete contract or explicitly justify any narrower receipt subset.
+- **Current record:** validate `{manifest,generation,payloads}`, require supplied generation equality with manifest-decoded generation (the pattern in `batch.mjs:183–187`), and load the published timing resource by its verified identity/reference. Working bytes and unconfirmed events do not establish published history.
+- **Current timing:** enforce bounded, canonical compressed record parsing; exact event IDs/content; native pair/transition correlation; visible-table digest and rendered row correspondence. Checking compressed events alone misses edited/deleted visible rows (`timing-candidate.mjs:62–157`).
+- **Historical subset:** select the original IDs from current validated events, reject missing/altered/duplicate IDs, and compare the canonical subset digest. Additional valid later events and a changed full-comment digest must pass.
+- **Legacy:** absence of the native event record or receipt remains incomplete; existing legacy authority consumers belong to later integration work.
+
+One important API question: **How is historical frozen confirmation retained after `generation.batch` is replaced?** A current store record alone does not promise an archive of every earlier batch. The companion should receive historical receipt/confirmed-effects context separately and use the current record only to verify present published timing content. It must not substitute the latest batch’s effects for an earlier transition.
+
+Also keep the verdict bounded: a pure validator checks supplied evidence correlation; it cannot independently attest that a caller-fabricated `state:'confirmed'` object represents an actual provider confirmation. The trusted input boundary must be explicit.
+
+Declined to judge: coordinator ordering, recovery dispatch, publication, reader activation, sentinel persistence, and final vector completion are outside #2048.
+
+**Assessment:** acceptable design direction, subject to the checks above. No implementation acceptance: I inspected pinned sources and predecessor contracts only; no #2048 working source, tests, lifecycle actions, or mutations were performed.

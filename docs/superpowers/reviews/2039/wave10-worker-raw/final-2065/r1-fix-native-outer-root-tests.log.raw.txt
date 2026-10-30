@@ -1,0 +1,57 @@
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065 for the active issue
+✔ two production close runtimes with the same pre-claim snapshot append one outcome (25.154625ms)
+✔ two obsolete cloud Plan runtimes refuse before a rubric claim or successor write (0.502417ms)
+✔ two production Plan authority runtimes with the same initial projection append one forecast (373.109084ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065 for the active issue
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065 for the active issue
+✔ completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs (342.925666ms)
+✔ default close runtime builds and read-backs the frozen forecast outcome before Done (19.42125ms)
+✔ close rejects a ready forecast that a later active forecast superseded (2.228542ms)
+✔ default close runtime emits a child-referencing epic outcome without using a legacy parent forecast (0.920917ms)
+✔ retained local calculation converges board, body, history, forecast and ready marker through publication authority (246.763875ms)
+✔ production Plan projection paginates raw comments so an older Refine baseline remains readable (0.444208ms)
+✔ a new Plan process reuses an equivalent active forecast left before the ready marker (1.252583ms)
+✔ current authority rejects legacy v2 before reading or publishing authority (0.878167ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.478125ms)
+✔ v2 rejects off-grid published hours: refine (0.109875ms)
+✔ v2 rejects off-grid published hours: plan (0.081917ms)
+✔ v2 rejects off-grid published hours: p50 (0.080709ms)
+✔ v2 rejects off-grid published hours: p80 (0.057584ms)
+✔ v2 rejects off-grid published hours: stage (0.065916ms)
+✔ v2 rejects off-grid published hours: wbs (0.067708ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.164666ms)
+✔ current v3 reads replay retained evidence and require its current selection (13.493375ms)
+✔ current v3 refuses missing or stale provenance: missing (2.068542ms)
+✔ current v3 refuses missing or stale provenance: manifest (1.968708ms)
+✔ current v3 refuses missing or stale provenance: plan (1.89725ms)
+✔ current v3 refuses missing or stale provenance: unknown (0.560208ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (1.553458ms)
+✔ current authority correlates its configured repository before reading projection (1.129916ms)
+✔ applyPlanEstimateAuthority refuses missing context before authority reads or writes (1.189958ms)
+✔ applyPlanEstimateAuthority refuses missing bytes before authority reads or writes (0.958333ms)
+✔ applyPlanEstimateAuthority refuses stale selection before authority reads or writes (2.113916ms)
+✔ adoptLegacyPlanForecast refuses missing context before authority reads or writes (0.626625ms)
+✔ adoptLegacyPlanForecast refuses missing bytes before authority reads or writes (0.604833ms)
+✔ adoptLegacyPlanForecast refuses stale selection before authority reads or writes (1.547042ms)
+✔ current replay refuses accessor-based issue substitution (0.765167ms)
+✔ local generation includes only explicitly selected retained outcomes in current provenance (9.092417ms)
+✔ forecast presentation renders strict current v3 and unchanged legacy v1/v2 values (1.100667ms)
+✔ story estimates ceil to the next half hour without moving downward (14.268375ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (1.812209ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.837167ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (8.028666ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (1.849542ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.309792ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.34625ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (0.42275ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.334042ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (1.428583ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (4.46325ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1124.264875

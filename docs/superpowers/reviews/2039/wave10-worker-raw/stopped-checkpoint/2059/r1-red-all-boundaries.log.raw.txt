@@ -1,0 +1,169 @@
+✔ line insertion cannot conceal a checkbox tick without proof (1.320916ms)
+✔ ordinary chained edits retain exact candidate and do not mutate operation records (3.874792ms)
+✔ a disconnected operation or a candidate not produced by its operations refuses (0.433542ms)
+✔ caller options and serialized permission unions confer no authority (0.402917ms)
+✔ marker loss and section loss refuse even with independently safe-looking edits (0.294375ms)
+✔ small local shrinks cannot combine into an excessive composite deletion (0.303ms)
+✔ synthetic complete and incomplete execution stamps both refuse (0.5395ms)
+✔ legacy version bytes and preexisting execution proof survive ordinary edits (4.376416ms)
+✔ proof relocation cannot launder preexisting evidence to a different checkbox (0.205417ms)
+✔ malformed declarations and malformed operation shapes refuse (0.329708ms)
+✔ synthetic approval markers never become native approval authority (0.140125ms)
+✔ genuine reviewed scope token retains raw coordinates: ordinary bytes (7.38525ms)
+✖ genuine reviewed scope token retains raw coordinates: three newlines before policy (1.187ms)
+✔ genuine reviewed scope token retains raw coordinates: legacy version marker surrounded by whitespace (1.953917ms)
+✖ genuine reviewed scope token retains raw coordinates: legacy version plus blank-line runs (1.043417ms)
+✔ genuine decomposition capability requires its live native context and exact record delta (15.332ms)
+✔ unchanged duplicate labels do not invent a new checkbox transition (0.069042ms)
+✔ newly appended checked promises cannot bypass staged proof validation (0.099083ms)
+✔ a changed verifier cannot retain execution proof for the old command (0.088958ms)
+✖ checked promises cannot transfer completion between sections (0.485042ms)
+✖ completion identity rejects removed checked source (0.094542ms)
+✖ completion identity rejects inserted target in another section (0.070042ms)
+✖ completion identity rejects same-section duplicate occurrence (0.054459ms)
+✖ completion identity rejects duplicate section headings (0.055375ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 17
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 195.099334
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:204:1
+✖ genuine reviewed scope token retains raw coordinates: three newlines before policy (1.187ms)
+  Error: Story composite refused: unverified-ticks
+      at refuse (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:19:23)
+      at local (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:113:5)
+      at Module.validateStagedComposite (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:159:32)
+      at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:50:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:277:16)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_MUTATION_INVALID',
+    reason: 'unverified-ticks',
+    [cause]: undefined
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:204:1
+✖ genuine reviewed scope token retains raw coordinates: legacy version plus blank-line runs (1.043417ms)
+  Error: Story composite refused: unverified-ticks
+      at refuse (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:19:23)
+      at local (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:113:5)
+      at Module.validateStagedComposite (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/task-tracker/lib/story-cache/stage-capabilities.mjs:159:32)
+      at validate (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:50:18)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:277:16)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'STORY_MUTATION_INVALID',
+    reason: 'unverified-ticks',
+    [cause]: undefined
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:389:1
+✖ checked promises cannot transfer completion between sections (0.485042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:392:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:401:3
+✖ completion identity rejects removed checked source (0.094542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:402:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:401:3
+✖ completion identity rejects inserted target in another section (0.070042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:402:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:401:3
+✖ completion identity rejects same-section duplicate occurrence (0.054459ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:402:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:401:3
+✖ completion identity rejects duplicate section headings (0.055375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2059/scripts/tests/unit/task-tracker/lib/story-cache/stage-capabilities.test.mjs:402:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,59 @@
+### Strengths
+
+- `forecast-reader.mjs:15–26` uses the accepted synchronous store API, reconstructs the raw bundle, regenerates projections through `validateLocalEvidence`, and correlates manifest digest plus host/repository/issue. Supplied active projections cannot substitute for retained bytes.
+- `forecast-lineage.mjs:10–25` detaches and validates the forecast before loading evidence, then correlates its provenance against the retained bundle. Missing or corrupt evidence produces unavailable without adding a cloud fallback.
+- **R1 Important 1 is repaired.** `forecast-reader.mjs:27–33` compares both policy fields for every retained derived-local record, including inactive ancestors, and preserves the accepted `derived-model-policy` reason.
+- `forecast-lineage.test.mjs:402–475` builds valid hashes and snapshot references before introducing eight independent policy mismatches. The matching-policy positive control prevents an unconditional-refusal implementation from passing.
+- Coverage includes ancestry cycles, forks, missing ancestors, inactive references, corrupted payloads, requested identity, Unknown timing, and reopening the actual native immutable store. The physical fixture resides in the integration lane.
+
+### Issues
+
+#### Critical — Must Fix
+
+None found.
+
+#### Important — Should Fix
+
+1. **Shared package inventory remains an unresolved acceptance blocker.**
+
+   **Location:** `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs:522–525`.
+
+   The postrepair full-fast receipt, `raw-2064/r1-fast.log`, reports **1 of 992 files failed**, solely because **967 packed entries exceed the 965 ceiling**. This candidate adds two production modules without the coordinator’s serialized inventory integration.
+
+   **Why it matters:** required package verification remains failing; targeted passes cannot establish integration readiness.
+
+   **Fix:** complete the coordinator-owned exact module registration and justified measured inventory adjustment, then verify the combined candidate through the required aggregate gates. Preserve this failure until that succeeds.
+
+   This is the acknowledged integration responsibility, not a request for this worker to modify shared files concurrently.
+
+#### Minor — Nice to Have
+
+None identified.
+
+### Recommendations
+
+Retain the minimal all-record policy repair and its positive/negative regression coverage. Carry the package failure forward explicitly into serialized integration and acceptance; no additional owned-source repair emerged from this review.
+
+### Considered and declined
+
+- Legacy v1/v2 readers and current-schema activation: assigned to Task 21/#2065.
+- Current selected-plan/configuration freshness: historical evidence resolution is distinct from current calculation/publication admission.
+- Recomputing forecast numerical outputs: this interface resolves and validates retained provenance; it does not execute the forecasting model.
+- External truth, cloud grants, and lifecycle approval: structural retained evidence does not certify those authorities.
+- Asynchronous evidence stores: the accepted native store API is synchronous.
+- Recursively immutable returned results: the contract requires detached validated data, not a frozen return API.
+- Requiring every active outcome to appear in a forecast: the accepted calculator permits selected comparable subsets.
+- Byte-identical duplicate descriptors: accepted upstream validation deduplicates them while refusing conflicts.
+- Arbitrary caller-supplied store implementation side effects: the resolver consumes the accepted store contract; its own implementation adds no network fallback.
+- Repeating unchanged broad suites: the assignment expressly limited execution to concrete targeted concerns; inspected receipts were sufficient to assess the identified repair.
+- Ignored report/self-review historical summaries: treated as historical evidence, with current tracked rulings and fresh receipts determining the reviewed repair status.
+
+### Assessment
+
+**Ready to merge? No.**
+
+R1’s derived-policy defect is repaired, and I found no additional defect in the bounded production implementation. The shared package gate remains failing, so this review does not establish final integration or native acceptance.
+
+**Verification and limits:** independently inspected exact two-commit range `47dc94bdcd84072ba2889d22716c69b051f99dd7..7f5fa15d59ce0edd420a7190d856def02d66eca4`, confirmed HEAD and clean Git status, and ran diff-whitespace checking. Read both production modules, unit/integration tests, relevant accepted validators/store/runtime, requirements, R1 raw review, and author rulings.
+
+Author receipts inspected: **RED 35/43 with eight policy failures**, **GREEN 43/43**, combined verifier **44/44** normally and with the outer project-root alias, purity **9/9**, compatibility **160/160**, lint/format clean, and full-fast **1/992 failed**. These are author executions, not independent reviewer test runs. No tests, network/native CLI, lifecycle mutations, code edits, or report writes were performed by this reviewer; combined-head CI and final acceptance remain unverified.

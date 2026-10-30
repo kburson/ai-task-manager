@@ -1,0 +1,28 @@
+Verdict: **source review passes for the exact two-file #2090 patch; no actionable findings.** This is a bounded static review, not lifecycle or delivery approval.
+
+I verified before and after review:
+
+- HEAD: `4069e3cbc06b7d89139c2ef3d7d4820132667d65`
+- Exactly two Git-reported modified paths; no other reported changes.
+- `scripts/task-tracker/lib/story-cache/timing-candidate.mjs` SHA256: `2874e51d7a7955a7a8a6339d0fe67ff67ebb461826ab0cac847978e20cf1fd5a`
+- `scripts/tests/unit/task-tracker/lib/story-cache/timing-candidate.test.mjs` SHA256: `74f84760bb1bfc9dc9aee04994359ffd1ce73bded9c10d1471ffd64d83a7e6fa`
+
+The correction matches the original deep dive, Task 5 contract, and active Task 15 boundary. `mergeTimingEvents` indexes cursor uniqueness beneath `actorId`. `ingestTimingEvents` preserves delivery order separately from canonical event order and durably acknowledges the last newly delivered event’s scalar cursor. A globally unique match in candidate derivation contradicted those completed contracts. Requiring at least one retained match fixes that contradiction without changing schemas or interpreting opaque tokens.
+
+The full merger still runs before the changed condition. Conflicting duplicate event IDs, same-actor cursor reuse, malformed events, overlapping measured intervals, and noncanonical retained ordering therefore remain refusals. The new absent-cursor test preserves the remaining ingestion-boundary requirement and asserts unchanged durable state.
+
+The positive regression uses the durable fixture and actual ingestion: an older independent actor’s ordinary event shares its cursor with the current transition entry. It checks acknowledgement, three retained events, two cursor matches, full frozen event retention, serialized record retention, no freeze mutation, persisted confirmation, and the resulting published cursor. This directly exercises the reported failure rather than constructing a candidate-only approximation.
+
+I inspected candidate derivation, confirmation, batch validation, provider confirmation/publication checkpointing, completion receipts, historical receipt validation, and retention interactions. I found no introduced global-cursor assumption:
+
+- Pending publication is determined using event IDs against retained published events.
+- Confirmation still compares the complete source-event boundary and cursor, re-derives the frozen candidate, and requires exact observed content.
+- Batch validation still reconstructs the candidate.
+- Receipt validation binds full native event records, transition pairs, event IDs, digests, and confirmed effects.
+- Historical validation verifies the exact event subset; equal opaque strings do not substitute for event identity.
+
+I considered the counterexample where equal cursor strings occur across actors or across different publication boundaries. Cursor equality does not remove events from pending publication or bypass transition/read-back checks. No additional counterexample test is required for this bounded correction.
+
+I read the supplied RED/GREEN logs: RED records 29 passes and the shared-cursor regression failing specifically with `ingestion-boundary`; GREEN records 93 passes and zero failures. These are retained log observations, not tests independently executed by me. I did not authenticate their process exit codes or claim outcomes for the running full fast/slow suites, lint, or format.
+
+I performed no source writes, tests, native CLI calls, bootstrap, network/GitHub access, Git mutations, process inspection, global-memory access, or delegation. Native Develop/binding claims and CI were not independently authenticated. Offline fixture confirmation is not cloud publication proof. Deferred children and the separate DATE/native-Refine fixes remain outside this diff. This review grants no authority for promotion, commit, publication, or delivery.

@@ -1,0 +1,6 @@
+check	observed_exit	detail
+full-staged-diff	0	no exclusions
+full-source-base-diff	0	c67d1dc49f44cef34991df5727273263b8074960 to final worker tree; no exclusions
+full-trunk-diff	2	inherited baseline whitespace only; complete raw output retained
+unchanged-source-base-vs-trunk	2	diagnostics byte-identical to final worker vs trunk
+archive-hash-length-decode	0	all63 archives; retained originals; no omissions

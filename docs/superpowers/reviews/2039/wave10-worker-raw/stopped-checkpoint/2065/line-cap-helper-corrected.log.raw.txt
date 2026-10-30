@@ -1,0 +1,2 @@
+audit-line-cap: 1 file(s) exceed 800-line code-LOC limit:
+  801 code lines  scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs

@@ -1,0 +1,48 @@
+{
+  "head": "a5dee940e1b820743955744b0f04a18dbb1ef09f",
+  "base": "e6c47dff776e88dc1ae9d80538b11a73cf5f5db7",
+  "verifiedSource": "94beaeb74170f67db827f04475e68028dfaa9c09",
+  "branch": "feature/child/2065",
+  "status": "",
+  "changesSinceVerifiedSource": [
+    "docs/superpowers/reviews/2039/2026-10-22-2065-implementation.md"
+  ],
+  "reviewFiles": [
+    "docs/superpowers/reviews/2039/2026-10-22-2065-implementation.md",
+    "scripts/task-tracker/lib/estimation/forecast-legacy.mjs",
+    "scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs",
+    "scripts/task-tracker/lib/estimation/renderers.mjs",
+    "scripts/task-tracker/lib/estimation/runtime-adapter.mjs",
+    "scripts/task-tracker/lib/github-records/record-envelope.mjs",
+    "scripts/tests/helpers/task-2065-forecast-fixture.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs",
+    "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/decomposition-adaptive-publication.cases.mjs",
+    "scripts/tests/unit/task-tracker/lib/decomposition-authority.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/decomposition-cancellation-publication.cases.mjs",
+    "scripts/tests/unit/task-tracker/lib/estimation/forecast-compatibility.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/estimation/plan-estimate-authority.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/estimation/records.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/github-records/record-envelope.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs"
+  ],
+  "sid": "01a163c9-05bf-73a0-9e5a-a3895ed7de10",
+  "binding": {
+    "issueNumber": 2065,
+    "worktreePath": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+    "worktreeBranch": "feature/child/2065",
+    "kanbanState": "develop"
+  },
+  "activeTask": {
+    "issue": "#2065",
+    "entryStartTs": "2026-10-22T14:35:30.411Z",
+    "wordsAtStart": 900,
+    "boundAt": "2026-10-22T14:35:30.794Z",
+    "worktreePath": "/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065",
+    "worktreeBranch": "feature/child/2065",
+    "worktreeResolvedAt": "2026-10-22T14:35:30.405Z",
+    "bindingGenerationId": "dbccf4d6-ca47-46d3-98c3-8b6b987291bc",
+    "kanbanState": "develop"
+  }
+}

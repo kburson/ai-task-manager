@@ -38,6 +38,7 @@ import {
   assertBootstrapHost,
   NATIVE_BOOTSTRAP_COMMAND,
 } from './lib/native-worktree-bootstrap.mjs';
+import { estimationCommandArgs, estimationHookRefusal } from './lib/estimation/runtime-adapter.mjs';
 import path from 'node:path';
 import {
   evaluateHookDecomposition,
@@ -120,6 +121,21 @@ if (
   }
 }
 const policy = loadPolicy(projectRoot);
+// Estimation requests are refused locally before decomposition/authority reads.
+if (toolName === 'Bash') {
+  const args = estimationCommandArgs(toolInput.command);
+  if (args) {
+    let cfg;
+    try {
+      cfg = loadConfig({ projectDir: projectRoot });
+    } catch {
+      cfg = null;
+    }
+    process.stdout.write(JSON.stringify(estimationHookRefusal({ cfg, args })));
+    process.exit(0);
+  }
+}
+
 // #1873 — denied artifact allowances still enforce the physical source class.
 let physicalShellWriteClass = null;
 let applyPatchTargets = [];
@@ -572,3 +588,5 @@ function block(reason) {
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);
 }
+
+import { loadConfig } from './config.mjs';

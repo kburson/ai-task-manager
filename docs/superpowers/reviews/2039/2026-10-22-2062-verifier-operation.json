@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/estimation/local-runtime.test.mjs scripts/tests/unit/task-tracker/lib/estimation/rubric-refresh.test.mjs` <!-- id=1 -->",
+  "replacement": "- [ ] `node --test scripts/tests/unit/task-tracker/lib/estimation/local-runtime.test.mjs scripts/tests/unit/task-tracker/lib/estimation/rubric-refresh.test.mjs scripts/tests/integration/task-tracker/lib/estimation/local-runtime.integration.test.mjs` <!-- id=1 -->",
+  "expectedVersion": 35
+}

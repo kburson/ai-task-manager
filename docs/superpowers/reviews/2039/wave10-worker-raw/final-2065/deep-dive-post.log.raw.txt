@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' comment 2065 --key deep-dive-2065 --body-file .scratch/2065/deep-dive.md
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+comment: created id=IC_kwDOSU6LgM8AAAABegSFOQ

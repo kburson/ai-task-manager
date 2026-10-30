@@ -1,0 +1,35 @@
+✔ current authority rejects legacy v2 before reading or publishing authority (0.920792ms)
+✔ legacy readers return original v1 fractional hours and v2 half hours unchanged (0.531834ms)
+✔ v2 rejects off-grid published hours: refine (0.112458ms)
+✔ v2 rejects off-grid published hours: plan (0.07525ms)
+✔ v2 rejects off-grid published hours: p50 (0.07375ms)
+✔ v2 rejects off-grid published hours: p80 (0.066083ms)
+✔ v2 rejects off-grid published hours: stage (0.083083ms)
+✔ v2 rejects off-grid published hours: wbs (0.065417ms)
+✔ versioned readers preserve strict legacy keys and issue correlation (0.163583ms)
+✔ current v3 reads replay retained evidence and require its current selection (17.059875ms)
+✔ current v3 refuses missing or stale provenance: missing (1.119459ms)
+✔ current v3 refuses missing or stale provenance: manifest (1.343125ms)
+✔ current v3 refuses missing or stale provenance: plan (2.823125ms)
+✔ current v3 refuses missing or stale provenance: unknown (1.368167ms)
+✔ current v3 refuses unavailable bytes, wrong requested identity, and wrong issue (3.98025ms)
+✔ current authority correlates its configured repository before reading projection (2.191459ms)
+✔ story estimates ceil to the next half hour without moving downward (1.388666ms)
+✔ plan input v1 parses exact WBS, repository, test, risk, and comparable signals (1.079333ms)
+✔ plan input rejects placeholders, duplicate or missing WBS IDs, and incomplete test evidence (0.213792ms)
+✔ forecast computes human work independently from AI coefficients and includes unavoidable repository cost (4.58025ms)
+✔ human estimate is invariant when identical repository breadth is split across WBS rows (1.34775ms)
+✔ forecast widens P80 from confidence and allocates P50 across exact lifecycle stages (0.274792ms)
+✔ forecast publishes only reconciled whole or half-hour estimates (0.282292ms)
+✔ small forecasts account for repository execution once and never allocate a negative stage (1.639292ms)
+✔ forecast uses learned lane plus sandbox cost as a non-overlapping execution floor (0.794791ms)
+✔ comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity (0.770334ms)
+✔ recommendation splits non-reviewable or over-broad work and otherwise proceeds (1.031917ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 279.323208

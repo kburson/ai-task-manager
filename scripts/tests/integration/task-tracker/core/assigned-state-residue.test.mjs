@@ -1,4 +1,4 @@
-// @story #1206 #1986 #2012
+// @story #1206 #1986 #2012 #2065
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -213,6 +213,11 @@ const ALLOWLIST = new Map(
       1,
       'immutable #2012 package inventory records the historical migration filename',
     ],
+    // #2065: preserve the two immutable worker package inventories byte for byte.
+    'docs/superpowers/reviews/2039/wave10-worker-raw/final-2065/pack-before-epic-merge.json.raw.txt':
+      [1, 'immutable #2065 package inventory records the historical migration filename'],
+    'docs/superpowers/reviews/2039/wave10-worker-raw/final-2065/pack-integrated-before-inventory.json.raw.txt':
+      [1, 'immutable #2065 package inventory records the historical migration filename'],
     'skill/shared/references/state-walk-detail.md': [
       1,
       'historical raw-boundary compatibility detail retained outside routine context',

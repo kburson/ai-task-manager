@@ -1,0 +1,68 @@
+### Strengths
+
+- The exact shared repair, `dc6376abed586365b1f3d1bac85457aae65e2d1c..00ad7b6049a4705deaf94eb27847f4f08550704e`, changes only `scripts/tests/unit/task-tracker/core/package-boundary.test.mjs`: 12 additions and one replacement. Lines 484–487 add precisely four intentional runtime entries to the allowance; lines 510–516 explicitly require each module.
+- The repair follows the serialized assignment. The retained combined RED reports **969 entries exceeding 965**, with **8/9** package tests passing. I independently parsed the retained inventory through the accepted `parseNpmPackReport` helper: it contains **969 entries**, including each of the four intended modules exactly once. The retained postrepair receipt reports **9/9 passing**.
+- The package exclusions, discovery/lane classifiers, runtime-root guards, transport capture limits, and remaining package assertions are unchanged. The existing ceiling assertion remains active at `package-boundary.test.mjs:533–537`.
+- Git history preserves three ordinary two-parent merges in the prescribed order:
+  - #2058: `9bf5038a405ef90112226777ff09a510d2695396`, incorporating reviewed records head `9a93487306512c7074c995fc6790fbf90f3c311b`.
+  - #2060: `1c756214c99e82f016d9d9be15ad8fd9f025903b`, incorporating `cfb54962d29bb261a320a08607c66a8a021aafe3`.
+  - #2064: `dc6376abed586365b1f3d1bac85457aae65e2d1c`, incorporating `e212f6bc6`.
+- Each merge’s first-parent delta contains only that child’s production modules, tests, and review records. Direct comparisons show those files at combined HEAD are byte-identical to their reviewed candidates. No overlapping production edits or conflict-resolution alterations emerged.
+- A bounded runtime reference search finds no new public caller activation. The staging and ingestion adapters remain standalone exports; the forecast lineage module imports its reader. Package registration introduces no execution path.
+- #2064’s earlier derived-policy repair remains intact at `forecast-reader.mjs:27–33`, including checks across all retained derived-local records. Its eight negative cases and matching-policy positive control remain unchanged at `forecast-lineage.test.mjs:402–475`.
+- The inspected combined author receipts report **94/94 targeted tests**, including all three physical integration cases; **994/994 fast test files**; successful formatting; and completed lint with **1,320 test files scanned, 30 baselined reach offenders, zero new**. Lint retains advisory soft line-cap messages, including the forecast lineage test.
+
+### Issues
+
+#### Critical — Must Fix
+
+None found within this review’s scope.
+
+#### Important — Should Fix
+
+None found within this review’s scope.
+
+The package findings recorded in #2058 R1, #2060 R1, and #2064 R1/R2 are **resolved for this combined candidate** by the precise registration, measured inventory, retained package GREEN, and aggregate local verification receipts. Their original failing receipts remain historical evidence. This resolution does not establish whole-epic or native acceptance.
+
+#### Minor — Nice to Have
+
+None requiring a change.
+
+### Recommendations
+
+- Retain the precise four-entry allowance and inclusion assertions.
+- Preserve the historical failures and their dispositions alongside this combined resolution.
+- Complete the required exact-head CI/CodeQL and serialized native acceptance workflow before making completion claims.
+- Carry forward the reviewed contracts when later callers activate these modules: local staging/ingestion remains unpublished, creation intents retain identity, and forecast resolution grants no lifecycle authority.
+
+### Considered and declined to judge
+
+- Complete duplication of the three individual source reviews: this assignment covers shared repair and integration; reviewed source/test bytes are preserved.
+- Public body/comment writer migration: assigned to later activation slices; this combined delta activates no callers.
+- Operation-specific capability issuance and composite proof authority: #2059 owns those guarantees; conservative capability refusal remains unchanged.
+- Native timer event-source activation and normalization: later caller work; this adapter consumes accepted normalized events.
+- Frozen timing rendering, transition pairs, canonical-comment creation, and publication confirmation: later components; this delta preserves their boundaries.
+- Cloud drift, missed-create reconciliation, and provider exactly-once behavior: unavailable from this zero-transport local integration.
+- Fresh remote assignment and cross-machine exclusion: require boundary/provider verification beyond the accepted local claim contract.
+- Dirty-key cancellation when bytes return to baseline: unchanged predecessor behavior; no new cancellation contract is introduced.
+- Legacy v1/v2 reader migration and current-schema activation: Task 21/#2065 owns those changes.
+- Current selected-plan/configuration freshness: historical retained-evidence resolution does not replace current admission checks.
+- Numerical forecast recomputation: this resolver validates retained provenance rather than rerunning the model.
+- Asynchronous evidence stores: outside the accepted synchronous store interface.
+- Recursive freezing of returned forecast data: detached validated snapshots are the existing contract.
+- Requiring every active outcome in a forecast: the accepted calculator permits comparable subsets.
+- Byte-identical duplicate descriptors: accepted upstream deduplication remains unchanged.
+- Arbitrary injected-store side effects and external filesystem tampering: this integration does not sandbox dependencies or expand the existing persistence guarantee.
+- Live binding, occupancy, trace, release, lifecycle state, and GitHub authority: native/network operations were prohibited; source history is not live authority evidence.
+- Whole-epic behavior, slow/integration-lane acceptance, CI/CodeQL, and native Test/Review/Close: remain separate required acceptance work.
+- Repeating broad suites at unchanged HEAD: explicitly excluded absent a concrete new concern; inspected receipts were sufficient for this bounded review.
+
+### Assessment
+
+**Ready to merge? Yes, for this bounded shared repair and combined source integration.**
+
+The registration exactly accounts for the measured four-module growth, preserves existing guards, and leaves all three reviewed histories intact. I found no additional actionable integration defect. Final whole-epic and native acceptance remain unestablished.
+
+**Reviewer-executed verification:** read-only source, requirements, review/ruling, receipt, and Git-history inspection; exact candidate-file comparisons; accepted-parser inspection of retained inventory; clean diff-whitespace check; final clean Git status and unchanged HEAD `00ad7b6049a4705deaf94eb27847f4f08550704e`.
+
+**Limits:** package/targeted/fast/lint/format outcomes above are inspected author receipts, not reviewer-executed suites. I ran no tests, network/native CLI, lifecycle operations, Git mutations, report writes, or subagents. One combined read-only inspection command was blocked before execution by a hook that interpreted a pattern as an out-of-scope write; subsequent direct read-only Git commands and the accepted inventory parser supplied the needed evidence.

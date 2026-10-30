@@ -1,0 +1,10 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' start 2065 --role agent --confirm-relocation
+[aitm graphql-usage] soft-byte-cap
+[aitm graphql-usage] soft-file-cap
+aitm: action capture unavailable; continuing without capture: ENOENT: no such file or directory, open '/Users/kpburson/.codex/worktrees/b187/ai-task-manager/.worktrees/2039-wave10-2065/.tmp/aitm/state/task-tracker-state.json'
+
+🚧 PICKUP DIRECTIVE DEFERRED — #2065 (state: ready-for-plan)
+   This issue hasn't reached Plan yet — deep-dive/implementation
+   instructions do not apply. Continue the state walk: `/task plan #2065`.
+Started #2065.
