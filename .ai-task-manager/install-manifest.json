@@ -1,9 +1,7 @@
 {
   "schema": "aitm.install-manifest/v1",
   "intent": {
-    "providers": [
-      "codex"
-    ],
+    "providers": ["codex"],
     "linkMode": "stub",
     "features": {
       "memoryIndex": false,

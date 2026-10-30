@@ -491,6 +491,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
     18 + // #2039: exact 18 additional retained cache/estimation modules reconciled with delivered R0.
+    2 + // #2067: exact recovery and journal modules; no additional package family.
     4; // #2096: immutable subject, native source execution and stamp declaration validation.
   for (const module of [
     'artifact-subject',
@@ -542,6 +543,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/completion-receipt.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/publisher.mjs'));
+  for (const entry of ['recovery', 'journal'])
+    assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/provider-adapters.mjs'));
   for (const entry of ['batch', 'body-template'])
     assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));

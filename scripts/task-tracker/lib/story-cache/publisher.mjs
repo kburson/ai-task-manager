@@ -12,6 +12,7 @@ import { freezeStoryBatch } from './batch.mjs';
 import { materializeBodyTemplate } from './body-template.mjs';
 import { compareSnapshots } from './snapshot-compare.mjs';
 import { confirmResourceEffect } from './provider-adapters.mjs';
+import { checkpointResource } from './journal.mjs';
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const same = (a, b) => json(a) === json(b);
 const clone = (value) => JSON.parse(json(value));
@@ -45,45 +46,6 @@ function sourceBody(record, batch) {
       )
     )
   );
-}
-function checkpointResource(generation, payloads, effect, confirmation) {
-  const { outcome, observed, field } = confirmation;
-  if (field) {
-    generation.baseSnapshot.fields = generation.baseSnapshot.fields.map((row) =>
-      row.fieldId === field.fieldId ? clone(field) : row
-    );
-    generation.baseSnapshot.fieldsDigest = hash(
-      json({
-        canonicalizationVersion: 'aitm.canonical-json/v1',
-        fields: generation.baseSnapshot.fields,
-      })
-    );
-  } else {
-    const { body, ...resource } = observed;
-    const payloadPath = `payloads/${observed.digest}.txt`;
-    payloads.set(payloadPath, body);
-    generation.baseSnapshot.resources[observed.key] = {
-      ...clone(resource),
-      ownership: 'owned',
-      payloadPath,
-    };
-    if (
-      observed.kind === 'comment' &&
-      !generation.baseSnapshot.inventory.includes(outcome.providerId)
-    )
-      generation.baseSnapshot.inventory.push(outcome.providerId);
-    generation.baseSnapshot.inventory.sort();
-    if (observed.kind === 'issue') {
-      generation.baseSnapshot.title = effect.candidate.title;
-      generation.baseSnapshot.titleDigest = hash(effect.candidate.title);
-    }
-    if (effect.candidate?.schema === 'aitm.story-timing-candidate/v1') {
-      generation.timing.publishedCursor = effect.candidate.timing.ingestedCursor;
-      generation.timing.canonicalCommentKey = observed.key;
-    }
-  }
-  generation.dirtyKeys = generation.dirtyKeys.filter((key) => key !== effect.key);
-  // Working intent is retained until aggregate completion; creation keeps its local key.
 }
 /** ports retain the same genuine native capabilities used by freezeStoryBatch and
  * validateIssue rechecks the realized composite/proof scope before the final dispatch.
