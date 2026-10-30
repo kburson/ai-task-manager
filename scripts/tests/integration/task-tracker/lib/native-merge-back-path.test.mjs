@@ -327,6 +327,14 @@ test('real Bash hook grants only the verified operand and retains other path bou
     assert.equal(result.status, 0, result.stderr);
     return result.stdout;
   };
+  // In-project carriers need no external operand allowance; retain their old admission.
+  for (const ordinary of [
+    `${entry} merge-back 140 .worktrees/child --preserve-worktree`,
+    `${entry} merge-back --help`,
+    `${entry} merge-back 140 ${f.root}/.worktrees/child`,
+    `${entry} merge-back 140 ${f.root}/.worktrees/child --preserve-worktree`,
+  ])
+    assert.equal(run(ordinary), '', ordinary);
   const command = `${entry} merge-back 140 ${f.child} --preserve-worktree`;
   assert.equal(run(command), '');
   const nested = path.join(f.root, '.tmp/shadow');
