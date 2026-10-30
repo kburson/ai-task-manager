@@ -490,31 +490,16 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
-    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
-    1 + // #2040: exactly one native content-observation runtime module.
-    1 + // #2052: exactly one bounded current-story snapshot reader.
-    1 + // #2041: exactly one cache manifest/generation validator.
-    1 + // #2053: exactly one complete snapshot vector comparator.
-    1 + // #2054: exactly one crash-safe immutable generation store.
-    1 + // #2044: exactly one pure timing-event merge module.
-    1 + // #2055: exactly one pure unpublished-cache retention policy.
-    1 + // #2042: exactly one persistent singleton story-writer claim module.
-    1 + // #2056: exactly one shared writer-registry implementation, existing claim exports retained.
-    2 + // #2045: exactly two durable local estimation evidence modules.
-    5 + // #2057: exact handoff, private transport, byte validation, claim shape and binding guard.
-    1 + // #2062: exactly one local calculation and retained-input receipt module.
-    1 + // #2043: exactly one local issue-body/title staging adapter.
-    1 + // #2046: exactly one strict forecast v3 provenance validator.
-    1 + // #2058: exactly one local owned-comment staging adapter.
-    1 + // #2060: exactly one durable local timing-ingestion adapter.
-    2 + // #2064: exactly two retained forecast evidence/lineage readers; measured total 969.
-    1 + // #2059: exactly one stage-capability binding module.
-    1 + // #2065: exactly one versioned legacy/current forecast reader.
-    1 + // #2061: exactly one frozen timing-candidate adapter; measured total 972.
-    2 + // #2047: exactly the batch freezer and final-body template; measured total 974.
-    3 + // #2088: exact bootstrap admission, reviewed input pins and binding diagnostic; measured total 977.
-    1 + // #2048: exactly one immutable completion receipt validator; measured total 978.
-    2; // #2066: exactly the publisher and provider adapters; measured total 980.
+    18 + // #2039: exact 18 additional retained cache/estimation modules reconciled with delivered R0.
+    2 + // #2067: exact recovery and journal modules; no additional package family.
+    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+  for (const module of [
+    'artifact-subject',
+    'artifact-execution',
+    'stamp-declaration',
+    'issue-proof-authority',
+  ])
+    assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   for (const entry of [
     'native-worktree-bootstrap',
     'native-bootstrap-inputs',
@@ -558,16 +543,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/timing-candidate.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/completion-receipt.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/publisher.mjs'));
+  for (const entry of ['recovery', 'journal'])
+    assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/story-cache/provider-adapters.mjs'));
   for (const entry of ['batch', 'body-template'])
     assert.ok(files.includes('scripts/task-tracker/lib/story-cache/' + entry + '.mjs'));
-  for (const module of [
-    'artifact-subject',
-    'artifact-execution',
-    'stamp-declaration',
-    'issue-proof-authority',
-  ])
-    assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-kind.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/decomposition-target-observation.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/heal-actor-evidence-recovery.mjs'));
