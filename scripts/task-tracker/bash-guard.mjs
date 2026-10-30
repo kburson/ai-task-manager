@@ -385,6 +385,25 @@ async function evaluate(input) {
 
   // --- Validate read/exec paths (everything not identified as a write target) ---
   const registeredPaths = registeredReviewCommandPaths(command, { homeDir });
+  if (
+    /^node_modules\/(?:@kburson\/)?ai-task-manager\/bin\/aitm\.mjs merge-back /.test(rawCommand)
+  ) {
+    const { mergeBackPathCommand, inspectNativeMergeBackPath } =
+      await import('./lib/native-merge-back-path.mjs');
+    const request = mergeBackPathCommand(rawCommand);
+    if (!request) block('native-merge-back-path: unsupported command');
+    try {
+      registeredPaths.add(
+        await inspectNativeMergeBackPath({
+          request,
+          root: projectRoot,
+          sessionId: input.session_id,
+        })
+      );
+    } catch (error) {
+      block(error.message);
+    }
+  }
   for (const p of allPaths) {
     if (writePaths.has(p)) continue; // already validated above
     if (!allowedPath(p, READ_ALLOWED) && !isCodexSkillsRead(p) && !registeredPaths.has(p)) {
