@@ -1,4 +1,4 @@
-// @story #1653 #1836 #1837
+// @story #1653 #1836 #1837 #2067
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -22,6 +22,7 @@ function liveFlags() {
     ...loadJson(extensionPath).flags,
     ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/1837/behavioral-flags.json')).flags,
     ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/2105/behavioral-flags.json')).flags,
+    ...loadJson(path.join(projectRoot, 'scripts/tests/fixtures/2067/behavioral-flags.json')).flags,
   ]) {
     const previous = flags.get(row.flag);
     flags.set(row.flag, previous ? { ...previous, reads: [...previous.reads, ...row.reads] } : row);
