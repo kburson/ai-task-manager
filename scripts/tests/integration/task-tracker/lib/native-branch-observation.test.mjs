@@ -180,12 +180,6 @@ for (const [name, change] of [
     },
   ],
   [
-    'durable SID',
-    (f) => {
-      f.remote.issue.body = f.remote.issue.body.replace('sid="' + f.sid + '"', 'sid="other"');
-    },
-  ],
-  [
     'durable branch',
     (f) => {
       f.remote.issue.body = f.remote.issue.body.replace('branch="native-old"', 'branch="wrong"');
@@ -399,4 +393,38 @@ test('inspection does not execute configured clean filters', async (t) => {
   rmSync(path.join(f.root, '.tmp/filter-fired'), { force: true });
   await inspectNativeBranchRenewal(f.options);
   assert.throws(() => readFileSync(path.join(f.root, '.tmp/filter-fired')), /ENOENT/);
+});
+
+// A real initial detached checkout is not a named-branch rename. Its same-source
+// transition must remain available in drafting and Develop without a fabricated SID.
+for (const state of ['plan', 'develop']) {
+  test(
+    '#2134: clean detached initial naming admits ' + state + ' with exact live ownership',
+    async (t) => {
+      const f = fixture(t);
+      f.git('switch', '--detach', 'HEAD');
+      const record = setActiveTask(
+        f.sid,
+        { ...f.record, worktreeBranch: 'HEAD', kanbanState: state },
+        f.root
+      );
+      f.remote.snapshot.state = state;
+      f.remote.issue.body = f.remote.issue.body
+        .replace('state="develop"', `state="${state}"`)
+        .replace('branch="native-old"', 'branch="HEAD"');
+      f.git('switch', '-c', 'codex/2105-draft');
+      const result = await inspectNativeBranchRenewal(f.options);
+      assert.equal(result.oldBranch, 'HEAD');
+      assert.equal(result.newBranch, 'codex/2105-draft');
+      assert.equal(result.head, f.git('rev-parse', 'HEAD'));
+      assert.deepEqual(getActiveTask(f.sid, f.root), record);
+    }
+  );
+}
+
+test('#2134: historical location SID does not override the exact live owner', async (t) => {
+  const f = fixture(t);
+  f.remote.issue.body = f.remote.issue.body.replace(`sid="${f.sid}"`, 'sid="retired-operator"');
+  const result = await inspectNativeBranchRenewal(f.options);
+  assert.equal(result.bindingGenerationId, f.record.bindingGenerationId);
 });

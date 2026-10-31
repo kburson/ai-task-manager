@@ -2,7 +2,10 @@
 // Policy-neutral normalization boundary for the graph nodes consumed by
 // resolveEpicLineage. Callers retain relationship discovery and presentation.
 
-import { resolveCurrentIssueWorktreeLocation } from './issue-worktree-location.mjs';
+import {
+  resolveCurrentIssueWorktreeLocation,
+  resolveCurrentIssueWorktreeBranch,
+} from './issue-worktree-location.mjs';
 
 function positiveIssue(value, label) {
   const number = Number(value);
@@ -39,10 +42,9 @@ export function buildGraphNodeAuthority({
   if (typeof ownBody === 'string') {
     try {
       const own = resolveCurrentIssueWorktreeLocation(ownBody);
-      if (own) {
-        node.authoritativeBranch = own.worktreeBranch;
-        node.authoritativeWorktree = own.worktreePath;
-      }
+      const branch = resolveCurrentIssueWorktreeBranch(ownBody);
+      if (branch) node.authoritativeBranch = branch;
+      if (own) node.authoritativeWorktree = own.worktreePath;
     } catch (error) {
       return { ...node, authorityError: errorMessage(error) };
     }
@@ -53,10 +55,8 @@ export function buildGraphNodeAuthority({
     throw new Error(`graph-node-authority: parent #${normalizedParent} body unavailable`);
   }
   try {
-    const parentLocation = resolveCurrentIssueWorktreeLocation(parentBody);
-    return parentLocation
-      ? { ...node, parentAuthoritativeBranch: parentLocation.worktreeBranch }
-      : node;
+    const parentBranch = resolveCurrentIssueWorktreeBranch(parentBody);
+    return parentBranch ? { ...node, parentAuthoritativeBranch: parentBranch } : node;
   } catch (error) {
     return { ...node, parentAuthorityError: errorMessage(error) };
   }

@@ -3,7 +3,7 @@
 // Read-only admission for one native Start; existing bind writers own all effects.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { pexec } from '../../gh/lib/gh-client.mjs';
@@ -15,7 +15,10 @@ import { loadConfig } from '../config.mjs';
 import { readOccupancy } from './occupancy.mjs';
 import { ownershipDecision } from './ownership-policy.mjs';
 import { fetchAssignmentSnapshot } from './assignment-snapshot.mjs';
-import { resolveCurrentIssueWorktreeLocation } from './issue-worktree-location.mjs';
+import {
+  resolveCurrentIssueWorktreeLocation,
+  resolveCurrentIssueWorktreeBranch,
+} from './issue-worktree-location.mjs';
 import { readPhysicalRuntimeIdentity } from './runtime-storage.mjs';
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
 import { hasUnsupportedGitEnvironment } from './mutation-context.mjs';
@@ -25,6 +28,7 @@ import {
   assertNativeSession,
 } from './native-worktree-bootstrap.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { DRAFTING_STATES } from '../activity-policy.mjs';
 
 const sha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 function refuse(reason) {
@@ -49,7 +53,7 @@ export function branchRenewalArgv(argv) {
 export function branchRenewalCommand(command) {
   if (typeof command !== 'string') return null;
   const match = command.match(
-    /^node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs start ([1-9]\d*) --role (agent|orchestrator) --confirm-relocation$/
+    /^(?:node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs|bin\/aitm\.mjs) start ([1-9]\d*) --role (agent|orchestrator) --confirm-relocation$/
   );
   return match?.[0] === command
     ? branchRenewalArgv(['start', match[1], '--role', match[2], '--confirm-relocation'])
@@ -72,13 +76,14 @@ function physicalParents(root, target) {
 function inspectCleanCheckout(root, identity, oldBranch, newBranch, git) {
   if (git('for-each-ref', '--format=%(refname)', 'refs/replace/').trim())
     refuse('Git replacement objects');
-  for (const branch of [oldBranch, newBranch]) {
+  const namedBranches = oldBranch === 'HEAD' ? [newBranch] : [oldBranch, newBranch];
+  for (const branch of namedBranches) {
     if (typeof branch !== 'string' || branch === 'HEAD') refuse('detached or missing branch');
     git('check-ref-format', 'refs/heads/' + branch);
   }
   const refs = () => [
     git('rev-parse', '--verify', 'HEAD^{commit}').trim(),
-    ...[oldBranch, newBranch].map((branch) =>
+    ...namedBranches.map((branch) =>
       git('rev-parse', '--verify', 'refs/heads/' + branch + '^{commit}').trim()
     ),
   ];
@@ -91,7 +96,12 @@ function inspectCleanCheckout(root, identity, oldBranch, newBranch, git) {
   if (!logStat.isFile() || logStat.isSymbolicLink()) refuse('nonphysical checkout observation');
   const last = readFileSync(log, 'utf8').trimEnd().split('\n').at(-1);
   if (
-    !last?.endsWith('\tcheckout: moving from ' + oldBranch + ' to ' + newBranch) ||
+    !last?.endsWith(
+      '\tcheckout: moving from ' +
+        (oldBranch === 'HEAD' ? before[0] : oldBranch) +
+        ' to ' +
+        newBranch
+    ) ||
     last.split(' ')[0] !== before[0] ||
     last.split(' ')[1] !== before[0]
   )
@@ -181,7 +191,8 @@ export async function inspectNativeBranchRenewal({
   }
   const tools = resolveNativeReadTools({ root, env });
   // Closed public carrier: npm/npx resolution is never part of renewal.
-  const entry = path.join(root, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs');
+  const installedEntry = path.join(root, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs');
+  const entry = existsSync(installedEntry) ? installedEntry : path.join(root, 'bin/aitm.mjs');
   const selectedEntry = fileURLToPath(new URL('../../../bin/aitm.mjs', import.meta.url));
   if (
     realpathSync(entry) !== realpathSync(selectedEntry) ||
@@ -201,7 +212,10 @@ export async function inspectNativeBranchRenewal({
     !record.worktreeBranch ||
     record.worktreeBranch === invoking.worktreeBranch ||
     invoking.worktreePath !== root ||
-    record.kanbanState !== 'develop' ||
+    !(
+      record.kanbanState === 'develop' ||
+      (record.worktreeBranch === 'HEAD' && DRAFTING_STATES.includes(record.kanbanState))
+    ) ||
     !Number.isFinite(Date.parse(record.entryStartTs)) ||
     !record.bindingGenerationId ||
     record.closedAt
@@ -259,11 +273,16 @@ export async function inspectNativeBranchRenewal({
   const location = resolveCurrentIssueWorktreeLocation(remote.issue.body);
   if (
     !location ||
-    location.sessionId !== sessionId ||
     location.worktreePath !== root ||
     location.worktreeBranch !== record.worktreeBranch
   )
     refuse('durable location mismatch');
+  if (
+    record.worktreeBranch === 'HEAD' &&
+    invoking.worktreeBranch !==
+      (resolveCurrentIssueWorktreeBranch(remote.issue.body) ?? `codex/${request.issueNumber}-draft`)
+  )
+    refuse('initial branch differs from durable issue target');
   // Remote observation grants no lease: recheck local source and generation before returning.
   if (
     JSON.stringify((deps.getActiveTask ?? getActiveTask)(sessionId, root)) !==

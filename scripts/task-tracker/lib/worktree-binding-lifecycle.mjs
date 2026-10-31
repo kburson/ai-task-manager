@@ -227,6 +227,13 @@ export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {
     { projectDir, issue },
     { releaseOccupancy: deps.releaseOccupancy }
   );
+  const readback = (deps.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease)({
+    projectDir,
+    issue,
+    deps,
+  });
+  if (readback.status !== 'released')
+    throw new Error('closed-bindings:release-readback-' + readback.status);
   return { bindings, occupancy };
 }
 
