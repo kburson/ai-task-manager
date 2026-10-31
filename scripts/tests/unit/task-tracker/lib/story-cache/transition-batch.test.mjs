@@ -34,7 +34,10 @@ async function setup(t) {
   const { f, input } = await fieldInput(t, { optionId: 'OPT_test', name: 'Test' }, 'SINGLE_SELECT');
   const base =
     '<!-- aitm-last-known-state state="develop" ts="2026-10-19T12:00:00Z" -->\nbase story';
-  const candidate = base.replace('base story', 'private unpublished body');
+  const candidate =
+    base.replace('base story', 'private unpublished body') +
+    '\n\n## AITM Progress Markers\n\n' +
+    'Retained operator checkpoint.\n'.repeat(64);
   await changeGeneration(f, (g, payloads) => setIssue(g, payloads, base, candidate));
   input.generation = await f.store.readGeneration();
   const issue = input.effects.find((e) => e.kind === 'issue-update');
@@ -279,8 +282,7 @@ test('core refuses an attempt to replace its native context through the cache op
   assert.equal(result.exit, 23);
   assert.deepEqual(s.calls, []);
 });
-test('a second demotion transition preserves the first receipt and timing events', async (t) => {
-  const s = await setup(t);
+async function prepareSecond(s) {
   assert.equal((await s.run()).status, 'complete');
   const firstBody = s.cloud.resources[`issue:${identity.issueNodeId}`].body;
   const firstReceipt = firstBody.match(/^<!-- aitm-transition-completion .+ -->$/m)[0];
@@ -349,6 +351,11 @@ test('a second demotion transition preserves the first receipt and timing events
     effects: [issue, timing, status],
   });
   s.ports.capabilities = [{ base: firstBody, candidate: firstBody }];
+  return { firstBody, firstReceipt };
+}
+test('a second demotion transition preserves the first receipt and timing events', async (t) => {
+  const s = await setup(t);
+  const { firstReceipt } = await prepareSecond(s);
   assert.equal((await s.run()).status, 'complete');
   const body = s.cloud.resources[`issue:${identity.issueNodeId}`].body;
   assert.ok(body.includes(firstReceipt));
@@ -361,4 +368,45 @@ test('a second demotion transition preserves the first receipt and timing events
     null
   );
   assert.equal(s.calls.filter((k) => k === 'issue-update').length, 2);
+});
+for (const [name, edit] of [
+  ['removed', (body, receipt) => body.replace(receipt, '')],
+  ['changed', (body, receipt) => body.replace(receipt, receipt.replace('"visit":1', '"visit":9'))],
+  ['invented', (body, receipt) => body + '\n' + receipt.replace('move:one', 'move:invented')],
+  ['malformed', (body) => body + '\n<!-- aitm-transition-completion x -->'],
+]) {
+  test(`prior receipt cannot be ${name} by staged body edits`, async (t) => {
+    const s = await setup(t);
+    const { firstBody, firstReceipt } = await prepareSecond(s);
+    const candidate = edit(firstBody, firstReceipt);
+    await changeGeneration(s.f, (g, payloads) => {
+      setIssue(g, payloads, firstBody, candidate);
+      g.dirtyKeys.push(`issue:${identity.issueNodeId}`);
+      g.dirtyKeys.sort();
+    });
+    const issue = s.ctx.effects.find((e) => e.kind === 'issue-update');
+    issue.candidate.body = candidate;
+    issue.intendedDigest = hash(candidate);
+    s.ports.capabilities = [{ base: firstBody, candidate }];
+    await assert.rejects(s.run(), { code: 'STORY_TRANSITION_UNAVAILABLE' });
+    assert.equal(s.calls.length, 3);
+    assert.equal(s.cloud.resources[`issue:${identity.issueNodeId}`].body, firstBody);
+  });
+}
+test('completed replay reports later drift without changing completed evidence', async (t) => {
+  const s = await setup(t);
+  assert.equal((await s.run()).status, 'complete');
+  const before = await s.f.store.readGeneration();
+  s.cloud.title = 'Later external title';
+  s.cloud.titleDigest = hash(s.cloud.title);
+  assert.equal((await s.run()).status, 'conflict');
+  const after = await s.f.store.readGeneration();
+  assert.deepEqual(after.manifest, before.manifest);
+  assert.equal(after.generation.batch.status, 'complete');
+  assert.deepEqual(after.generation.conflicts, []);
+  await context(s.f.root, () =>
+    coordinator.prepareNextTransition({ store: s.f.store, claim: s.f.claim })
+  );
+  assert.equal((await s.f.store.readGeneration()).generation.batch, null);
+  assert.equal(s.calls.length, 3);
 });
