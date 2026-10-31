@@ -125,11 +125,29 @@ function refuse(reason) {
   });
 }
 const receiptLine = (receipt) => `<!-- aitm-transition-completion ${json(receipt)} -->`;
+function receiptRows(body) {
+  const starts = [...body.matchAll(/<!--\s*aitm-transition-completion\b/g)];
+  const matches = [...body.matchAll(/^<!-- aitm-transition-completion (.+) -->$/gm)];
+  if (starts.length !== matches.length) refuse('completion-receipt-format');
+  const rows = matches.map((m) => {
+    let receipt;
+    try {
+      receipt = JSON.parse(m[1]);
+    } catch {
+      refuse('completion-receipt-format');
+    }
+    if (typeof receipt?.transition?.id !== 'string' || json(receipt) !== m[1])
+      refuse('completion-receipt-format');
+    return { raw: m[0], receipt };
+  });
+  if (new Set(rows.map((r) => r.receipt.transition.id)).size !== rows.length)
+    refuse('completion-receipt-count');
+  return rows;
+}
 function receiptIn(body, transition) {
-  const rows = [...body.matchAll(/^<!-- aitm-transition-completion (.+) -->$/gm)].map((m) =>
-    JSON.parse(m[1])
-  );
-  const selected = rows.filter((r) => r.transition?.id === transition.id);
+  const selected = receiptRows(body)
+    .map((r) => r.receipt)
+    .filter((r) => r.transition.id === transition.id);
   if (selected.length !== 1) refuse('completion-receipt-count');
   return selected[0];
 }
@@ -193,6 +211,15 @@ function freezeTransition(record, ctx, ports) {
   if (!fromOption || beforeStatus?.value?.optionId !== fromOption) refuse('status-baseline');
   const source = hydrateJournalSnapshot(batch.baseline, record.payloads);
   const base = source.resources[`issue:${source.identity.issueNodeId}`].body;
+  const priorReceipts = receiptRows(base);
+  const stagedReceipts = receiptRows(batch.bodyTemplate.body);
+  if (
+    !same(
+      priorReceipts.map((r) => r.raw),
+      stagedReceipts.map((r) => r.raw)
+    )
+  )
+    refuse('completion-receipt-preservation');
   if (
     readLastKnownState(base).state !== move.from ||
     getStageVisitCount(base, move.to) + 1 !== move.visit
@@ -220,11 +247,7 @@ function freezeTransition(record, ctx, ports) {
   };
   // Native IDs enter a JSON comment. Refuse delimiter/quote injection rather than changing opaque IDs.
   if (/[<>]/.test(json(receipt))) refuse('receipt-token');
-  if (
-    [...batch.bodyTemplate.body.matchAll(/^<!-- aitm-transition-completion (.+) -->$/gm)].some(
-      (m) => JSON.parse(m[1]).transition?.id === move.id
-    )
-  )
+  if (stagedReceipts.some((r) => r.receipt.transition.id === move.id))
     refuse('reused-transition-id');
   const ts = timing.candidate.timing.events.find((e) => e.transitionId === move.id)?.timestamp;
   if (!Number.isFinite(Date.parse(ts))) refuse('transition-time');
@@ -372,6 +395,8 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
         };
       };
       const existing = generation.batch;
+      const completedReplay =
+        existing?.status === 'complete' && same(existing.transition, ctx.transition);
       if (existing && existing.status !== 'complete') {
         validateRecoveryJournal(record);
         if (!same(existing.transition, ctx.transition)) refuse('pending-other-transition');
@@ -505,6 +530,10 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
       const expected = hydrateJournalSnapshot(generation.baseSnapshot, payloads);
       const comparison = compareSnapshots(expected, current);
       if (!comparison.equal) {
+        // Drift after durable completion is a new observation, not evidence that the
+        // earlier transition became incomplete. Preserve its manifest and journal.
+        if (completedReplay)
+          return result('conflict', { completed: true, changes: comparison.changes });
         generation.batch.status = 'conflict';
         generation.conflicts.push({
           batchId: generation.batch.batchId,
