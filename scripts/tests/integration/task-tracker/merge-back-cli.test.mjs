@@ -49,7 +49,7 @@ function fixture(
       packages: { '': { name: 'merge-back-cli-fixture', version: '1.0.0' } },
     })
   );
-  writeFileSync(path.join(parent, '.gitignore'), 'node_modules/\nverified.txt\n');
+  writeFileSync(path.join(parent, '.gitignore'), 'node_modules/\nverified.txt\n.tmp/\n');
   writeFileSync(path.join(parent, 'verify.mjs'), verifier);
   mkdirSync(path.join(parent, '.ai-task-manager'));
   writeFileSync(path.join(parent, '.ai-task-manager/task-tracker.json'), JSON.stringify(cfg));
@@ -124,15 +124,16 @@ test('#1882: invalid CLI options refuse before any Git change', async (t) => {
   assert.ok(existsSync(child));
 });
 
-test('#1882: wrong recorded parent checkout refuses without switching it', async (t) => {
+test('#2134: an obsolete recorded path on another branch is preserved without vetoing durable target integration', async (t) => {
   const { parent, child, git, before, deps } = fixture(t);
   git(parent, 'checkout', '-qb', 'other-parent');
-  await assert.rejects(
-    run(['910', child, '--preserve-worktree'], deps),
-    /parent|integration.*branch/i
-  );
+  const result = await run(['910', child, '--preserve-worktree'], deps);
+  assert.equal(result.merged, true);
   assert.equal(git(parent, 'branch', '--show-current'), 'other-parent');
   assert.equal(git(parent, 'rev-parse', 'HEAD'), before);
+  assert.equal(existsSync(path.join(parent, 'feature.txt')), false);
+  assert.equal(git(child, 'rev-parse', 'codex/fixture-parent'), git(child, 'rev-parse', 'HEAD'));
+  assert.equal(git(parent, 'status', '--porcelain'), '');
 });
 
 test('#1882: a parent checkout changed during verification is retained and refused', async (t) => {
@@ -296,4 +297,160 @@ test('#1902: parent dirt introduced by verification refuses integration and is r
   assert.ok(readFileSync(path.join(f.parent, 'package.json'), 'utf8').endsWith(' '));
   assert.equal(existsSync(path.join(f.parent, 'feature.txt')), false);
   assert.ok(existsSync(f.child));
+});
+
+import { claimOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
+
+function retireParent(f) {
+  f.git(f.parent, 'checkout', 'base');
+  const retired = path.join(path.dirname(f.parent), 'retired-epic');
+  f.git(f.parent, 'worktree', 'add', retired, 'codex/fixture-parent');
+  f.nodes[905].authoritativeWorktree = retired;
+  f.git(f.parent, 'worktree', 'remove', retired);
+  return retired;
+}
+
+for (const replacement of [false, true])
+  test(
+    '#2134: retired custom parent integrates via ' +
+      (replacement ? 'registered replacement' : 'temporary checkout'),
+    async (t) => {
+      const f = fixture(t, headVerifier);
+      const retired = retireParent(f);
+      const current = path.join(path.dirname(f.parent), 'current-epic');
+      if (replacement) f.git(f.parent, 'worktree', 'add', current, 'codex/fixture-parent');
+      const reviewed = f.git(f.child, 'rev-parse', 'HEAD');
+      assert.equal((await run(['910', f.child, '--preserve-worktree'], f.deps)).merged, true);
+      assert.equal(existsSync(retired), false);
+      assert.equal(f.git(f.child, 'rev-parse', 'codex/fixture-parent'), reviewed);
+      assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), f.before);
+      assert.equal(f.git(f.parent, 'branch', '--show-current'), 'base');
+      assert.equal(readFileSync(path.join(f.child, 'verified.txt'), 'utf8'), reviewed);
+      if (replacement) {
+        assert.equal(f.git(current, 'rev-parse', 'HEAD'), reviewed);
+        assert.equal(readFileSync(path.join(current, 'feature.txt'), 'utf8'), 'child contribution');
+        assert.equal(f.git(current, 'status', '--porcelain'), '');
+      } else
+        assert.equal(
+          f
+            .git(f.child, 'worktree', 'list', '--porcelain')
+            .includes('branch refs/heads/codex/fixture-parent'),
+          false,
+          'operation checkout is released after clean integration'
+        );
+    }
+  );
+
+test('#2134: a different live parent writer prevents integration after historical checkout retirement', async (t) => {
+  const f = fixture(t);
+  const retired = retireParent(f);
+  claimOccupancy({
+    projectDir: f.parent,
+    issue: 905,
+    sid: 'other-parent-writer',
+    provider: 'codex',
+    worktreePath: retired,
+  });
+  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /writer|occupancy/);
+  assert.equal(f.git(f.child, 'rev-parse', 'codex/fixture-parent'), f.before);
+  assert.equal(existsSync(path.join(f.child, 'verified.txt')), false);
+});
+
+test('#2134: foreign repository occupying registered target path is preserved and refused', async (t) => {
+  const f = fixture(t);
+  retireParent(f);
+  const current = path.join(path.dirname(f.parent), 'current-epic');
+  f.git(f.parent, 'worktree', 'add', current, 'codex/fixture-parent');
+  rmSync(current, { recursive: true });
+  mkdirSync(current);
+  f.git(current, 'init', '-q', '-b', 'foreign');
+  writeFileSync(path.join(current, 'foreign.txt'), 'foreign source');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /another repository|foreign/
+  );
+  assert.equal(readFileSync(path.join(current, 'foreign.txt'), 'utf8'), 'foreign source');
+  assert.equal(f.git(f.child, 'rev-parse', 'codex/fixture-parent'), f.before);
+});
+
+test('#2134: concurrent parent advancement during verification refuses even if fast-forward remains possible', async (t) => {
+  const f = fixture(t);
+  const intermediate = f.git(f.child, 'rev-parse', 'HEAD');
+  writeFileSync(
+    path.join(f.child, 'verify.mjs'),
+    "import {execFileSync} from 'node:child_process'; execFileSync('git',['merge','--ff-only'," +
+      JSON.stringify(intermediate) +
+      '],{cwd:' +
+      JSON.stringify(f.parent) +
+      '});'
+  );
+  f.git(f.child, 'add', 'verify.mjs');
+  f.git(f.child, 'commit', '-qm', 'verifier simulates concurrent integration');
+  const reviewed = f.git(f.child, 'rev-parse', 'HEAD');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /target.*changed|parent.*changed/
+  );
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), intermediate);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), reviewed);
+  assert.equal(f.git(f.parent, 'status', '--porcelain'), '');
+});
+
+for (const dirty of ['source', 'replacement'])
+  test('#2134: dirty ' + dirty + ' refuses before integration and preserves files', async (t) => {
+    const f = fixture(t);
+    retireParent(f);
+    const current = path.join(path.dirname(f.parent), 'current-epic');
+    f.git(f.parent, 'worktree', 'add', current, 'codex/fixture-parent');
+    const changed = path.join(dirty === 'source' ? f.child : current, 'package.json');
+    const original = readFileSync(changed, 'utf8');
+    writeFileSync(changed, original + ' ');
+    await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /dirty/);
+    assert.equal(f.git(f.child, 'rev-parse', 'codex/fixture-parent'), f.before);
+    assert.equal(readFileSync(changed, 'utf8'), original + ' ');
+    assert.equal(existsSync(path.join(f.child, 'verified.txt')), false);
+  });
+
+test('#2134: a parent writer appearing during verification refuses before integration', async (t) => {
+  const f = fixture(t);
+  const module = new URL('../../../task-tracker/lib/occupancy.mjs', import.meta.url).href;
+  writeFileSync(
+    path.join(f.child, 'verify.mjs'),
+    'import {claimOccupancy} from ' +
+      JSON.stringify(module) +
+      '; claimOccupancy(' +
+      JSON.stringify({
+        projectDir: f.parent,
+        issue: 905,
+        sid: 'concurrent-parent-writer',
+        provider: 'codex',
+      }) +
+      ');'
+  );
+  f.git(f.child, 'add', 'verify.mjs');
+  f.git(f.child, 'commit', '-qm', 'verifier simulates a concurrent parent claim');
+  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /writer|occupancy/);
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), f.before);
+  assert.equal(existsSync(path.join(f.parent, 'feature.txt')), false);
+});
+
+test('#2134: final integration rechecks target after waiting for a competing integration lock', async (t) => {
+  const f = fixture(t);
+  const intermediate = f.git(f.child, 'rev-parse', 'HEAD');
+  const occupancyModule = new URL('../../../task-tracker/paths.mjs', import.meta.url).href;
+  const concurrentCode = `import {execFileSync} from 'node:child_process'; import {rmdirSync} from 'node:fs'; import {occupancyPath} from ${JSON.stringify(occupancyModule)}; setTimeout(() => { execFileSync('git',['merge','--ff-only',${JSON.stringify(intermediate)}],{cwd:${JSON.stringify(f.parent)}}); rmdirSync(occupancyPath(${JSON.stringify(f.parent)})+'.lock'); }, 500);`;
+  writeFileSync(
+    path.join(f.child, 'verify.mjs'),
+    `import {spawn} from 'node:child_process'; import {mkdirSync} from 'node:fs'; import {occupancyPath} from ${JSON.stringify(occupancyModule)}; mkdirSync(occupancyPath(${JSON.stringify(f.parent)})+'.lock'); const writer = spawn(process.execPath,['--input-type=module','-e',${JSON.stringify(concurrentCode)}],{stdio:'ignore'}); writer.unref();`
+  );
+  f.git(f.child, 'add', 'verify.mjs');
+  f.git(f.child, 'commit', '-qm', 'verifier simulates competing integration exclusion');
+  const reviewed = f.git(f.child, 'rev-parse', 'HEAD');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /target.*changed|parent.*changed/
+  );
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), intermediate);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), reviewed);
+  assert.equal(f.git(f.parent, 'status', '--porcelain'), '');
 });

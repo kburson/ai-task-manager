@@ -379,3 +379,83 @@ test('#2134 review: later detached history cannot hide ambiguous named branch au
   assert.throws(() => resolveCurrentIssueWorktreeBranch(body), /ambiguous/);
   assert.ok(buildGraphNodeAuthority({ ownBody: body }).authorityError);
 });
+
+import {
+  markClosedBinding,
+  inspectTerminalIssueBindingRelease,
+  resumeTerminalIssueBindingRelease,
+  readClosedBindingLedger,
+} from '../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
+import { readOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
+
+test('#2134: accepted evidence and interrupted release survive source branch and checkout deletion, preserving newer bindings', (t) => {
+  const f = gitFixture(t);
+  const source = path.join(f.top, 'completed-source');
+  const sourceBranch = 'codex/completed-custom-source';
+  f.git(f.main, 'worktree', 'add', '-b', sourceBranch, source);
+  writeFileSync(path.join(source, 'delivered.txt'), 'accepted delivery');
+  f.git(source, 'add', 'delivered.txt');
+  f.git(source, 'commit', '-qm', 'accepted source');
+  const accepted = f.git(source, 'rev-parse', 'HEAD');
+  const sid = 'completed-source-fixture';
+  const boundAt = '2026-10-30T12:00:00Z',
+    closedAt = '2026-10-31T12:00:00Z';
+  setActiveTask(
+    sid,
+    { issue: '#2134', worktreePath: source, worktreeBranch: sourceBranch, boundAt },
+    source
+  );
+  claimOccupancy({ projectDir: source, issue: 2134, sid, provider: 'codex', now: () => boundAt });
+  // Existing Close publishes this durable authority before its local cleanup.
+  markClosedBinding({ mainWorktreePath: f.main, sessionId: sid, issue: 2134, closedAt });
+  const body = completedBody()
+    .replaceAll(acceptedSha, accepted)
+    .replaceAll(location.worktreePath, source)
+    .replaceAll(location.worktreeBranch, sourceBranch);
+  const evidence = path.join(f.top, 'retained-issue-body.md');
+  writeFileSync(evidence, body);
+  f.git(f.main, 'merge', '--ff-only', sourceBranch);
+  f.git(f.main, 'worktree', 'remove', source);
+  f.git(f.main, 'branch', '-d', sourceBranch);
+  assert.equal(existsSync(source), false);
+  assert.equal(
+    f.git(f.main, 'for-each-ref', '--format=%(refname)', 'refs/heads/' + sourceBranch),
+    ''
+  );
+  const retained = readFileSync(evidence, 'utf8');
+  assert.equal(resolveCurrentIssueWorktreeLocation(retained), null);
+  assert.equal(resolveCurrentIssueWorktreeBranch(retained), sourceBranch);
+  assert.equal(readDeliveredCloseTransactions(retained)[0].acceptedSha, accepted);
+  assert.equal(f.git(f.main, 'show', accepted + ':delivered.txt'), 'accepted delivery');
+  assert.ok(retained.includes('Timing: Unknown'));
+  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid } };
+  assert.equal(inspectTerminalIssueBindingRelease(options).status, 'incomplete');
+  assert.equal(resumeTerminalIssueBindingRelease(options).status, 'released');
+  assert.equal(inspectTerminalIssueBindingRelease(options).status, 'released');
+  assert.equal(resumeTerminalIssueBindingRelease(options).status, 'released');
+  assert.equal(readClosedBindingLedger(f.main).sessions[sid]['#2134'].closedAt, closedAt);
+  const replacement = path.join(f.top, 'reopened');
+  f.git(f.main, 'worktree', 'add', '--detach', replacement, 'HEAD');
+  const reopenedAt = '2026-11-01T12:00:00Z';
+  const claim = claimOccupancy({
+    projectDir: replacement,
+    issue: 2134,
+    sid,
+    provider: 'codex',
+    now: () => reopenedAt,
+  });
+  const newer = setActiveTask(
+    sid,
+    {
+      issue: '#2134',
+      worktreePath: replacement,
+      worktreeBranch: 'HEAD',
+      boundAt: reopenedAt,
+      bindingGenerationId: claim.row.bindingGenerationId,
+    },
+    replacement
+  );
+  assert.throws(() => resumeTerminalIssueBindingRelease(options), /resume-conflict/);
+  assert.deepEqual(getActiveTask(sid, replacement), newer);
+  assert.deepEqual(readOccupancy(occupancyPath(f.main))['2134'], claim.row);
+});

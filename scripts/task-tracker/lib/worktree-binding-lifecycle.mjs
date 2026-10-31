@@ -232,8 +232,11 @@ export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {
     issue,
     deps,
   });
-  if (readback.status !== 'released')
-    throw new Error('closed-bindings:release-readback-' + readback.status);
+  if (!object(readback) || typeof readback.then === 'function' || readback.status !== 'released')
+    throw new Error(
+      'closed-bindings:release-readback-' +
+        (readback?.status === 'released' ? 'invalid' : readback?.status || 'invalid')
+    );
   return { bindings, occupancy };
 }
 

@@ -15,6 +15,7 @@ test('shared close cleanup sweeps bindings before fleet deregistration and occup
     projectDir: '/repo/wt',
     issue: '#1297',
     ctx: {
+      readTerminalIssueBindingRelease: () => ({ status: 'released' }),
       releaseIssueBindings: () => {
         order.push('bindings');
         return { released: ['/repo/wt', '/repo/other'] };
@@ -37,6 +38,7 @@ test('binding cleanup is mandatory and prevents false close success', () => {
         projectDir: '/repo/wt',
         issue: '#1297',
         ctx: {
+          readTerminalIssueBindingRelease: () => ({ status: 'released' }),
           releaseIssueBindings: () => {
             throw new Error('binding ledger unavailable');
           },

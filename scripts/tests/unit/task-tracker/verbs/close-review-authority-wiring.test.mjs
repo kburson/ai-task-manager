@@ -71,6 +71,7 @@ async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
       statePath,
       projectDir: dir,
       // These tests exercise close ordering/labels, with terminal storage external.
+      readTerminalIssueBindingRelease: () => ({ status: 'released' }),
       releaseIssueBindings: () => ({ released: [] }),
       deregisterTask: () => {},
       releaseBindingOccupancy: () => ({ released: [] }),
