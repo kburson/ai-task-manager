@@ -211,6 +211,7 @@ test('terminal release resume reuses original ledger authority and clears only s
 
 function resolverFixture(records, closedLedger) {
   return {
+    env: {}, // Synthetic roots must not inherit the native verifier's project aliases.
     sessionId: 'session',
     pathExists: () => true,
     findMain: () => '/repo',
