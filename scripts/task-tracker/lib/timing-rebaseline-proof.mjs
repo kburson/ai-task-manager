@@ -1,4 +1,4 @@
-// @story #2022
+// @story #2022 #2068
 // Read native execution records as data; never evaluate transcript commands.
 import { fileURLToPath } from 'node:url';
 import { timingBodySha } from './heal-actor-opener-replays.mjs';
@@ -15,6 +15,9 @@ function relocationCommand(command, issue) {
     command[1] !== '-lc'
   )
     return false;
+  // Canonical native source-checkout Start. Keep the carrier closed: no
+  // wrappers, composed commands, extra flags or substituted issue/role.
+  if (command[2] === `npx aitm start ${issue} --role agent --confirm-relocation`) return true;
   const lines = command[2]?.split('\n');
   if (lines?.length !== 3 || lines[0] !== 'set -e') return false;
   const start = lines[1].split(' ');

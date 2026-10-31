@@ -1,4 +1,5 @@
 // @story #2022
+// @story #2068
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -128,6 +129,91 @@ const applyArgs = (r) => ({
   expectedCommentId: r.commentId,
   expectedTranscriptSha: r.transcriptSha,
 });
+
+function freshCheckpoint(state) {
+  state.body =
+    header +
+    line(start, 'start') +
+    '\n' +
+    line(end, 'update', span(baseline, end), actor, 25, 250) +
+    '\n';
+  state.records[1].payload.item.command[2] =
+    'npx aitm start 2022 --role agent --confirm-relocation';
+}
+
+test('canonical native Start authenticates a suppressed fresh-start checkpoint boundary', async (t) => {
+  const { state, options } = fixture(t);
+  freshCheckpoint(state);
+  const before = state.body;
+  const originals = before.split('\n').filter((r) => parseTimingRow(r)?.actorKey);
+  assert.match(grade(before).failures.join('\n'), /actor-evidence-start-conflict/);
+  const dry = await runHeal(options);
+  assert.equal(dry.inserted, 2);
+  assert.equal(state.writes.length, 0);
+  assert.equal((await runHeal({ ...options, ...applyArgs(dry) })).status, 'healed');
+  for (const row of originals) assert.ok(state.body.split('\n').includes(row));
+  assert.deepEqual(grade(state.body), { pass: true, failures: [] });
+  const accounting = deriveActorEngagement(rows(state.body), end + 60_000);
+  assert.equal(accounting.unknownRows, 1);
+  assert.equal(accounting.complete, false);
+  assert.equal(accounting.engagedMs, end - baseline);
+  assert.deepEqual(accounting.failures, []);
+  assert.equal((await runHeal(options)).status, 'already-canonical');
+  assert.equal(state.writes.length, 1);
+});
+
+for (const [name, change] of [
+  [
+    'missing confirmation',
+    (s) => {
+      s.records[1].payload.item.command[2] = 'npx aitm start 2022 --role agent';
+    },
+  ],
+  [
+    'composed command',
+    (s) => {
+      s.records[1].payload.item.command[2] += '; echo fake';
+    },
+  ],
+  [
+    'foreign issue',
+    (s) => {
+      s.records[1].payload.item.command[2] =
+        'npx aitm start 2023 --role agent --confirm-relocation';
+    },
+  ],
+  [
+    'failed execution',
+    (s) => {
+      s.records[1].payload.item.exit_code = 1;
+    },
+  ],
+  [
+    'unproven output',
+    (s) => {
+      s.records[1].payload.item.aggregated_output = 'Started #2022.\n';
+    },
+  ],
+  [
+    'foreign cwd',
+    (s) => {
+      s.records[1].payload.item.cwd = 'file:///foreign';
+    },
+  ],
+  [
+    'ambiguous proof',
+    (s) => {
+      s.records.push(structuredClone(s.records[1]));
+    },
+  ],
+])
+  test('fresh checkpoint recovery refuses ' + name, async (t) => {
+    const { state, options } = fixture(t);
+    freshCheckpoint(state);
+    change(state);
+    await assert.rejects(runHeal(options), /timing-rebaseline:/);
+    assert.equal(state.writes.length, 0);
+  });
 
 test('authenticated relocation recovery preserves every original row and Unknown contribution', async (t) => {
   const { state, options } = fixture(t);
