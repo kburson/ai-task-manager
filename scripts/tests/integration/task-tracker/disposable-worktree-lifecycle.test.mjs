@@ -178,6 +178,7 @@ for (const custom of [false, true]) {
         sessionId: sid,
         cfg: { repo: 'fixture/project' },
         deps: {
+          env: {},
           fetchSnapshot: async () => ({ state: 'develop', assignees: ['fixture-owner'] }),
           fetchCurrentUser: async () => 'fixture-owner',
           fetchIssueBody: async () => body,
@@ -228,6 +229,7 @@ test('#2134: initial naming refuses a different live writer before switching bra
       sessionId: sid,
       cfg: { repo: 'fixture/project' },
       deps: {
+        env: {},
         fetchSnapshot: async () => ({ state: 'develop', assignees: ['fixture-owner'] }),
         fetchCurrentUser: async () => 'fixture-owner',
         fetchIssueBody: async () => '',
@@ -239,4 +241,141 @@ test('#2134: initial naming refuses a different live writer before switching bra
   );
   assert.equal(git(checkout, 'branch', '--show-current'), '');
   assert.equal(git(main, 'for-each-ref', '--format=%(refname)', 'refs/heads/codex/2134-draft'), '');
+});
+
+import { spawn } from 'node:child_process';
+import { occupancyPath } from '../../../task-tracker/paths.mjs';
+import { inspectNativeBranchRenewal } from '../../../task-tracker/lib/native-branch-renewal.mjs';
+
+function namingFixture(t) {
+  const f = gitFixture(t);
+  const checkout = path.join(f.top, 'replacement');
+  const branch = 'codex/custom-delivery-finish';
+  f.git(f.main, 'branch', branch);
+  f.git(f.main, 'worktree', 'add', '--detach', checkout, 'HEAD');
+  const sid = 'review-fix-fixture';
+  const claim = claimOccupancy({ projectDir: checkout, issue: 2134, sid, provider: 'codex' });
+  const record = setActiveTask(
+    sid,
+    {
+      issue: '#2134',
+      kanbanState: 'develop',
+      entryStartTs: new Date().toISOString(),
+      worktreePath: checkout,
+      worktreeBranch: 'HEAD',
+      bindingGenerationId: claim.row.bindingGenerationId,
+    },
+    checkout
+  );
+  const body =
+    serializeIssueWorktreeLocationMarker(location) +
+    '\n' +
+    serializeIssueWorktreeLocationMarker({
+      ...location,
+      worktreePath: checkout,
+      worktreeBranch: 'HEAD',
+      ts: '2026-10-31T13:00:00Z',
+    });
+  const options = {
+    issue: 2134,
+    projectDir: checkout,
+    sessionId: sid,
+    cfg: { repo: 'fixture/repo' },
+    deps: {
+      env: {},
+      fetchSnapshot: async () => ({ state: 'develop', assignees: ['fixture-owner'] }),
+      fetchCurrentUser: async () => 'fixture-owner',
+      fetchIssueBody: async () => body,
+      renewBinding: async () => setActiveTask(sid, { ...record, worktreeBranch: branch }, checkout),
+    },
+  };
+  return {
+    ...f,
+    checkout,
+    branch,
+    sid,
+    record,
+    options,
+    before: f.git(checkout, 'rev-parse', 'HEAD'),
+  };
+}
+
+for (const change of ['target', 'source'])
+  test(
+    '#2134 review: ' +
+      change +
+      ' change while waiting for occupancy lock refuses before checkout mutation',
+    async (t) => {
+      const f = namingFixture(t);
+      const lock = occupancyPath(f.main) + '.lock';
+      mkdirSync(lock);
+      const advanced = f.git(
+        f.main,
+        'commit-tree',
+        'HEAD^{tree}',
+        '-p',
+        'HEAD',
+        '-m',
+        'concurrent contribution'
+      );
+      const script = `import {execFileSync} from 'node:child_process'; import {writeFileSync,rmdirSync} from 'node:fs'; setTimeout(() => { ${change === 'target' ? `execFileSync('git', ['branch','-f',${JSON.stringify(f.branch)},${JSON.stringify(advanced)}],{cwd:${JSON.stringify(f.main)}});` : `writeFileSync(${JSON.stringify(path.join(f.checkout, 'source.txt'))},'concurrent dirty contribution');`} rmdirSync(${JSON.stringify(lock)}); }, 500);`;
+      const concurrent = spawn(process.execPath, ['--input-type=module', '-e', script], {
+        stdio: 'pipe',
+      });
+      const completed = new Promise((resolve, reject) => {
+        concurrent.on('error', reject);
+        concurrent.on('exit', (code) =>
+          code === 0 ? resolve() : reject(new Error('fixture writer exit ' + code))
+        );
+      });
+      await assert.rejects(createDraftBranch(f.options), /changed|conflict|clean/);
+      await completed;
+      assert.equal(
+        f.git(f.checkout, 'branch', '--show-current'),
+        '',
+        'refusal must leave initial checkout detached'
+      );
+      assert.equal(f.git(f.checkout, 'rev-parse', 'HEAD'), f.before);
+      assert.deepEqual(getActiveTask(f.sid, f.checkout), f.record);
+      if (change === 'target') assert.equal(f.git(f.main, 'rev-parse', f.branch), advanced);
+      else
+        assert.equal(
+          readFileSync(path.join(f.checkout, 'source.txt'), 'utf8'),
+          'concurrent dirty contribution'
+        );
+    }
+  );
+
+test('#2134 review: mismatched installed runtime refuses before journal or branch mutation', async (t) => {
+  const f = namingFixture(t);
+  const installed = path.join(f.checkout, 'node_modules/@kburson/ai-task-manager/bin');
+  mkdirSync(installed, { recursive: true });
+  writeFileSync(path.join(installed, 'aitm.mjs'), '#!/usr/bin/env node\n');
+  const env = { PATH: process.env.PATH, CODEX_THREAD_ID: f.sid };
+  f.options.deps.env = env;
+  f.options.deps.renewBinding = async () =>
+    inspectNativeBranchRenewal({
+      request: { issueNumber: 2134, role: 'agent' },
+      root: f.checkout,
+      sessionId: f.sid,
+      identitySource: 'cli',
+      env,
+    });
+  await assert.rejects(createDraftBranch(f.options), /public entry|selected runtime/);
+  assert.equal(f.git(f.checkout, 'branch', '--show-current'), '');
+  assert.equal(f.git(f.checkout, 'rev-parse', 'HEAD'), f.before);
+  assert.deepEqual(getActiveTask(f.sid, f.checkout), f.record);
+  assert.equal(existsSync(path.join(f.checkout, '.tmp/aitm/draft-branch/2134.json')), false);
+});
+
+test('#2134 review: later detached history cannot hide ambiguous named branch authority', () => {
+  const body = [
+    location,
+    { ...location, worktreeBranch: 'codex/conflicting-target' },
+    { ...location, worktreeBranch: 'HEAD', ts: '2026-10-31T13:00:00Z' },
+  ]
+    .map(serializeIssueWorktreeLocationMarker)
+    .join('\n');
+  assert.throws(() => resolveCurrentIssueWorktreeBranch(body), /ambiguous/);
+  assert.ok(buildGraphNodeAuthority({ ownBody: body }).authorityError);
 });

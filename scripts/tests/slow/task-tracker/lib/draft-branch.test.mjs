@@ -52,6 +52,7 @@ test('draft bootstrap creates only the issue branch and verifies renewed binding
       );
     bind();
     const deps = {
+      env: {},
       fetchSnapshot: async () => ({ state: 'backlog', assignees: ['tester'] }),
       fetchCurrentUser: async () => 'tester',
       renewBinding: async () => bind('codex/1848-draft'),

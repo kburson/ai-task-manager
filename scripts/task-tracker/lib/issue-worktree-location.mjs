@@ -119,7 +119,18 @@ export function resolveCurrentIssueWorktreeLocation(body) {
 // a replacement checkout's temporary detached HEAD. It grants no write lease.
 export function resolveCurrentIssueWorktreeBranch(body) {
   const records = strictIssueWorktreeLocations(body);
-  return records.findLast((entry) => entry.worktreeBranch !== 'HEAD')?.worktreeBranch ?? null;
+  const selected = records.findLast((entry) => entry.worktreeBranch !== 'HEAD');
+  if (
+    selected &&
+    records.some(
+      (entry) =>
+        entry.ts === selected.ts &&
+        (entry.worktreePath !== selected.worktreePath ||
+          entry.worktreeBranch !== selected.worktreeBranch)
+    )
+  )
+    throw new Error('issue-worktree-location: ambiguous named branch authority record');
+  return selected?.worktreeBranch ?? null;
 }
 
 export function sameIssueWorktreeLocation(left, right) {

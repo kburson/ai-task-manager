@@ -25,6 +25,8 @@ import { occupancyPath } from './paths.mjs';
 import { resolveBindingAuthorityMain } from './lib/worktree-binding-lifecycle.mjs';
 import { withLock } from './fleet-registry.mjs';
 import { assertNativeSession } from './lib/native-worktree-bootstrap.mjs';
+import { assertNativeBranchCarrier } from './lib/native-branch-renewal.mjs';
+import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 enforceDirectGuidance(import.meta.url, 'draft-branch');
 
 export async function createDraftBranch({
@@ -37,14 +39,22 @@ export async function createDraftBranch({
 } = {}) {
   if (!Number.isSafeInteger(issue) || issue <= 0) throw new Error('draft-branch: invalid issue');
   if (!['agent', 'orchestrator'].includes(role)) throw new Error('draft-branch: invalid role');
-  if (
-    (process.env.CODEX_THREAD_ID || process.env.CODEX_SESSION_ID) &&
-    (process.env.npm_command === 'exec' || process.env.npm_lifecycle_event === 'npx')
-  )
-    throw new Error('draft-branch: native initial naming requires the direct bin/aitm.mjs carrier');
-  if (hasUnsupportedGitEnvironment()) throw new Error('draft-branch: unsupported Git environment');
-  const git = (...args) =>
-    execFileSync('git', args, { cwd: projectDir, encoding: 'utf8', stdio: 'pipe' }).trim();
+  const env = deps.env ?? process.env;
+  if (env.CODEX_THREAD_ID || env.CODEX_SESSION_ID)
+    assertNativeBranchCarrier({ root: projectDir, sessionId, env });
+  if (hasUnsupportedGitEnvironment(env))
+    throw new Error('draft-branch: unsupported Git environment');
+  let criticalDeadline = null;
+  const git = (...args) => {
+    const remaining = criticalDeadline === null ? GIT_TIMEOUT_MS : criticalDeadline - Date.now();
+    if (remaining <= 0) throw new Error('draft-branch: checkout critical section timed out');
+    return execFileSync('git', args, {
+      cwd: projectDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: Math.min(GIT_TIMEOUT_MS, remaining),
+    }).trim();
+  };
   let branch = `codex/${issue}-draft`;
   let expectedHead;
   await withIssueLock(
@@ -159,28 +169,53 @@ export async function createDraftBranch({
           { flag: 'wx' }
         );
       }
-      const fresh = readWorktreeIdentity({ projectDir });
-      if (
-        fresh.worktreePath !== observed.worktreePath ||
-        fresh.worktreeBranch !== observed.worktreeBranch ||
-        git('rev-parse', 'HEAD') !== head ||
-        git('status', '--porcelain', '--untracked-files=all')
-      )
-        throw new Error('draft-branch: worktree changed during preflight');
-      if (fresh.worktreeBranch === 'HEAD') {
-        let existing;
+      withLock(occupancyFile, () => {
+        // The existing lock can wait for another writer. All mutation-admitting
+        // observations therefore belong after acquisition, with a total Git
+        // budget below its 30-second stale threshold.
+        criticalDeadline = Date.now() + 2 * GIT_TIMEOUT_MS;
         try {
-          existing = git('rev-parse', '--verify', `refs/heads/${branch}`);
-        } catch (error) {
-          if (error.status !== 128) throw error;
-        }
-        if (existing && existing !== head) throw new Error('draft-branch: conflicting branch head');
-        withLock(occupancyFile, () => {
           assertClaim();
-          if (existing) git('switch', branch);
-          else git('switch', '-c', branch, head);
-        });
-      }
+          if (JSON.stringify(getActiveTask(sessionId, projectDir)) !== JSON.stringify(record))
+            throw new Error('draft-branch: active binding changed during preflight');
+          if (
+            path.resolve(git('rev-parse', '--show-toplevel')) !== observed.worktreePath ||
+            git('rev-parse', '--abbrev-ref', 'HEAD') !== observed.worktreeBranch ||
+            git('rev-parse', 'HEAD') !== head ||
+            git('status', '--porcelain', '--untracked-files=all')
+          )
+            throw new Error('draft-branch: worktree changed during preflight');
+          const currentHolders = git('worktree', 'list', '--porcelain')
+            .split('\n\n')
+            .filter((block) => block.split('\n').includes('branch refs/heads/' + branch));
+          if (
+            currentHolders.some(
+              (block) => !block.split('\n').includes('worktree ' + observed.worktreePath)
+            )
+          )
+            throw new Error('draft-branch: durable branch is checked out elsewhere');
+          let existing;
+          try {
+            existing = git('rev-parse', '--verify', `refs/heads/${branch}`);
+          } catch (error) {
+            if (error.status !== 128) throw error;
+          }
+          if (existing && existing !== head)
+            throw new Error('draft-branch: conflicting branch head');
+          if (observed.worktreeBranch === 'HEAD') {
+            if (existing) git('switch', branch);
+            else git('switch', '-c', branch, head);
+          }
+          if (
+            git('rev-parse', 'HEAD') !== head ||
+            git('branch', '--show-current') !== branch ||
+            git('status', '--porcelain', '--untracked-files=all')
+          )
+            throw new Error('draft-branch: checkout changed before binding renewal');
+        } finally {
+          criticalDeadline = null;
+        }
+      });
     }
   );
   // Ordinary start owns renewal; do not fabricate session or issue markers.

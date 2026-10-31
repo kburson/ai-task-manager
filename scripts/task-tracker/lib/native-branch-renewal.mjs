@@ -157,21 +157,14 @@ async function readRemote(issueNumber, cfg) {
   return { snapshot, currentUser: user.stdout.trim(), issue: JSON.parse(issue.stdout) };
 }
 
-export async function inspectNativeBranchRenewal({
-  request,
+// The same closed carrier must be admissible before naming mutates a checkout,
+// and again when ordinary Start observes the resulting branch-only transition.
+export function assertNativeBranchCarrier({
   root,
   sessionId,
-  identitySource = 'hook',
+  identitySource = 'cli',
   env = process.env,
-  cfg,
-  deps = {},
 }) {
-  if (
-    !request ||
-    !Number.isSafeInteger(request.issueNumber) ||
-    !['agent', 'orchestrator'].includes(request.role)
-  )
-    refuse('unsupported Start request');
   if (identitySource === 'hook') assertNativeHookSession(sessionId, env);
   else if (identitySource === 'cli') assertNativeSession(sessionId, env);
   else refuse('unknown identity source');
@@ -201,6 +194,25 @@ export async function inspectNativeBranchRenewal({
     refuse('public entry does not match the selected runtime');
   if (env.npm_command === 'exec' || env.npm_lifecycle_event === 'npx')
     refuse('npm transport is not admitted for branch renewal');
+  return tools;
+}
+
+export async function inspectNativeBranchRenewal({
+  request,
+  root,
+  sessionId,
+  identitySource = 'hook',
+  env = process.env,
+  cfg,
+  deps = {},
+}) {
+  if (
+    !request ||
+    !Number.isSafeInteger(request.issueNumber) ||
+    !['agent', 'orchestrator'].includes(request.role)
+  )
+    refuse('unsupported Start request');
+  const tools = assertNativeBranchCarrier({ root, sessionId, identitySource, env });
   const identity = (deps.readIdentity ?? readPhysicalRuntimeIdentity)(root);
   if (identity.projectRoot !== root || path.resolve(root) !== root)
     refuse('foreign or aliased root');
