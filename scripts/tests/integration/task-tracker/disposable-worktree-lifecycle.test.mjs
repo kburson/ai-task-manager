@@ -388,6 +388,9 @@ import {
 } from '../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
 import { readOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
 
+// These independent Git fixtures must not inherit native verifier root aliases.
+// Isolate both the outer observer/resume and each nested sweep dependency seam.
+
 test('#2134: accepted evidence and interrupted release survive source branch and checkout deletion, preserving newer bindings', (t) => {
   const f = gitFixture(t);
   const source = path.join(f.top, 'completed-source');
@@ -428,7 +431,7 @@ test('#2134: accepted evidence and interrupted release survive source branch and
   assert.equal(readDeliveredCloseTransactions(retained)[0].acceptedSha, accepted);
   assert.equal(f.git(f.main, 'show', accepted + ':delivered.txt'), 'accepted delivery');
   assert.ok(retained.includes('Timing: Unknown'));
-  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid } };
+  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid, env: {} } };
   assert.equal(inspectTerminalIssueBindingRelease(options).status, 'incomplete');
   assert.equal(resumeTerminalIssueBindingRelease(options).status, 'released');
   assert.equal(inspectTerminalIssueBindingRelease(options).status, 'released');
@@ -499,12 +502,14 @@ for (const boundAt of ['2026-10-31T12:00:00Z', '2026-10-31T12:00:01Z']) {
             issue: 2134,
             deps: {
               sessionId: sid,
+              env: {},
               releaseIssueBindings: () => {
                 const released = sweepClosedBindings({
                   projectDir: checkout,
                   issue: 2134,
                   sessionId: sid,
                   closedAt,
+                  deps: { env: {} },
                 });
                 assert.equal(getActiveTask(sid, checkout), null);
                 // A legitimate replacement claim arrives after the old binding sweep.
@@ -553,7 +558,7 @@ for (const boundAt of ['2026-10-31T12:00:00Z', '2026-10-31T12:00:01Z']) {
           resumeTerminalIssueBindingRelease({
             projectDir: checkout,
             issue: 2134,
-            deps: { sessionId: sid },
+            deps: { sessionId: sid, env: {} },
           }),
         /conflict|refused/
       );
@@ -590,8 +595,15 @@ test('#2134 review: unchanged captured claim completes fresh release and records
     issue: 2134,
     deps: {
       sessionId: sid,
+      env: {},
       releaseIssueBindings: () =>
-        sweepClosedBindings({ projectDir: f.main, issue: 2134, sessionId: sid, closedAt }),
+        sweepClosedBindings({
+          projectDir: f.main,
+          issue: 2134,
+          sessionId: sid,
+          closedAt,
+          deps: { env: {} },
+        }),
     },
   });
   assert.equal(result.occupancy.status, 'released');
@@ -602,8 +614,11 @@ test('#2134 review: unchanged captured claim completes fresh release and records
     claim.row.bindingGenerationId
   );
   assert.equal(
-    resumeTerminalIssueBindingRelease({ projectDir: f.main, issue: 2134, deps: { sessionId: sid } })
-      .status,
+    resumeTerminalIssueBindingRelease({
+      projectDir: f.main,
+      issue: 2134,
+      deps: { sessionId: sid, env: {} },
+    }).status,
     'released'
   );
 });
@@ -636,7 +651,7 @@ test('#2134 review: newer terminal generation releases strictly older retained r
     closedAt: '2026-10-31T12:00:00Z',
     bindingGenerationId: '22222222-2222-4222-8222-222222222222',
   });
-  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid } };
+  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid, env: {} } };
   assert.equal(inspectTerminalIssueBindingRelease(options).status, 'incomplete');
   assert.equal(resumeTerminalIssueBindingRelease(options).status, 'released');
   assert.equal(getActiveTask(sid, f.main), null);
