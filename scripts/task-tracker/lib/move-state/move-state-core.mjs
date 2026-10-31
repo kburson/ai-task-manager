@@ -3,6 +3,7 @@
 // ordered saga. Returns a result object; the HOST maps result.exit to
 // process.exit. This function never calls process.exit and never prints usage.
 import { runGuardExecution as defaultRunGuardExecution } from './guard-execution.mjs';
+import { runTransitionBatch } from '../story-cache/transition-batch.mjs';
 import {
   runStatusWrite as defaultRunStatusWrite,
   stampEntryMarkers as defaultStampEntryMarkers,
@@ -254,6 +255,17 @@ export async function moveState(ctx) {
   // the guard so the successful decision can be captured without re-querying
   // policy at write time.
   ctx.transitionId = ctx.transitionId || createTransitionId();
+
+  // Internal cached-transition seam. The coordinator runs the same native guard;
+  // it owns its final body and cannot fall through to legacy side writes/tails.
+  if (ctx.storyCache !== undefined) {
+    return runTransitionBatch({
+      ctx,
+      store: ctx.storyCache?.store,
+      claim: ctx.storyCache?.claim,
+      ports: ctx.storyCache?.ports,
+    });
+  }
 
   const guard = await runGuardExecution(ctx);
   if (guard.exit !== null && guard.exit !== undefined) {
