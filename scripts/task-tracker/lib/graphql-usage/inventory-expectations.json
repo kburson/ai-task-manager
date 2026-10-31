@@ -175,7 +175,7 @@
     },
     {
       "key": "scripts/task-tracker/draft-branch.mjs|opaque-gh-cli|opaque",
-      "count": 1
+      "count": 2
     },
     {
       "key": "scripts/task-tracker/epic-base-edit-guard.mjs|gh-api-graphql|planned",
@@ -586,7 +586,8 @@
     "scripts/task-tracker/bash-guard.mjs|414|opaque-gh-cli|opaque",
     "scripts/task-tracker/codex-superpowers.mjs|136|out-of-scope|out-of-scope",
     "scripts/task-tracker/commit-trail-handler.mjs|157|gh-api-graphql|planned",
-    "scripts/task-tracker/draft-branch.mjs|66|opaque-gh-cli|opaque",
+    "scripts/task-tracker/draft-branch.mjs|102|opaque-gh-cli|opaque",
+    "scripts/task-tracker/draft-branch.mjs|114|opaque-gh-cli|opaque",
     "scripts/task-tracker/epic-base-edit-guard.mjs|172|gh-api-graphql|planned",
     "scripts/task-tracker/gh-timing-comment.mjs|902|gh-api-graphql|planned",
     "scripts/task-tracker/heal-entry-markers.mjs|120|uncovered|uncovered",

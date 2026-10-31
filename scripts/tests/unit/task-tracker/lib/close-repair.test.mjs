@@ -132,6 +132,13 @@ function buildCtx({ statePath, rest, sideEffects }) {
       sideEffects.push(`writeTerminalDisposition:${disposition}`);
       return { disposition };
     },
+    readTerminalIssueBindingRelease: () => ({
+      status:
+        sideEffects.includes('releaseIssueBindings') &&
+        sideEffects.includes('releaseBindingOccupancy')
+          ? 'released'
+          : 'incomplete',
+    }),
     releaseIssueBindings: () => {
       sideEffects.push('releaseIssueBindings');
       return { released: [] };
