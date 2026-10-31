@@ -454,3 +454,73 @@ test('#2134: final integration rechecks target after waiting for a competing int
   assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), reviewed);
   assert.equal(f.git(f.parent, 'status', '--porcelain'), '');
 });
+
+for (const operation of ['rebase', 'empty-cherry-pick', 'ignored-evidence']) {
+  test('#2134 review: temporary target retains ' + operation + ' recovery context', async (t) => {
+    const f = fixture(t);
+    retireParent(f);
+    const editor = path.join(f.child, '.tmp', 'sequence-editor.cjs');
+    const script = `import {execFileSync} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
+const git=(args, cwd)=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:'pipe'}).trim();
+const record=git(['worktree','list','--porcelain'],process.cwd()).split('\\n\\n').find(block=>block.includes('branch refs/heads/codex/fixture-parent'));
+const target=record.split('\\n').find(line=>line.startsWith('worktree ')).slice(9);
+writeFileSync('verified.txt',target);
+${operation === 'rebase' ? `mkdirSync('.tmp',{recursive:true}); writeFileSync(${JSON.stringify(editor)},"const fs=require('node:fs'); const p=process.argv[2]; fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace(/^pick /m,'edit '));"); execFileSync('git',['rebase','-i','--root'],{cwd:target,env:{...process.env,GIT_SEQUENCE_EDITOR:process.execPath+' '+${JSON.stringify(editor)}},stdio:'pipe'});` : operation === 'empty-cherry-pick' ? `const empty=git(['commit-tree','HEAD^{tree}','-p','HEAD','-m','empty recovery commit'],target); try { git(['cherry-pick',empty],target); } catch(error) { if(error.status!==1) throw error; }` : `writeFileSync(target+'/verified.txt','retained ignored evidence');`}
+`;
+    writeFileSync(path.join(f.child, 'verify.mjs'), script);
+    f.git(f.child, 'add', 'verify.mjs');
+    f.git(f.child, 'commit', '-qm', 'verifier retains recovery context');
+    if (operation === 'ignored-evidence') {
+      assert.equal((await run(['910', f.child, '--preserve-worktree'], f.deps)).merged, true);
+    } else await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps));
+    const target = readFileSync(path.join(f.child, 'verified.txt'), 'utf8');
+    assert.equal(existsSync(target), true, 'automatic cleanup must preserve recovery checkout');
+    if (operation === 'ignored-evidence') {
+      assert.equal(
+        readFileSync(path.join(target, 'verified.txt'), 'utf8'),
+        'retained ignored evidence'
+      );
+    } else {
+      const metadata = f.git(
+        target,
+        'rev-parse',
+        '--path-format=absolute',
+        '--git-path',
+        operation === 'rebase' ? 'rebase-merge' : 'CHERRY_PICK_HEAD'
+      );
+      assert.equal(existsSync(metadata), true, 'operation metadata must survive refusal');
+      assert.equal(
+        f.git(target, 'status', '--porcelain'),
+        '',
+        'fixture pauses with a clean index/worktree'
+      );
+      assert.equal(f.git(f.child, 'rev-parse', 'codex/fixture-parent'), f.before);
+    }
+  });
+}
+
+test('#2134 review: a clean pending source cherry-pick refuses before parent mutation', async (t) => {
+  const f = fixture(t);
+  const empty = f.git(
+    f.child,
+    'commit-tree',
+    'HEAD^{tree}',
+    '-p',
+    'HEAD',
+    '-m',
+    'pending empty source'
+  );
+  assert.throws(() => f.git(f.child, 'cherry-pick', empty));
+  assert.equal(f.git(f.child, 'status', '--porcelain'), '');
+  await assert.rejects(
+    run(['910', f.child, '--preserve-worktree'], f.deps),
+    /operation|cherry-pick/
+  );
+  assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), f.before);
+  assert.ok(
+    existsSync(
+      f.git(f.child, 'rev-parse', '--path-format=absolute', '--git-path', 'CHERRY_PICK_HEAD')
+    )
+  );
+});

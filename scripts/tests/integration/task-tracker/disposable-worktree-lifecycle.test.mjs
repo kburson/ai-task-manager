@@ -459,3 +459,186 @@ test('#2134: accepted evidence and interrupted release survive source branch and
   assert.deepEqual(getActiveTask(sid, replacement), newer);
   assert.deepEqual(readOccupancy(occupancyPath(f.main))['2134'], claim.row);
 });
+
+import { releaseIssueBindings as sweepClosedBindings } from '../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
+import { releaseOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
+
+for (const boundAt of ['2026-10-31T12:00:00Z', '2026-10-31T12:00:01Z']) {
+  test(
+    '#2134 review: fresh terminal release preserves a same-SID replacement generation at ' +
+      boundAt,
+    (t) => {
+      const f = gitFixture(t);
+      const checkout = path.join(f.top, 'closing');
+      f.git(f.main, 'worktree', 'add', '--detach', checkout, 'HEAD');
+      const sid = 'terminal-generation-fixture';
+      const closedAt = '2026-10-31T12:00:00Z';
+      const old = claimOccupancy({
+        projectDir: checkout,
+        issue: 2134,
+        sid,
+        provider: 'codex',
+        now: () => closedAt,
+      });
+      setActiveTask(
+        sid,
+        {
+          issue: '#2134',
+          boundAt: closedAt,
+          worktreePath: checkout,
+          worktreeBranch: 'HEAD',
+          bindingGenerationId: old.row.bindingGenerationId,
+        },
+        checkout
+      );
+      let replacement, record;
+      assert.throws(
+        () =>
+          releaseTerminalIssueBinding({
+            projectDir: checkout,
+            issue: 2134,
+            deps: {
+              sessionId: sid,
+              releaseIssueBindings: () => {
+                const released = sweepClosedBindings({
+                  projectDir: checkout,
+                  issue: 2134,
+                  sessionId: sid,
+                  closedAt,
+                });
+                assert.equal(getActiveTask(sid, checkout), null);
+                // A legitimate replacement claim arrives after the old binding sweep.
+                releaseOccupancy({
+                  projectDir: checkout,
+                  issue: 2134,
+                  sid,
+                  bindingGenerationId: old.row.bindingGenerationId,
+                });
+                replacement = claimOccupancy({
+                  projectDir: checkout,
+                  issue: 2134,
+                  sid,
+                  provider: 'codex',
+                  now: () => boundAt,
+                });
+                record = setActiveTask(
+                  sid,
+                  {
+                    issue: '#2134',
+                    boundAt,
+                    worktreePath: checkout,
+                    worktreeBranch: 'HEAD',
+                    bindingGenerationId: replacement.row.bindingGenerationId,
+                  },
+                  checkout
+                );
+                return released;
+              },
+              deregisterTask: () => {},
+              releaseOccupancy,
+              releaseBindingOccupancy: (input, dependency) =>
+                dependency.releaseOccupancy({ ...input, sid }),
+            },
+          }),
+        /release|conflict/
+      );
+      assert.deepEqual(getActiveTask(sid, checkout), record);
+      assert.deepEqual(
+        readOccupancy(occupancyPath(f.main))['2134'],
+        replacement.row,
+        'new occupancy must survive before read-back'
+      );
+      assert.throws(
+        () =>
+          resumeTerminalIssueBindingRelease({
+            projectDir: checkout,
+            issue: 2134,
+            deps: { sessionId: sid },
+          }),
+        /conflict|refused/
+      );
+      assert.deepEqual(getActiveTask(sid, checkout), record);
+      assert.deepEqual(readOccupancy(occupancyPath(f.main))['2134'], replacement.row);
+    }
+  );
+}
+
+test('#2134 review: unchanged captured claim completes fresh release and records its generation', (t) => {
+  const f = gitFixture(t);
+  const sid = 'terminal-unchanged-fixture',
+    closedAt = '2026-10-31T12:00:00Z';
+  const claim = claimOccupancy({
+    projectDir: f.main,
+    issue: 2134,
+    sid,
+    provider: 'codex',
+    now: () => closedAt,
+  });
+  setActiveTask(
+    sid,
+    {
+      issue: '#2134',
+      boundAt: closedAt,
+      worktreePath: f.main,
+      worktreeBranch: 'base',
+      bindingGenerationId: claim.row.bindingGenerationId,
+    },
+    f.main
+  );
+  const result = releaseTerminalIssueBinding({
+    projectDir: f.main,
+    issue: 2134,
+    deps: {
+      sessionId: sid,
+      releaseIssueBindings: () =>
+        sweepClosedBindings({ projectDir: f.main, issue: 2134, sessionId: sid, closedAt }),
+    },
+  });
+  assert.equal(result.occupancy.status, 'released');
+  assert.equal(getActiveTask(sid, f.main), null);
+  assert.equal(readOccupancy(occupancyPath(f.main))['2134'], undefined);
+  assert.equal(
+    readClosedBindingLedger(f.main).sessions[sid]['#2134'].bindingGenerationId,
+    claim.row.bindingGenerationId
+  );
+  assert.equal(
+    resumeTerminalIssueBindingRelease({ projectDir: f.main, issue: 2134, deps: { sessionId: sid } })
+      .status,
+    'released'
+  );
+});
+
+test('#2134 review: newer terminal generation releases strictly older retained residue', (t) => {
+  const f = gitFixture(t),
+    sid = 'terminal-old-residue-fixture';
+  const claim = claimOccupancy({
+    projectDir: f.main,
+    issue: 2134,
+    sid,
+    provider: 'codex',
+    now: () => '2026-10-30T12:00:00Z',
+  });
+  setActiveTask(
+    sid,
+    {
+      issue: '#2134',
+      boundAt: claim.row.boundAt,
+      worktreePath: f.main,
+      worktreeBranch: 'base',
+      bindingGenerationId: claim.row.bindingGenerationId,
+    },
+    f.main
+  );
+  markClosedBinding({
+    mainWorktreePath: f.main,
+    sessionId: sid,
+    issue: 2134,
+    closedAt: '2026-10-31T12:00:00Z',
+    bindingGenerationId: '22222222-2222-4222-8222-222222222222',
+  });
+  const options = { projectDir: f.main, issue: 2134, deps: { sessionId: sid } };
+  assert.equal(inspectTerminalIssueBindingRelease(options).status, 'incomplete');
+  assert.equal(resumeTerminalIssueBindingRelease(options).status, 'released');
+  assert.equal(getActiveTask(sid, f.main), null);
+  assert.equal(readOccupancy(occupancyPath(f.main))['2134'], undefined);
+});

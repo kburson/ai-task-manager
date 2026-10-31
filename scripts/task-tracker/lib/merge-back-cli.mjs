@@ -1,7 +1,7 @@
 // @story #1882 #2134
 // Registered CLI admission and real checkout routing; no alternate merge protocol.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmdirSync } from 'node:fs';
 import path from 'node:path';
 import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 import { createMergeBackTestRunner } from './merge-back-verification.mjs';
@@ -40,6 +40,26 @@ function worktrees(git) {
     });
 }
 
+// Porcelain cleanliness does not imply an idle Git checkout: an edit stop or
+// empty cherry-pick can have no index/worktree changes and still own recovery data.
+function assertNoGitOperation(git) {
+  for (const marker of [
+    'rebase-merge',
+    'rebase-apply',
+    'sequencer',
+    'MERGE_HEAD',
+    'CHERRY_PICK_HEAD',
+    'REVERT_HEAD',
+    'REBASE_HEAD',
+    'BISECT_LOG',
+  ]) {
+    if (existsSync(git(['rev-parse', '--path-format=absolute', '--git-path', marker])))
+      throw new Error(
+        'merge-back: active Git operation ' + marker + '; preserve checkout recovery context'
+      );
+  }
+}
+
 export async function runMergeBackCli(argv, deps) {
   const { child, childDir, preserveWorktree } = argumentsFor(argv);
   const projectPath = path.join(childDir, '.ai-task-manager', 'task-tracker.json');
@@ -68,6 +88,7 @@ export async function runMergeBackCli(argv, deps) {
   if (lineage.worktreePath && path.resolve(lineage.worktreePath) !== childDir)
     throw new Error('merge-back: supplied child worktree path differs from recorded authority');
   const assertChild = () => {
+    assertNoGitOperation(childGit);
     if (childGit(['branch', '--show-current']) !== lineage.branch)
       throw new Error('merge-back: child checked-out branch differs from recorded authority');
     if (childGit(['status', '--porcelain'])) throw new Error('merge-back: child checkout is dirty');
@@ -119,6 +140,7 @@ export async function runMergeBackCli(argv, deps) {
     assertChild();
     if (common(parentGit) !== commonDir)
       throw new Error('merge-back: parent checkout belongs to another repository');
+    assertNoGitOperation(parentGit);
     if (parentGit(['branch', '--show-current']) !== parent.branch)
       throw new Error('merge-back: parent checkout branch differs from recorded authority');
     const holders = worktrees(childGit).filter(
@@ -194,8 +216,12 @@ export async function runMergeBackCli(argv, deps) {
       try {
         withIntegrationLock(() => {
           assertWriters();
+          const cleanupGit = realGit(parentDir);
+          assertNoGitOperation(cleanupGit);
+          if (cleanupGit(['ls-files', '--others', '--ignored', '--exclude-standard', '-z']))
+            throw new Error('merge-back: ignored evidence remains in integration checkout');
           realGit(main)(['worktree', 'remove', parentDir]);
-          rmSync(temporary, { recursive: true });
+          rmdirSync(temporary);
         });
       } catch (error) {
         process.stderr.write(

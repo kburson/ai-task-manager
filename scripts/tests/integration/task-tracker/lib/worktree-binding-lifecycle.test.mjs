@@ -353,3 +353,56 @@ test('clearing live B cannot resurrect terminal A', () => {
     'the old A record remains terminal after unrelated B disappears'
   );
 });
+
+test('#2134: terminal ledger preserves optional generations and refuses malformed generation fields', () => {
+  const generation = '12345678-1234-4234-8234-123456789abc';
+  const marked = ledger();
+  marked.sessions.session['#1297'].bindingGenerationId = generation;
+  const read = (value) =>
+    readClosedBindingLedger('/fixture', {
+      pathExists: () => true,
+      readFile: () => JSON.stringify(value),
+    });
+  assert.deepEqual(read(marked), marked);
+  assert.deepEqual(
+    read(ledger()),
+    ledger(),
+    'existing timestamp-only ledgers retain compatibility'
+  );
+  for (const invalid of [null, '', 'not-a-generation', {}, 123]) {
+    const malformed = ledger();
+    malformed.sessions.session['#1297'].bindingGenerationId = invalid;
+    assert.throws(() => read(malformed), /invalid-entry/);
+  }
+  assert.equal(
+    isBindingRecordClosed({
+      record: { issue: '#1297', boundAt: CLOSED_AT, bindingGenerationId: generation },
+      sessionId: 'session',
+      ledger: marked,
+    }),
+    true
+  );
+  assert.equal(
+    isBindingRecordClosed({
+      record: {
+        issue: '#1297',
+        boundAt: CLOSED_AT,
+        bindingGenerationId: 'aaaaaaaa-1234-4234-8234-123456789abc',
+      },
+      sessionId: 'session',
+      ledger: marked,
+    }),
+    false
+  );
+});
+
+test('#2134: newer terminal generations never revive intrinsically closed or strictly older records', () => {
+  const oldGeneration = '11111111-1111-4111-8111-111111111111';
+  const latest = ledger();
+  latest.sessions.session['#1297'].bindingGenerationId = '22222222-2222-4222-8222-222222222222';
+  for (const record of [
+    { issue: '#1297', boundAt: CLOSED_AT, closedAt: CLOSED_AT, bindingGenerationId: oldGeneration },
+    { issue: '#1297', boundAt: '2026-08-19T14:00:00.000Z', bindingGenerationId: oldGeneration },
+  ])
+    assert.equal(isBindingRecordClosed({ record, sessionId: 'session', ledger: latest }), true);
+});
