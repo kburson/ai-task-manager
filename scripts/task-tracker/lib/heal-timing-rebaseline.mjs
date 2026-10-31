@@ -1,4 +1,4 @@
-// @story #2022
+// @story #2022 #2068
 // Historical repair of one native suppressed relocation boundary, never time reconstruction.
 import { mkdtempSync, writeFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
@@ -44,12 +44,14 @@ function targetBoundary(body, actorKey) {
     else if (row.engagement) {
       const e = row.engagement;
       if (open !== undefined && (e.startMs < open || e.startMs >= open + 1000)) {
+        const supportedBoundary =
+          (row.event === 'pause:other' && prior?.event === 'resumed') ||
+          (row.event === 'update' && prior?.event === 'start');
         if (
-          row.event !== 'pause:other' ||
+          !supportedBoundary ||
           row.cells[3] !== 'Unknown' ||
           row.cells[4] !== 'Unknown' ||
           e.activeEstimateSec !== null ||
-          prior?.event !== 'resumed' ||
           prior.engagement ||
           e.startMs <= open ||
           e.startMs >= e.endMs ||
