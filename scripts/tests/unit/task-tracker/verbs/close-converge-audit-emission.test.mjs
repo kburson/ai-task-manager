@@ -53,6 +53,7 @@ async function runConverge({ issueBody, timingBody }) {
   const posted = [];
   const ctx = {
     // @story #1848: terminal storage is outside these timing/label unit contracts.
+    readTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),

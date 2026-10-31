@@ -10,7 +10,7 @@ export const BOOTSTRAP_INPUT_DIGESTS = Object.freeze({
     '60e53c936ffb1227592250c36cf8fe9783fb517c41c99e1525acaa55c8e0ee20',
   'scripts/dev-env/verify-local-worktree.mjs':
     '038993e1954d4f505390f97247c1befbd1898b42d67f6932048d2273ec3863eb',
-  'scripts/lib/self-doc.mjs': 'e3a66e37e23c47c5f437281c2d6888e70ef713f1955faf80565c8a0880742a26',
+  'scripts/lib/self-doc.mjs': '029e61008171876dc6f9cd7fd3ed7042c4da50d03757392d813aa23d603344f0',
   'scripts/providers/index.mjs': '279d6d51731ecd69c92566eff82e0444e2baa9bba717b4dfea68eefffa4d8a3a',
   'scripts/providers/claude.mjs':
     '36cbbca7879154fc068c09a687327d28f41d52e7be0dc160b8d44014a604f521',

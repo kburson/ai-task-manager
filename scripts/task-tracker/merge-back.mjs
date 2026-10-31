@@ -110,41 +110,47 @@ export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) 
   }
   const grandparent = resolveEpicLineage(epicIssue, { deps }).parentBranch;
 
-  deps.assertIntegrationCheckout?.();
-
-  // 1. Opportunistic epic sync (skip when already current).
-  if (grandparent && !isAncestor(git, grandparent, epicBranch)) {
-    git(['rebase', grandparent, epicBranch]);
-  }
-
-  // 2. Synchronize only when the child does not already contain the epic head.
-  // Preserve reviewed merge topology when no rebase is needed; conflict → refuse.
-  if (!isAncestor(wtGit, epicBranch, childBranch)) {
-    try {
-      wtGit(['rebase', epicBranch, childBranch]);
-    } catch (err) {
-      throw new Error(
-        `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
-      );
+  const integrate = deps.withIntegrationLock || ((fn) => fn());
+  let verifiedHead;
+  integrate(() => {
+    deps.assertIntegrationCheckout?.();
+    // 1. Opportunistic epic sync (skip when already current).
+    if (grandparent && !isAncestor(git, grandparent, epicBranch)) {
+      git(['rebase', grandparent, epicBranch]);
     }
-  }
+    deps.captureIntegrationTarget?.();
 
-  // Pin the synchronized commit so branch movement cannot integrate unverified code.
-  const verifiedHead = deps.currentWorktreeHead?.();
+    // 2. Synchronize only when the child does not already contain the epic head.
+    // Preserve reviewed merge topology when no rebase is needed; conflict → refuse.
+    if (!isAncestor(wtGit, epicBranch, childBranch)) {
+      try {
+        wtGit(['rebase', epicBranch, childBranch]);
+      } catch (err) {
+        throw new Error(
+          `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
+        );
+      }
+    }
+
+    // Pin the synchronized commit so branch movement cannot integrate unverified code.
+    verifiedHead = deps.currentWorktreeHead?.();
+  });
 
   // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).
   if (deps.runTests({ path, branch: childBranch }) !== true) {
     throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
   }
 
-  if (verifiedHead && deps.currentWorktreeHead() !== verifiedHead) {
-    throw new Error('merge-back: verified HEAD changed; refusing parent integration');
-  }
-  deps.assertIntegrationCheckout?.();
-
-  // 4. Fast-forward-only merge into the epic at the exact verified commit.
-  git(['checkout', epicBranch]);
-  git(['merge', '--ff-only', verifiedHead || childBranch]);
+  integrate(() => {
+    if (verifiedHead && deps.currentWorktreeHead() !== verifiedHead) {
+      throw new Error('merge-back: verified HEAD changed; refusing parent integration');
+    }
+    deps.assertIntegrationCheckout?.();
+    // 4. Fast-forward in the actual target checkout so its index and files move
+    // with the branch. Revalidate after acquiring exclusion, never before a wait.
+    git(['checkout', epicBranch]);
+    git(['merge', '--ff-only', verifiedHead || childBranch]);
+  });
 
   // 5. Cleanup on success.
   if (!preserveWorktree) {

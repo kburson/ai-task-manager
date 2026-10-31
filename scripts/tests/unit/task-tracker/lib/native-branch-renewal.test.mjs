@@ -11,7 +11,7 @@ test('only exact native Start transports request renewal', () => {
     branchRenewalArgv(['start', '2105\n', '--role', 'agent', '--confirm-relocation']),
     null
   );
-  for (const prefix of ['node_modules/@kburson/ai-task-manager/bin/aitm.mjs'])
+  for (const prefix of ['node_modules/@kburson/ai-task-manager/bin/aitm.mjs', 'bin/aitm.mjs'])
     assert.deepEqual(
       branchRenewalCommand(prefix + ' start 2105 --role orchestrator --confirm-relocation'),
       { issueNumber: 2105, role: 'orchestrator' }

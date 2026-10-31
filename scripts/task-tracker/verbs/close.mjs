@@ -1018,6 +1018,9 @@ export function releaseClosedBinding({ ctx, projectDir, issue }) {
     issue,
     deps: {
       releaseIssueBindings: ctx.releaseIssueBindings,
+      // Immediate cleanup read-back is synchronous; the async saga observer is
+      // a separate boundary and must not be mistaken for an observed result.
+      inspectTerminalIssueBindingRelease: ctx.readTerminalIssueBindingRelease,
       deregisterTask: ctx.deregisterTask,
       releaseBindingOccupancy: ctx.releaseBindingOccupancy,
       releaseOccupancy: ctx.releaseOccupancy,
