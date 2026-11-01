@@ -168,6 +168,63 @@ function readWarm(cacheDir, identity, need) {
   return manifestResult(manifest, artifact, need);
 }
 
+export const validGuidanceCacheNames = Object.freeze([
+  ARTIFACTS.agent[0],
+  ARTIFACTS.human[0],
+  MANIFEST,
+]);
+
+// Check already-captured bytes without compiling, warming or publishing a cache.
+// This verifies format and coherence only; it grants no authority to use a checkout.
+export function verifyCapturedGuidanceCache(bytesByName) {
+  if (
+    bytesByName.size !== validGuidanceCacheNames.length ||
+    !validGuidanceCacheNames.every((name) => bytesByName.has(name))
+  )
+    return false;
+  try {
+    const parse = (bytes) => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    const manifest = parse(bytesByName.get(MANIFEST));
+    if (
+      manifest?.schema !== 'aitm.guidance-cache-manifest/v1' ||
+      manifest.valid !== true ||
+      !manifest.identity?.runtime ||
+      !coherentManifest(manifest) ||
+      Object.keys(manifest.artifacts).length !== 2
+    )
+      return false;
+    const fingerprints = manifest.fingerprints.entryDigests;
+    if (new Set(fingerprints.map(({ id }) => id)).size !== fingerprints.length) return false;
+    return ['agent', 'human'].every((key) => {
+      const [name, schema] = ARTIFACTS[key];
+      const bytes = bytesByName.get(name);
+      const artifact = parse(bytes);
+      const descriptor = manifest.artifacts[key];
+      return (
+        Object.keys(descriptor).length === 2 &&
+        descriptor.digest === digest(bytes) &&
+        artifact?.schema === schema &&
+        artifact.catalogDigest === manifest.catalogDigest &&
+        typeof artifact.byId === 'object' &&
+        artifact.byId !== null &&
+        !Array.isArray(artifact.byId) &&
+        Object.keys(artifact.byId).length === fingerprints.length &&
+        fingerprints.every((entry) => {
+          const item = artifact.byId[entry.id],
+            field = key + 'Digest';
+          return (
+            item?.id === entry.id &&
+            item[field] === entry[field] &&
+            item.entryDigest === entry.entryDigest
+          );
+        })
+      );
+    });
+  } catch {
+    return false;
+  }
+}
+
 function publish(cacheDir, manifest, compiled) {
   mkdirSync(cacheDir, { recursive: true });
   const suffix = `${process.pid}.${randomUUID()}`;

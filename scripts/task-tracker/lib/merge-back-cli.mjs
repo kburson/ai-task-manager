@@ -9,6 +9,8 @@ import {
   existsSync,
   fchmodSync,
   fstatSync,
+  fsyncSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -24,6 +26,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import { validGuidanceCacheNames, verifyCapturedGuidanceCache } from '../../../guidance/cache.mjs';
 import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 import { createMergeBackTestRunner } from './merge-back-verification.mjs';
 import { fetchParentIssueBody } from './graph-node-authority.mjs';
@@ -367,7 +370,16 @@ function recoveryRequest(root, file) {
     recoveryRefusal('unsupported request schema');
   if (request.action === 'inspect' && exactKeys(request, ['schema', 'action'])) return request;
   if (
-    !exactKeys(request, ['schema', 'action', 'expected', 'resolutions', 'reason']) ||
+    (Object.hasOwn(request, 'preserveGuidanceCache') &&
+      typeof request.preserveGuidanceCache !== 'boolean') ||
+    !exactKeys(request, [
+      'schema',
+      'action',
+      'expected',
+      'resolutions',
+      'reason',
+      ...(Object.hasOwn(request, 'preserveGuidanceCache') ? ['preserveGuidanceCache'] : []),
+    ]) ||
     !['continue', 'skip'].includes(request.action) ||
     !/^[a-f0-9]{64}$/.test(request.expected) ||
     !Array.isArray(request.resolutions) ||
@@ -685,14 +697,21 @@ function pausedSnapshot(ctx) {
     untracked: extra(false),
     ignored: extra(true),
   };
+  const cache = assessGuidanceEvidence(ctx, facts, entries, read('git-rebase-todo'));
+  if (cache) facts.guidanceCache = cache.observation;
   return {
     result: { status: 'paused', snapshot: digest(JSON.stringify(facts)), ...facts },
     entries,
+    cache,
   };
 }
 function prepareResolutions(ctx, request, state) {
   const { result, entries } = state;
-  if (result.untracked.length || result.ignored.length)
+  if (
+    result.untracked.length ||
+    (result.ignored.length &&
+      (!request.preserveGuidanceCache || result.guidanceCache?.status !== 'verified'))
+  )
     recoveryRefusal('untracked or ignored parent evidence must be preserved');
   const choices = new Map();
   for (const choice of request.resolutions) {
@@ -814,8 +833,42 @@ function recoverParent(ctx) {
   if (request.expected !== state.result.snapshot)
     recoveryRefusal('stale recovery snapshot; inspect again');
   const choices = prepareResolutions(ctx, request, state);
+  if (state.cache?.files) {
+    requireMutationBudget(ctx, request, choices);
+    const receipt = publishCacheReceipt(ctx, state);
+    try {
+      const result = applyParentDecision(ctx, state, choices, receipt);
+      return {
+        ...result,
+        cacheReceipt: receipt,
+        postCache:
+          result.status === 'interrupted' || ctx.now() >= ctx.deadline
+            ? { status: 'unobserved' }
+            : postCacheObservation(ctx, state.result.guidanceCache.files),
+      };
+    } catch (error) {
+      throw new Error(error.message + '; preserved cache receipt ' + JSON.stringify(receipt), {
+        cause: error,
+      });
+    }
+  }
+  return applyParentDecision(ctx, state, choices);
+}
+function requireMutationBudget(ctx, request, choices) {
+  const stageDeadline = ctx.deadline - GIT_TIMEOUT_MS;
+  if (stageDeadline - ctx.now() < (request.action === 'continue' && choices.size ? 1000 : 1))
+    recoveryRefusal('insufficient recovery budget before mutation; inspect and retry');
+  return stageDeadline;
+}
+function applyParentDecision(ctx, state, choices, receipt) {
+  const { request } = ctx;
   if (pausedSnapshot(ctx).result.snapshot !== request.expected)
     recoveryRefusal('recovery observations changed before mutation');
+  if (receipt) {
+    const { fact } = readEvidenceBytes(ctx.childDir, receipt.path, receipt.size, true);
+    receiptDirectory(ctx.childDir, receipt.path);
+    if (fact.sha256 !== receipt.sha256) recoveryRefusal('cache receipt changed before mutation');
+  }
   const decision = {
     action: request.action,
     reason: request.reason,
@@ -825,9 +878,7 @@ function recoverParent(ctx) {
   // The admission scans and mutation share one lock deadline. Reserve a full
   // Git invocation before any conflict file/index write, and keep that reserve
   // inaccessible to staging even if a filter or filesystem operation is slow.
-  const stageDeadline = ctx.deadline - GIT_TIMEOUT_MS;
-  if (stageDeadline - ctx.now() < (request.action === 'continue' && choices.size ? 1000 : 1))
-    recoveryRefusal('insufficient recovery budget before mutation; inspect and retry');
+  const stageDeadline = requireMutationBudget(ctx, request, choices);
   if (request.action === 'continue') {
     try {
       stageResolutions({ ...ctx, stageDeadline }, choices);
@@ -935,4 +986,297 @@ function readRecoveryOutcome(ctx, state, decision, failure) {
     lease: afterLease,
     decision,
   };
+}
+
+const CACHE_ROOT = '.tmp/aitm/guidance-cache';
+const CACHE_LIMIT = 16 * 1024 * 1024;
+const CACHE_PATHS = validGuidanceCacheNames.map((name) => CACHE_ROOT + '/' + name);
+function sameEvidenceFile(a, b) {
+  return ['dev', 'ino', 'uid', 'mode', 'nlink', 'size', 'mtimeNs', 'ctimeNs'].every(
+    (key) => a[key] === b[key]
+  );
+}
+// Read a bounded stable descriptor without following symlinks or hard links.
+function readEvidenceBytes(root, relative, limit, privateReceipt = false) {
+  const target = physicalFile(root, relative);
+  const initial = lstatSync(target, { bigint: true });
+  if (!initial.isFile() || initial.nlink !== 1n || initial.size > BigInt(limit))
+    recoveryRefusal('unsafe evidence file: ' + relative);
+  if (privateReceipt && !receiptPermissionsSafe(initial, false))
+    recoveryRefusal('unsafe cache receipt file');
+  const fd = openSync(target, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    if (!sameEvidenceFile(initial, fstatSync(fd, { bigint: true })))
+      recoveryRefusal('evidence file changed: ' + relative);
+    const bytes = Buffer.alloc(Number(initial.size));
+    for (let offset = 0; offset < bytes.length;) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (!count) recoveryRefusal('evidence file shortened: ' + relative);
+      offset += count;
+    }
+    if (privateReceipt) fsyncSync(fd);
+    if (
+      !sameEvidenceFile(initial, fstatSync(fd, { bigint: true })) ||
+      !sameEvidenceFile(initial, lstatSync(physicalFile(root, relative), { bigint: true }))
+    )
+      recoveryRefusal('evidence file changed: ' + relative);
+    return {
+      bytes,
+      fact: {
+        path: relative,
+        mode: Number(initial.mode),
+        size: bytes.length,
+        sha256: digest(bytes),
+        device: String(initial.dev),
+        inode: String(initial.ino),
+        modifiedNs: String(initial.mtimeNs),
+        changedNs: String(initial.ctimeNs),
+      },
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+function cacheRootCollision(name) {
+  // Refuse root spellings whose equivalence cannot be established across the
+  // supported filesystems; no unrelated .tmp subtree is needed for this lane.
+  return (
+    !/^[\x20-\x7e]+$/.test(name) ||
+    name === '.' ||
+    name === '..' ||
+    /[\\/:]/.test(name) ||
+    name.toLowerCase().replace(/[ .]+$/, '') === '.tmp' ||
+    /^tmp~[0-9]+(?:\.|$)/i.test(name)
+  );
+}
+function gitBatchObjects(ctx, names, type) {
+  const requests = [...new Set(names)];
+  if (!requests.length) return [];
+  if (requests.length > 8192 || requests.some((name) => !/^[a-f0-9]{7,64}$/.test(name)))
+    recoveryRefusal('unsupported cache replay object census');
+  const output = recoveryGit(
+    ctx,
+    ctx.parentDir,
+    ['-c', 'core.fsmonitor=false', 'cat-file', '--batch'],
+    requests.join('\n') + '\n'
+  );
+  let offset = 0;
+  const result = requests.map((requested) => {
+    const end = output.indexOf(10, offset);
+    const header =
+      end < 0
+        ? null
+        : /^([a-f0-9]{40}(?:[a-f0-9]{24})?) (commit|tree) ([0-9]+)$/.exec(
+            output.toString('ascii', offset, end)
+          );
+    if (!header || header[2] !== type || !header[1].startsWith(requested))
+      recoveryRefusal('missing or ambiguous cache proof Git object');
+    const size = Number(header[3]);
+    const start = end + 1;
+    offset = start + size + 1;
+    if (!Number.isSafeInteger(size) || offset > output.length || output[offset - 1] !== 10)
+      recoveryRefusal('invalid cache proof Git object framing');
+    return { oid: header[1], bytes: output.subarray(start, offset - 1) };
+  });
+  if (offset !== output.length) recoveryRefusal('unexpected trailing Git proof data');
+  return result;
+}
+function commitPointers(object) {
+  const end = object.bytes.indexOf('\n\n');
+  const headers = object.bytes.toString('utf8', 0, end).split('\n');
+  const trees = headers.filter((line) => line.startsWith('tree ')).map((line) => line.slice(5));
+  const parents = headers.filter((line) => line.startsWith('parent ')).map((line) => line.slice(7));
+  if (
+    end < 0 ||
+    trees.length !== 1 ||
+    ![...trees, ...parents].every((id) => id.length === object.oid.length && /^[a-f0-9]+$/.test(id))
+  )
+    recoveryRefusal('unreadable cache proof commit');
+  return { oid: object.oid, tree: trees[0], parents };
+}
+function proveCacheTreeAbsence(ctx, facts, entries, todo) {
+  if ([...entries.keys()].some((file) => cacheRootCollision(file.split('/')[0])))
+    recoveryRefusal('tracked cache root collision in index');
+  const picks = todo
+    .split('\n')
+    .filter((line) => line.startsWith('pick '))
+    .map((line) => line.split(' ')[1]);
+  const source = gitBatchObjects(
+    ctx,
+    [facts.parentHead, facts.original, facts.onto, facts.stopped, ...picks],
+    'commit'
+  ).map(commitPointers);
+  const known = new Set(source.map(({ oid }) => oid));
+  const bases = source.flatMap(({ parents }) => parents).filter((oid) => !known.has(oid));
+  const commits = [...source, ...gitBatchObjects(ctx, bases, 'commit').map(commitPointers)];
+  const trees = gitBatchObjects(
+    ctx,
+    commits.map(({ tree }) => tree),
+    'tree'
+  );
+  for (const { oid, bytes } of trees) {
+    if (ctx.now() >= ctx.deadline) throw recoveryBudgetError('cache replay proof timed out');
+    for (let pos = 0; pos < bytes.length;) {
+      const space = bytes.indexOf(32, pos),
+        nul = bytes.indexOf(0, space + 1);
+      if (space < pos || nul <= space + 1 || !/^[0-7]+$/.test(bytes.toString('ascii', pos, space)))
+        recoveryRefusal('invalid cache proof tree');
+      const name = bytes.subarray(space + 1, nul);
+      if (cacheRootCollision(name.toString('latin1')))
+        recoveryRefusal('tracked cache root collision in replay tree ' + oid);
+      pos = nul + 1 + oid.length / 2;
+      if (pos > bytes.length) recoveryRefusal('truncated cache proof tree');
+    }
+  }
+  return {
+    commits: new Set(commits.map(({ oid }) => oid)).size,
+    trees: trees.length,
+    digest: digest(JSON.stringify(trees.map(({ oid }) => oid).sort())),
+  };
+}
+
+function assessGuidanceEvidence(ctx, facts, entries, todo) {
+  if (!facts.ignored.some((file) => file.startsWith(CACHE_ROOT + '/'))) return null;
+  try {
+    if (
+      facts.untracked.length ||
+      facts.ignored.length !== 3 ||
+      !CACHE_PATHS.every((name) => facts.ignored.includes(name))
+    )
+      recoveryRefusal('mixed or partial guidance cache');
+    const files = CACHE_PATHS.map((name) => readEvidenceBytes(ctx.parentDir, name, CACHE_LIMIT));
+    if (
+      !verifyCapturedGuidanceCache(
+        new Map(files.map(({ fact, bytes }) => [path.posix.basename(fact.path), bytes]))
+      )
+    )
+      recoveryRefusal('incoherent guidance cache artifacts');
+    const proof = proveCacheTreeAbsence(ctx, facts, entries, todo);
+    return {
+      files,
+      observation: { status: 'verified', files: files.map(({ fact }) => fact), proof },
+    };
+  } catch (error) {
+    if (interruptedGit(error)) throw error;
+    return { observation: { status: 'ineligible', reason: error.message } };
+  }
+}
+function syncDirectory(directory) {
+  const fd = openSync(directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+export function receiptPermissionsSafe(stat, directory, invokingUid = process.getuid?.()) {
+  if (!Number.isSafeInteger(invokingUid) || Number(stat.uid) !== invokingUid) return false;
+  const mode = Number(stat.mode);
+  return directory ? (mode & 0o022) === 0 : (mode & 0o7777) === 0o600;
+}
+function receiptDirectory(root, relative, create = false) {
+  // The bound checkout controls replacement of .scratch itself. Verify it as
+  // well as every nested directory that controls the final receipt name.
+  let current = root;
+  for (const part of ['', ...path.dirname(relative).split('/')]) {
+    const parent = current;
+    current = path.join(parent, part);
+    let stat = lstatSync(current, { throwIfNoEntry: false });
+    if (!stat && create && part) {
+      mkdirSync(current, { mode: 0o700 });
+      syncDirectory(parent);
+      stat = lstatSync(current);
+    }
+    if (
+      !stat?.isDirectory() ||
+      realpathSync(current) !== current ||
+      !receiptPermissionsSafe(stat, true)
+    )
+      recoveryRefusal('unsafe cache receipt directory');
+  }
+  return current;
+}
+function publishCacheReceipt(ctx, state) {
+  const s = state.result;
+  const relative = path.posix.join(
+    '.scratch',
+    String(ctx.child) + '-recovery',
+    'cache-evidence',
+    s.snapshot + '.json'
+  );
+  const directory = receiptDirectory(ctx.childDir, relative, true);
+  const target = physicalFile(ctx.childDir, relative);
+  const bytes = Buffer.from(
+    JSON.stringify({
+      schema: 'aitm.merge-back-cache-receipt/v1',
+      snapshot: s.snapshot,
+      repo: s.repo,
+      commonDir: s.commonDir,
+      child: s.child,
+      childDir: s.childDir,
+      childHead: s.childHead,
+      lease: s.lease,
+      parentIssue: s.parentIssue,
+      parentDir: s.parentDir,
+      parentRef: s.parentRef,
+      parentHead: s.parentHead,
+      original: s.original,
+      stopped: s.stopped,
+      onto: s.onto,
+      proof: s.guidanceCache.proof,
+      files: state.cache.files.map(({ fact, bytes }) => ({
+        ...fact,
+        base64: bytes.toString('base64'),
+      })),
+    }) + '\n'
+  );
+  if (!lstatSync(target, { throwIfNoEntry: false })) {
+    const temp = path.join(directory, '.publish-' + randomUUID());
+    const fd = openSync(
+      temp,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      0o600
+    );
+    const owned = fstatSync(fd);
+    try {
+      try {
+        writeFileSync(fd, bytes);
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      const current = lstatSync(temp);
+      if (current.dev !== owned.dev || current.ino !== owned.ino || current.nlink !== 1)
+        recoveryRefusal('cache receipt publication changed');
+      try {
+        linkSync(temp, physicalFile(ctx.childDir, relative));
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+    } finally {
+      const current = lstatSync(temp, { throwIfNoEntry: false });
+      if (current?.dev === owned.dev && current.ino === owned.ino) unlinkSync(temp);
+    }
+  }
+  const saved = readEvidenceBytes(ctx.childDir, relative, bytes.length, true);
+  if (!saved.bytes.equals(bytes)) recoveryRefusal('existing cache receipt differs: ' + relative);
+  syncDirectory(directory);
+  return { path: relative, sha256: digest(bytes), size: bytes.length };
+}
+function postCacheObservation(ctx, original) {
+  try {
+    const files = CACHE_PATHS.map((file) => {
+      if (ctx.now() >= ctx.deadline) throw recoveryBudgetError('post-cache observation timed out');
+      return readEvidenceBytes(ctx.parentDir, file, CACHE_LIMIT).fact;
+    });
+    return {
+      status: 'observed',
+      files,
+      contentOrModeChanged: files
+        .filter((file, i) => file.sha256 !== original[i].sha256 || file.mode !== original[i].mode)
+        .map((file) => file.path),
+    };
+  } catch (error) {
+    return { status: 'unavailable', reason: error.message };
+  }
 }

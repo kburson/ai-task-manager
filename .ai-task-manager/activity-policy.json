@@ -16,6 +16,7 @@
     "LICENSE-COMMERCIAL",
     "NOTICE"
   ],
+  "codeGlobsExtra": ["guidance/cache.mjs"],
   "codeGlobExcludes": [],
   "codeGlobReincludes": [],
   "docGlobs": ["docs/**", ".claude/plans/**", "docs/plans/**", "**/*.md", "CLAUDE.md"],
