@@ -388,7 +388,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       ['discovery: idle-reconciled']
     ),
     timingEmitter('scripts/task-tracker/verbs/new.mjs', 315, 'event-call', "'start'", ['start']),
-    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 35, 'flush-call', 'pauseEvent', [
+    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 37, 'flush-call', 'pauseEvent', [
       'pause:other',
     ]),
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [

@@ -2,9 +2,11 @@ import { loadState, saveState } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { canonicalPauseReason, isOtherReason } from '../lib/canonical-pause-reason.mjs';
 import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
+import { enforceNativeRebasePauseEntry } from '../lib/native-rebase-pause.mjs';
 
 export async function verbPause(ctx) {
   const { statePath, projectDir, rest, drainQueueIfAny, flushActiveToGH } = ctx;
+  enforceNativeRebasePauseEntry({ argv: ['pause', ...rest], root: projectDir });
   await drainQueueIfAny();
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {

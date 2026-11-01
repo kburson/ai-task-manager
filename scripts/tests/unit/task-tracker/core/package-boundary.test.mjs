@@ -496,7 +496,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2067: exact recovery and journal modules; no additional package family.
     1 + // #2068: the declared transition coordinator; tests remain excluded.
     1 + // #2067: approved native merge-back operand admission, one runtime module.
-    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    2; // #2068: child rebase target admission and native own-rebase Pause inspector.
+  for (const entry of ['child-rebase-recovery', 'native-rebase-pause'])
+    assert.ok(files.includes('scripts/task-tracker/lib/' + entry + '.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',

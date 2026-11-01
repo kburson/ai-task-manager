@@ -37,33 +37,46 @@ import { currentSessionId } from '../word-counter.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { assertNativeBranchCarrier } from './native-branch-renewal.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
+import {
+  CHILD_PROTECTED_ROOTS,
+  childWorkspaceBoundary,
+  selectChildRebaseTarget,
+} from './child-rebase-recovery.mjs';
 
 function argumentsFor(argv) {
   const positional = [];
   let preserveWorktree = false;
   let requestFile;
+  let recoveryMode;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--preserve-worktree' && !preserveWorktree) preserveWorktree = true;
     else if (
-      arg === '--recover-parent' &&
+      ['--recover-parent', '--recover-child'].includes(arg) &&
       !requestFile &&
       argv[i + 1] &&
       !argv[i + 1].startsWith('--')
-    )
+    ) {
+      recoveryMode = arg === '--recover-child' ? 'child' : 'parent';
       requestFile = argv[++i];
-    else if (arg.startsWith('--'))
+    } else if (arg.startsWith('--'))
       throw new TypeError(`merge-back: unknown or duplicate argument ${arg}`);
     else positional.push(arg);
   }
   const child = Number(String(positional[0] || '').replace(/^#/, ''));
   if (positional.length !== 2 || !Number.isSafeInteger(child) || child <= 0 || !positional[1])
     throw new TypeError(
-      'usage: merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json>]'
+      'usage: merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json> | --recover-child <request.json>]'
     );
   if (requestFile && preserveWorktree)
     throw new TypeError('merge-back: recovery and integration flags cannot be combined');
-  return { child, childDir: path.resolve(positional[1]), preserveWorktree, requestFile };
+  return {
+    child,
+    childDir: path.resolve(positional[1]),
+    preserveWorktree,
+    requestFile,
+    recoveryMode,
+  };
 }
 
 function worktrees(git) {
@@ -100,7 +113,7 @@ function assertNoGitOperation(git) {
 }
 
 export async function runMergeBackCli(argv, deps) {
-  const { child, childDir, preserveWorktree, requestFile } = argumentsFor(argv);
+  const { child, childDir, preserveWorktree, requestFile, recoveryMode } = argumentsFor(argv);
   if (requestFile && realpathSync(deps.invokingDir ?? process.cwd()) !== childDir)
     recoveryRefusal('bound child cwd required');
   const sid = currentSessionId();
@@ -156,16 +169,25 @@ export async function runMergeBackCli(argv, deps) {
   if (!main) throw new Error('merge-back: shared repository main checkout unavailable');
   const occupancyFile = occupancyPath(main);
   if (requestFile) {
-    const request = recoveryRequest(childDir, requestFile);
+    const request = recoveryRequest(childDir, requestFile, recoveryMode);
     if (parent.role !== 'epic' || parent.branch !== lineage.epicBranch || !lineage.worktreePath)
       recoveryRefusal('inconsistent child or parent graph authority');
     const sessionId = deps.recoverySession ? deps.recoverySession() : sid;
     if (typeof cfg.repo !== 'string' || !cfg.repo.includes('/'))
       recoveryRefusal('configured repository required');
+    const issueBody =
+      recoveryMode === 'child'
+        ? await (
+            deps.loadIssueBody ?? (({ issue }) => fetchParentIssueBody({ parentIssue: issue, cfg }))
+          )({ issue: child })
+        : undefined;
     return withLock(occupancyFile, () => {
       criticalDeadline = now() + 2 * GIT_TIMEOUT_MS;
       return recoverParent({
         request,
+        recoveryMode,
+        issueBody,
+        epicBranch: parent.branch,
         child,
         childDir,
         childBranch: lineage.branch,
@@ -340,7 +362,7 @@ function physicalFile(root, name) {
     recoveryRefusal('aliased directory');
   return target;
 }
-function recoveryRequest(root, file) {
+function recoveryRequest(root, file, mode = 'parent') {
   if (!safeRelative(file) || !file.startsWith('.scratch/') || !file.endsWith('.json'))
     recoveryRefusal('project-local .scratch JSON request required');
   const target = physicalFile(root, file);
@@ -366,12 +388,17 @@ function recoveryRequest(root, file) {
   } finally {
     closeSync(fd);
   }
-  if (request?.schema !== 'aitm.merge-back-recovery/v1')
+  if (
+    request?.schema !==
+    (mode === 'child' ? 'aitm.merge-back-child-recovery/v1' : 'aitm.merge-back-recovery/v1')
+  )
     recoveryRefusal('unsupported request schema');
   if (request.action === 'inspect' && exactKeys(request, ['schema', 'action'])) return request;
   if (
     (Object.hasOwn(request, 'preserveGuidanceCache') &&
       typeof request.preserveGuidanceCache !== 'boolean') ||
+    (Object.hasOwn(request, 'preserveWorkspaceData') &&
+      (mode !== 'child' || typeof request.preserveWorkspaceData !== 'boolean')) ||
     !exactKeys(request, [
       'schema',
       'action',
@@ -379,6 +406,9 @@ function recoveryRequest(root, file) {
       'resolutions',
       'reason',
       ...(Object.hasOwn(request, 'preserveGuidanceCache') ? ['preserveGuidanceCache'] : []),
+      ...(mode === 'child' && Object.hasOwn(request, 'preserveWorkspaceData')
+        ? ['preserveWorkspaceData']
+        : []),
     ]) ||
     !['continue', 'skip'].includes(request.action) ||
     !/^[a-f0-9]{64}$/.test(request.expected) ||
@@ -602,7 +632,16 @@ function assertRecoveryChild(ctx) {
 }
 function pausedSnapshot(ctx) {
   const childHead = assertRecoveryChild(ctx);
-  Object.assign(ctx, parentRecoveryTarget(ctx));
+  Object.assign(
+    ctx,
+    ctx.recoveryMode === 'child'
+      ? selectChildRebaseTarget(ctx, {
+          entries: worktrees((args) => recoveryRead(ctx, ctx.childDir, args).toString('utf8')),
+          git: (root, ...args) => gitText(ctx, root, ...args),
+          gitDir: (root) => verifiedParentGitDir(ctx, root),
+        })
+      : parentRecoveryTarget(ctx)
+  );
   const { parentDir, rebaseDir } = ctx;
   const lease = recoveryLease(ctx);
   const git = (...args) => gitText(ctx, parentDir, ...args);
@@ -635,6 +674,11 @@ function pausedSnapshot(ctx) {
   const original = read('orig-head'),
     stopped = read('stopped-sha'),
     onto = read('onto');
+  if (
+    ctx.recoveryMode === 'child' &&
+    onto !== git('rev-parse', '--verify', 'refs/heads/' + ctx.epicBranch + '^{commit}')
+  )
+    recoveryRefusal('child rebase onto differs from current epic');
   if (![original, stopped, onto].every((oid) => /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(oid)))
     recoveryRefusal('invalid rebase object identity');
   const lastPick = read('done')
@@ -697,6 +741,27 @@ function pausedSnapshot(ctx) {
     untracked: extra(false),
     ignored: extra(true),
   };
+  if (ctx.recoveryMode === 'child') {
+    facts.recoveryMode = 'child';
+    facts.historicalLocation = ctx.historicalLocation;
+    facts.epicRef = ctx.epicBranch;
+    facts.epicHead = onto;
+    facts.workspaceBoundary = childWorkspaceBoundary(parentDir, [
+      ...facts.untracked,
+      ...facts.ignored,
+    ]);
+    facts.workspaceProof = proveCacheTreeAbsence(
+      ctx,
+      facts,
+      entries,
+      read('git-rebase-todo'),
+      CHILD_PROTECTED_ROOTS
+    );
+    return {
+      result: { status: 'paused', snapshot: digest(JSON.stringify(facts)), ...facts },
+      entries,
+    };
+  }
   const cache = assessGuidanceEvidence(ctx, facts, entries, read('git-rebase-todo'));
   if (cache) facts.guidanceCache = cache.observation;
   return {
@@ -708,9 +773,11 @@ function pausedSnapshot(ctx) {
 function prepareResolutions(ctx, request, state) {
   const { result, entries } = state;
   if (
-    result.untracked.length ||
-    (result.ignored.length &&
-      (!request.preserveGuidanceCache || result.guidanceCache?.status !== 'verified'))
+    ctx.recoveryMode === 'child'
+      ? (result.untracked.length || result.ignored.length) && !request.preserveWorkspaceData
+      : result.untracked.length ||
+        (result.ignored.length &&
+          (!request.preserveGuidanceCache || result.guidanceCache?.status !== 'verified'))
   )
     recoveryRefusal('untracked or ignored parent evidence must be preserved');
   const choices = new Map();
@@ -965,6 +1032,11 @@ function readRecoveryOutcome(ctx, state, decision, failure) {
     return { ...next, decision };
   }
   if (failure) throw failure;
+  if (
+    ctx.recoveryMode === 'child' &&
+    gitText(ctx, ctx.childDir, 'rev-parse', 'refs/heads/' + ctx.epicBranch) !== state.result.onto
+  )
+    recoveryRefusal('epic moved during child recovery');
   const head = gitText(ctx, ctx.parentDir, 'rev-parse', 'HEAD');
   verifiedParentGitDir(ctx, ctx.parentDir);
   const holders = worktrees((args) =>
@@ -1094,8 +1166,11 @@ function commitPointers(object) {
     recoveryRefusal('unreadable cache proof commit');
   return { oid: object.oid, tree: trees[0], parents };
 }
-function proveCacheTreeAbsence(ctx, facts, entries, todo) {
-  if ([...entries.keys()].some((file) => cacheRootCollision(file.split('/')[0])))
+function proveCacheTreeAbsence(ctx, facts, entries, todo, protectedRoots) {
+  const collision = protectedRoots
+    ? (name) => protectedRoots.some((root) => name.toLowerCase() === root.toLowerCase())
+    : cacheRootCollision;
+  if ([...entries.keys()].some((file) => collision(file.split('/')[0])))
     recoveryRefusal('tracked cache root collision in index');
   const picks = todo
     .split('\n')
@@ -1122,7 +1197,7 @@ function proveCacheTreeAbsence(ctx, facts, entries, todo) {
       if (space < pos || nul <= space + 1 || !/^[0-7]+$/.test(bytes.toString('ascii', pos, space)))
         recoveryRefusal('invalid cache proof tree');
       const name = bytes.subarray(space + 1, nul);
-      if (cacheRootCollision(name.toString('latin1')))
+      if (collision(name.toString('latin1')))
         recoveryRefusal('tracked cache root collision in replay tree ' + oid);
       pos = nul + 1 + oid.length / 2;
       if (pos > bytes.length) recoveryRefusal('truncated cache proof tree');

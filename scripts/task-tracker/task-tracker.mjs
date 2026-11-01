@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { buildContext, handleMigrateResult } from './runtime.mjs';
 import { enforceNativeBranchRenewalEntry } from './lib/native-branch-renewal.mjs';
+import { enforceNativeRebasePauseEntry } from './lib/native-rebase-pause.mjs';
 import { currentSessionId, jsonlPath, countWords } from './word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import {
@@ -475,6 +476,7 @@ if (_isMain)
     }
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
+    enforceNativeRebasePauseEntry({ argv: process.argv.slice(2), root: process.cwd() });
     const ctx = buildContext(foreignWorktree.argv, { executionContext });
     const shouldAnnotate =
       admission.trust === 'project-owned-diverged' &&
