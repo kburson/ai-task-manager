@@ -246,8 +246,9 @@ async function main(argv) {
     emitSelfDoc('merge-back');
     return;
   }
-  const { epic, child } = await runMergeBackCommand(argv);
-  process.stdout.write(`merged ${child} into ${epic}\n`);
+  const result = await runMergeBackCommand(argv);
+  if (result.status) process.stdout.write(JSON.stringify(result) + '\n');
+  else process.stdout.write(`merged ${result.child} into ${result.epic}\n`);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;
