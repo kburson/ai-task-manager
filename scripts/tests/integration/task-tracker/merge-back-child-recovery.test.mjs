@@ -2,7 +2,7 @@
 // cspell:words fsmonitor
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import {
   readFileSync,
   writeFileSync,
@@ -18,6 +18,8 @@ import { childRebaseFixture, git } from '../../helpers/child-rebase-fixture.mjs'
 import { setActiveTask } from '../../../task-tracker/session-state.mjs';
 import { claimOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
 import { appendIssueWorktreeLocation } from '../../../task-tracker/lib/issue-worktree-location.mjs';
+import { proveChildProtectedTrees } from '../../../task-tracker/lib/child-rebase-recovery.mjs';
+import { loadGuidance } from '../../../../guidance/cache.mjs';
 
 // Catches conflating the historical child target with the current repair lease.
 test('current repair lease resolves a prior child rebase and preserves dependencies, evidence and runtime', async (t) => {
@@ -335,7 +337,7 @@ test('real recovery fixture stays isolated under native project aliases and an a
     import { childRebaseFixture, git } from ${JSON.stringify(helper)};
     const cleanup = [];
     try {
-      const f = childRebaseFixture({ after: (fn) => cleanup.push(fn) });
+      const f = childRebaseFixture({ after: (fn) => cleanup.push(fn) }, { nativeLayout: true });
       const state = await f.inspect();
       const result = await f.run({ action: 'skip', expected: state.snapshot,
         preserveWorkspaceData: true, reason: 'native fixture isolation',
@@ -359,4 +361,173 @@ test('real recovery fixture stays isolated under native project aliases and an a
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
   outer.retained();
+});
+
+for (const action of ['continue', 'skip'])
+  test(
+    'native layout retains tracked scratch contract and observed runtime evidence during ' + action,
+    async (t) => {
+      const f = childRebaseFixture(t, { nativeLayout: true });
+      const inspected = await f.inspect();
+      const result = await f.run({
+        action,
+        expected: inspected.snapshot,
+        preserveWorkspaceData: true,
+        reason: 'preserve real repository layout',
+        resolutions: [{ path: 'conflict.txt', stage: action === 'skip' ? 2 : 3 }],
+      });
+      assert.equal(result.status, 'completed');
+      assert.equal(
+        readFileSync(path.join(f.target, '.scratch/README.md'), 'utf8'),
+        'tracked scratch contract\n'
+      );
+      assert.equal(git(f.target, 'merge-base', f.onto, 'HEAD'), f.onto);
+      f.retained();
+    }
+  );
+
+for (const protectedDelta of ['change', 'remove', 'add', 'mode'])
+  test('protected tracked subtree refuses ' + protectedDelta + ' in replay input', async (t) => {
+    const f = childRebaseFixture(t, { nativeLayout: true, protectedDelta });
+    const before = f.state();
+    await assert.rejects(f.inspect(), /protected|collision/);
+    assert.deepEqual(f.state(), before);
+  });
+
+for (const alias of ['executor', 'named holder', 'epic'])
+  test('historical target ref isolation refuses ' + alias + ' before writes', async (t) => {
+    const f = childRebaseFixture(t);
+    if (alias === 'executor') {
+      git(f.repair, 'checkout', '--ignore-other-worktrees', f.branch);
+      f.nodes[2068].authoritativeBranch = f.branch;
+      setActiveTask(f.sid, { ...f.record, worktreeBranch: f.branch }, f.repair);
+      f.setBody(f.getBody().replace(f.repairBranch, f.branch));
+    } else if (alias === 'named holder') {
+      const holder = path.join(f.main, '.ai-task-manager/runtime/test-fixtures/named-holder');
+      git(f.main, 'worktree', 'add', '--force', holder, f.branch);
+    } else {
+      const headName = git(
+        f.target,
+        'rev-parse',
+        '--path-format=absolute',
+        '--git-path',
+        'rebase-merge/head-name'
+      );
+      const original = git(
+        f.target,
+        'rev-parse',
+        '--path-format=absolute',
+        '--git-path',
+        'rebase-merge/orig-head'
+      );
+      writeFileSync(headName, 'refs/heads/' + f.epicBranch + '\n');
+      writeFileSync(original, f.onto + '\n');
+      f.setBody(f.getBody().replace(f.branch, f.epicBranch));
+    }
+    const before = f.state();
+    await assert.rejects(f.inspect(), /ref|holder|isolation|executor|epic/);
+    assert.deepEqual(f.state(), before);
+  });
+
+test('fresh child inspection refuses detached HEAD that no longer descends from onto', async (t) => {
+  const f = childRebaseFixture(t);
+  git(f.target, 'update-ref', 'HEAD', git(f.main, 'rev-parse', f.onto + '^'));
+  const before = f.state();
+  await assert.rejects(f.inspect(), /ancestry|descend|onto/);
+  assert.deepEqual(f.state(), before);
+});
+
+test('child recovery preserves coherent guidance originals before a normal hook regenerates cache', async (t) => {
+  const f = childRebaseFixture(t);
+  assert.equal(loadGuidance({ projectRoot: f.target, need: 'agent' }).valid, true);
+  const names = ['agent-index.v1.json', 'human-catalog.v1.json', 'manifest.v1.json'];
+  const originals = Object.fromEntries(
+    names.map((name) => [name, readFileSync(path.join(f.target, '.tmp/aitm/guidance-cache', name))])
+  );
+  const hook = path.join(f.main, '.git/hooks/post-commit');
+  writeFileSync(
+    hook,
+    '#!/bin/sh\nprintf regenerated > .tmp/aitm/guidance-cache/human-catalog.v1.json\n'
+  );
+  chmodSync(hook, 0o755);
+  const inspected = await f.inspect();
+  const result = await f.run({
+    action: 'continue',
+    expected: inspected.snapshot,
+    preserveWorkspaceData: true,
+    preserveGuidanceCache: true,
+    reason: 'retain original coherent cache evidence',
+    resolutions: [{ path: 'conflict.txt', stage: 3 }],
+  });
+  assert.equal(result.status, 'completed');
+  assert.ok(result.cacheReceipt, 'coherent child cache needs an immutable receipt');
+  const receipt = JSON.parse(readFileSync(path.join(f.repair, result.cacheReceipt.path)));
+  for (const file of receipt.files)
+    assert.deepEqual(Buffer.from(file.base64, 'base64'), originals[path.basename(file.path)]);
+  assert.equal(
+    readFileSync(path.join(f.target, '.tmp/aitm/guidance-cache/human-catalog.v1.json'), 'utf8'),
+    'regenerated'
+  );
+  f.retained();
+});
+
+for (const situation of ['missing consent', 'partial', 'tampered', 'unknown cache file']) {
+  test('child guidance preservation refuses ' + situation + ' before parent writes', async (t) => {
+    const f = childRebaseFixture(t, { nativeLayout: true });
+    assert.equal(loadGuidance({ projectRoot: f.target, need: 'agent' }).valid, true);
+    const cache = path.join(f.target, '.tmp/aitm/guidance-cache');
+    if (situation === 'partial')
+      renameSync(
+        path.join(cache, 'manifest.v1.json'),
+        path.join(f.target, '.scratch/original-manifest.json')
+      );
+    if (situation === 'tampered') writeFileSync(path.join(cache, 'manifest.v1.json'), '{}');
+    if (situation === 'unknown cache file')
+      writeFileSync(path.join(cache, 'operator.txt'), 'retain');
+    const inspected = await f.inspect();
+    const before = f.state();
+    await assert.rejects(
+      f.run({
+        action: 'skip',
+        expected: inspected.snapshot,
+        preserveWorkspaceData: true,
+        preserveGuidanceCache: situation !== 'missing consent',
+        reason: 'invalid cache must remain untouched',
+        resolutions: [{ path: 'conflict.txt', stage: 2 }],
+      }),
+      /guidance|preserve/
+    );
+    assert.deepEqual(f.state(), before);
+    f.retained();
+  });
+}
+
+test('protected subtree proof refuses a case-folding ignored alias of its tracked contract', (t) => {
+  const f = childRebaseFixture(t, { nativeLayout: true });
+  const root = git(f.target, 'rev-parse', 'HEAD^{tree}');
+  const readTrees = (names) =>
+    [...new Set(names)].map((oid) => ({
+      oid,
+      bytes: execFileSync('git', ['cat-file', 'tree', oid], { cwd: f.target }),
+    }));
+  const entries = new Map(
+    git(f.target, 'ls-tree', '-r', 'HEAD')
+      .split('\n')
+      .map((line) => {
+        const [header, file] = line.split('\t'),
+          [mode, , oid] = header.split(' ');
+        return [file, { 0: { mode, oid } }];
+      })
+  );
+  assert.throws(
+    () =>
+      proveChildProtectedTrees({
+        trees: readTrees([root]),
+        entries,
+        extra: ['.scratch/readme.md'],
+        readTrees,
+        checkBudget: () => {},
+      }),
+    /collides/
+  );
 });

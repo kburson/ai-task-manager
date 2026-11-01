@@ -2,12 +2,16 @@ import { loadState, saveState } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { canonicalPauseReason, isOtherReason } from '../lib/canonical-pause-reason.mjs';
 import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
-import { enforceNativeRebasePauseEntry } from '../lib/native-rebase-pause.mjs';
+import {
+  enforceNativeRebasePauseEntry,
+  withNativeRebasePauseAuthority,
+} from '../lib/native-rebase-pause.mjs';
 
 export async function verbPause(ctx) {
   const { statePath, projectDir, rest, drainQueueIfAny, flushActiveToGH } = ctx;
-  enforceNativeRebasePauseEntry({ argv: ['pause', ...rest], root: projectDir });
+  const admission = enforceNativeRebasePauseEntry({ argv: ['pause', ...rest], root: projectDir });
   await drainQueueIfAny();
+  withNativeRebasePauseAuthority(admission, () => {});
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
     console.log('nothing to pause');
@@ -25,6 +29,7 @@ export async function verbPause(ctx) {
   // Description. `/task resume` emits the canonical `resumed` boundary and
   // carries this text forward so the operator's reason is never lost.
   const pauseDesc = reasonText ?? (isOtherReason(reasonSlug) ? undefined : reasonSlug);
+  withNativeRebasePauseAuthority(admission, () => {});
   // #832 (D4) — pause is an interruption: bank the span's words onto the durable
   // marker but render this pause row's Δ Words cell as 0, so the words attribute
   // to the phase's `<phase>:completed` row rather than to this interruption.
@@ -37,23 +42,25 @@ export async function verbPause(ctx) {
   } = await flushActiveToGH(s, pauseEvent, pauseDesc, undefined, { suppressRowWords: true });
   const deltaMin = activeEstimateMin ?? 'Unknown';
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
-  saveState(
-    {
-      ...s,
-      active: null,
-      entryStartTs: null,
-      wordsAtEntryStart: 0,
-      lastActive: s.active,
-      paused: true,
-      // #475 AC2 — record the pause instant so `resume` can compute the idle
-      // span of the pause window and stamp it on the `resumed` row.
-      pausedAtTs: ts,
-      // #534 — persist the resolved reason so the symmetric `/task resume`
-      // (no-arg) can pair against the same slug and echo the same free text.
-      pauseReasonSlug: reasonSlug,
-      pauseReasonText: reasonText ?? null,
-    },
-    statePath
+  withNativeRebasePauseAuthority(admission, () =>
+    saveState(
+      {
+        ...s,
+        active: null,
+        entryStartTs: null,
+        wordsAtEntryStart: 0,
+        lastActive: s.active,
+        paused: true,
+        // #475 AC2 — record the pause instant so `resume` can compute the idle
+        // span of the pause window and stamp it on the `resumed` row.
+        pausedAtTs: ts,
+        // #534 — persist the resolved reason so the symmetric `/task resume`
+        // (no-arg) can pair against the same slug and echo the same free text.
+        pauseReasonSlug: reasonSlug,
+        pauseReasonText: reasonText ?? null,
+      },
+      statePath
+    )
   );
   try {
     setTaskStatus(projectDir, s.active, 'paused');

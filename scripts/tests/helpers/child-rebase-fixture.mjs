@@ -1,7 +1,7 @@
 // @story #2068
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtempProjectIsolated } from '../../task-tracker/lib/scratch-dir.mjs';
@@ -17,7 +17,14 @@ export const git = (cwd, ...args) =>
 // Real independent repositories keep fixture mutations away from live issue state.
 export function childRebaseFixture(
   t,
-  { bindTarget = false, staged = false, historicalProtected = false, second = false } = {}
+  {
+    bindTarget = false,
+    staged = false,
+    historicalProtected = false,
+    second = false,
+    nativeLayout = false,
+    protectedDelta,
+  } = {}
 ) {
   const main = mkdtempProjectIsolated('child-rebase-');
   t.after(() => rmSync(main, { recursive: true, force: true }));
@@ -35,8 +42,14 @@ export function childRebaseFixture(
   git(main, 'config', 'user.email', 'fixture@example.invalid');
   writeFileSync(
     path.join(main, '.gitignore'),
-    '.tmp/\n.scratch/\nnode_modules/\n.ai-task-manager/runtime/\n'
+    '.tmp/\n' +
+      (nativeLayout ? '.scratch/*\n!.scratch/README.md\n' : '.scratch/\n') +
+      'node_modules/\n.ai-task-manager/runtime/\n.superpowers/\n'
   );
+  if (nativeLayout) {
+    mkdirSync(path.join(main, '.scratch'));
+    writeFileSync(path.join(main, '.scratch/README.md'), 'tracked scratch contract\n');
+  }
   mkdirSync(path.join(main, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(main, '.ai-task-manager/task-tracker.json'),
@@ -48,6 +61,14 @@ export function childRebaseFixture(
   const base = git(main, 'rev-parse', 'HEAD');
   git(main, 'worktree', 'add', '-b', branch, target, base);
   writeFileSync(path.join(target, 'conflict.txt'), 'accepted child\n');
+  if (protectedDelta === 'change')
+    writeFileSync(path.join(target, '.scratch/README.md'), 'changed contract\n');
+  if (protectedDelta === 'remove') rmSync(path.join(target, '.scratch/README.md'));
+  if (protectedDelta === 'mode') chmodSync(path.join(target, '.scratch/README.md'), 0o755);
+  if (protectedDelta === 'add') {
+    writeFileSync(path.join(target, '.scratch/new-tracked.md'), 'new tracked contract\n');
+    git(target, 'add', '-f', '.scratch/new-tracked.md');
+  }
   if (staged) writeFileSync(path.join(target, 'valuable.txt'), 'unique child contribution\n');
   commit(target, 'child change');
   if (second) {
@@ -75,6 +96,10 @@ export function childRebaseFixture(
     ['.scratch/prior-review/report.md', 'original review evidence\n'],
     ['.tmp/aitm/retained-state.json', '{"historical":"Unknown"}\n'],
   ]);
+  if (nativeLayout) {
+    sentinels.set('.ai-task-manager/runtime/retained-fixture.json', '{"evidence":"keep"}\n');
+    sentinels.set('.superpowers/retained-notes.md', 'retain design evidence\n');
+  }
   for (const [file, bytes] of sentinels) {
     mkdirSync(path.dirname(path.join(target, file)), { recursive: true });
     writeFileSync(path.join(target, file), bytes);

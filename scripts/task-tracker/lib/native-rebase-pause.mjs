@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assertNativeBranchCarrier } from './native-branch-renewal.mjs';
 import { readPhysicalRuntimeIdentity } from './runtime-storage.mjs';
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
@@ -11,25 +12,36 @@ import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { readOccupancy } from './occupancy.mjs';
 import { occupancyPath } from '../paths.mjs';
+import { withLock } from '../fleet-registry.mjs';
 
 function refuse(reason) {
   throw new Error('native-rebase-pause: ' + reason);
 }
 export function rebasePauseCommand(command) {
-  return (
-    typeof command === 'string' &&
-    /^(?:node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs|bin\/aitm\.mjs) pause blocked$/.exec(
+  if (typeof command !== 'string') return null;
+  const match =
+    /^(node_modules\/@kburson\/ai-task-manager\/bin\/aitm\.mjs|bin\/aitm\.mjs) pause blocked$/.exec(
       command
-    )?.[0] === command
-  );
+    );
+  return match?.[0] === command ? { carrier: match[1] } : null;
 }
 export function inspectNativeRebasePause({
   root,
   sessionId,
   identitySource = 'hook',
   env = process.env,
+  carrier,
 }) {
   const tools = assertNativeBranchCarrier({ root, sessionId, identitySource, env });
+  if (identitySource === 'hook' && !carrier) refuse('parsed public carrier required');
+  if (carrier) {
+    const selected = fileURLToPath(new URL('../../../bin/aitm.mjs', import.meta.url));
+    if (
+      !['bin/aitm.mjs', 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs'].includes(carrier) ||
+      realpathSync(path.join(root, carrier)) !== realpathSync(selected)
+    )
+      refuse('invoked carrier differs from selected runtime');
+  }
   const identity = readPhysicalRuntimeIdentity(root);
   if (identity.projectRoot !== root || realpathSync(root) !== root) refuse('foreign root');
   const deadline = performance.now() + 10000;
@@ -127,11 +139,41 @@ export function inspectNativeRebasePause({
       onto,
       done,
       todo,
+      root,
+      occupancyFile: occupancyPath(identity.mainRoot),
     };
   };
   const before = observe();
   if (JSON.stringify(observe()) !== JSON.stringify(before)) refuse('observations changed');
   return before;
+}
+
+// Keep the admitted claim across async queue/remote flush boundaries. The final
+// local state clear runs under the ordinary occupancy exclusion, with no await.
+export function withNativeRebasePauseAuthority(token, operation) {
+  if (!token) return operation();
+  return withLock(token.occupancyFile, () => {
+    const record = getActiveTask(token.sessionId, token.root);
+    const claim = readOccupancy(token.occupancyFile)[String(token.issue)];
+    const recordKeys = ['issue', 'worktreePath', 'worktreeBranch', 'bindingGenerationId'];
+    const claimKeys = [
+      'issue',
+      'sid',
+      'provider',
+      'worktreePath',
+      'bindingGenerationId',
+      'boundAt',
+    ];
+    if (
+      !record ||
+      record.closedAt ||
+      !claim ||
+      recordKeys.some((key) => record[key] !== token.record[key]) ||
+      claimKeys.some((key) => claim[key] !== token.claim[key])
+    )
+      refuse('admitted generation or claim changed');
+    return operation();
+  });
 }
 
 export function enforceNativeRebasePauseEntry({ argv, root, env = process.env }) {
