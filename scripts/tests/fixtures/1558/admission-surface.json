@@ -2676,6 +2676,9 @@
         "../lib/epic-orchestration-plan.mjs",
         "../lib/plan-approved-guard.mjs",
         "../lib/stage-entry-grammar.mjs",
+        "../lib/workflow-policy/scope-identity.mjs",
+        "../lib/plan-markdown-views.mjs",
+        "../lib/metadata-section.mjs",
         "../lib/governed-plan-policy.mjs",
         "../lib/plan-approval-evidence-repair.mjs"
       ],
