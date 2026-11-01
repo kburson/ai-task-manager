@@ -1,4 +1,4 @@
-// @story #2048 #2066
+// @story #2048 #2066 #2069
 // @story #2068
 // @story #2088
 // @story #2058 #2060 #2064 #2059 #2065 #2047
@@ -421,7 +421,19 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2014/#2108 ships exactly one retained completed-child recovery module.
   const retainedRecoveryEntries = ['scripts/task-tracker/lib/epic-rank-wave-restore-worktree.mjs'];
   for (const entry of retainedRecoveryEntries) assert.ok(files.includes(entry));
+  // #2069: exactly seven native Plan candidate authority modules; tests stay excluded.
+  const planCandidateEntries = [
+    'estimation/native-plan-selection',
+    'plan-approval-staging',
+    'plan-child-inventory',
+    'plan-decomposition-projection',
+    'plan-decomposition-staging',
+    'plan-native-guard-execution',
+    'plan-transition-native',
+  ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
+  for (const entry of planCandidateEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    planCandidateEntries.length +
     retainedRecoveryEntries.length +
     bootstrapEntries.length +
     dateTransportEntries.length +
