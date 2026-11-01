@@ -107,6 +107,8 @@ function composed(t) {
     claimSid: 'fixture-native-sid',
     root: projectDir,
     claimRoot: projectDir,
+    commonDir: projectDir + '/.git',
+    boundAt: '2026-11-01T11:30:00Z',
     issue: '#1987',
     claimIssue: 1987,
     state: 'develop',
@@ -255,7 +257,7 @@ test('another forecast proposal arriving after lock acquisition refuses before s
   assert.equal(c.f.body, before);
   assert.deepEqual(c.writes, []);
 });
-test('interrupted linked intent resumes without replacing the predecessor before record', async (t) => {
+test('interrupted linked intent resumes after a commit and timer restart on the same binding', async (t) => {
   const c = fromLegacy(t),
     args = await recoveryArgs(c),
     prior = readEstimateBeforeRecord(c.f.body),
@@ -274,8 +276,21 @@ test('interrupted linked intent resumes without replacing the predecessor before
     readDecompositionRecords(c.f.body).publication.supersedes.operationId,
     args.reconcileAudit
   );
+  const pending = readDecompositionRecords(c.f.body).publication;
+  assert.equal(pending.status, 'pending');
+  const actor = await c.deps.readInflationActor();
+  c.deps.readInflationActor = async () => ({
+    ...actor,
+    head: 'b'.repeat(40),
+    entryStartTs: '2026-11-01T12:00:00Z',
+  });
   const second = await runInflateEstimate(args, cfg, c.deps);
   assert.equal(second.status, 'recorded', second.reason);
+  const complete = readDecompositionRecords(c.f.body).publication;
+  assert.equal(complete.operationId, pending.operationId);
+  assert.equal(complete.status, 'complete');
+  assert.deepEqual(complete.supersedes, pending.supersedes);
+  assert.deepEqual(complete.proposal, pending.proposal);
   assert.deepEqual(readEstimateBeforeRecord(c.f.body), prior);
   assert.deepEqual(c.writes, []);
 });
@@ -312,28 +327,39 @@ for (const variant of ['owner', 'state', 'generation', 'issue', 'root', 'closed'
   );
 }
 
-test('an interrupted successor cannot be resumed by a different valid session generation', async (t) => {
-  const c = fromLegacy(t),
-    args = await recoveryArgs(c),
-    push = c.f.deps.pushBody;
-  let stopped = false;
-  c.f.deps.pushBody = async (...values) => {
-    await push(...values);
-    if (!stopped) {
-      stopped = true;
-      throw new Error('transport interrupted');
+for (const field of ['generation', 'sid', 'login', 'boundAt', 'commonDir', 'branch'])
+  test('an interrupted successor refuses a different valid ' + field, async (t) => {
+    const c = fromLegacy(t),
+      args = await recoveryArgs(c),
+      push = c.f.deps.pushBody;
+    let stopped = false;
+    c.f.deps.pushBody = async (...values) => {
+      await push(...values);
+      if (!stopped) {
+        stopped = true;
+        throw new Error('transport interrupted');
+      }
+    };
+    assert.notEqual((await runInflateEstimate(args, cfg, c.deps)).status, 'recorded');
+    const initial = c.f.body,
+      writes = c.f.writes.length,
+      actor = await c.deps.readInflationActor();
+    if (field === 'generation')
+      actor.generation = actor.claimGeneration = '22222222-2222-4222-8222-222222222222';
+    if (field === 'sid') actor.sid = actor.claimSid = 'replacement-session';
+    if (field === 'login') {
+      actor.login = 'replacement';
+      actor.owners = [actor.login];
     }
-  };
-  assert.notEqual((await runInflateEstimate(args, cfg, c.deps)).status, 'recorded');
-  const initial = c.f.body,
-    actor = await c.deps.readInflationActor();
-  actor.sid = actor.claimSid = 'replacement-session';
-  actor.generation = actor.claimGeneration = '22222222-2222-4222-8222-222222222222';
-  c.deps.readInflationActor = async () => actor;
-  await assert.rejects(runInflateEstimate(args, cfg, c.deps), /reconciliation-predecessor|actor/);
-  assert.equal(c.f.body, initial);
-  assert.deepEqual(c.writes, []);
-});
+    if (field === 'boundAt') actor.boundAt = '2026-11-01T11:31:00Z';
+    if (field === 'commonDir') actor.commonDir += '-replacement';
+    if (field === 'branch') actor.branch += '-replacement';
+    c.deps.readInflationActor = async () => actor;
+    await assert.rejects(runInflateEstimate(args, cfg, c.deps), /reconciliation-predecessor/);
+    assert.equal(c.f.body, initial);
+    assert.equal(c.f.writes.length, writes);
+    assert.deepEqual(c.writes, []);
+  });
 test('a synthetic storage checkout cannot invoke the production native actor path', async (t) => {
   const c = fromLegacy(t),
     args = await recoveryArgs(c);
@@ -343,25 +369,36 @@ test('a synthetic storage checkout cannot invoke the production native actor pat
   assert.equal(c.f.body, initial);
 });
 
-test('a claim replaced during fresh-body validation cannot publish the first successor record', async (t) => {
-  const c = fromLegacy(t),
-    args = await recoveryArgs(c),
-    readActor = c.deps.readInflationActor;
-  let moved = false;
-  c.f.deps.mutateIssueBody = async (input) => {
-    moved = true;
-    return mutateIssueBody(input);
-  };
-  c.deps.readInflationActor = async () => {
-    const actor = await readActor();
-    if (moved) actor.generation = actor.claimGeneration = '22222222-2222-4222-8222-222222222222';
-    return actor;
-  };
-  const initial = c.f.body;
-  const r = await runInflateEstimate(args, cfg, c.deps);
-  assert.notEqual(r.status, 'recorded');
-  assert.equal(c.f.body, initial, 'the pending original remains authoritative');
-});
+for (const field of ['generation', 'head', 'entryStartTs'])
+  test(
+    field + ' changing during fresh-body validation refuses the first successor write',
+    async (t) => {
+      const c = fromLegacy(t),
+        args = await recoveryArgs(c),
+        readActor = c.deps.readInflationActor;
+      let moved = false;
+      c.f.deps.mutateIssueBody = async (input) => {
+        moved = true;
+        return mutateIssueBody(input);
+      };
+      c.deps.readInflationActor = async () => {
+        const actor = await readActor();
+        if (moved && field === 'generation')
+          actor.generation = actor.claimGeneration = '22222222-2222-4222-8222-222222222222';
+        if (moved && field === 'head') actor.head = 'b'.repeat(40);
+        if (moved && field === 'entryStartTs') actor.entryStartTs = '2026-11-01T12:00:00Z';
+        return actor;
+      };
+      const initial = c.f.body,
+        writes = c.f.writes.length;
+      const r = await runInflateEstimate(args, cfg, c.deps);
+      assert.notEqual(r.status, 'recorded');
+      assert.match(r.reason, /actor-changed/);
+      assert.equal(c.f.body, initial, 'the pending original remains authoritative');
+      assert.equal(c.f.writes.length, writes);
+      assert.deepEqual(c.writes, []);
+    }
+  );
 
 for (const [baseline, higher] of [
   [3.5, false],

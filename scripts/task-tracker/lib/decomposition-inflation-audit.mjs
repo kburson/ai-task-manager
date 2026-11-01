@@ -58,12 +58,14 @@ async function readInflationActor({ subject, cfg, projectDir }) {
   });
   const binding = observeNativeBinding({ cwd, sessionId: sid });
   requireProof(same(initial, binding), 'actor-changed');
-  const { mainRoot } = readPhysicalRuntimeIdentity(cwd);
+  const { mainRoot, worktreeIdentity } = readPhysicalRuntimeIdentity(cwd);
   const claim = readOccupancy(occupancyPath(mainRoot))[String(subject.issue)];
   const record = getActiveTask(sid, cwd);
   return {
     sid,
     root: binding.root,
+    commonDir: worktreeIdentity.commonDir,
+    boundAt: claim?.boundAt,
     issue: binding.issue,
     state: binding.state,
     branch: binding.branch,
@@ -206,6 +208,9 @@ export async function reconcileInflationAudit(request, cfg, deps, listComments) 
         a.sid === a.claimSid &&
         a.root === projectDir &&
         a.root === a.claimRoot &&
+        typeof a.commonDir === 'string' &&
+        a.commonDir.length > 0 &&
+        Number.isFinite(Date.parse(a.boundAt)) &&
         a.issue === '#' + issueNumber &&
         a.claimIssue === issueNumber &&
         a.state === 'develop' &&
@@ -256,11 +261,22 @@ export async function reconcileInflationAudit(request, cfg, deps, listComments) 
   const current = await runtime.collect(subject),
     active = current.publication;
   await assertActor(current);
-  // An interrupted retry must retain the admitted actor and binding generation, too.
+  // Bind retries to the authenticated owner and lease. HEAD and timer must be
+  // stable through each write, but can legitimately change between attempts.
   successorId = estimateOperationId(writerId, {
     reconcileAudit: oldId,
     currentInput,
-    actor: admittedActor,
+    repository: subject.repository,
+    actor: {
+      login: admittedActor.login,
+      sid: admittedActor.sid,
+      provider: admittedActor.provider,
+      root: admittedActor.root,
+      commonDir: admittedActor.commonDir,
+      branch: admittedActor.branch,
+      generation: admittedActor.generation,
+      boundAt: admittedActor.boundAt,
+    },
   });
   requireProof(
     current.input.availability.status === 'complete' &&

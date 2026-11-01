@@ -241,20 +241,29 @@ export async function runMergeBackCommand(argv, deps = {}) {
   });
 }
 
-async function main(argv) {
+export async function runMergeBackMain(
+  argv,
+  deps = {},
+  write = (text) => process.stdout.write(text)
+) {
   if (wantsHelp(argv)) {
     emitSelfDoc('merge-back');
-    return;
+    return 0;
   }
-  const result = await runMergeBackCommand(argv);
-  if (result.status) process.stdout.write(JSON.stringify(result) + '\n');
-  else process.stdout.write(`merged ${result.child} into ${result.epic}\n`);
+  const result = await runMergeBackCommand(argv, deps);
+  if (result.status) write(JSON.stringify(result) + '\n');
+  else write(`merged ${result.child} into ${result.epic}\n`);
+  return result.status === 'interrupted' ? 1 : 0;
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  main(process.argv.slice(2)).catch((err) => {
-    process.stderr.write(`merge-back: ${err.message}\n`);
-    process.exit(1);
-  });
+  runMergeBackMain(process.argv.slice(2))
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((err) => {
+      process.stderr.write(`merge-back: ${err.message}\n`);
+      process.exit(1);
+    });
 }

@@ -21,7 +21,7 @@ import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mj
 import { claimOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
 import { occupancyPath } from '../../../task-tracker/paths.mjs';
 import { getActiveTask, setActiveTask } from '../../../task-tracker/session-state.mjs';
-import { runMergeBackCommand } from '../../../task-tracker/merge-back.mjs';
+import { runMergeBackCommand, runMergeBackMain } from '../../../task-tracker/merge-back.mjs';
 
 const schema = 'aitm.merge-back-recovery/v1';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -102,13 +102,14 @@ function fixture(t, { staged = false, second = false, twoConflicts = false } = {
   };
   const file = '.scratch/recovery.json';
   mkdirSync(path.join(child, '.scratch'), { recursive: true });
-  const run = (request) => {
+  const args = (request) => {
     writeFileSync(path.join(child, file), JSON.stringify({ schema, ...request }));
-    return runMergeBackCommand(['2068', child, '--recover-parent', file], deps);
+    return ['2068', child, '--recover-parent', file];
   };
+  const run = (request) => runMergeBackCommand(args(request), deps);
   const inspect = () => run({ action: 'inspect' });
   const unchanged = () => assert.deepEqual(getActiveTask(sid, child), record);
-  return { main, parent, child, branch, nodes, deps, run, inspect, unchanged, file };
+  return { main, parent, child, branch, nodes, deps, args, run, inspect, unchanged, file };
 }
 
 test('reviewed duplicate skip finishes only the parent and leaves the fixture child binding intact', async (t) => {
@@ -398,3 +399,107 @@ for (const helper of ['fsmonitor', 'clean']) {
     f.unchanged();
   });
 }
+
+test('insufficient remaining Git budget refuses before writing any reviewed resolution', async (t) => {
+  const f = fixture(t);
+  const state = await f.inspect();
+  const before = refusalState(f);
+  const bytes = Buffer.from('must remain unapplied\n');
+  let opened = false;
+  f.deps.recoveryNow = () => {
+    if (opened) return 10001;
+    opened = true;
+    return 0;
+  };
+  await assert.rejects(
+    f.run({
+      action: 'continue',
+      expected: state.snapshot,
+      reason: 'insufficient remaining budget',
+      resolutions: [{ path: 'one', base64: bytes.toString('base64'), sha256: sha(bytes) }],
+    }),
+    /insufficient.*budget/
+  );
+  assert.deepEqual(refusalState(f), before);
+  f.unchanged();
+});
+
+test('a signaled Git step reports interruption without expired readback and a valid stop can be retried', async (t) => {
+  const f = fixture(t);
+  const state = await f.inspect();
+  const childHead = git(f.child, 'rev-parse', 'HEAD');
+  const helper = path.join(f.main, '.tmp', 'signal-on-rebase');
+  const marker = path.join(f.main, '.tmp', 'signal-delivered');
+  writeFileSync(
+    helper,
+    '#!/bin/sh\nprintf signal > ' + JSON.stringify(marker) + '\nkill -TERM "$PPID"\nexit 1\n'
+  );
+  chmodSync(helper, 0o755);
+  git(f.main, 'config', 'core.fsmonitor', helper);
+  const request = {
+    action: 'skip',
+    expected: state.snapshot,
+    resolutions: [{ path: 'one', stage: 2 }],
+    reason: 'duplicate, signal control',
+  };
+  // Only a real Git helper can create this marker during the mutation. Expire
+  // the modelled lock budget at that point to catch accidental readback.
+  f.deps.recoveryNow = () => (existsSync(marker) ? 21000 : 0);
+  const output = [];
+  const code = await runMergeBackMain(f.args(request), f.deps, (text) => output.push(text));
+  assert.equal(code, 1);
+  const result = JSON.parse(output.join(''));
+  assert.equal(result.status, 'interrupted');
+  assert.equal(result.signal, 'SIGTERM');
+  assert.match(result.cause, /rebase --skip/);
+  assert.equal(result.rebaseMetadataPresent, true);
+  assert.equal(readFileSync(marker, 'utf8'), 'signal');
+  assert.equal(git(f.child, 'rev-parse', 'HEAD'), childHead);
+  f.unchanged();
+  git(f.main, 'config', '--unset', 'core.fsmonitor');
+  delete f.deps.recoveryNow;
+  const retry = await f.inspect();
+  assert.equal(retry.status, 'paused');
+  assert.equal((await f.run({ ...request, expected: retry.snapshot })).status, 'completed');
+});
+
+test('staging exhaustion reports partial working files and retains both conflict stages for retry', async (t) => {
+  const f = fixture(t, { twoConflicts: true });
+  const state = await f.inspect();
+  const before = git(f.parent, 'ls-files', '--stage');
+  const childHead = git(f.child, 'rev-parse', 'HEAD');
+  const first = Buffer.from('first reviewed file reached disk\n');
+  const observed = path.join(f.parent, 'one');
+  f.deps.recoveryNow = () => (readFileSync(observed).equals(first) ? 10500 : 0);
+  const request = {
+    action: 'continue',
+    expected: state.snapshot,
+    reason: 'two explicit resolutions',
+    resolutions: [
+      { path: 'one', base64: first.toString('base64'), sha256: sha(first) },
+      { path: 'two', stage: 3 },
+    ],
+  };
+  const result = await f.run(request);
+  assert.equal(result.status, 'interrupted');
+  assert.equal(result.phase, 'staging');
+  assert.equal(result.code, 'RECOVERY_BUDGET');
+  assert.equal(result.rebaseMetadataPresent, true);
+  assert.deepEqual(readFileSync(observed), first);
+  assert.equal(git(f.parent, 'ls-files', '--stage'), before);
+  assert.equal(git(f.child, 'rev-parse', 'HEAD'), childHead);
+  f.unchanged();
+  delete f.deps.recoveryNow;
+  const retry = await f.inspect();
+  assert.equal(retry.conflicts.length, 2);
+  assert.equal((await f.run({ ...request, expected: retry.snapshot })).status, 'completed');
+});
+
+test('an unavailable registered parent is identified without dropping its registration', async (t) => {
+  const f = fixture(t);
+  const moved = f.parent + '-retained';
+  renameSync(f.parent, moved);
+  await assert.rejects(f.inspect(), /registered retained parent checkout unavailable/);
+  assert.ok(git(f.main, 'worktree', 'list', '--porcelain').includes(f.parent));
+  assert.ok(existsSync(path.join(moved, '.git')));
+});

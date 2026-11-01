@@ -707,11 +707,11 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   }),
   'merge-back': routableContract({
     output: [
-      'Prints the child and epic branches after verified integration. Parent recovery prints a paused or completed JSON result and preserves the child binding.',
+      'Prints the child and epic branches after verified integration. Parent recovery prints a paused, completed, or interrupted JSON result. An interruption returns a nonzero exit and reports the original cause and observed metadata presence. Inspect afresh before another decision.',
     ],
     exitCodes: [
-      exitCode(0, 'child verified and merged into its epic'),
-      exitCode(1, 'lineage, sync, rebase, tests, or fast-forward merge failed'),
+      exitCode(0, 'child integrated or parent recovery observed paused or completed'),
+      exitCode(1, 'integration failed, recovery refused, or interrupted recovery JSON emitted'),
       exitCode(2, 'child issue or worktree path is invalid'),
     ],
     examples: [
