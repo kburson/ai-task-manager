@@ -103,9 +103,13 @@ export const VERB_REFERENCE = {
   },
   pause: {
     topic: 'lifecycle',
-    summary: 'Flush timing and pause the active task; sets the paused flag.',
+    summary:
+      'Flush timing and pause the active task; sets the paused flag. During a verified own-branch rebase, only the selected direct bin/aitm.mjs pause blocked carrier admits the branch mismatch; Git and binding assignment remain unchanged.',
     usage: '/task pause ["reason"]',
-    examples: ['/task pause "pause for question"'],
+    examples: [
+      '/task pause "pause for question"',
+      'node_modules/@kburson/ai-task-manager/bin/aitm.mjs pause blocked',
+    ],
   },
   resume: {
     topic: 'lifecycle',

@@ -188,23 +188,33 @@ async function evaluate(input) {
           return row?.provider === 'codex' && row.sid === input.session_id;
         })());
     if (nativeBranchMismatch) {
-      const request = branchRenewalCommand(rawCommand);
-      if (!request)
-        block(
-          (worktreeResult.reason || 'Native branch mismatch.') +
-            '\n  For a clean same-commit branch-only change, use: ' +
-            'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start ' +
-            bound.issueNumber +
-            ' --role agent --confirm-relocation'
-        );
-      try {
-        await inspectNativeBranchRenewal({
-          request,
-          root: projectRoot,
-          sessionId: input.session_id,
-        });
-      } catch (error) {
-        block(error.message);
+      const { rebasePauseCommand, inspectNativeRebasePause } =
+        await import('./lib/native-rebase-pause.mjs');
+      if (rebasePauseCommand(rawCommand)) {
+        try {
+          inspectNativeRebasePause({ root: projectRoot, sessionId: input.session_id });
+        } catch (error) {
+          block(error.message);
+        }
+      } else {
+        const request = branchRenewalCommand(rawCommand);
+        if (!request)
+          block(
+            (worktreeResult.reason || 'Native branch mismatch.') +
+              '\n  For a clean same-commit branch-only change, use: ' +
+              'node_modules/@kburson/ai-task-manager/bin/aitm.mjs start ' +
+              bound.issueNumber +
+              ' --role agent --confirm-relocation'
+          );
+        try {
+          await inspectNativeBranchRenewal({
+            request,
+            root: projectRoot,
+            sessionId: input.session_id,
+          });
+        } catch (error) {
+          block(error.message);
+        }
       }
     } else if (worktreeResult.block) block(worktreeResult.reason);
   }

@@ -2510,6 +2510,7 @@
         "node:fs",
         "./runtime.mjs",
         "./lib/native-branch-renewal.mjs",
+        "./lib/native-rebase-pause.mjs",
         "./word-counter.mjs",
         "./lib/process-timeouts.mjs",
         "./lib/worktree-binding-guard.mjs",

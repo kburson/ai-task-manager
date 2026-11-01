@@ -202,7 +202,7 @@ const ROUTABLE_SELF_DOC = {
       'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, verify through the configured project provider or Node defaults, then `--ff-only` the verified commit. Refuses conflicts, failed verification, or checkout drift.',
     audience: 'Orchestrator landing a finished child. Keeps the epic a clean linear branch.',
     usage:
-      'aitm merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json>]',
+      'aitm merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json> | --recover-child <request.json>]',
   },
   'sync-epic': {
     group: 'Epic Branching',
@@ -427,6 +427,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument(
       '--recover-parent <request.json>',
       'From the bound child, use the selected direct bin/aitm.mjs carrier and a .scratch JSON file. Start with {"schema":"aitm.merge-back-recovery/v1","action":"inspect"}. For continue or skip add expected (the returned snapshot), reason, and resolutions for every unmerged path. Select {path,stage:2} for the current rebased version, {path,stage:3} for the incoming replay, or {path,base64,sha256} for reviewed bytes. Skip requires the entire resolved index to equal parent HEAD. If inspection verifies the three guidance cache files and their replay-tree exclusion, set preserveGuidanceCache:true to save their original bytes in a verified child scratch receipt before the Git step. Other ignored or untracked evidence refuses. Git may replay additional clean commits before the next pause or completion.'
+    ),
+    argument(
+      '--recover-child <request.json>',
+      'From the current clean bound repair checkout, recover exactly one previous same-session child rebase selected from strict issue history and registered Git metadata. Use schema aitm.merge-back-child-recovery/v1 with the same inspect, expected, reason and explicit resolution fields. Set preserveWorkspaceData:true to acknowledge protected node_modules, .scratch and .tmp directories after index and replay-tree collision proof. Other untracked data refuses. Normal Git hooks remain active; the proof protects against tracked Git path collisions, not arbitrary hook effects. Completion changes only the historical child branch, never the current repair binding or epic branch.'
     ),
   ],
   'sync-epic': [argument('<epic#>', 'Epic branch to rebase onto trunk.')],
@@ -707,16 +711,17 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   }),
   'merge-back': routableContract({
     output: [
-      'Prints the child and epic branches after verified integration. Parent recovery prints a paused, completed, or interrupted JSON result. An interruption returns a nonzero exit and reports the original cause and observed metadata presence. Inspect afresh before another decision.',
+      'Prints the child and epic branches after verified integration. Recovery prints a paused, completed, or interrupted JSON result. The parentRef/parentDir fields name the checkout being recovered; childHead and lease describe the unchanged bound executor. An interruption returns a nonzero exit and reports the original cause and observed metadata presence. Inspect afresh before another decision.',
     ],
     exitCodes: [
-      exitCode(0, 'child integrated or parent recovery observed paused or completed'),
+      exitCode(0, 'child integrated or recovery observed paused or completed'),
       exitCode(1, 'integration failed, recovery refused, or interrupted recovery JSON emitted'),
       exitCode(2, 'child issue or worktree path is invalid'),
     ],
     examples: [
       'npx aitm merge-back 1023 .worktrees/1023-cli-help-defect --preserve-worktree',
       'node_modules/@kburson/ai-task-manager/bin/aitm.mjs merge-back 2068 . --recover-parent .scratch/recovery.json',
+      'node_modules/@kburson/ai-task-manager/bin/aitm.mjs merge-back 2068 . --recover-child .scratch/child-recovery.json',
     ],
     relatedCommands: ['cut-child-worktree', 'sync-epic'],
   }),
