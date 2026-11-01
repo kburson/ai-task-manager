@@ -54,8 +54,83 @@ export async function evaluateIssueDecomposition({
       deps: ports,
     }));
   const freshBody = current.sourceObservations.readIssue.value?.body;
-  if (body !== undefined && comparableSourceBody(body) !== comparableSourceBody(freshBody ?? ''))
+  let candidateCurrent = null;
+  if (ports.nativePlanBoundary) {
+    const { readNativeTransitionBoundary } = await import('./story-cache/transition-batch.mjs');
+    const { derivePlanDecompositionProjection, planProjectionResources } =
+      await import('./plan-decomposition-projection.mjs');
+    const { readNativePlanDecompositionApproval, validateNativePlanApprovalComposite } =
+      await import('./plan-approval-staging.mjs');
+    const native = await readNativeTransitionBoundary(ports.nativePlanBoundary, {
+      phase: 'native-guards',
+    });
+    const batch = native.record.generation.batch;
+    const frozen = batch.effects.find((effect) => effect.kind === 'issue-update');
+    if (
+      native.record.generation.identity.issueNumber !== issue ||
+      native.cfg.repo !== cfg.repo ||
+      frozen?.candidate.body !== body ||
+      native.snapshot.resources[frozen?.key]?.body !== freshBody
+    )
+      throw new Error('decomposition:source-body-changed');
+    const derive = (resources, assessedAt) =>
+      derivePlanDecompositionProjection({
+        source: current,
+        identity: native.record.generation.identity,
+        cfg,
+        projectDir: root,
+        ...resources,
+        assessedAt,
+        deps: { readPlanAtCommit: ports.readPlanAtCommit },
+      });
+    const baseline = await derive(
+      planProjectionResources({ snapshot: native.snapshot, body: freshBody }),
+      current.assessment.assessedAt
+    );
+    if (baseline.inputDigest !== current.inputDigest || current.projection.status !== 'current')
+      throw new Error('decomposition:baseline-inputs-changed');
+    const approved = ports.nativePlanApprovalCapability
+      ? readNativePlanDecompositionApproval(ports.nativePlanApprovalCapability)
+      : null;
+    if (approved && approved.sourceInputDigest !== current.inputDigest)
+      throw new Error('decomposition:source-inputs-changed');
+    if (ports.nativePlanApprovalCapability)
+      validateNativePlanApprovalComposite(ports.nativePlanApprovalCapability, {
+        published: freshBody,
+        candidate: body,
+      });
+    const proposed = await derive(
+      planProjectionResources({
+        record: native.record,
+        body,
+        effects: batch.effects,
+        statusKey: native.statusKey,
+      }),
+      approved?.assessedAt ?? current.assessment.assessedAt
+    );
+    if (
+      proposed.inputDigest !== current.inputDigest &&
+      (!approved || approved.inputDigest !== proposed.inputDigest)
+    )
+      throw new Error('decomposition:candidate-inputs-changed');
+    if (
+      proposed.projection.status !== 'current' ||
+      proposed.input.availability.status !== 'complete'
+    )
+      throw new Error('decomposition:candidate-assessment-unavailable');
+    candidateCurrent = { ...proposed, publishedSourceObservations: current.sourceObservations };
+    ports.onNativeProjection?.({
+      source: current,
+      inputDigest: proposed.inputDigest,
+      assessment: proposed.assessment,
+    });
+  } else if (
+    body !== undefined &&
+    comparableSourceBody(body) !== comparableSourceBody(freshBody ?? '')
+  ) {
     throw new Error('decomposition:source-body-changed');
+  }
+  if (candidateCurrent) current = candidateCurrent;
   const input = current.input;
   return {
     ...current,

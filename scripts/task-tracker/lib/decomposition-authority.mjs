@@ -129,7 +129,7 @@ async function readPlanAtCommit({ projectDir, planCommit, planPath }) {
     })
   ).stdout;
 }
-async function selectedPlan({ body, kind, projectDir, deps }) {
+export async function readDecompositionSelectedPlan({ body, kind, projectDir, deps }) {
   const reference =
     kind === 'epic' && linkedDecompositionPlanPath(body)
       ? { path: linkedDecompositionPlanPath(body), key: null }
@@ -209,7 +209,8 @@ function readPorts({ cfg, projectDir, deps }) {
           kind === 'epic' ? await fetchEpicChildren({ cfg, parentEpicNumber: subject.issue }) : [],
       });
     },
-    readSelectedPlan: async (args) => observed(await selectedPlan({ ...args, projectDir, deps })),
+    readSelectedPlan: async (args) =>
+      observed(await readDecompositionSelectedPlan({ ...args, projectDir, deps })),
     readForecast: async ({ subject, body }) => {
       const forecastDeps = deps.forecast ?? {};
       const graphql =
@@ -234,85 +235,107 @@ function readPorts({ cfg, projectDir, deps }) {
         repository: cfg.repo,
         issue: subject.issue,
       });
-      const active = records.filter(
-        (record) =>
-          record.envelope.recordType === 'estimation-forecast' &&
-          p.activeForecastRecordIds.includes(record.envelope.recordId)
-      );
-      const ready = [
-        ...maskFencedCodeBlocksPreservingOffsets(body).matchAll(
-          /<!--\s*aitm-estimation-forecast-ready\b[\s\S]*?(?:-->|$)/g
-        ),
-      ];
-      const readyId =
-        ready.length === 1
-          ? ready[0][0].match(
-              /^<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->$/
-            )?.[1]
-          : null;
-      let complete =
-        (ready.length === 0 && active.length === 0) ||
-        (ready.length === 1 &&
-          active.length === 1 &&
-          readyId === active[0].envelope.recordId &&
-          p.forecast?.recordId === readyId);
-      const retired = await confirmedForecastRetirement({
-        publication: readDecompositionRecords(body).publication,
-        body,
-        active,
-        ready,
-        project: { ...p.board, projectItemId: subject.projectItemId },
-        bodyFields: p.bodyFields,
-      });
-      if (retired) complete = true;
-      if (active.length !== p.activeForecastRecordIds.length) complete = false;
-      const known = active
-        .map((record) => ({
-          estimate: record.envelope.payload.plan.humanHours,
-          size: record.envelope.payload.plan.size,
-          recordId: record.envelope.recordId,
-          payloadHash: record.envelope.payloadHash,
-        }))
-        .sort((a, b) => b.estimate - a.estimate);
-      const published = known[0] ?? {
-        estimate: null,
-        size: null,
-        recordId: null,
-        payloadHash: null,
-      };
-      const proposalResult = collectDecompositionCommentProposals({
-        comments,
+      return deriveDecompositionForecastObservation({
         subject,
         body,
-        published: complete && p.forecast ? published : null,
-        board: p.board,
-        bodyFields: p.bodyFields,
+        comments,
+        records,
+        projection: p,
       });
-      const value = {
-        ...published,
-        proposals: proposalResult.proposals,
-        observedProjections: [p.board, p.bodyFields],
-      };
-      if (!complete) {
-        const transition = forecastPublicationTransition({
-          ready,
-          readyId,
-          active,
-          projection: p,
-          proposalsAvailable: proposalResult.available,
-        });
-        if (transition) value.publicationTransition = transition;
-      }
-      return {
-        status: complete && proposalResult.available ? 'observed' : 'unavailable',
-        value,
-        revision: null,
-        digest: sha(value),
-      };
     },
     readPolicy: async () => observed(decompositionPolicyIdentity()),
   };
   return Object.fromEntries(Object.keys(defaults).map((key) => [key, deps[key] ?? defaults[key]]));
+}
+// Bounded resource derivation; projected rows remain explicitly unpublished.
+export async function deriveDecompositionForecastObservation({
+  subject,
+  body,
+  comments,
+  records,
+  projection: p,
+  projectionKind = 'published',
+}) {
+  const active = records.filter(
+    (record) =>
+      record.envelope.recordType === 'estimation-forecast' &&
+      p.activeForecastRecordIds.includes(record.envelope.recordId)
+  );
+  const ready = [
+    ...maskFencedCodeBlocksPreservingOffsets(body).matchAll(
+      /<!--\s*aitm-estimation-forecast-ready\b[\s\S]*?(?:-->|$)/g
+    ),
+  ];
+  const readyId =
+    ready.length === 1
+      ? ready[0][0].match(
+          /^<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->$/
+        )?.[1]
+      : null;
+  let complete =
+    (ready.length === 0 && active.length === 0) ||
+    (ready.length === 1 &&
+      active.length === 1 &&
+      readyId === active[0].envelope.recordId &&
+      p.forecast?.recordId === readyId);
+  const retired = await confirmedForecastRetirement({
+    publication: readDecompositionRecords(body).publication,
+    body,
+    active,
+    ready,
+    project: { ...p.board, projectItemId: subject.projectItemId },
+    bodyFields: p.bodyFields,
+  });
+  if (retired) complete = true;
+  if (active.length !== p.activeForecastRecordIds.length) complete = false;
+  const known = active
+    .map((record) => ({
+      estimate: record.envelope.payload.plan.humanHours,
+      size: record.envelope.payload.plan.size,
+      recordId: record.envelope.recordId,
+      payloadHash: record.envelope.payloadHash,
+    }))
+    .sort((a, b) => b.estimate - a.estimate);
+  const published = known[0] ?? {
+    estimate: null,
+    size: null,
+    recordId: null,
+    payloadHash: null,
+  };
+  const proposalResult = collectDecompositionCommentProposals({
+    comments,
+    subject,
+    body,
+    published: complete && p.forecast ? published : null,
+    board: p.board,
+    bodyFields: p.bodyFields,
+  });
+  const value = {
+    ...published,
+    proposals: proposalResult.proposals,
+    observedProjections: [p.board, p.bodyFields],
+  };
+  if (!complete) {
+    const transition = forecastPublicationTransition({
+      ready,
+      readyId,
+      active,
+      projection: p,
+      proposalsAvailable: proposalResult.available,
+    });
+    if (transition) value.publicationTransition = transition;
+  }
+  return {
+    status:
+      complete && proposalResult.available
+        ? projectionKind === 'frozen-candidate'
+          ? 'projected'
+          : 'observed'
+        : 'unavailable',
+    value,
+    revision: null,
+    digest: sha(value),
+  };
 }
 export function collectDecompositionCommentProposals({
   comments,
@@ -346,6 +369,16 @@ export function collectDecompositionCommentProposals({
         bodyFields,
       }),
   });
+}
+// Opaque IDs carry no creation-order meaning. This is the canonical current
+// business order; the last equal-hours proposal consistently wins below.
+function orderedProposals(proposals) {
+  const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+  return [...proposals].sort(
+    (a, b) =>
+      compare(a.proposalId ?? '', b.proposalId ?? '') ||
+      compare(a.sourceDigest ?? '', b.sourceDigest ?? '')
+  );
 }
 
 // Intended-value calculation only. A fully confirmed ordinary inflation has no
@@ -461,7 +494,7 @@ function parsedCommentProposals({
     });
   }
   if (proposals.length > 32) available = false;
-  return { available, proposals };
+  return { available, proposals: orderedProposals(proposals) };
 }
 async function read(port, args) {
   try {
@@ -577,27 +610,64 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     subject.repository.trim().toLowerCase() !== cfg.repo.toLowerCase()
   )
     throw new TypeError('decomposition:subject');
-  const reasons = new Set();
   const ports = readPorts({ cfg, projectDir, deps });
   const issue = await read(ports.readIssue, { subject, cfg, projectDir });
+  if (
+    issue.status !== 'observed' ||
+    issue.value?.number !== subject.issue ||
+    typeof issue.value?.body !== 'string'
+  )
+    return deriveDecompositionAuthority({
+      subject,
+      cfg,
+      projectDir,
+      deps,
+      issue,
+      reads: Array.from({ length: 4 }, () => unavailable()),
+    });
+  const body = issue.value?.body ?? '';
+  const kind = genuineKind(body, new Set());
+  const names = ['readProject', 'readSelectedPlan', 'readForecast', 'readPolicy'];
+  const reads = await Promise.all(
+    names.map((name) => read(ports[name], { subject, cfg, projectDir, body, kind }))
+  );
+  return deriveDecompositionAuthority({ subject, cfg, projectDir, deps, issue, reads });
+}
+// Domain derivation shared by published collection and distinctly tagged frozen inputs.
+export async function deriveDecompositionAuthority({
+  subject,
+  cfg,
+  projectDir,
+  deps = {},
+  issue,
+  reads,
+  projectionKind = 'published',
+  assessedAt,
+} = {}) {
+  if (!['published', 'frozen-candidate'].includes(projectionKind))
+    throw new TypeError('decomposition:projection-kind');
+  const available = (value) =>
+    value.status === 'observed' ||
+    (projectionKind === 'frozen-candidate' && value.status === 'projected');
+  const reasons = new Set();
   let body = '';
   if (
-    issue.status === 'observed' &&
-    issue.value.number === subject.issue &&
-    typeof issue.value.body === 'string'
+    available(issue) &&
+    issue.value?.number === subject.issue &&
+    typeof issue.value?.body === 'string'
   )
     body = issue.value.body;
   else reasons.add('authority-conflict');
   const kind = genuineKind(body, reasons);
   const names = ['readProject', 'readSelectedPlan', 'readForecast', 'readPolicy'];
-  const reads = await Promise.all(
-    names.map((name) => read(ports[name], { subject, cfg, projectDir, body, kind }))
-  );
   const [projectRead, planRead, forecastRead, policyRead] = reads;
   const project = projectRead.value;
-  const forecast = forecastRead.value;
+  const forecast =
+    forecastRead.value && Array.isArray(forecastRead.value.proposals)
+      ? { ...forecastRead.value, proposals: orderedProposals(forecastRead.value.proposals) }
+      : forecastRead.value;
   names.forEach((name, index) => {
-    if (reads[index].status !== 'observed')
+    if (!available(reads[index]))
       reasons.add(
         {
           readProject: 'project-unavailable',
@@ -619,7 +689,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   const fields = parseIssueFieldDb(body);
   if (!fields.ok) reasons.add('authority-conflict');
   if (
-    projectRead.status === 'observed' &&
+    available(projectRead) &&
     fields.ok &&
     ['estimate', 'size'].some((key) => (project?.[key] ?? null) !== (fields.values[key] ?? null))
   )
@@ -700,10 +770,9 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
     if (tiers.includes(proposal.size) && tiers.indexOf(proposal.size) > tiers.indexOf(size))
       size = proposal.size;
   }
-  let plan =
-    planRead.status === 'observed'
-      ? planRead.value
-      : { ...NONE, availability: 'unavailable', references: null };
+  let plan = available(planRead)
+    ? planRead.value
+    : { ...NONE, availability: 'unavailable', references: null };
   if (
     !plan ||
     !['absent', 'available', 'unavailable'].includes(plan.availability) ||
@@ -773,7 +842,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   }
   const { references: _references, ...wirePlan } = plan;
   const currentPolicy = decompositionPolicyIdentity();
-  if (policyRead.status !== 'observed' || !same(policyRead.value, currentPolicy))
+  if (!available(policyRead) || !same(policyRead.value, currentPolicy))
     reasons.add('policy-unavailable');
   let input = normalizeDecompositionInputs({
     schema: 'aitm.decomposition-input/v1',
@@ -795,6 +864,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
   const inputDigest = decompositionInputDigest(input);
   const assessment = assessDecomposition(input, {
     publication: recordError ? null : records.publication,
+    ...(assessedAt ? { assessedAt } : {}),
   });
   let visibleCurrent = true;
   if (!recordError && records.assessment) {
@@ -814,6 +884,7 @@ export async function collectDecompositionAuthority({ subject, cfg, projectDir, 
         ? 'current'
         : 'stale';
   return {
+    ...(projectionKind === 'frozen-candidate' ? { basis: projectionKind } : {}),
     input,
     inputDigest,
     assessment,

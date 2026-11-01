@@ -9,6 +9,9 @@ import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { storyIdentityKey, validateManifest } from './manifest.mjs';
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const same = (a, b) => canonicalRecordJson(a) === canonicalRecordJson(b);
+const nativeStores = new WeakSet();
+// @story #2069 — authority readers require the actual opened store, not its shape.
+export const isNativeStoryStore = (store) => nativeStores.has(store);
 function fail(reason, cause) {
   throw Object.assign(new Error(`Story store unavailable: ${reason}`, { cause }), {
     code: 'STORY_STORE_UNAVAILABLE',
@@ -230,9 +233,31 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
     for (const dir of ['payloads', 'generations', 'manifests'])
       await walk(path.join(cachePath, dir), { create: true, leafDirectory: true });
     await readGeneration();
-    const commitGeneration = async (next, { expectedGeneration } = {}) => {
+    const commitGeneration = async (next, { expectedGeneration, nativeApprovalIssuance } = {}) => {
       let lock;
       try {
+        const descriptors = Object.getOwnPropertyDescriptors(next);
+        if (
+          Reflect.ownKeys(descriptors).sort().join(',') !== 'claimId,generation,payloads' ||
+          Object.values(descriptors).some(
+            (descriptor) => !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')
+          ) ||
+          !(descriptors.payloads.value instanceof Map)
+        )
+          fail('commit-input');
+        // Snapshot once before awaits or native issuance checks. Never inspect a caller
+        // accessor or an overridden Map iterator again during persistence.
+        next = {
+          generation: JSON.parse(canonicalRecordJson(descriptors.generation.value)),
+          claimId: descriptors.claimId.value,
+          payloads: new Map(
+            [...Map.prototype.entries.call(descriptors.payloads.value)].map(([key, bytes]) => {
+              if (typeof key !== 'string' || !(typeof bytes === 'string' || Buffer.isBuffer(bytes)))
+                fail('commit-payload');
+              return [key, Buffer.from(bytes)];
+            })
+          ),
+        };
         await walk(path.join(cachePath, 'write.lock'));
         lock = await io.open(
           path.join(cachePath, 'write.lock'),
@@ -241,6 +266,13 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
         );
         const current = await readGeneration();
         if (expectedGeneration !== (current?.manifest.generation ?? null)) fail('generation-race');
+        const { authorizeNativePlanApprovalCommit } = await import('../plan-approval-staging.mjs');
+        authorizeNativePlanApprovalCommit({
+          current,
+          next,
+          cachePath,
+          issuance: nativeApprovalIssuance,
+        });
         const candidate = JSON.parse(canonicalRecordJson(next.generation));
         const n = (current?.manifest.generation ?? 0) + 1;
         if (candidate.generation !== n || !(next.payloads instanceof Map)) fail('generation');
@@ -302,7 +334,9 @@ export async function openStoryStore({ projectRoot, identity, fs: io = nodeFs } 
         }
       }
     };
-    return Object.freeze({ cachePath, readGeneration, commitGeneration });
+    const store = Object.freeze({ cachePath, readGeneration, commitGeneration });
+    if (io === nodeFs) nativeStores.add(store);
+    return store;
   } catch (error) {
     if (error.code?.startsWith('STORY_STORE_')) throw error;
     fail('open', error);

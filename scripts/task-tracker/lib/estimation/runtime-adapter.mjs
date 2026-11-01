@@ -275,7 +275,7 @@ export function plannedAppendix(nodes, issueNumber) {
   };
 }
 
-function recordsForProjection(records) {
+export function recordsForProjection(records) {
   const forecasts = records.filter(
     (record) => record.envelope.recordType === 'estimation-forecast'
   );

@@ -10,6 +10,7 @@ import { validateExecutableTransition } from '../lifecycle-policy/executable-tra
 import { assertTimingActorKey } from '../timing-actor.mjs';
 import { ownedCommentMarker } from '../owned-comment.mjs';
 import { parseAitmRecord } from '../github-records/record-envelope.mjs';
+import { validateNativePlanApprovalDelta } from '../plan-approval-staging.mjs';
 const json = canonicalRecordJson;
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const clone = (value) => JSON.parse(json(value));
@@ -61,7 +62,7 @@ function payload(record, reference) {
   if (hash(value) !== reference.digest) fail('payload-digest');
   return value;
 }
-function stagedIssue(record, key) {
+function stagedIssue(record, key, capabilities, transition) {
   const generation = record.generation;
   const entry = generation.working[key];
   if (!entry)
@@ -69,7 +70,6 @@ function stagedIssue(record, key) {
       body: payload(record, generation.baseSnapshot.resources[key]),
       title: generation.baseSnapshot.title,
     };
-  if (entry.capabilityRef !== null) fail('retained-capability');
   const raw = payload(record, entry);
   let value;
   try {
@@ -82,10 +82,32 @@ function stagedIssue(record, key) {
     typeof value.schema === 'string' &&
     value.schema.startsWith('aitm.story-issue-update/')
   ) {
+    if (value.schema === 'aitm.story-issue-update/v2') {
+      exact(value, ['schema', 'body', 'title', 'nativeApproval']);
+      if (json(value) !== raw || transition.from !== 'plan' || transition.to !== 'develop')
+        fail('native-approval-transition');
+      const operations =
+        capabilities?.filter((operation) => operation.capability?.nativePlanApprovalCapability) ??
+        [];
+      if (
+        operations.length !== 1 ||
+        operations[0].base !== value.nativeApproval.beforeBody ||
+        operations[0].candidate !== value.body
+      )
+        fail('native-approval-capability');
+      const reference = validateNativePlanApprovalDelta(
+        operations[0].capability.nativePlanApprovalCapability,
+        { base: operations[0].base, candidate: value.body }
+      );
+      if (reference !== entry.capabilityRef) fail('native-approval-reference');
+      return { body: value.body, title: value.title };
+    }
+    if (entry.capabilityRef !== null) fail('retained-capability');
     exact(value, ['schema', 'body', 'title']);
     if (value.schema !== 'aitm.story-issue-update/v1' || json(value) !== raw) fail('issue-payload');
     return { body: value.body, title: value.title };
   }
+  if (entry.capabilityRef !== null) fail('retained-capability');
   return { body: raw, title: generation.baseSnapshot.title };
 }
 function owner(body, nodeId, identity) {
@@ -237,7 +259,7 @@ export function freezeStoryBatch(input) {
     )
       fail('issue-identity');
     const record = { manifest: verified.manifest, generation, payloads };
-    const intent = stagedIssue(record, issueKey);
+    const intent = stagedIssue(record, issueKey, input.capabilities, transition);
     const candidate = issue.candidate;
     const templated = candidate?.schema === 'aitm.story-final-body-template/v1';
     exact(

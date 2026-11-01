@@ -376,19 +376,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 106,
+          "line": 181,
           "fingerprint": "sha256:937ee8e1eaa09ea2778622d753476b597a8c9beb70300c8a9e702571e5cefc71",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 174,
+          "line": 249,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 177,
+          "line": 252,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         }
@@ -534,25 +534,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 59,
+          "line": 96,
           "fingerprint": "sha256:a59a626c789a89b81b587ef20a91548d67b622a3c167cc62bca5ef8015344cf5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 65,
+          "line": 102,
           "fingerprint": "sha256:2caa9f02a36dd9613862ce1911c2b7ff1624b40c0a7ad38abc09a79c2325203f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 72,
+          "line": 109,
           "fingerprint": "sha256:ff22e5660b12089b26aac6620e0d7a38f7639498484e2d430dc71ea8a3146838",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 75,
+          "line": 112,
           "fingerprint": "sha256:62ee146c3e3f83257bafdd9a5a13cf0c065724d53cc536935d93a06e66a48022",
           "kind": "refusal"
         }
@@ -580,43 +580,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 37,
-          "fingerprint": "sha256:f7bb5131c4575a4aa62e3f9c0c5023dcb9243470ac55b388e276983d5f92d57a",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 47,
-          "fingerprint": "sha256:c2addc64484628a39948d151e1e8d3f3e0004b01aa33ec3f6fedf4541fd3abd6",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 66,
+          "line": 243,
           "fingerprint": "sha256:2aa356d53782324f4fa35e07357283cc0cf8f33dcf03b0fcf1553a4766612632",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 77,
+          "line": 254,
           "fingerprint": "sha256:1827b1ccdda7b89f219bed02b6ad2e2549e7e5e05df6f1bcc18b078f31730604",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 86,
+          "line": 263,
           "fingerprint": "sha256:d9a49cc47cf4b66d78088776ba642fff9e4864d7767ecfc5b39cc7916e1e428d",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 95,
-          "fingerprint": "sha256:0757a26d7c44a9eb2d2adaaa2a41b1b9c759d8ee674bbd75f6219c214d6db4b3",
-          "kind": "refusal"
-        },
-        {
-          "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
-          "line": 104,
+          "line": 281,
           "fingerprint": "sha256:663417799ab970a83caaaaa04d0ce4bb3e297c8e808e3ec088abd408799b8a9f",
           "kind": "refusal"
         }

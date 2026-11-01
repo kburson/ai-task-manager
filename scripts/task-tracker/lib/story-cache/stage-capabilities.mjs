@@ -3,6 +3,7 @@
 import { validateReviewedDelta } from '../reviewed-scope/record.mjs';
 import { scanScope, resolveScopeTarget } from '../reviewed-scope/targets.mjs';
 import { stripBodyVersion } from '../versioned-issue-write.mjs';
+import { validateNativePlanApprovalDelta } from '../plan-approval-staging.mjs';
 import {
   INVARIANT_MARKER_PATTERNS,
   findLostMarkers,
@@ -62,9 +63,20 @@ function authority(input) {
   if (input === undefined || input === null) return null;
   const value = exact(
     input,
-    ['reviewedEvidenceCapability', 'decompositionMutationCapability', 'issueNumber', 'repo'],
+    [
+      'reviewedEvidenceCapability',
+      'decompositionMutationCapability',
+      'nativePlanApprovalCapability',
+      'issueNumber',
+      'repo',
+    ],
     []
   );
+  if (Object.hasOwn(value, 'nativePlanApprovalCapability')) {
+    if (Object.keys(value).length !== 1 || !value.nativePlanApprovalCapability)
+      refuse('capability');
+    return value;
+  }
   if (Object.hasOwn(value, 'reviewedEvidenceCapability')) {
     if (Object.keys(value).length !== 1 || !value.reviewedEvidenceCapability) refuse('capability');
     return value;
@@ -112,6 +124,10 @@ function rawReviewedTarget(base, candidate, nativeLine) {
 function local(operation) {
   const { base, candidate, capability } = operation;
   common(base, candidate);
+  if (capability?.nativePlanApprovalCapability) {
+    validateNativePlanApprovalDelta(capability.nativePlanApprovalCapability, { base, candidate });
+    return null;
+  }
   const reviewedLine = validateReviewedDelta(
     base,
     candidate,
@@ -182,7 +198,14 @@ export function validateStagedComposite(input) {
     // No union of per-operation permission flags authorizes the composite.
     let projected = candidate;
     for (const operation of retained.toReversed()) {
-      if (operation.capability?.reviewedEvidenceCapability) {
+      if (operation.capability?.nativePlanApprovalCapability) {
+        if (projected !== operation.candidate) refuse('native-approval-delta');
+        validateNativePlanApprovalDelta(operation.capability.nativePlanApprovalCapability, {
+          base: operation.base,
+          candidate: projected,
+        });
+        projected = operation.base;
+      } else if (operation.capability?.reviewedEvidenceCapability) {
         const { before, after } = operation.reviewedTarget;
         const restored = replaceLine(projected, after, before);
         validateReviewedDelta(restored, projected, operation.capability.reviewedEvidenceCapability);

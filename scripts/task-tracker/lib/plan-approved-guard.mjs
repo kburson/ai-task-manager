@@ -20,11 +20,48 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { hasPlanApprovedMarker, parsePlanApprovedMarker } from './markers.mjs';
+import {
+  hasPlanApprovedMarker,
+  parsePlanApprovedMarker,
+  stripFencedCodeBlocks,
+  maskFencedCodeBlocksPreservingOffsets,
+} from './markers.mjs';
 import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 import { resolveGate } from './gate-resolve.mjs';
 
 const pexec = promisify(execFile);
+
+function candidateApprovalClaim(body) {
+  const claims = [
+    ...maskFencedCodeBlocksPreservingOffsets(String(body)).matchAll(
+      /<!--\s*aitm-plan-approved\b[^>]*-->/gi
+    ),
+  ];
+  if (claims.length !== 1) throw new Error('plan-candidate:approval-marker-count');
+  return claims[0];
+}
+export function readCandidatePlanApprovalMarker(body) {
+  return candidateApprovalClaim(body)[0];
+}
+export function removeCandidatePlanApprovalMarker(body) {
+  const claim = candidateApprovalClaim(body);
+  return body.slice(0, claim.index) + body.slice(claim.index + claim[0].length);
+}
+
+// @story #2069 — candidate authority admits one standalone, unfenced marker.
+export function readCandidateForecastReady(body) {
+  const text = stripFencedCodeBlocks(String(body));
+  const occurrences = [...text.matchAll(/<!--\s*aitm-estimation-forecast-ready\b/gi)];
+  if (occurrences.length === 0) return null;
+  const markers = [
+    ...text.matchAll(
+      /^[ \t]*<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->[ \t]*$/gim
+    ),
+  ];
+  if (occurrences.length !== 1 || markers.length !== 1)
+    throw new Error('plan-candidate:forecast-ready-ambiguous');
+  return markers[0][1];
+}
 
 export async function defaultResolveTrunkSha({ cfg, projectDir }) {
   const ref = cfg?.trunkRef || 'origin/trunk';

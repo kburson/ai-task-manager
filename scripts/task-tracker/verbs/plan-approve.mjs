@@ -42,8 +42,15 @@ import {
   upsertEpicOrchestrationPlan,
   verifyEpicOrchestrationPlan,
 } from '../lib/epic-orchestration-plan.mjs';
-import { defaultResolveTrunkSha } from '../lib/plan-approved-guard.mjs';
+import {
+  defaultResolveTrunkSha,
+  readCandidateForecastReady,
+  readCandidatePlanApprovalMarker,
+} from '../lib/plan-approved-guard.mjs';
 import { parseEntryMarkers } from '../lib/stage-entry-grammar.mjs';
+import { computeScopeIdentity } from '../lib/workflow-policy/scope-identity.mjs';
+import { markdownViews } from '../lib/plan-markdown-views.mjs';
+import { substantiveMetadataFields } from '../lib/metadata-section.mjs';
 import {
   formatGovernedPlanPolicyRefusal,
   validateGovernedLinkedPlan,
@@ -62,6 +69,28 @@ import {
 // idempotency check still fires after the writer flip.
 const FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
+
+// @story #2069 — only the native approval path can mint this process-local grant.
+// Serialized markers and old already-approved/repair results are not grants.
+const candidateApprovals = new WeakMap();
+function candidatePlanReference(body) {
+  const visible = markdownViews(body).structuralLines.join('\n');
+  return JSON.stringify({
+    count: [...visible.matchAll(/^##\s+Plan Metadata\s*$/gm)].length,
+    fields: substantiveMetadataFields(visible, 'Plan Metadata').map(({ key, value }) => ({
+      key,
+      value,
+    })),
+  });
+}
+function candidateApprovalMarker(body) {
+  return readCandidatePlanApprovalMarker(body);
+}
+export async function verifyRetainedPlanApproval(capability, input = {}) {
+  const retained = candidateApprovals.get(capability);
+  if (!retained) throw new Error('plan-candidate:approval-capability');
+  return retained(input);
+}
 
 function hasEntry(body, state) {
   return parseEntryMarkers(body).some((entry) => entry.state === state);
@@ -116,6 +145,7 @@ export async function runPlanApprove({
   cfg,
   projectDir,
   repairFromEvidence = false,
+  retainCandidateAuthority = false,
   deps = {},
 } = {}) {
   if (!issueNumber) throw new Error('plan-approve: issueNumber is required');
@@ -128,6 +158,10 @@ export async function runPlanApprove({
   const ensureAudit = deps.ensureFullAutoPlanApprovalAudit || ensureFullAutoPlanApprovalAudit;
   const env = deps.env ?? process.env;
   const requestedMode = isExplicitFullAutoPlanApproval(env) ? 'full-auto' : 'human';
+  const readReady = (value) =>
+    retainCandidateAuthority
+      ? readCandidateForecastReady(value)
+      : (value.match(FORECAST_READY_RE)?.[1] ?? null);
   const auditDeps = {
     listComments: deps.listComments,
     postComment: deps.postComment,
@@ -408,10 +442,10 @@ export async function runPlanApprove({
   });
   const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
   const trunkSha =
-    requiresTrunkProvenance || epicChildren.length > 0
+    retainCandidateAuthority || requiresTrunkProvenance || epicChildren.length > 0
       ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
       : null;
-  const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
+  const forecastRecordId = readReady(body);
   const hasApproval = hasPlanApprovedMarker(body);
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
   const lateRepair =
@@ -435,7 +469,7 @@ export async function runPlanApprove({
       issueNumber,
       repo: cfg.repo,
       mutate: (base) => {
-        const freshReady = base.match(FORECAST_READY_RE)?.[1] ?? null;
+        const freshReady = readReady(base);
         const freshFrozen = readPlanApprovedForecastRecordId(base);
         if (freshFrozen !== null) return base;
         if (!hasPlanApprovedMarker(base) || freshReady === null) {
@@ -510,7 +544,32 @@ export async function runPlanApprove({
       message: `#${issueNumber}: ${(resolved?.violations ?? []).map((v) => `${v.code}: ${v.message}`).join('; ')}; repair/review the source, then npx aitm plan-approve #${issueNumber}.`,
     };
   const binding = resolved.binding;
-  function observeFresh(base) {
+  const reviewedScope = retainCandidateAuthority
+    ? computeScopeIdentity({ repository: cfg.repo, issue: Number(issueNumber), body })
+    : null;
+  const reviewedPlan = retainCandidateAuthority ? candidatePlanReference(body) : null;
+  const reviewedApproval = JSON.stringify(parsePlanApprovedMarker(body));
+  const reviewedForecast = readReady(body);
+  const readSelection = deps.readCurrentForecastSelection;
+  const needsSelection =
+    retainCandidateAuthority && (adaptiveConfigured || reviewedForecast !== null);
+  if (needsSelection && typeof readSelection !== 'function')
+    throw new Error('plan-candidate:current-selection-required');
+  const reviewedSelection = needsSelection ? JSON.stringify(await readSelection()) : null;
+  if (needsSelection && (!reviewedSelection || reviewedSelection === 'null'))
+    throw new Error('plan-candidate:current-selection-required');
+  function observeFresh(base, afterStamp = false) {
+    if (retainCandidateAuthority) {
+      if (
+        computeScopeIdentity({ repository: cfg.repo, issue: Number(issueNumber), body: base }) !==
+        reviewedScope
+      )
+        throw new Error('plan-candidate:reviewed-scope-changed');
+      if (candidatePlanReference(base) !== reviewedPlan || readReady(base) !== reviewedForecast)
+        throw new Error('plan-candidate:reviewed-plan-or-forecast-changed');
+      if (!afterStamp && JSON.stringify(parsePlanApprovedMarker(base)) !== reviewedApproval)
+        throw new Error('plan-candidate:concurrent-approval');
+    }
     try {
       if (parseIssueDirectory({ issueBody: base }) !== null)
         throw new Error('directory authority appeared');
@@ -603,6 +662,7 @@ export async function runPlanApprove({
   let previousApproval = parsedApproval;
   let expectedApproval = null;
   let repairedBinding = false;
+  let stampedApproval = false;
   // The first mutation derives the next body from the fresh base and honors
   // concurrent approval/entry markers. Retry rebases are checked separately
   // by validateFreshBase before the governed writer pushes.
@@ -611,13 +671,13 @@ export async function runPlanApprove({
     repo: cfg.repo,
     // The versioned writer rebases edits on retry without rerunning mutate.
     // Its validation hook must therefore certify every fresh base before push.
-    validateFreshBase: observeFresh,
+    validateFreshBase: (base) => observeFresh(base),
     mutate: (base) => {
       let n = base;
       if (!hasEntry(n, 'plan')) {
         n = stampEntryMarker(n, 'plan', ts);
       }
-      const freshForecastRecordId = n.match(FORECAST_READY_RE)?.[1] ?? null;
+      const freshForecastRecordId = readReady(n);
       if (adaptiveConfigured && freshForecastRecordId === null) {
         throw new Error('plan-approve: adaptive forecast marker disappeared before approval');
       }
@@ -633,24 +693,30 @@ export async function runPlanApprove({
         repairedBinding && freshApproval.ts === ts
           ? new Date(Date.parse(ts) + 1).toISOString()
           : ts;
-      if (!freshComplete)
+      if (!freshComplete) {
         n = upsertPlanApprovedMarker(n, approvalTs, {
           ...binding,
           forecastRecordId: adaptiveConfigured
             ? freshForecastRecordId
             : (freshApproval?.forecastRecordId ?? null),
-          mode: freshBindingComplete
-            ? freshApproval.mode === 'unknown'
-              ? null
-              : freshApproval.mode
-            : requestedMode,
+          mode: retainCandidateAuthority
+            ? requestedMode
+            : freshBindingComplete
+              ? freshApproval.mode === 'unknown'
+                ? null
+                : freshApproval.mode
+              : requestedMode,
           trunkSha,
         });
+        stampedApproval = true;
+      }
       expectedApproval = parsePlanApprovedMarker(n);
       if (epicChildren.length > 0) {
         n = upsertEpicOrchestrationPlan(n, { children: epicChildren, trunkSha });
       }
-      return wrapDeepDiveInDetails(n);
+      // The wrapper can become adjacent AC text; an approval grant must preserve
+      // the exact scope that was reviewed rather than adopting presentation edits.
+      return retainCandidateAuthority ? n : wrapDeepDiveInDetails(n);
     },
   });
   const persistedBody =
@@ -659,7 +725,7 @@ export async function runPlanApprove({
       : await fetchIssueBody({ issueNumber, repo: cfg.repo });
 
   try {
-    observeFresh(persistedBody);
+    observeFresh(persistedBody, true);
   } catch (error) {
     return { status: 'story-approval-binding-persistence-mismatch', message: error.message };
   }
@@ -717,7 +783,51 @@ export async function runPlanApprove({
   if (hasApproval && adaptiveConfigured && !approvalComplete) {
     return { status: 'repaired-approval', ts: approved.ts, mode: approved.mode, audit };
   }
-  return { status: 'approved', ts: approved.ts, mode: approved.mode, audit };
+  const result = { status: 'approved', ts: approved.ts, mode: approved.mode, audit };
+  if (retainCandidateAuthority && stampedApproval) {
+    if (!['human', 'full-auto'].includes(approved.mode) || !approved.trunkSha)
+      throw new Error('plan-candidate:approval-provenance');
+    const root = path.resolve(projectDir || getProjectDir());
+    const repository = cfg.repo;
+    const issue = Number(issueNumber);
+    const scopeIdentity = computeScopeIdentity({ repository, issue, body: persistedBody });
+    const fixedApproval = Object.freeze({ ...approved });
+    const fixedMarker = candidateApprovalMarker(persistedBody);
+    const planReference = candidatePlanReference(persistedBody);
+    const fixedCfg = JSON.parse(JSON.stringify(cfg));
+    const capability = Object.freeze({});
+    candidateApprovals.set(capability, async (input) => {
+      if (input.repository !== repository || input.issue !== issue || input.projectDir !== root)
+        throw new Error('plan-candidate:approval-identity');
+      const current = observeFresh(input.body, true);
+      if (candidatePlanReference(input.body) !== planReference)
+        throw new Error('plan-candidate:plan-reference-drift');
+      if (computeScopeIdentity({ repository, issue, body: input.body }) !== scopeIdentity)
+        throw new Error('plan-candidate:scope-drift');
+      if (JSON.stringify(parsePlanApprovedMarker(input.body)) !== JSON.stringify(fixedApproval))
+        throw new Error('plan-candidate:approval-marker-drift');
+      if (candidateApprovalMarker(input.body) !== fixedMarker)
+        throw new Error('plan-candidate:approval-marker-drift');
+      if (readCandidateForecastReady(input.body) !== fixedApproval.forecastRecordId)
+        throw new Error('plan-candidate:forecast-freeze-drift');
+      if (needsSelection && JSON.stringify(await readSelection()) !== reviewedSelection)
+        throw new Error('plan-candidate:current-selection-drift');
+      if ((await resolveTrunkSha({ cfg: fixedCfg, projectDir: root })) !== fixedApproval.trunkSha)
+        throw new Error('plan-candidate:trunk-drift');
+      return Object.freeze({
+        repository,
+        issue,
+        projectDir: root,
+        scopeIdentity,
+        approved: fixedApproval,
+        cfg: JSON.parse(JSON.stringify(fixedCfg)),
+        currentForecastSelection: reviewedSelection === null ? null : JSON.parse(reviewedSelection),
+        planObservation: current.observation ? Object.freeze({ ...current.observation }) : null,
+      });
+    });
+    result.approvalCapability = capability;
+  }
+  return result;
 }
 
 function auditDisposition(audit) {

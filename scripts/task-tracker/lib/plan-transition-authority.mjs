@@ -11,6 +11,7 @@ import { resolveGate } from './gate-resolve.mjs';
 import { computeScopeIdentity } from './workflow-policy/scope-identity.mjs';
 import { parseEntryMarkers } from './stage-entry-grammar.mjs';
 import { readMoveCompleteMarker } from './move-state/sentinel.mjs';
+import { buildPlanApprovalCandidateAudit } from './plan-approval-audit.mjs';
 
 export const PLAN_TRANSITION_AUTHORITY_SCHEMA = 'aitm.plan-transition-authority/v1';
 export const PLAN_TRANSITION_AUTHORITY_EXIT = 9;
@@ -312,6 +313,7 @@ async function defaultFetchScopeBody(ctx) {
 }
 
 export async function verifyPlanTransitionAuthorityScope(ctx) {
+  if (Object.hasOwn(ctx, 'candidate')) return verifyCandidateScope(ctx);
   const record = ctx.planTransitionAuthority?.record;
   if (!record) throw new Error('plan-transition-authority:verified-record-missing');
   if (ctx.SKIP_NETWORK) return Object.freeze({ verified: true, skipped: true });
@@ -328,6 +330,29 @@ export async function verifyPlanTransitionAuthorityScope(ctx) {
   }
   return Object.freeze({ verified: true, scopeIdentity: observed });
 }
+
+// @story #2069 — these are validation ports, never a writer or a claim of publication.
+function candidateRefusal(reason, cause) {
+  throw new Error('plan-candidate:' + reason, { cause });
+}
+export function renderPlanTransitionCandidateAuthority(record) {
+  return (
+    renderPlanTransitionAuthorityComment(record) +
+    `\n\n<!-- aitm-owned-comment key="plan.transition:${record.transitionId}" -->`
+  );
+}
+export function renderPlanApprovalCandidateAudit({ issueNumber, ts }) {
+  return buildPlanApprovalCandidateAudit({ issueNumber, ts });
+}
+async function verifyCandidateScope({ candidate, baselineEquality, confirmedEffects }) {
+  if (candidate?.boundary) {
+    const { verifyNativePlanCandidate } = await import('./plan-transition-native.mjs');
+    return verifyNativePlanCandidate({ candidate, baselineEquality, confirmedEffects });
+  }
+  candidateRefusal('native-boundary-required');
+}
+
+export { createNativePlanAuthorityPorts } from './plan-transition-native.mjs';
 
 function verifiedResult({ comment, body, record, reconciled = false }) {
   const id = commentId(comment);

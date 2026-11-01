@@ -66,6 +66,58 @@ export function validateDecompositionAdvance({
   )
     refuse('mutation-drift');
 }
+// No caller-supplied assessment is accepted. The native owner/store reader derives
+// the exact unpublished input and the normal issuer scopes its assessment delta.
+export async function withNativePlanAssessmentAdvance(args) {
+  const { prepareNativePlanAssessment } = await import('./plan-decomposition-staging.mjs');
+  const prepared = await prepareNativePlanAssessment(args);
+  if (!prepared) return { body: args.body, decomposition: null, publication: 'unpublished' };
+  prepared.check();
+  const before = readDecompositionRecords(prepared.body);
+  const after = { assessment: prepared.candidate.assessment, publication: before.publication };
+  const context = Object.freeze({
+    subject: prepared.candidate.input.subject,
+    operationId: randomUUID(),
+    role: 'refresh',
+    lockOwner: prepared.owner,
+  });
+  owned.add(context);
+  const capability = Object.freeze({ context, beforeDigest: sha(before), afterDigest: sha(after) });
+  capabilities.add(capability);
+  try {
+    return await active.run(context, async () => {
+      const body = replaceDecompositionRecords(prepared.body, after);
+      const { validateStagedComposite } = await import('./story-cache/stage-capabilities.mjs');
+      validateStagedComposite({
+        base: prepared.body,
+        candidate: body,
+        operations: [
+          {
+            base: prepared.body,
+            candidate: body,
+            capability: {
+              decompositionMutationCapability: capability,
+              issueNumber: prepared.identity.issueNumber,
+              repo: prepared.identity.repository,
+            },
+          },
+        ],
+      });
+      return {
+        body,
+        publication: 'unpublished',
+        decomposition: {
+          inputDigest: prepared.candidate.inputDigest,
+          sourceInputDigest: prepared.source.inputDigest,
+          assessedAt: prepared.candidate.assessment.assessedAt,
+        },
+      };
+    });
+  } finally {
+    capabilities.delete(capability);
+    owned.delete(context);
+  }
+}
 export async function refreshDecompositionProjection({
   subject,
   cfg,

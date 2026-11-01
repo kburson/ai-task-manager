@@ -165,7 +165,11 @@ export function deriveGuardPhasePolicy({
   };
 }
 
-export async function runGuardExecution(ctx) {
+export async function runGuardExecution(ctx, nativeBoundary) {
+  if (nativeBoundary !== undefined) {
+    const { runNativePlanGuardExecution } = await import('../plan-native-guard-execution.mjs');
+    return runNativePlanGuardExecution(nativeBoundary);
+  }
   const {
     issueArg,
     stateArg,

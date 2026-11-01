@@ -11,20 +11,29 @@ import { resolveSessionId } from '../session-id.mjs';
 import { withIssueLock, currentIssueLockOwner } from '../../issue-mutator-lock.mjs';
 import { assertStoryWriter } from './writer-claim.mjs';
 import { storyIdentityKey, validateManifest } from './manifest.mjs';
-import { storyCachePath } from './store.mjs';
+import { storyCachePath, isNativeStoryStore } from './store.mjs';
 import { freezeStoryBatch } from './batch.mjs';
 import { freezeBodyTemplate, materializeBodyTemplate } from './body-template.mjs';
 import { compareSnapshots } from './snapshot-compare.mjs';
 import { confirmResourceEffect } from './provider-adapters.mjs';
 import { checkpointResource, hydrateJournalSnapshot, validateRecoveryJournal } from './journal.mjs';
 import { validateCompletionReceipt } from './completion-receipt.mjs';
+import { nativePlanAuthorityValidator } from '../plan-transition-native.mjs';
+import { readNativePlanGuardAdmission } from '../plan-native-guard-execution.mjs';
 const clone = (value) => JSON.parse(json(value));
 const same = (a, b) => json(a) === json(b);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
+const nativeBoundaries = new WeakMap();
+// @story #2069 — no constructor or serializable token grants native journal access.
+export async function readNativeTransitionBoundary(boundary, { phase } = {}) {
+  const read = nativeBoundaries.get(boundary);
+  if (!read) refuse('native-boundary');
+  return read(phase);
+}
 /** Open local staging after completion. Immutable store generations retain the original journal.
  * This grants no publication authority: the next transition still takes a fresh bounded snapshot.
  */
-export async function prepareNextTransition({ store, claim } = {}) {
+export async function prepareNextTransition({ store, claim, unattemptedBatchId } = {}) {
   const root = resolveRuntimeRoot({ cwd: process.cwd(), env: {} });
   const sid = resolveSessionId();
   const check = () => {
@@ -77,23 +86,38 @@ export async function prepareNextTransition({ store, claim } = {}) {
       )
         refuse('generation-identity');
       const batch = validateRecoveryJournal(record);
-      if (!batch) return record;
+      if (!batch) {
+        if (unattemptedBatchId !== undefined) refuse('unattempted-batch-missing');
+        return record;
+      }
+      const releasing = unattemptedBatchId !== undefined;
       if (
-        batch.status !== 'complete' ||
-        record.generation.conflicts.length ||
-        record.generation.dirtyKeys.length
+        releasing &&
+        (!isNativeStoryStore(store) ||
+          batch.batchId !== unattemptedBatchId ||
+          batch.status !== 'prepared' ||
+          record.generation.conflicts.length ||
+          batch.effects.some((effect) => effect.attempted || effect.outcome !== null))
+      )
+        refuse('batch-has-attempts-or-conflict');
+      if (
+        !releasing &&
+        (batch.status !== 'complete' ||
+          record.generation.conflicts.length ||
+          record.generation.dirtyKeys.length)
       )
         refuse('publication-pending');
       const snapshot = hydrateJournalSnapshot(record.generation.baseSnapshot, record.payloads);
       const body = snapshot.resources[`issue:${snapshot.identity.issueNodeId}`].body;
-      validateCompletionReceipt(receiptIn(body, batch.transition), {
-        transition: batch.transition,
-        confirmedEffects: batch.effects.filter((e) => e.kind !== 'issue-update'),
-      });
+      if (!releasing)
+        validateCompletionReceipt(receiptIn(body, batch.transition), {
+          transition: batch.transition,
+          confirmedEffects: batch.effects.filter((e) => e.kind !== 'issue-update'),
+        });
       const generation = clone(record.generation);
       // These working payloads were all confirmed. Keep their immutable bytes, but do not
       // let an older candidate shadow the new published baseline during the next freeze.
-      for (const effect of batch.effects) delete generation.working[effect.key];
+      if (!releasing) for (const effect of batch.effects) delete generation.working[effect.key];
       generation.batch = null;
       generation.generation = record.manifest.generation + 1;
       const saved = await store.commitGeneration(
@@ -109,7 +133,8 @@ export async function prepareNextTransition({ store, claim } = {}) {
         saved.manifest.claimId !== claim.claimId ||
         !same(validated.generation, saved.generation) ||
         validated.generation.batch !== null ||
-        validated.generation.dirtyKeys.length ||
+        !same(validated.generation.dirtyKeys, generation.dirtyKeys) ||
+        !same(validated.generation.working, generation.working) ||
         !same(validated.generation.timing, generation.timing) ||
         !same(hydrateJournalSnapshot(validated.generation.baseSnapshot, saved.payloads), snapshot)
       )
@@ -117,6 +142,11 @@ export async function prepareNextTransition({ store, claim } = {}) {
       return saved;
     }
   );
+}
+/** Release only the exact durable, entirely unattempted intent; immutable history remains. */
+export async function releaseUnattemptedTransition({ store, claim, batchId } = {}) {
+  if (typeof batchId !== 'string' || !batchId.startsWith('batch:')) refuse('batch-id');
+  return prepareNextTransition({ store, claim, unattemptedBatchId: batchId });
 }
 function refuse(reason) {
   throw Object.assign(new Error(`Story transition unavailable: ${reason}`), {
@@ -294,7 +324,31 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
     ].some((key) => typeof ports[key] !== 'function')
   )
     refuse('arguments');
-  const guard = await (ctx.runGuardExecution ?? ctx._runGuardExecution ?? runGuardExecution)(ctx);
+  const matchedContext = () => ({
+    transition: ctx.transition,
+    issueArg: ctx.issueArg,
+    transitionId: ctx.transitionId,
+    resolvedFromState: ctx.resolvedFromState,
+    stateArg: ctx.stateArg,
+    statusKey: ctx.statusKey,
+    cfg: ctx.cfg,
+  });
+  let requestedContext;
+  try {
+    requestedContext = clone(matchedContext());
+  } catch {
+    refuse('transition-context');
+  }
+  const checkRequested = () => {
+    if (!same(requestedContext, matchedContext())) refuse('transition-context-changed');
+  };
+  const nativePlanExit =
+    requestedContext.transition?.from === 'plan' && requestedContext.transition?.to === 'develop';
+  if (nativePlanExit) delete ctx.planTransitionAuthorityInput;
+  const guard = nativePlanExit
+    ? { exit: null }
+    : await (ctx.runGuardExecution ?? ctx._runGuardExecution ?? runGuardExecution)(ctx);
+  checkRequested();
   if (guard.exit != null)
     return {
       status: 'blocked',
@@ -304,11 +358,13 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
       boardMoved: false,
       tail: { failures: [] },
     };
+  let planAdmission = null;
   const root = resolveRuntimeRoot({ cwd: process.cwd(), env: {} });
   const sid = resolveSessionId(),
     worktree = root.projectRoot;
   if (!claim?.registryKey) refuse('registered-claim-required');
   const assertOwner = () => {
+    checkRequested();
     assertStoryWriter(claim, { worktree, sessionId: sid });
     if (
       resolveSessionId() !== sid ||
@@ -375,6 +431,62 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
         generation = clone(saved.generation);
         payloads = new Map(saved.payloads);
       };
+      const validateAtBoundary = async (name, phase, input) => {
+        check();
+        planAdmission?.checkCurrentTime();
+        const boundary = Object.freeze({});
+        const batchId = generation.batch?.batchId;
+        const publicationGeneration = generation.publicationGeneration;
+        nativeBoundaries.set(boundary, async (requestedPhase) => {
+          check();
+          if (!isNativeStoryStore(store)) refuse('native-store-required');
+          if (requestedPhase !== phase) refuse('native-boundary-phase');
+          const actual = await store.readGeneration();
+          check();
+          const batch = validateRecoveryJournal(actual);
+          if (
+            actual.manifest.claimId !== claim.claimId ||
+            batch?.batchId !== batchId ||
+            actual.generation.publicationGeneration !== publicationGeneration ||
+            !same(batch.transition, ctx.transition)
+          )
+            refuse('native-boundary-journal');
+          return {
+            store,
+            claim,
+            record: actual,
+            snapshot: clone(input.snapshot),
+            transition: clone(ctx.transition),
+            statusKey: ctx.statusKey,
+            cfg: clone(ctx.cfg),
+            sessionPolicy: planAdmission?.sessionPolicy ? clone(planAdmission.sessionPolicy) : null,
+            workflowPolicy: planAdmission?.workflowPolicy ?? null,
+            approvalAdmission: planAdmission,
+            nativePlanAuthority: ports.nativePlanAuthority,
+            phase,
+          };
+        });
+        try {
+          if (name === 'runNativeGuards') {
+            const result = await runGuardExecution(ctx, boundary);
+            if (result.exit == null)
+              planAdmission = readNativePlanGuardAdmission(result.nativePlanAdmission, {
+                batchId,
+                publicationGeneration,
+              });
+            return result;
+          }
+          if (nativePlanExit) {
+            const mandatory = nativePlanAuthorityValidator(ports.nativePlanAuthority, name);
+            const verdict = await mandatory({ ...input, boundary });
+            if (verdict?.verified !== true || ports[name] === mandatory) return verdict;
+          }
+          return await ports[name]({ ...input, boundary });
+        } finally {
+          nativeBoundaries.delete(boundary);
+          check();
+        }
+      };
       const result = (status, extra = {}) => {
         const complete = status === 'complete';
         return {
@@ -425,7 +537,38 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
         }
         assertStoryWriter(claim, { worktree, sessionId: sid, assignment: cloud.assignees });
         await persist();
+        if (nativePlanExit) {
+          const nativeGuard = await validateAtBoundary('runNativeGuards', 'native-guards', {
+            ctx,
+            record,
+            snapshot: cloud,
+          });
+          if (nativeGuard.exit != null)
+            return result('blocked', {
+              exit: nativeGuard.exit,
+              phase: 'guard',
+              guardRefusals: nativeGuard.guardRefusals,
+            });
+        }
+        // @story #2069 — a Plan candidate must be verified before any prerequisite.
+        // The prepared journal is durable, but every effect is still unattempted.
+        const planExit = ctx.transition.from === 'plan' && ctx.transition.to === 'develop';
+        if (planExit && typeof ports.validateFrozenIntent !== 'function')
+          refuse('frozen-intent-authority-required');
+        if (
+          typeof ports.validateFrozenIntent === 'function' &&
+          (
+            await validateAtBoundary('validateFrozenIntent', 'frozen-intent', {
+              ctx,
+              record,
+              snapshot: cloud,
+            })
+          )?.verified !== true
+        )
+          refuse('frozen-intent-authority');
+        check();
         for (let index = 0; index < generation.batch.effects.length; index++) {
+          planAdmission?.checkCurrentTime();
           let effect = generation.batch.effects[index];
           if (
             effect.attempted ||
@@ -440,7 +583,7 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
           if (
             effect.key === ctx.statusKey &&
             (
-              await ports.validatePreStatus({
+              await validateAtBoundary('validatePreStatus', 'pre-status', {
                 ctx,
                 effects: clone(generation.batch.effects),
                 snapshot: cloud,
@@ -462,7 +605,7 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
             });
             if (
               (
-                await ports.validateIssue({
+                await validateAtBoundary('validateIssue', 'final-body', {
                   ctx,
                   base: hydrateJournalSnapshot(generation.batch.baseline, payloads).resources[
                     effect.key
@@ -478,11 +621,26 @@ export async function runTransitionBatch({ ctx, store, claim, ports } = {}) {
             generation.batch.realizedIssue = clone(realized);
             dispatch = { ...dispatch, ...clone(realized) };
           }
+          planAdmission?.checkCurrentTime();
+          const previousBatchStatus = generation.batch.status;
           effect.attempted = true;
           effect.outcome = { state: 'dispatching' };
           generation.batch.status = 'dispatching';
           await persist();
           check();
+          try {
+            // No await may separate the last expiry check from provider dispatch.
+            planAdmission?.checkCurrentTime();
+          } catch (error) {
+            // The journal was prepared, but no provider request was sent.
+            // Retain confirmed predecessors and restore this exact no-send fact.
+            const unsent = generation.batch.effects[index];
+            unsent.attempted = false;
+            unsent.outcome = null;
+            generation.batch.status = previousBatchStatus;
+            await persist();
+            throw error;
+          }
           let response, confirmation, reason;
           try {
             response = await ports.apply(clone(dispatch));

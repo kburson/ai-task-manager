@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
 import { PLAN_TRANSITION_ID_RE } from './plan-transition-authority.mjs';
+import { ownedCommentMarker } from './owned-comment.mjs';
 
 const pexec = promisify(execFile);
 
@@ -101,11 +102,53 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
   ].join('\n');
 }
 
+export function planApprovalAuditKey({ issueNumber, ts }) {
+  return (
+    'plan.approval-audit:' +
+    createHash('sha256')
+      .update(JSON.stringify([Number(issueNumber), ts]))
+      .digest('hex')
+  );
+}
+
+export function buildPlanApprovalCandidateAudit(input) {
+  const canonical = buildPlanApprovalAuditComment(input);
+  const displayed = canonical
+    .replace('<!-- aitm-plan-approved', '&lt;!-- aitm-plan-approved')
+    .replace('-->`', '--&gt;`');
+  return displayed + '\n\n' + ownedCommentMarker(planApprovalAuditKey(input));
+}
+
 export function isCanonicalPlanApprovalAuditComment(
   body,
   { issueNumber, ts, repairEvidence = null } = {}
 ) {
-  const src = typeof body === 'string' ? body.trim() : '';
+  let src = typeof body === 'string' ? body.trim() : '';
+  const owned = src.match(
+    /^([\s\S]*)\n\n<!-- aitm-owned-comment key="(plan\.approval-audit:[a-f0-9]{64})" -->$/
+  );
+  if (owned) {
+    const eventIssue = owned[1].match(PLAN_APPROVAL_AUDIT_RE)?.[1];
+    const eventTs = owned[1].match(
+      /Plan approval was (?:recorded|reconstructed) at `([^`]+)` under explicit `TT_FULL_AUTO=1`\./
+    )?.[1];
+    if (
+      !eventIssue ||
+      !eventTs ||
+      planApprovalAuditKey({ issueNumber: eventIssue, ts: eventTs }) !== owned[2]
+    )
+      return false;
+    const canonical = owned[1]
+      .replace('&lt;!-- aitm-plan-approved', '<!-- aitm-plan-approved')
+      .replace('--&gt;`', '-->`');
+    if (
+      canonical
+        .replace('<!-- aitm-plan-approved', '&lt;!-- aitm-plan-approved')
+        .replace('-->`', '--&gt;`') !== owned[1]
+    )
+      return false;
+    src = canonical;
+  }
   const heading = src.match(PLAN_APPROVAL_AUDIT_RE);
   if (!heading) return false;
 

@@ -410,3 +410,72 @@ test('completed replay reports later drift without changing completed evidence',
   assert.equal((await s.f.store.readGeneration()).generation.batch, null);
   assert.equal(s.calls.length, 3);
 });
+
+// @story #2069 — validate retained intent after equality, before even timing writes.
+test('frozen-intent refusal persists prepared intent and dispatches nothing', async (t) => {
+  const s = await setup(t);
+  let checked = false;
+  s.ports.validateFrozenIntent = async ({ record, snapshot }) => {
+    checked = true;
+    const durable = await s.f.store.readGeneration();
+    assert.equal(record.generation.batch.batchId, durable.generation.batch.batchId);
+    assert.equal(record.generation.batch.status, 'prepared');
+    assert.ok(
+      record.generation.batch.effects.every(
+        (effect) => !effect.attempted && effect.outcome === null
+      )
+    );
+    assert.equal(snapshot.titleDigest, s.cloud.titleDigest);
+    return { verified: false };
+  };
+  await assert.rejects(s.run(), { code: 'STORY_TRANSITION_UNAVAILABLE' });
+  assert.equal(checked, true);
+  assert.deepEqual(s.calls, []);
+  const retained = (await s.f.store.readGeneration()).generation.batch;
+  assert.equal(retained.status, 'prepared');
+  assert.ok(retained.effects.every((effect) => !effect.attempted));
+});
+
+// @story #2069 — the validator receives authority only during its native callback.
+test('native boundary reads the exact durable journal and expires after the callback', async (t) => {
+  const s = await setup(t);
+  assert.equal(typeof coordinator.readNativeTransitionBoundary, 'function');
+  await assert.rejects(
+    coordinator.readNativeTransitionBoundary({}, { phase: 'frozen-intent' }),
+    /boundary/
+  );
+  let token;
+  s.ports.validateFrozenIntent = async ({ boundary }) => {
+    token = boundary;
+    const actual = await coordinator.readNativeTransitionBoundary(token, {
+      phase: 'frozen-intent',
+    });
+    assert.equal(actual.record.generation.batch.status, 'prepared');
+    assert.equal(actual.record.generation.batch.transition.id, s.ctx.transition.id);
+    await assert.rejects(
+      coordinator.readNativeTransitionBoundary(token, { phase: 'pre-status' }),
+      /boundary/
+    );
+    return { verified: true };
+  };
+  assert.equal((await s.run()).status, 'complete');
+  await assert.rejects(
+    coordinator.readNativeTransitionBoundary(token, { phase: 'frozen-intent' }),
+    /boundary/
+  );
+});
+
+// @story #2069 — matching methods and cache paths cannot mint a native authority boundary.
+test('a copied store interface cannot acquire native journal authority', async (t) => {
+  const s = await setup(t);
+  s.args.store = { ...s.f.store };
+  s.ports.validateFrozenIntent = async ({ boundary }) => {
+    await assert.rejects(
+      coordinator.readNativeTransitionBoundary(boundary, { phase: 'frozen-intent' }),
+      /native-store/
+    );
+    return { verified: false };
+  };
+  await assert.rejects(s.run(), { code: 'STORY_TRANSITION_UNAVAILABLE' });
+  assert.deepEqual(s.calls, []);
+});

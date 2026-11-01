@@ -112,6 +112,9 @@ const decompositionArgs = args(['issue', 'operationId'], {
   operationId: Object.freeze({ type: 'nullable-uuid' }),
 });
 export const CODE_DEFINITIONS = Object.freeze({
+  'plan-forecast-invalid': decisionBlocked('plan-forecast-invalid', registeredGuard, {
+    argumentSchema: args(['reason'], { reason: stringType }),
+  }),
   'develop-artifact-authority-invalid': decisionBlocked('develop-artifact-authority-invalid', [
     'develop-exit-receipt',
   ]),
