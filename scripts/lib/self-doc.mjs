@@ -201,7 +201,8 @@ const ROUTABLE_SELF_DOC = {
     synopsis:
       'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, verify through the configured project provider or Node defaults, then `--ff-only` the verified commit. Refuses conflicts, failed verification, or checkout drift.',
     audience: 'Orchestrator landing a finished child. Keeps the epic a clean linear branch.',
-    usage: 'aitm merge-back <child#> <worktree-path> [--preserve-worktree]',
+    usage:
+      'aitm merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json>]',
   },
   'sync-epic': {
     group: 'Epic Branching',
@@ -422,6 +423,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument(
       '--preserve-worktree',
       'Retain the child checkout, branch and upstream for exact-head completion; otherwise clean up after integration.'
+    ),
+    argument(
+      '--recover-parent <request.json>',
+      'From the bound child, use the selected direct bin/aitm.mjs carrier and a .scratch JSON file. Start with {"schema":"aitm.merge-back-recovery/v1","action":"inspect"}. For continue or skip add expected (the returned snapshot), reason, and resolutions for every unmerged path. Select {path,stage:2} for the current rebased version, {path,stage:3} for the incoming replay, or {path,base64,sha256} for reviewed bytes. Skip requires the entire resolved index to equal parent HEAD. Git may replay additional clean commits before the next pause or completion.'
     ),
   ],
   'sync-epic': [argument('<epic#>', 'Epic branch to rebase onto trunk.')],
@@ -701,13 +706,18 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['merge-back', 'cut-epic-branch'],
   }),
   'merge-back': routableContract({
-    output: ['Prints the child branch and epic branch after verified fast-forward integration.'],
+    output: [
+      'Prints the child and epic branches after verified integration. Parent recovery prints a paused or completed JSON result and preserves the child binding.',
+    ],
     exitCodes: [
       exitCode(0, 'child verified and merged into its epic'),
       exitCode(1, 'lineage, sync, rebase, tests, or fast-forward merge failed'),
       exitCode(2, 'child issue or worktree path is invalid'),
     ],
-    examples: ['npx aitm merge-back 1023 .worktrees/1023-cli-help-defect --preserve-worktree'],
+    examples: [
+      'npx aitm merge-back 1023 .worktrees/1023-cli-help-defect --preserve-worktree',
+      'node_modules/@kburson/ai-task-manager/bin/aitm.mjs merge-back 2068 . --recover-parent .scratch/recovery.json',
+    ],
     relatedCommands: ['cut-child-worktree', 'sync-epic'],
   }),
   'sync-epic': routableContract({
