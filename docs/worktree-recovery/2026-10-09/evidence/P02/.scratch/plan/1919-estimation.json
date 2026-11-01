@@ -1,0 +1,58 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "checkpoint-entrypoint",
+      "description": "Wire actual retained UTC and source qualification entrypoints",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "move-state"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "linux-qualification",
+      "description": "Qualify existing schema parity and unchanged Linux linked-source budgets",
+      "baseHumanHours": 3,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "review-quality",
+      "description": "Perform bounded source package quality and integrity review",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "criteria-revision"
+        ],
+        "dependencies": []
+      }
+    }
+  ],
+  "testImpact": {
+    "expectedMinutes": 10,
+    "isolation": "Original complete native fixtures in separate Node processes; current Linux CI and unchanged per-file/section budgets.",
+    "lanes": [
+      "unit",
+      "integration",
+      "slow"
+    ]
+  },
+  "risks": [
+    "Retained repairs must be qualified rather than reimplemented.",
+    "Missing checkpoint path is silently omitted by the existing Node discovery command.",
+    "Inherited aggregate failures are distinct from focused repair qualification."
+  ],
+  "comparableIssueIds": [
+    1854
+  ]
+}

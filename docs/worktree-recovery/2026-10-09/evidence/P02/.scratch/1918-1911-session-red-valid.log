@@ -1,0 +1,502 @@
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+✖ actual start pending requires fresh authority before original session effects (551.052792ms)
+✖ actual start stale requires fresh authority before original session effects (597.652667ms)
+✖ actual start malformed requires fresh authority before original session effects (385.163334ms)
+✖ actual start unavailable requires fresh authority before original session effects (390.680875ms)
+✖ actual start baseline requires fresh authority before original session effects (469.156292ms)
+✖ actual start approved requires fresh authority before original session effects (690.880709ms)
+✖ actual targeted resume pending requires fresh authority before original session effects (412.7425ms)
+✖ actual targeted resume stale requires fresh authority before original session effects (631.041041ms)
+✖ actual targeted resume malformed requires fresh authority before original session effects (470.401333ms)
+✖ actual targeted resume unavailable requires fresh authority before original session effects (465.103208ms)
+✖ actual targeted resume baseline requires fresh authority before original session effects (456.86775ms)
+✖ actual targeted resume approved requires fresh authority before original session effects (736.438958ms)
+✖ actual remembered resume pending requires fresh authority before original session effects (410.196958ms)
+✖ actual remembered resume stale requires fresh authority before original session effects (518.80975ms)
+✖ actual remembered resume malformed requires fresh authority before original session effects (374.406083ms)
+✖ actual remembered resume unavailable requires fresh authority before original session effects (360.862209ms)
+✖ actual remembered resume baseline requires fresh authority before original session effects (365.890917ms)
+✖ actual remembered resume approved requires fresh authority before original session effects (632.968958ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch pending requires fresh authority before original session effects (933.317333ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch stale requires fresh authority before original session effects (1081.545833ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch malformed requires fresh authority before original session effects (877.722209ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch unavailable requires fresh authority before original session effects (917.254208ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch baseline requires fresh authority before original session effects (1278.825333ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+✖ actual switch approved requires fresh authority before original session effects (1235.513542ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 0
+ℹ fail 24
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15462.107375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start pending requires fresh authority before original session effects (551.052792ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start stale requires fresh authority before original session effects (597.652667ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start malformed requires fresh authority before original session effects (385.163334ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start unavailable requires fresh authority before original session effects (390.680875ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start baseline requires fresh authority before original session effects (469.156292ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:528:19)
+      at async verbStart (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/start.mjs:18:3)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual start approved requires fresh authority before original session effects (690.880709ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:528:19)
+      at async verbStart (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/start.mjs:18:3)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume pending requires fresh authority before original session effects (412.7425ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume stale requires fresh authority before original session effects (631.041041ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume malformed requires fresh authority before original session effects (470.401333ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume unavailable requires fresh authority before original session effects (465.103208ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume baseline requires fresh authority before original session effects (456.86775ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:528:19)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual targeted resume approved requires fresh authority before original session effects (736.438958ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:528:19)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume pending requires fresh authority before original session effects (410.196958ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume stale requires fresh authority before original session effects (518.80975ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume malformed requires fresh authority before original session effects (374.406083ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume unavailable requires fresh authority before original session effects (360.862209ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume baseline requires fresh authority before original session effects (365.890917ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:254:19)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual remembered resume approved requires fresh authority before original session effects (632.968958ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:254:19)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch pending requires fresh authority before original session effects (933.317333ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch stale requires fresh authority before original session effects (1081.545833ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch malformed requires fresh authority before original session effects (877.722209ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch unavailable requires fresh authority before original session effects (917.254208ms)
+  AssertionError [ERR_ASSERTION]: No original occupancy/queue/timing callback before current admission
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:124:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch baseline requires fresh authority before original session effects (1278.825333ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbSwitch (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/switch.mjs:243:17)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:105:5
+✖ actual switch approved requires fresh authority before original session effects (1235.513542ms)
+  Error: retroactive timing entries are forbidden; recorded gaps must be reconciled, not fabricated
+      at buildRow (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/gh-timing-comment.mjs:155:11)
+      at verbSwitch (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/verbs/switch.mjs:243:17)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:109:11)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

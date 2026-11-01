@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "Complete the remaining scope of #1855 as a new sibling repair epic under #1847,",
+  "replacement": "Complete the remaining scope of #1855 as a nested repair epic under #1855 and outer epic #1847,"
+}

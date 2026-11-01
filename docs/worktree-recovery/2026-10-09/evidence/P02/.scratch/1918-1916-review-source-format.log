@@ -1,0 +1,4 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --write scripts/task-tracker/lib/criteria-revision/source-correction.mjs scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+scripts/task-tracker/lib/criteria-revision/source-correction.mjs 91ms (unchanged)
+scripts/task-tracker/lib/criteria-revision/stage-execution.mjs 116ms (unchanged)

@@ -1,0 +1,54 @@
+✔ partial report refuses unowned backend getter before lookup (1.425333ms)
+✔ partial report refuses unowned capability getter before lookup (0.165542ms)
+✔ partial report refuses unowned context getter before lookup (0.091625ms)
+✔ partial report refuses unowned holder getter before lookup (0.073333ms)
+✔ partial report refuses prototype input before borrowed custody (0.14625ms)
+✔ partial report refuses hidden input before borrowed custody (0.091041ms)
+✔ partial report refuses symbol input before borrowed custody (0.065167ms)
+✔ partial report refuses extra input before borrowed custody (0.072792ms)
+✔ partial report refuses missing input before borrowed custody (0.077583ms)
+✔ partial report rejects nested identity getters without executing them (0.393125ms)
+✔ a public copied holder tuple cannot create private report membership (0.907042ms)
+✔ partial report refuses null and primitive roots without selecting state (0.259875ms)
+✖ unowned report results cannot execute getters or borrow consumer validation (0.748958ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 12
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.33125
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-partial-boundary.test.mjs:82:1
+✖ unowned report results cannot execute getters or borrow consumer validation (0.748958ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /criteria-revision:native-stage-partial-result/. Input:
+  
+  'TypeError: store.assertMemoryNativeStagePartialResult is not a function'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-partial-boundary.test.mjs:96:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: TypeError: store.assertMemoryNativeStagePartialResult is not a function
+        at file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-partial-boundary.test.mjs:97:19
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-partial-boundary.test.mjs:96:12)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7),
+    expected: /criteria-revision:native-stage-partial-result/,
+    operator: 'throws',
+    diff: 'simple'
+  }

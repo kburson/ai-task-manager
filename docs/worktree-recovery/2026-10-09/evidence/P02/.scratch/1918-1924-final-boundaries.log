@@ -1,0 +1,671 @@
+✔ missing, corrupt, wrong-version, dirty and restarted-domain admission deny (39.929375ms)
+✔ allow requires verified complete empty chain and baseline admission; failed refresh replaces allow with deny (105.248792ms)
+✔ raw observations cannot publish allow and a prior receipt cannot overwrite a newer deny (39.586833ms)
+✔ registered command, action and executable catalogs have no revision transaction route (0.907834ms)
+✔ a revised admission requires the current revision, contract epoch and protected sources (296.044625ms)
+✔ corrupt allow records with malformed Plan approval or binding fields deny (20.910042ms)
+✔ verified receipt snapshots cannot be changed through the observer result after validation (21.180125ms)
+✔ one original raw human block grants exact attributable authority without invented principal (42.075292ms)
+✔ refuses leading spaces (30.670375ms)
+✔ refuses trailing spaces (23.898709ms)
+✔ refuses newline (22.266834ms)
+✔ refuses extra prose (22.279792ms)
+✔ refuses quotes (23.134625ms)
+✔ refuses multiple blocks (20.6135ms)
+✔ refuses assistant (20.912833ms)
+✔ refuses tool (25.878709ms)
+✔ refuses forwarded injection (25.277208ms)
+✔ refuses foreign session (20.191625ms)
+✔ refuses foreign message ID (21.116958ms)
+✔ refuses unsupported block (24.736583ms)
+✔ refuses normalized-only source (23.966375ms)
+✔ refuses missing injection classification (21.567666ms)
+✔ refuses wrong mode (20.2045ms)
+✔ unsupported host, bad source bounds/hash, absent source and changed recovery-vector digest refuse (370.858958ms)
+✔ raw loader keeps original blocks and IDs while existing normalized consumers still trim (32.003ms)
+✔ canonical amendment advances its epoch and retires every accepted current proof (67.129041ms)
+✔ canonical proposal seals capsule before contract, proof projection and body (30.973166ms)
+✔ ordinary amendments still refuse removal and forged revision capability (28.55375ms)
+✔ ordinary sealed proof invalidation retains its original independent authority guard (29.922042ms)
+✔ registration requires explicit quiescence and runtime-derived host and common directory (2.93625ms)
+✔ pending or unknown transactions refuse domain movement and disablement (0.298084ms)
+✔ restart changes the domain incarnation and unregistered resolution stays disabled (0.223709ms)
+✔ opaque invocation capability permits exact nested scopes and expires after release (1.787042ms)
+✔ sibling asynchronous invocations contend and all issue locks acquire numerically (1.224834ms)
+✔ only a proved-dead unchanged local holder is reclaimed; unknown, live and foreign persist (0.821083ms)
+✔ foreign, corrupt and replaced holders remain owned; partial multi-issue acquisition unwinds (0.450209ms)
+✔ executor identity must satisfy the closed Task 1 host contract (0.18325ms)
+✔ recovery proves all v2 executors dead and refuses old or uncertain delegation records (1.724583ms)
+✔ legacy writes preserve exact sealed body and independent proof, retire shared proof and approvals (62.24775ms)
+✔ canonical transaction and resealed unrelated section/proof changes are not a legacy capability (119.905625ms)
+✔ board attempt keeps unknown write pending and preserves original raw resource (2.752375ms)
+✔ actual second read success is distinct from first mismatch and retains both attempts (1.083083ms)
+✔ empty and mismatched exhausted reads stay unconfirmed without successful readback (1.1595ms)
+✔ board attempt refuses reordered, invented-success, altered resource and unknown outcome claims (8.05025ms)
+✔ no attempted write recognizes only before, and a completed resource read fixes that exact prefix (1.82475ms)
+✔ actual thrown write and swallowed read failure remain distinct from successful completion (1.428042ms)
+✔ an unknown repeated write cannot resurrect the original before-board value (0.574541ms)
+✔ a completed repeated write rejects a full resource regression despite a lagging scalar read (1.741459ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ recorded entry derives separate timestamps, first visit and exactly one native version increment (3.950041ms)
+✔ recorded sentinel is exact native upsert and compensation leaves the target visit intact (0.392834ms)
+✔ recorded stage body refuses unknown intent, forged visit, arbitrary bytes and invalid clock data (0.439416ms)
+✔ recorded sentinel bytes match actual native versioned mutation including a separate repeated invocation (31.976375ms)
+✔ acquireMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (1.192125ms)
+✔ readMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.459333ms)
+✔ persistMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.41225ms)
+✔ writeMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.328667ms)
+✔ completeMemoryNativeStageCache refuses every authority getter and non-DATA shape before lookup (0.515583ms)
+✔ cache release rejects resource getters before selecting a lock (0.154375ms)
+✔ public refresh rejects unowned getter inputs before callback or field access (2.102917ms)
+✔ cache sequence rejects unowned getter inputs before callback or field access (0.705625ms)
+✔ operation driver rejects unowned getter inputs before callback or field access (0.450083ms)
+✔ original read rejects unowned getter inputs before callback or field access (0.661792ms)
+✔ original set rejects unowned getter inputs before callback or field access (0.32125ms)
+✔ acquireMemoryNativeStageCompensation refuses all authority getters and non-data shapes (1.104208ms)
+✔ acquireMemoryNativeStageCompensation validates nested context before capability lookup (0.258708ms)
+✔ persistMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.310917ms)
+✔ persistMemoryNativeStageCompensation validates nested context before capability lookup (0.083625ms)
+✔ beginMemoryNativeStageCompensationAttempt refuses all authority getters and non-data shapes (0.292417ms)
+✔ beginMemoryNativeStageCompensationAttempt validates nested context before capability lookup (0.074833ms)
+✔ writeMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.243334ms)
+✔ writeMemoryNativeStageCompensation validates nested context before capability lookup (0.07125ms)
+✔ completeMemoryNativeStageCompensation refuses all authority getters and non-data shapes (0.496916ms)
+✔ completeMemoryNativeStageCompensation validates nested context before capability lookup (0.197708ms)
+✔ recordMemoryNativeStageCompensationFailure refuses all authority getters and non-data shapes (0.399625ms)
+✔ recordMemoryNativeStageCompensationFailure validates nested context before capability lookup (0.09ms)
+✔ writeMemoryNativeStageCompensationAudit refuses all authority getters and non-data shapes (0.287833ms)
+✔ writeMemoryNativeStageCompensationAudit validates nested context before capability lookup (0.067375ms)
+✔ completeMemoryNativeStageCompensationResult refuses all authority getters and non-data shapes (0.214958ms)
+✔ completeMemoryNativeStageCompensationResult validates nested context before capability lookup (0.05675ms)
+✔ unowned rollback refuses before original context or callback access (0.724209ms)
+✔ unowned recording refuses before original context or callback access (0.449875ms)
+✔ unowned core comparison refuses before original context or callback access (0.135041ms)
+✔ assertMemoryNativeCompensationCurrent rejects resource authority getters before lookup or release (0.26325ms)
+✔ releaseMemoryNativeStageCompensation rejects resource authority getters before lookup or release (0.12ms)
+✔ native event-field data factor preserves set-once and explicit field write semantics (1.239125ms)
+✔ native event-field data factor retains native date, number coercion and missing-ID body-only behavior (0.169584ms)
+✔ native event-field data factor retains persisted DB precedence over changed seed values (1.370792ms)
+✔ native event-field data input is closed and never executes supplied helpers (0.277667ms)
+✔ native recorded last-known-state serializer shares exact current grammar without reading a clock (2.357625ms)
+✔ native CodeComplete declaration data preserves checked, missing and deferred AC predicates (1.434666ms)
+✔ native CodeComplete touch data keeps tracked intersection and deterministic order (0.184416ms)
+✔ native commit trail membership data shares prefix comparison without accepting decisions (0.13425ms)
+✔ native recorded ancestry qualification derives malformed and unreachable reasons from closed original data (1.347708ms)
+✔ native event binding keeps permissive current config semantics separate from closed recorded data (0.197708ms)
+✔ native catalog data refuses replaced original functions, incomplete and reordered membership (0.3015ms)
+✔ recorded phase row data shares native rendering with zero accounting and exact original offset (14.088125ms)
+✔ recorded actor row validates exact original native bytes without returning a row or bypassing current time (2.688375ms)
+✔ native stage current resources retain independent complete fixture bytes without authority or effects (38.438875ms)
+✔ native stage current resources refuse unknown vector member (22.373625ms)
+✔ native stage current resources refuse unknown local resource (20.824875ms)
+✔ native stage current resources refuse local path selector (19.536916ms)
+✔ native stage current resources refuse missing local member (18.815833ms)
+✔ native stage current resources refuse nonstring local bytes (20.685625ms)
+✔ native stage current resources refuse missing retained comment (19.412791ms)
+✔ native stage current resources refuse duplicate comment (18.352708ms)
+✔ native stage current resources refuse comment identity (17.707292ms)
+✔ native stage current resources refuse comment bytes (17.526541ms)
+✔ native stage current resources refuse foreign comment (17.616125ms)
+✔ native stage current resources refuse retained body drift (19.242084ms)
+✔ native stage current resources refuse foreign item (19.02625ms)
+✔ native stage current resources refuse foreign project (18.281084ms)
+✔ native stage current resources refuse foreign content (17.770167ms)
+✔ native stage current resources refuse partial fields (19.199042ms)
+✔ native stage current resources refuse field census drift (17.048875ms)
+✔ native stage current resources refuse duplicate field (17.693042ms)
+✔ historical lifecycle source shape shares native validation without a backend or readiness (18.8345ms)
+✔ recorded CodeComplete Git data uses native file and dirty parsers with exact leaf membership (3.186167ms)
+✔ recorded transition actor follows native environment fallback without authorizing caller override (0.257125ms)
+✔ native stage source item binds actual status option and unique assignment membership (0.384ms)
+✔ native stage persistence rejects caller token and closed-input authority additions before writes (72.891375ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ native stage body step derives exact fixed effect and original subject readback without admitting execution (5.791334ms)
+✔ native stage body step refuses ordinal drift (0.357959ms)
+✔ native stage body step refuses predecessor drift (0.124125ms)
+✔ native stage body step refuses kind drift (0.098375ms)
+✔ native stage body step refuses intent bytes drift (0.133791ms)
+✔ native stage body step refuses visit drift (0.160584ms)
+✔ native stage body step refuses foreign issue drift (0.191292ms)
+✔ native stage body step refuses foreign repository drift (0.189792ms)
+✔ native stage body step refuses failed read drift (0.170083ms)
+✔ native stage body step refuses partial read drift (0.200666ms)
+✔ native stage body step refuses unrelated body drift (0.168084ms)
+✔ native stage body step refuses forged version drift (0.139ms)
+✔ native stage body step refuses success scalar drift (0.166291ms)
+✔ native stage body step refuses caller callback drift (0.248416ms)
+✔ native stage body readback retains CLI suffix while matching actual native write verification (23.278542ms)
+✔ native stage body readback refuses missing resource (0.228833ms)
+✔ native stage body readback refuses resource foreign issue (0.189ms)
+✔ native stage body readback refuses resource failed read (0.17425ms)
+✔ native stage body readback refuses resource partial read (0.160792ms)
+✔ native stage body readback refuses malformed resource (0.136333ms)
+✔ native stage body readback refuses resource extra key (0.144208ms)
+✔ native stage body readback refuses resource trailing byte drift (0.133208ms)
+✔ native stage body readback refuses coherent raw resource delta (0.12275ms)
+✔ native stage transition step reconstructs actual native publication requests and exact record readback (1.42975ms)
+✔ native stage transition step refuses extra record key (0.418667ms)
+✔ native stage transition step refuses foreign actor (0.343041ms)
+✔ native stage transition step refuses foreign sentinel (0.236791ms)
+✔ native stage transition step refuses foreign visit (0.192917ms)
+✔ native stage transition step refuses ordinal (0.173ms)
+✔ native stage transition step refuses predecessor (0.1895ms)
+✔ native stage transition step refuses foreign POST issue (0.240375ms)
+✔ native stage transition step refuses foreign read comment (0.251292ms)
+✔ native stage transition step refuses partial POST (0.199208ms)
+✔ native stage transition step refuses failed read (0.178417ms)
+✔ native stage transition step refuses foreign owner (0.193042ms)
+✔ native stage transition step refuses read id mismatch (0.179917ms)
+✔ native stage transition step refuses same id different record (0.529292ms)
+✔ native stage transition step refuses success scalar (0.292ms)
+✔ ordinary transition default transport keeps receiver getter argument and stdout order (0.291ms)
+✔ ordinary transition create rejection remains the exact original error and prevents read (0.189125ms)
+✔ recorded config derives the actual native defaults, precedence, field fallbacks and preferences (87.114083ms)
+✔ recorded config shares original legacy warnings and conflict semantics without printing or reading (0.407625ms)
+✔ recorded config distinguishes proven absence from corrupt, unresolved and caller-selected read data (0.206209ms)
+✔ recorded active-task payload preserves native sticky fields and exact atomic-write bytes (27.991125ms)
+✔ recorded active-task data refuses corrupt or unresolved source and caller effect fields (0.28275ms)
+✔ recorded state preserves real actor overlay, shared unknown fields and split write bytes (32.342291ms)
+✔ recorded state rejects corrupt, foreign actor and caller read or clock inputs (0.794458ms)
+✔ recorded Test cache preserves native unknown fields and exact no-op disposition (29.324834ms)
+✔ native config capture retains actual ordered selection and selected source bytes on exact result only (57.533042ms)
+✔ native config capture retains parse failure and absence diagnostics without minting default authority (81.455791ms)
+✔ recorded session policy preserves native original overlay, unknown fields, gates and final SID override (0.952167ms)
+✔ recorded session policy rejects corruption and caller reader fields while native permissive fallback stays (0.22375ms)
+✔ recorded active-task read uses native normalization while preserving unknown fields (0.174208ms)
+✔ partial report refuses unowned backend getter before lookup (0.852458ms)
+✔ partial report refuses unowned capability getter before lookup (0.093375ms)
+✔ partial report refuses unowned context getter before lookup (0.073542ms)
+✔ partial report refuses unowned holder getter before lookup (0.071083ms)
+✔ partial report refuses prototype input before borrowed custody (0.117625ms)
+✔ partial report refuses hidden input before borrowed custody (0.081458ms)
+✔ partial report refuses symbol input before borrowed custody (0.065084ms)
+✔ partial report refuses extra input before borrowed custody (0.064375ms)
+✔ partial report refuses missing input before borrowed custody (0.072083ms)
+✔ partial report rejects nested identity getters without executing them (0.311125ms)
+✔ a public copied holder tuple cannot create private report membership (1.251125ms)
+✔ partial report refuses null and primitive roots without selecting state (0.218417ms)
+✔ sentinel persist refuses every authority accessor before reading it (1.409875ms)
+✔ sentinel persist rejects inherited hidden symbolic and extra authority keys (0.819708ms)
+✔ sentinel persist validates nested context before capability property access (0.540125ms)
+✔ sentinel intent comparison refuses every authority accessor before reading it (0.182291ms)
+✔ sentinel intent comparison rejects inherited hidden symbolic and extra authority keys (0.180583ms)
+✔ sentinel intent comparison validates nested context before capability property access (0.152625ms)
+✔ sentinel write refuses every authority accessor before reading it (0.288125ms)
+✔ sentinel write rejects inherited hidden symbolic and extra authority keys (0.18425ms)
+✔ sentinel write validates nested context before capability property access (0.142375ms)
+✔ sentinel readback refuses every authority accessor before reading it (0.23925ms)
+✔ sentinel readback rejects inherited hidden symbolic and extra authority keys (0.145917ms)
+✔ sentinel readback validates nested context before capability property access (0.194291ms)
+✔ loaded sentinel code never selects an unowned context or body wrapper (0.928917ms)
+✔ recorded stage source data derives original native config and session without reading current files (86.501583ms)
+✔ recorded stage source data rejects unresolved selections, foreign roots and substituted native projections (3.318625ms)
+✔ recorded legacy and absent source data retain native semantics without authenticating absence (0.732375ms)
+✔ recorded actor publication validates actual native create and idempotent append bytes without returning a row (18.016167ms)
+✔ native memory timing page data refuses unknown input (0.384416ms)
+✔ native memory timing page data refuses foreign subject (0.196ms)
+✔ native memory timing page data refuses duplicate ID (0.198334ms)
+✔ native memory timing page data refuses mismatched node (0.104667ms)
+✔ native memory timing page data refuses unknown resource key (0.081292ms)
+✔ native memory timing page data refuses unsafe ID (0.082084ms)
+✔ native memory timing pages retain complete census and actual canonical pagination semantics (2.89ms)
+✔ recorded shared phase append validates actual native legacy bytes without returning row authority (2.4905ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ canonical baseline native approval survives untouched first revision abort without an invented applied epoch (4856.863833ms)
+▶ revised canonical native Plan remains current after untouched successor abort with genuine envelope authority
+  ✔ current native grant bytes (425.773583ms)
+  ✔ current grant identity (3.790958ms)
+  ✔ current authority epoch (3.8285ms)
+  ✔ current source prose (378.926625ms)
+  ✔ current protected source (369.335666ms)
+  ✔ current capsule bytes (4.163042ms)
+  ✔ native retained predecessor (3.230708ms)
+  ✔ native audit provenance (6.53925ms)
+✔ revised canonical native Plan remains current after untouched successor abort with genuine envelope authority (6554.052167ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ baseline approval refuses stale trunk without effects (168.694167ms)
+✔ baseline approval refuses stale forecast without effects (88.712416ms)
+✔ baseline approval refuses stale story-marker without effects (86.875625ms)
+✔ baseline approval refuses stale forecast-ready without effects (79.242833ms)
+✔ baseline approval refuses stale source without effects (83.685792ms)
+✔ baseline approval refuses stale proof without effects (94.429583ms)
+✔ baseline approval refuses stale contract-body without effects (91.311083ms)
+✔ baseline complete current approval reuses every binding without writes (95.538083ms)
+✔ revised approval refuses stale trunk without effects (826.199083ms)
+✔ revised approval refuses stale forecast without effects (716.438083ms)
+✔ revised approval refuses stale story-marker without effects (616.803333ms)
+✔ revised approval refuses stale forecast-ready without effects (742.292625ms)
+✔ revised approval refuses stale source without effects (695.371375ms)
+✔ revised approval refuses stale proof without effects (972.865917ms)
+✔ revised approval refuses stale contract-body without effects (950.249625ms)
+✔ revised complete current approval reuses every binding without writes (802.679875ms)
+✔ baseline failBefore plan-journal-write resumes from serialized fresh backend (107.876167ms)
+✔ baseline failBefore plan-journal-readback resumes from serialized fresh backend (110.717375ms)
+✔ baseline failBefore plan-audit-write resumes from serialized fresh backend (119.339459ms)
+✔ baseline failBefore plan-audit-readback resumes from serialized fresh backend (113.192041ms)
+✔ baseline failBefore plan-capsule-write resumes from serialized fresh backend (125.998333ms)
+✔ baseline failBefore plan-capsule-readback resumes from serialized fresh backend (125.735084ms)
+✔ baseline failBefore plan-contract-write resumes from serialized fresh backend (191.788125ms)
+✔ baseline failBefore plan-contract-readback resumes from serialized fresh backend (121.3955ms)
+✔ baseline failBefore plan-proof-write resumes from serialized fresh backend (124.518666ms)
+✔ baseline failBefore plan-proof-readback resumes from serialized fresh backend (122.208708ms)
+✔ baseline failBefore plan-body-write resumes from serialized fresh backend (125.852292ms)
+✔ baseline failBefore plan-body-readback resumes from serialized fresh backend (140.701958ms)
+✔ baseline failBefore plan-readback resumes from serialized fresh backend (139.072833ms)
+✔ baseline failAfter plan-journal-write resumes from serialized fresh backend (154.672333ms)
+✔ baseline failAfter plan-journal-readback resumes from serialized fresh backend (127.563125ms)
+✔ baseline failAfter plan-audit-write resumes from serialized fresh backend (109.702875ms)
+✔ baseline failAfter plan-audit-readback resumes from serialized fresh backend (113.061291ms)
+✔ baseline failAfter plan-capsule-write resumes from serialized fresh backend (109.4115ms)
+✔ baseline failAfter plan-capsule-readback resumes from serialized fresh backend (115.308583ms)
+✔ baseline failAfter plan-contract-write resumes from serialized fresh backend (111.733042ms)
+✔ baseline failAfter plan-contract-readback resumes from serialized fresh backend (119.142625ms)
+✔ baseline failAfter plan-proof-write resumes from serialized fresh backend (115.777208ms)
+✔ baseline failAfter plan-proof-readback resumes from serialized fresh backend (177.334042ms)
+✔ baseline failAfter plan-body-write resumes from serialized fresh backend (128.333625ms)
+✔ baseline failAfter plan-body-readback resumes from serialized fresh backend (132.886625ms)
+✔ baseline failAfter plan-readback resumes from serialized fresh backend (140.451417ms)
+✔ revised failBefore plan-journal-write resumes from serialized fresh backend (1228.714959ms)
+✔ revised failBefore plan-journal-readback resumes from serialized fresh backend (1094.942417ms)
+✔ revised failBefore plan-audit-write resumes from serialized fresh backend (1149.064ms)
+✔ revised failBefore plan-audit-readback resumes from serialized fresh backend (1106.194708ms)
+✔ revised failBefore plan-capsule-write resumes from serialized fresh backend (1091.336208ms)
+✔ revised failBefore plan-capsule-readback resumes from serialized fresh backend (956.164375ms)
+✔ revised failBefore plan-contract-write resumes from serialized fresh backend (1228.769417ms)
+✔ revised failBefore plan-contract-readback resumes from serialized fresh backend (1018.937667ms)
+✔ revised failBefore plan-proof-write resumes from serialized fresh backend (1038.609333ms)
+✔ revised failBefore plan-proof-readback resumes from serialized fresh backend (1093.066ms)
+✔ revised failBefore plan-body-write resumes from serialized fresh backend (1068.569875ms)
+✔ revised failBefore plan-body-readback resumes from serialized fresh backend (1063.491291ms)
+✔ revised failBefore plan-readback resumes from serialized fresh backend (1370.435333ms)
+✔ revised failAfter plan-journal-write resumes from serialized fresh backend (1003.170791ms)
+✔ revised failAfter plan-journal-readback resumes from serialized fresh backend (923.651042ms)
+✔ revised failAfter plan-audit-write resumes from serialized fresh backend (952.365958ms)
+✔ revised failAfter plan-audit-readback resumes from serialized fresh backend (934.624875ms)
+✔ revised failAfter plan-capsule-write resumes from serialized fresh backend (919.231083ms)
+✔ revised failAfter plan-capsule-readback resumes from serialized fresh backend (956.363666ms)
+✔ revised failAfter plan-contract-write resumes from serialized fresh backend (934.972875ms)
+✔ revised failAfter plan-contract-readback resumes from serialized fresh backend (939.33575ms)
+✔ revised failAfter plan-proof-write resumes from serialized fresh backend (934.336417ms)
+✔ revised failAfter plan-proof-readback resumes from serialized fresh backend (1159.615417ms)
+✔ revised failAfter plan-body-write resumes from serialized fresh backend (2360.182875ms)
+✔ revised failAfter plan-body-readback resumes from serialized fresh backend (1093.40225ms)
+✔ revised failAfter plan-readback resumes from serialized fresh backend (1173.057667ms)
+✔ approval continuation refuses target drift with zero new writes (637.757959ms)
+✔ approval continuation refuses record drift with zero new writes (617.392834ms)
+✔ approval continuation refuses chain drift with zero new writes (563.039292ms)
+✔ approval continuation refuses foreign drift with zero new writes (647.152125ms)
+✔ approval continuation refuses trunk drift with zero new writes (604.914709ms)
+✔ approval continuation refuses forecast drift with zero new writes (572.70775ms)
+✔ approval continuation refuses source drift with zero new writes (772.626875ms)
+✔ approval continuation refuses unrelated drift with zero new writes (662.3705ms)
+✔ approval continuation refuses audit drift with zero new writes (598.921625ms)
+✔ approval continuation refuses missing-journal drift with zero new writes (651.715541ms)
+✔ approval continuation refuses extra-key drift with zero new writes (530.593417ms)
+✔ legacy applied approval resumes audit interruption in a fresh backend (443.063042ms)
+✔ approval retry refuses durable expired native grant without restoring it (734.249875ms)
+✔ approval retry refuses durable revoked native grant without restoring it (579.340792ms)
+✔ approval retry refuses durable replaced native grant without restoring it (676.485917ms)
+✔ closed journal data and a copied completed record cannot substitute the private completion token (56.499417ms)
+✔ canonical genuinely pending revision cannot acquire Plan approval (179.26875ms)
+✔ legacy genuinely pending revision cannot acquire Plan approval (119.209291ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ current Plan approval rejects an old revision even when other bindings match (63.886167ms)
+✔ canonical baseline approval runs the real Plan source policy and persists current binding (91.550541ms)
+✔ canonical baseline missing story fails normal Plan checks before persistence (47.094041ms)
+✔ legacy revised approval uses normal verb and preserves exact observed applied state (612.330875ms)
+✔ canonical revised approval uses normal verb and preserves exact observed applied state (1175.655125ms)
+✔ baseline approval is idempotent and the real Plan exit guard consumes its capsule (90.75775ms)
+✔ private completion rejects direct, forged and caller-provider paths with zero writes (26.809667ms)
+✔ missing, foreign and drifted planning snapshots cannot substitute planning evidence (28.592708ms)
+✔ normal adaptive forecast and trunk provenance requirements remain effective (37.239792ms)
+✔ bounded reapproval refuses Test, Review and unsupported evidence repair without writes (35.571167ms)
+✔ required current-revision approval entrypoint reruns normal checks and rejects caller verdicts (64.561375ms)
+✔ required approval wrapper refuses stale observations and snapshot policy downgrade (31.423292ms)
+✔ all recognized memory Plan entrypoints reject foreign source roots before any effects (28.05125ms)
+✔ current authority guard returns closed typed indeterminate refusals for absent, failed and unsupported authority (86.774083ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ requirements projection consumes actual consolidated AC stamps and native multi-VC declarations (2.974958ms)
+✔ requirements projection uses observed legacy stable identities and current canonical epochs (466.720417ms)
+✔ requirements projection uses observed canonical stable identities and current canonical epochs (840.93075ms)
+✔ actual ac individual stamper binds current revision and its reader rejects stripped new proof (366.603708ms)
+✔ actual dod individual stamper binds current revision and its reader rejects stripped new proof (373.980667ms)
+✔ only exact preserved legacy individual proof survives current revision read side (369.2425ms)
+✔ metadata continuation rejects duplicate body-version control claims before push (441.151833ms)
+✔ caller activity status cannot turn a stale approval into mutation authority (156.009709ms)
+✔ caller activity plan-approve cannot turn a stale approval into mutation authority (159.569542ms)
+✔ caller activity invented-consumer cannot turn a stale approval into mutation authority (157.125791ms)
+✔ unknown mutation activity cannot execute even against an empty verified chain (17.184042ms)
+✔ unconfigured activity retains ordinary gates only after fresh proof that host has no enabled revision domains (0.415292ms)
+✔ registered lifecycle revision guard preserves typed pending authority without publishing admission (75.25825ms)
+✔ registered lifecycle revision guard preserves typed stale authority without publishing admission (233.443375ms)
+✔ registered lifecycle revision guard preserves typed unavailable authority without publishing admission (21.311916ms)
+✔ registered lifecycle revision guard preserves typed malformed authority without publishing admission (24.070709ms)
+✔ registered lifecycle revision guard preserves typed baseline authority without publishing admission (25.103708ms)
+✔ registered lifecycle revision guard preserves typed approved authority without publishing admission (441.479041ms)
+✔ new typed guard conformance requires discovered producer and complete typed emissions while preserving frozen legacy rules (9.098833ms)
+✔ actual body mutation pending emits a closed native execution blocker (117.174792ms)
+✔ actual body mutation stale emits a closed native execution blocker (275.098083ms)
+✔ actual body mutation unavailable emits a closed native execution blocker (18.728542ms)
+✔ actual body mutation conflict emits a closed native execution blocker (336.61525ms)
+✔ actual body mutation criteria-change emits a closed native execution blocker (410.214542ms)
+✔ actual normalization pending refuses before evaluation callback and preserves its native blocker (75.000542ms)
+✔ actual normalization stale refuses before evaluation callback and preserves its native blocker (252.835583ms)
+✔ actual normalization unavailable refuses before evaluation callback and preserves its native blocker (19.322792ms)
+✔ actual normalization malformed refuses before evaluation callback and preserves its native blocker (16.583375ms)
+✔ actual native Plan completion retains its checked journal and ordered reference after original snapshot restart (368.496833ms)
+✔ actual Plan completion failBefore native-plan-record-write resumes after restart without duplicate retained history (564.160125ms)
+✔ actual Plan completion failBefore native-plan-record-readback resumes after restart without duplicate retained history (548.128959ms)
+✔ actual Plan completion failAfter native-plan-record-write resumes after restart without duplicate retained history (567.543ms)
+✔ actual Plan completion failAfter native-plan-record-readback resumes after restart without duplicate retained history (582.587459ms)
+✔ retained Plan index rejects absent, duplicate, changed, foreign and reordered references (370.731541ms)
+✔ metadata continuation does not bless criterion drift (407.401292ms)
+✔ metadata continuation does not bless checkbox drift (327.5355ms)
+✔ metadata continuation does not bless control drift (325.877916ms)
+✔ metadata continuation does not bless scope drift (320.381209ms)
+✔ metadata continuation does not bless stage drift (315.572334ms)
+✔ metadata continuation does not bless proof-resource drift (299.40675ms)
+✔ metadata continuation does not bless source-resource drift (341.301333ms)
+✔ ordinary body criterion change cannot reach transport under current revision admission (432.691916ms)
+✔ ordinary body source change cannot reach transport under current revision admission (355.386084ms)
+✔ ordinary body proof change cannot reach transport under current revision admission (374.908208ms)
+✔ ordinary body control change cannot reach transport under current revision admission (391.736667ms)
+✔ verification receipt generator binds the actual held revision instead of caller binding strings (449.298875ms)
+✔ verification aggregate reader rejects missing revision binding (415.723625ms)
+✔ verification aggregate reader rejects different-revision revision binding (424.72125ms)
+✔ verification aggregate reader rejects different-digest revision binding (361.70575ms)
+✔ verification aggregate reader rejects extra-key revision binding (357.992791ms)
+✔ requirements projection derives current revision binding and rejects stripped live inputs (353.551166ms)
+✔ never revised receipt generation preserves unbound historical format despite caller binding (0.148291ms)
+✔ evidence-v2 reuse rejects unbound historical aggregates inside an actual current revision (364.300459ms)
+✔ evidence-v2 subject codec retains a closed current binding and reuse rejects a stripped subject (359.486041ms)
+✔ versionedWriteBody pending authority refuses before caller transformation or transport effects (141.421458ms)
+✔ versionedWriteBody stale authority refuses before caller transformation or transport effects (268.260333ms)
+✔ versionedWriteBody unavailable authority refuses before caller transformation or transport effects (17.191416ms)
+✔ mutateIssueBody pending authority refuses before caller transformation or transport effects (79.054333ms)
+✔ mutateIssueBody stale authority refuses before caller transformation or transport effects (239.526959ms)
+✔ mutateIssueBody unavailable authority refuses before caller transformation or transport effects (19.385042ms)
+✔ real baseline authority permits ordinary body writing with deny published before effects (20.04775ms)
+✔ real approved authority permits ordinary body writing with deny published before effects (393.600041ms)
+✔ public observation objects and caller ready callbacks cannot mint authority (18.800417ms)
+✔ appendCapsule real adapter pending authority and transport effects (113.11825ms)
+✔ appendCapsule real adapter stale authority and transport effects (243.600208ms)
+✔ appendCapsule real adapter unavailable authority and transport effects (20.802458ms)
+✔ appendCapsule real adapter malformed authority and transport effects (20.301375ms)
+✔ appendCapsule real adapter baseline authority and transport effects (18.274292ms)
+✔ appendCapsule real adapter approved authority and transport effects (366.238625ms)
+✔ executeContractWrite real adapter pending authority and transport effects (72.9935ms)
+✔ executeContractWrite real adapter stale authority and transport effects (235.79775ms)
+✔ executeContractWrite real adapter unavailable authority and transport effects (17.101958ms)
+✔ executeContractWrite real adapter malformed authority and transport effects (19.467291ms)
+✔ executeContractWrite real adapter baseline authority and transport effects (26.461542ms)
+✔ executeContractWrite real adapter approved authority and transport effects (438.854916ms)
+✔ writeDirectoryContractOperation real adapter pending authority and transport effects (79.940042ms)
+✔ writeDirectoryContractOperation real adapter stale authority and transport effects (235.3925ms)
+✔ writeDirectoryContractOperation real adapter unavailable authority and transport effects (17.676333ms)
+✔ writeDirectoryContractOperation real adapter malformed authority and transport effects (17.918208ms)
+✔ writeDirectoryContractOperation real adapter baseline authority and transport effects (19.465541ms)
+✔ writeDirectoryContractOperation real adapter approved authority and transport effects (555.846167ms)
+✔ ordinary metadata body write retains recognized current approval for the next real backend consumer (509.871791ms)
+✔ legacy proposal archives complete identities and retires shared-VC dependencies and approvals (266.036708ms)
+✔ canonical revisions reset unchanged current proof and change replaced AC IDs (91.969916ms)
+✔ semantic digests ignore execution and checkbox bytes while binding whitespace and commands (25.347083ms)
+✔ replacement IDs derive from transaction and ordinal rather than normalized labels (27.23075ms)
+✔ refuses duplicate headings (24.753042ms)
+✔ refuses ambiguous occurrence (27.64525ms)
+✔ refuses missing root VC (28.675375ms)
+✔ refuses duplicate VC IDs (26.105584ms)
+✔ refuses malformed declaration (25.788292ms)
+✔ refuses supplied proof (25.902292ms)
+✔ refuses foreign executor (18.98325ms)
+✔ refuses unknown authority (21.416ms)
+✔ refuses partial pagination (21.868958ms)
+✔ refuses reused transaction (18.636333ms)
+✔ refuses stale bytes (21.786292ms)
+✔ refuses unneeded VC change (22.742792ms)
+✔ VC deletion refuses surviving references; AC deletion and splitting stay explicit (60.302791ms)
+✔ frozen surviving identities withstand proof and checkbox/version stamping (21.183209ms)
+✔ approval statements bind exact mode and executor with no newline (17.714208ms)
+✔ canonical planned projection preserves separately governed issue sections (30.578375ms)
+✔ abort seals unchanged semantic authority and only its event record (36.992542ms)
+✔ partial legacy execution proof is retired instead of carried as eligible (19.515875ms)
+✔ canonical raw grant bytes agree with the archived authority summary (27.272333ms)
+✔ historical timing and lifecycle entries receive separate historical dispositions (18.396167ms)
+✔ duplicate surviving identities and retired replacement identities refuse (18.534792ms)
+✔ legacy AC projection preserves identical separately governed Scope bytes (25.527167ms)
+✔ legacy AC projection selects the declared occurrence among identical criterion lines (34.2115ms)
+✔ legacy VC insertion preserves a matching root line quoted in Scope (29.473333ms)
+✔ new canonical VC identity resolves every approved declaration in the planned contract (41.372417ms)
+✔ retired generated root refuses legacy add (23.643167ms)
+✔ retired generated root refuses canonical add (31.214417ms)
+✔ retired generated identity refuses legacy VC replacement (20.253417ms)
+✔ original retired marker identities survive AC replace projection (19.780416ms)
+✔ original retired marker identities survive AC delete projection (19.036583ms)
+✔ collector projection shares one synchronous validation scope across its pure phases (44.383208ms)
+✔ collector scope preserves original projection and independent mutable returns: empty (18.277875ms)
+✔ collector scope preserves original projection and independent mutable returns: legacy applied (54.480792ms)
+✔ collector scope preserves original projection and independent mutable returns: canonical applied (84.605125ms)
+✔ collector scope preserves original projection and independent mutable returns: legacy resume (117.289584ms)
+✔ collector scope preserves original projection and independent mutable returns: legacy untouched abort (150.956417ms)
+✔ collector scope preserves original refusal classification and fresh input validation (285.452459ms)
+✔ complete prepared record round trips original proof and body bytes (75.557125ms)
+✔ rendered Unicode event enforces the exact 60000 byte boundary without truncation (52.19775ms)
+✔ incomplete archive and independently edited sealed write bytes refuse (23.679875ms)
+✔ event envelope is closed and rejects malformed or noncanonical revision comments (25.567292ms)
+✔ durable recovery references hydrate exact predecessor bytes without duplicating its archive (59.367708ms)
+✔ published authorizer is bound to the complete exact statement and original source identity (37.768292ms)
+✔ required original credential-bearing bytes refuse publication rather than being redacted (29.718333ms)
+✔ resource vector seals proof semantics, delivery identity and capsule bytes with deterministic identities (47.448959ms)
+✔ a durable self-reference refuses as a cycle before hydration (51.54775ms)
+✔ verified graph scope cannot hide unavailable, duplicate, tampered or mutated predecessor authority (90.841083ms)
+✔ one synchronous graph validation decodes each identical envelope once (71.785417ms)
+✔ decoded envelope reuse keeps public results mutable and scopes independent (50.046375ms)
+✔ warm envelope DATA preserves fresh graph and exact refusal semantics (83.827958ms)
+✔ empty, prepared, applied and aborted are distinct verified states (51.7985ms)
+✔ full chain refuses duplicate IDs, differing bytes, forks and missing predecessors (40.302708ms)
+✔ proposal operation reuse and wrong terminal root/digest/executor refuse (53.419542ms)
+✔ a new transaction cannot start while pending or after an unrelated terminal predecessor (35.655375ms)
+✔ retirement selector preserves pending and applied proposal data without replacing the full chain (51.83025ms)
+✔ retirement selector never treats malformed or asserted abort status as an untouched terminal (34.520375ms)
+✔ authority history does not repeat the complete verified terminal prefix (29.254042ms)
+✔ single history fold matches original prefix classification across repeated abort, resume and final apply (2415.282542ms)
+✔ history fold retains original prefix refusal and fresh mutation checks (1915.616375ms)
+✔ makeLegacyRevisionFixture: complete initial and recovery requests validate (46.050209ms)
+✔ makeCanonicalRevisionFixture: complete initial and recovery requests validate (65.719584ms)
+✔ unknown nested keys cannot be laundered by resealing (38.077167ms)
+✔ caller dispositions, identities and write bytes must reproduce tool derivation (27.102041ms)
+✔ actions, modes, prior references and recovery-vector digests agree (24.288542ms)
+✔ ID bounds and declaration-only edits reject supplied proof or arbitrary body prose (34.945ms)
+✔ no production mutation command, action or public package export is reachable (1.623583ms)
+✔ canonical dependency fixture includes a natively valid active grant (34.654375ms)
+✔ current and old approval fixtures bind all Plan sources and target contract epochs (27.626458ms)
+✔ closed canonical added-root request reproduces contract-resolvable declaration identities (34.822875ms)
+✔ one synchronous validation scope hashes an equal-byte proposal once and expires on return (20.15025ms)
+✔ schema scope preserves exact cold refusal and detects changed or repaired DATA (71.1385ms)
+✔ schema scope rechecks nested accessors and preserves original input identity (21.757292ms)
+✔ schema bridge retains original records callback then observation and cleanup order (29.001583ms)
+✔ one synchronous validation scope avoids equal-byte request derivation twice (30.685041ms)
+✔ schema scope rejects then repairs the same actual request object (35.567709ms)
+✔ both native proposal forms preserve cold and warm initial and recovery input references (148.384417ms)
+✔ schema-only bridge expires at return, throw and a real await without observing then (21.7865ms)
+✔ warm request validation refuses changed missing and foreign complete archived DATA (65.506417ms)
+✔ stage-only board denial precedes public context access and project callbacks (1.723292ms)
+✔ stage-only failure audit refuses before public input getters or comment callback (0.201166ms)
+✔ stage-only native gh root denies before options getters and injectable transport (0.515083ms)
+✔ stage-only native item root denies before public getters (0.469458ms)
+✔ stage-only native gql root denies before public getters (0.183458ms)
+✔ stage-only sentinel denies before public context getter (0.243042ms)
+✔ stage-only sentinel denies before injected body callback (0.122458ms)
+✔ foreign copied and accessor error DATA cannot enter original board failure custody (0.180916ms)
+✔ ordinary native loop rethrows the identical write error and never reads status afterward (0.33425ms)
+✔ stage-only rollback denies before public context getter (0.383666ms)
+✔ stage-only rollback denies before injected read callback (0.191666ms)
+✔ stage-only consistency denies before public context getter (0.21825ms)
+✔ stage-only consistency denies before injected read callback (0.085166ms)
+✓ Issue #124 moved to: test
+✔ native board argv is shared with the ordinary actual status loop (1.692583ms)
+✔ native item parser retains actual node ID and configured membership semantics (0.426042ms)
+✔ native Status parser preserves exact first configured item and empty fallback (0.14275ms)
+✔ original raw Status custody refuses public copied foreign and getter inputs without evaluation (49.90275ms)
+✔ raw Status recording refuses caller authority getters before evaluation (0.55675ms)
+✔ raw Status recording closes inherited null-prototype symbol and hidden authority fields (0.309042ms)
+✔ closed native response parser preserves absent data, null and actual native JSON value (1.412875ms)
+✔ recorded native response distinguishes undefined and null and derives exact Status result (0.926042ms)
+✔ recorded native close error preserves raw code 3 (0.481291ms)
+✔ recorded native close error preserves raw code null (0.153375ms)
+✔ recorded gql and Status-parser failures remain separate native outcomes (0.632958ms)
+✔ closed recorded response rejects supplied parser, result, malformed envelopes and getters (0.5875ms)
+✔ recorded response owns closed input before its fixed import await (0.132125ms)
+✔ recorded DATA refuses nonfinite scalar without normalizing native parser output (0.151458ms)
+✔ recorded DATA refuses nested nonfinite without normalizing native parser output (0.189167ms)
+✔ recorded DATA refuses negative zero without normalizing native parser output (0.1815ms)
+✔ recorded DATA refuses unsupported Unicode without normalizing native parser output (0.137292ms)
+ℹ tests 514
+ℹ suites 0
+ℹ pass 514
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98906.162583
