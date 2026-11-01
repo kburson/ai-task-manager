@@ -112,14 +112,14 @@ test('terminal release cannot report success without read-back of binding and oc
 });
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { setActiveTask, getActiveTask } from '../../../task-tracker/session-state.mjs';
 import { createDraftBranch } from '../../../task-tracker/draft-branch.mjs';
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 function gitFixture(t) {
-  mkdirSync('.scratch/2134', { recursive: true });
-  const top = mkdtempSync(path.resolve('.scratch/2134/disposable-'));
+  const top = mkdtempProjectIsolated('disposable-');
   const main = path.join(top, 'main');
   mkdirSync(main);
   const git = (cwd, ...args) =>
