@@ -242,6 +242,10 @@
       "count": 1
     },
     {
+      "key": "scripts/task-tracker/lib/decomposition-inflation-audit.mjs|rest-or-non-graphql|out-of-scope",
+      "count": 1
+    },
+    {
       "key": "scripts/task-tracker/lib/decomposition-migration-writer.mjs|opaque-gh-cli|opaque",
       "count": 1
     },
@@ -611,6 +615,7 @@
     "scripts/task-tracker/lib/decomposition-audit-writer.mjs|11|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-authority.mjs|172|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-hook-authority.mjs|74|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/decomposition-inflation-audit.mjs|52|rest-or-non-graphql|out-of-scope",
     "scripts/task-tracker/lib/decomposition-migration-writer.mjs|189|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|158|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|299|opaque-gh-cli|opaque",

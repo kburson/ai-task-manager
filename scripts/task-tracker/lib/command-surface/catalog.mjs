@@ -428,10 +428,12 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'inflate-estimate': contract(
     [
-      'A positive issue number, size, estimate, reason, and at least one repeatable --item are required.',
+      'Provide a positive issue number and either the new size, estimate, reason and work items, or an exact pending audit operation and observed input digest.',
     ],
-    ['Updates board estimate fields and appends an auditable inflation comment.'],
-    ['Prints old and new estimates and the audit comment reference.']
+    [
+      'Ordinary inflation updates board fields and appends its audit. Reconciliation confirms the existing business effects through a linked publication.',
+    ],
+    ['Prints the inflation result, or the reconciled predecessor and successor operation IDs.']
   ),
   kind: contract(
     ['The target issue must exist and the requested kind or clear operation must be valid.'],
