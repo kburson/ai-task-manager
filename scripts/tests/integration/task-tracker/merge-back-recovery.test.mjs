@@ -22,12 +22,16 @@ import { claimOccupancy } from '../../../task-tracker/lib/occupancy.mjs';
 import { occupancyPath } from '../../../task-tracker/paths.mjs';
 import { getActiveTask, setActiveTask } from '../../../task-tracker/session-state.mjs';
 import { runMergeBackCommand, runMergeBackMain } from '../../../task-tracker/merge-back.mjs';
+import { loadGuidance } from '../../../../guidance/cache.mjs';
 
 const schema = 'aitm.merge-back-recovery/v1';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const git = (cwd, ...args) =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: 'pipe' }).trim();
-function fixture(t, { staged = false, second = false, twoConflicts = false } = {}) {
+function fixture(
+  t,
+  { staged = false, second = false, twoConflicts = false, historicalTmp = false } = {}
+) {
   const main = mkdtempProjectIsolated('merge-back-recovery-');
   t.after(() => rmSync(main, { recursive: true, force: true }));
   const branch = 'codex/custom-2039',
@@ -59,6 +63,15 @@ function fixture(t, { staged = false, second = false, twoConflicts = false } = {
     writeFileSync(path.join(parent, 'two'), 'parent two\n');
     commit(parent, 'second replay');
   }
+  if (historicalTmp) {
+    writeFileSync(path.join(parent, '.TMP'), 'historical collision');
+    commit(parent, 'temporary tracked ancestor');
+    rmSync(path.join(parent, '.TMP'));
+    commit(parent, 'remove collision');
+    writeFileSync(path.join(parent, 'later'), 'normal replay');
+    commit(parent, 'later safe tree');
+  }
+  mkdirSync(child, { recursive: true, mode: 0o700 });
   git(main, 'worktree', 'add', '-b', childBranch, child, 'refs/heads/' + branch);
   writeFileSync(path.join(main, 'one'), 'trunk\n');
   writeFileSync(path.join(main, 'two'), 'trunk two\n');
@@ -101,7 +114,7 @@ function fixture(t, { staged = false, second = false, twoConflicts = false } = {
     recoverySession: () => sid,
   };
   const file = '.scratch/recovery.json';
-  mkdirSync(path.join(child, '.scratch'), { recursive: true });
+  mkdirSync(path.join(child, '.scratch'), { recursive: true, mode: 0o700 });
   const args = (request) => {
     writeFileSync(path.join(child, file), JSON.stringify({ schema, ...request }));
     return ['2068', child, '--recover-parent', file];
@@ -465,6 +478,7 @@ test('a signaled Git step reports interruption without expired readback and a va
 
 test('staging exhaustion reports partial working files and retains both conflict stages for retry', async (t) => {
   const f = fixture(t, { twoConflicts: true });
+  const originals = publishCache(f);
   const state = await f.inspect();
   const before = git(f.parent, 'ls-files', '--stage');
   const childHead = git(f.child, 'rev-parse', 'HEAD');
@@ -473,6 +487,7 @@ test('staging exhaustion reports partial working files and retains both conflict
   f.deps.recoveryNow = () => (readFileSync(observed).equals(first) ? 10500 : 0);
   const request = {
     action: 'continue',
+    preserveGuidanceCache: true,
     expected: state.snapshot,
     reason: 'two explicit resolutions',
     resolutions: [
@@ -483,6 +498,9 @@ test('staging exhaustion reports partial working files and retains both conflict
   const result = await f.run(request);
   assert.equal(result.status, 'interrupted');
   assert.equal(result.phase, 'staging');
+  const archived = JSON.parse(readFileSync(path.join(f.child, result.cacheReceipt.path)));
+  assert.deepEqual(Buffer.from(archived.files[0].base64, 'base64'), originals[cacheNames[0]]);
+  assert.equal(result.postCache.status, 'unobserved');
   assert.equal(result.code, 'RECOVERY_BUDGET');
   assert.equal(result.rebaseMetadataPresent, true);
   assert.deepEqual(readFileSync(observed), first);
@@ -502,4 +520,288 @@ test('an unavailable registered parent is identified without dropping its regist
   await assert.rejects(f.inspect(), /registered retained parent checkout unavailable/);
   assert.ok(git(f.main, 'worktree', 'list', '--porcelain').includes(f.parent));
   assert.ok(existsSync(path.join(moved, '.git')));
+});
+
+const cacheDir = '.tmp/aitm/guidance-cache';
+const cacheNames = ['agent-index.v1.json', 'human-catalog.v1.json', 'manifest.v1.json'];
+function publishCache(f) {
+  assert.equal(loadGuidance({ projectRoot: f.parent, need: 'agent' }).valid, true);
+  return Object.fromEntries(
+    cacheNames.map((name) => [name, readFileSync(path.join(f.parent, cacheDir, name))])
+  );
+}
+const skipCache = (state) => ({
+  action: 'skip',
+  expected: state.snapshot,
+  preserveGuidanceCache: true,
+  resolutions: [{ path: 'one', stage: 2 }],
+  reason: 'reviewed duplicate with preserved cache',
+});
+
+test('explicit cache preservation archives exact original bytes before the parent step', async (t) => {
+  const f = fixture(t);
+  const original = publishCache(f);
+  const state = await f.inspect();
+  assert.equal(state.guidanceCache.status, 'verified');
+  const withoutPermission = skipCache(state);
+  delete withoutPermission.preserveGuidanceCache;
+  await assert.rejects(f.run(withoutPermission), /preserve/);
+  const result = await f.run(skipCache(state));
+  assert.equal(result.status, 'completed');
+  const saved = readFileSync(path.join(f.child, result.cacheReceipt.path));
+  assert.equal(sha(saved), result.cacheReceipt.sha256);
+  const receipt = JSON.parse(saved);
+  assert.equal(receipt.snapshot, state.snapshot);
+  for (const row of receipt.files) {
+    assert.deepEqual(Buffer.from(row.base64, 'base64'), original[path.basename(row.path)]);
+    assert.equal(row.sha256, sha(original[path.basename(row.path)]));
+    assert.equal(row.size, original[path.basename(row.path)].length);
+    assert.equal(row.mode, statSync(path.join(f.parent, row.path)).mode);
+  }
+  assert.equal(receipt.files.length, 3);
+  f.unchanged();
+});
+
+test('a partial or mismatched cache stays ineligible even when preservation is requested', async (t) => {
+  const f = fixture(t);
+  publishCache(f);
+  writeFileSync(path.join(f.parent, cacheDir, cacheNames[0]), 'changed bytes');
+  const state = await f.inspect();
+  assert.equal(state.guidanceCache.status, 'ineligible');
+  const before = refusalState(f);
+  await assert.rejects(f.run(skipCache(state)), /cache|ignored/);
+  assert.deepEqual(refusalState(f), before);
+});
+
+for (const kind of ['partial', 'unknown ignored', 'untracked', 'symlink', 'hard link']) {
+  test('cache preservation refuses ' + kind + ' evidence and leaves Git unchanged', async (t) => {
+    const f = fixture(t);
+    publishCache(f);
+    const cacheFile = path.join(f.parent, cacheDir, cacheNames[0]);
+    const foreign = path.join(f.main, '.tmp', 'foreign-cache-evidence');
+    if (kind === 'partial') rmSync(cacheFile);
+    if (kind === 'unknown ignored') writeFileSync(path.join(f.parent, '.tmp', 'other'), 'keep');
+    if (kind === 'untracked') writeFileSync(path.join(f.parent, 'other-untracked'), 'keep');
+    if (kind === 'symlink') {
+      renameSync(cacheFile, foreign);
+      symlinkSync(foreign, cacheFile);
+    }
+    if (kind === 'hard link') linkSync(cacheFile, foreign);
+    const state = await f.inspect(),
+      before = refusalState(f);
+    assert.equal(state.guidanceCache.status, 'ineligible');
+    await assert.rejects(f.run(skipCache(state)), /preserve|ignored/);
+    assert.deepEqual(refusalState(f), before);
+  });
+}
+for (const inputOnly of [false, true]) {
+  test(
+    'cache preservation detects a case-aliased tracked root in ' +
+      (inputOnly ? 'a pick input parent' : 'an intermediate pick'),
+    async (t) => {
+      const f = fixture(t, { historicalTmp: true });
+      publishCache(f);
+      if (inputOnly) {
+        const todo = git(
+          f.parent,
+          'rev-parse',
+          '--path-format=absolute',
+          '--git-path',
+          'rebase-merge/git-rebase-todo'
+        );
+        const original = readFileSync(todo, 'utf8');
+        const revised = original
+          .split('\n')
+          .filter((line) => !line.endsWith(' temporary tracked ancestor'))
+          .join('\n');
+        assert.notEqual(revised, original);
+        writeFileSync(todo, revised);
+      }
+      const state = await f.inspect(),
+        before = refusalState(f);
+      assert.equal(state.guidanceCache.status, 'ineligible');
+      assert.match(state.guidanceCache.reason, /collision in replay tree/);
+      await assert.rejects(f.run(skipCache(state)), /preserve|ignored/);
+      assert.deepEqual(refusalState(f), before);
+    }
+  );
+}
+for (const scenario of [
+  'existing receipt',
+  'symlinked directory',
+  'drift after receipt',
+  'budget after receipt',
+]) {
+  test('cache receipt protects parent before Git for ' + scenario, async (t) => {
+    const f = fixture(t),
+      original = publishCache(f),
+      state = await f.inspect();
+    const base = path.join(f.child, '.scratch', '2068-recovery'),
+      directory = path.join(base, 'cache-evidence'),
+      target = path.join(directory, state.snapshot + '.json');
+    mkdirSync(base, { recursive: true, mode: 0o700 });
+    if (scenario === 'existing receipt') {
+      mkdirSync(directory, { mode: 0o700 });
+      writeFileSync(target, 'preexisting operator data');
+    }
+    if (scenario === 'symlinked directory') symlinkSync(path.join(f.main, '.tmp'), directory);
+    let changed = false;
+    if (scenario === 'drift after receipt' || scenario === 'budget after receipt')
+      f.deps.recoveryNow = () => {
+        if (existsSync(target)) {
+          if (scenario === 'budget after receipt') return 10500;
+          if (!changed) {
+            changed = true;
+            writeFileSync(path.join(f.parent, cacheDir, cacheNames[1]), 'concurrent cache update');
+          }
+        }
+        return 0;
+      };
+    const before = refusalState(f);
+    await assert.rejects(f.run(skipCache(state)), /receipt|budget|observations changed/);
+    assert.deepEqual(refusalState(f), before);
+    if (scenario === 'existing receipt')
+      assert.equal(readFileSync(target, 'utf8'), 'preexisting operator data');
+    if (scenario === 'symlinked directory')
+      assert.equal(existsSync(path.join(f.main, '.tmp', state.snapshot + '.json')), false);
+    if (scenario === 'drift after receipt') {
+      assert.equal(changed, true);
+      assert.deepEqual(
+        Buffer.from(JSON.parse(readFileSync(target)).files[1].base64, 'base64'),
+        original[cacheNames[1]]
+      );
+    }
+    if (scenario === 'budget after receipt') {
+      const saved = statSync(target);
+      delete f.deps.recoveryNow;
+      assert.equal((await f.run(skipCache(state))).status, 'completed');
+      assert.equal(statSync(target).ino, saved.ino);
+    }
+  });
+}
+
+test('a tracked .tmp index entry refuses preservation before any parent write', async (t) => {
+  const f = fixture(t);
+  publishCache(f);
+  const file = '.tmp/other-indexed';
+  writeFileSync(path.join(f.parent, file), 'tracked input');
+  git(f.parent, 'add', '-f', file);
+  const state = await f.inspect(),
+    before = refusalState(f);
+  assert.equal(state.guidanceCache.status, 'ineligible');
+  assert.match(state.guidanceCache.reason, /collision in index/);
+  await assert.rejects(f.run(skipCache(state)), /preserve|ignored/);
+  assert.deepEqual(refusalState(f), before);
+});
+
+test('normal Git cache updates remain in the checkout and the receipt retains the prior bytes', async (t) => {
+  const f = fixture(t),
+    original = publishCache(f),
+    state = await f.inspect();
+  const target = path.join(f.parent, cacheDir, cacheNames[1]),
+    hook = path.join(f.main, '.tmp', 'cache-updater');
+  writeFileSync(hook, '#!/bin/sh\nprintf updated > ' + JSON.stringify(target) + '\nexit 1\n');
+  chmodSync(hook, 0o755);
+  git(f.main, 'config', 'core.fsmonitor', hook);
+  const result = await f.run(skipCache(state));
+  assert.equal(result.status, 'completed');
+  assert.equal(readFileSync(target, 'utf8'), 'updated');
+  assert.deepEqual(result.postCache.contentOrModeChanged, [
+    path.posix.join(cacheDir, cacheNames[1]),
+  ]);
+  const receipt = JSON.parse(readFileSync(path.join(f.child, result.cacheReceipt.path)));
+  assert.deepEqual(Buffer.from(receipt.files[1].base64, 'base64'), original[cacheNames[1]]);
+  f.unchanged();
+});
+
+test('cache drift during occupancy lock wait refuses the old snapshot without replacing evidence', async (t) => {
+  const f = fixture(t);
+  publishCache(f);
+  const state = await f.inspect(),
+    before = refusalState(f);
+  const file = path.join(f.parent, cacheDir, cacheNames[0]),
+    lock = occupancyPath(f.main) + '.lock';
+  mkdirSync(lock);
+  const writer = spawn(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      "import {writeFileSync,rmdirSync} from 'node:fs';setTimeout(()=>{writeFileSync(process.argv[1],'changed while waiting');rmdirSync(process.argv[2]);},150)",
+      file,
+      lock,
+    ],
+    { stdio: 'pipe' }
+  );
+  const done = new Promise((resolve, reject) => {
+    writer.on('error', reject);
+    writer.on('exit', (code) => (code ? reject(new Error('fixture writer ' + code)) : resolve()));
+  });
+  await assert.rejects(f.run(skipCache(state)), /stale/);
+  await done;
+  assert.deepEqual(refusalState(f), before);
+  assert.equal(readFileSync(file, 'utf8'), 'changed while waiting');
+  assert.equal(
+    existsSync(
+      path.join(f.child, '.scratch', '2068-recovery', 'cache-evidence', state.snapshot + '.json')
+    ),
+    false
+  );
+});
+
+for (const [component, mode] of [
+  ['.', 0o775],
+  ['.scratch', 0o777],
+  ['.scratch/2068-recovery', 0o775],
+  ['.scratch/2068-recovery/cache-evidence', 0o777],
+  ['directory after publication', 0o775],
+  ['file after publication', 0o640],
+]) {
+  test('unsafe receipt permissions refuse parent writes for ' + component, async (t) => {
+    const f = fixture(t),
+      originals = publishCache(f),
+      state = await f.inspect();
+    const evidence = path.join(f.child, '.scratch/2068-recovery/cache-evidence');
+    const target = path.join(evidence, state.snapshot + '.json');
+    const after = component.endsWith('after publication');
+    const directory = after ? evidence : path.join(f.child, component);
+    const file = component === 'file after publication';
+    const unsafe = file ? target : directory;
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    const marker = path.join(directory, component === '.' ? 'ignored.txt' : '.operator-note');
+    writeFileSync(marker, 'retain this data');
+    if (after)
+      f.deps.recoveryNow = () => {
+        if (existsSync(target)) chmodSync(unsafe, mode);
+        return 0;
+      };
+    else chmodSync(unsafe, mode);
+    const before = refusalState(f);
+    await assert.rejects(f.run(skipCache(state)), (error) =>
+      error.message.includes('unsafe cache receipt ' + (file ? 'file' : 'directory'))
+    );
+    assert.deepEqual(refusalState(f), before);
+    f.unchanged();
+    assert.equal(statSync(unsafe).mode & 0o777, mode);
+    assert.equal(readFileSync(marker, 'utf8'), 'retain this data');
+    assert.equal(existsSync(target), after);
+    for (const name of cacheNames)
+      assert.deepEqual(readFileSync(path.join(f.parent, cacheDir, name)), originals[name]);
+    if (after)
+      assert.deepEqual(
+        Buffer.from(JSON.parse(readFileSync(target)).files[0].base64, 'base64'),
+        originals[cacheNames[0]]
+      );
+  });
+}
+
+test('a foreign uid refuses an otherwise private receipt file or directory', async () => {
+  const { receiptPermissionsSafe } = await import('../../../task-tracker/lib/merge-back-cli.mjs');
+  for (const [directory, mode] of [
+    [true, 0o755],
+    [false, 0o600],
+  ]) {
+    assert.equal(receiptPermissionsSafe({ uid: 41, mode }, directory, 41), true);
+    assert.equal(receiptPermissionsSafe({ uid: 42, mode }, directory, 41), false);
+  }
 });

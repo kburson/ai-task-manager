@@ -10,9 +10,20 @@ import path from 'node:path';
 import {
   loadPolicy,
   classifyEdit,
+  isAllowed,
   DEFAULT_POLICY,
 } from '../../../../task-tracker/activity-policy.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+
+test('#2068: project policy classifies just the guidance cache owner for Develop edits', () => {
+  const policy = loadPolicy(path.resolve(import.meta.dirname, '../../../../..'));
+  const activity = classifyEdit('guidance/cache.mjs', policy);
+  assert.equal(activity, 'WRITE_CODE');
+  assert.equal(isAllowed('develop', activity), true);
+  assert.equal(isAllowed('test', activity), false);
+  assert.equal(isAllowed('review', activity), false);
+  assert.equal(classifyEdit('guidance/unknown.mjs', policy), 'WRITE_OTHER');
+});
 
 // Write a `.ai-task-manager/activity-policy.json` under a fresh temp dir and
 // return its path. Caller is responsible for cleanup via the returned dir.

@@ -426,7 +426,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     ),
     argument(
       '--recover-parent <request.json>',
-      'From the bound child, use the selected direct bin/aitm.mjs carrier and a .scratch JSON file. Start with {"schema":"aitm.merge-back-recovery/v1","action":"inspect"}. For continue or skip add expected (the returned snapshot), reason, and resolutions for every unmerged path. Select {path,stage:2} for the current rebased version, {path,stage:3} for the incoming replay, or {path,base64,sha256} for reviewed bytes. Skip requires the entire resolved index to equal parent HEAD. Git may replay additional clean commits before the next pause or completion.'
+      'From the bound child, use the selected direct bin/aitm.mjs carrier and a .scratch JSON file. Start with {"schema":"aitm.merge-back-recovery/v1","action":"inspect"}. For continue or skip add expected (the returned snapshot), reason, and resolutions for every unmerged path. Select {path,stage:2} for the current rebased version, {path,stage:3} for the incoming replay, or {path,base64,sha256} for reviewed bytes. Skip requires the entire resolved index to equal parent HEAD. If inspection verifies the three guidance cache files and their replay-tree exclusion, set preserveGuidanceCache:true to save their original bytes in a verified child scratch receipt before the Git step. Other ignored or untracked evidence refuses. Git may replay additional clean commits before the next pause or completion.'
     ),
   ],
   'sync-epic': [argument('<epic#>', 'Epic branch to rebase onto trunk.')],
