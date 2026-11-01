@@ -189,7 +189,7 @@ test('owner-linked audit recovery preserves sealed predecessor, repeats no busin
     );
   }
 });
-for (const variant of ['operation', 'fingerprint', 'audit', 'scope', 'board', 'nonunique']) {
+for (const variant of ['operation', 'fingerprint', 'audit', 'scope', 'board', 'duplicate']) {
   test('audit reconciliation refuses ' + variant + ' drift before any writes', async (t) => {
     const c = fromLegacy(t),
       args = await recoveryArgs(c);
@@ -199,7 +199,7 @@ for (const variant of ['operation', 'fingerprint', 'audit', 'scope', 'board', 'n
     if (variant === 'scope')
       c.f.body = c.f.body.replace('Collect current authority.', 'Changed scope.');
     if (variant === 'board') c.f.values.project.estimate = 7;
-    if (variant === 'nonunique') c.deps.listComments = async () => [c.comment, c.comment];
+    if (variant === 'duplicate') c.deps.listComments = async () => [c.comment, c.comment];
     if (['audit', 'scope', 'board'].includes(variant))
       args.currentInput = (await c.collect()).inputDigest;
     const before = c.f.body,
@@ -207,7 +207,7 @@ for (const variant of ['operation', 'fingerprint', 'audit', 'scope', 'board', 'n
     await assert.rejects(async () => {
       const r = await runInflateEstimate(args, cfg, c.deps);
       if (r.status === 'refused') throw new Error(r.reason);
-    }, /reconcil|drift|authority|refine-comment/);
+    }, /reconciliation|drift|authority|refine-comment/);
     assert.equal(c.f.body, before);
     assert.equal(c.f.writes.length, count);
     assert.deepEqual(c.writes, []);
@@ -225,7 +225,7 @@ test('reconciliation cannot mix an explicit fingerprint with ordinary estimate a
         '--current-input',
         'a'.repeat(64),
       ]),
-    /reconcil/
+    /reconciliation/
   );
 });
 
