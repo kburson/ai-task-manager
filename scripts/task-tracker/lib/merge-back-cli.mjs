@@ -55,7 +55,9 @@ function argumentsFor(argv) {
   }
   const child = Number(String(positional[0] || '').replace(/^#/, ''));
   if (positional.length !== 2 || !Number.isSafeInteger(child) || child <= 0 || !positional[1])
-    throw new TypeError('usage: merge-back <child#> <worktree-path> [--preserve-worktree]');
+    throw new TypeError(
+      'usage: merge-back <child#> <worktree-path> [--preserve-worktree | --recover-parent <request.json>]'
+    );
   if (requestFile && preserveWorktree)
     throw new TypeError('merge-back: recovery and integration flags cannot be combined');
   return { child, childDir: path.resolve(positional[1]), preserveWorktree, requestFile };
@@ -114,10 +116,15 @@ export async function runMergeBackCli(argv, deps) {
   const parent = resolveEpicLineage(lineage.parentIssue, {
     deps: { graph, trunk: cfg.trunkRef || 'trunk' },
   });
+  const now = requestFile ? (deps.recoveryNow ?? (() => performance.now())) : Date.now;
   let criticalDeadline = null;
   const realGit = (cwd) => (args) => {
-    const remaining = criticalDeadline === null ? GIT_TIMEOUT_MS : criticalDeadline - Date.now();
-    if (remaining <= 0) throw new Error('merge-back: integration critical section timed out');
+    const remaining =
+      criticalDeadline === null ? GIT_TIMEOUT_MS : Math.floor(criticalDeadline - now());
+    if (remaining <= 0) {
+      if (requestFile) throw recoveryBudgetError('critical section timed out');
+      throw new Error('merge-back: integration critical section timed out');
+    }
     return execFileSync(
       gitExecutable,
       requestFile ? ['--no-optional-locks', '-c', 'core.fsmonitor=false', ...args] : args,
@@ -153,7 +160,7 @@ export async function runMergeBackCli(argv, deps) {
     if (typeof cfg.repo !== 'string' || !cfg.repo.includes('/'))
       recoveryRefusal('configured repository required');
     return withLock(occupancyFile, () => {
-      criticalDeadline = Date.now() + 2 * GIT_TIMEOUT_MS;
+      criticalDeadline = now() + 2 * GIT_TIMEOUT_MS;
       return recoverParent({
         request,
         child,
@@ -169,6 +176,7 @@ export async function runMergeBackCli(argv, deps) {
         assertChild,
         gitExecutable,
         deadline: criticalDeadline,
+        now,
       });
     });
   }
@@ -399,9 +407,15 @@ function recoveryLease(ctx) {
     recoveryRefusal('active child lease or competing parent writer');
   return { sessionId, generation: claim.bindingGenerationId, boundAt: claim.boundAt };
 }
-function recoveryGit(ctx, cwd, args, input) {
-  const remaining = ctx.deadline - Date.now();
-  if (remaining <= 0) recoveryRefusal('critical section timed out');
+function recoveryBudgetError(reason) {
+  return Object.assign(new Error('merge-back: parent recovery: ' + reason), {
+    code: 'RECOVERY_BUDGET',
+  });
+}
+function recoveryGit(ctx, cwd, args, input, minimum = 0) {
+  const remaining = Math.floor((ctx.stageDeadline ?? ctx.deadline) - ctx.now());
+  if (remaining <= 0 || remaining < minimum)
+    throw recoveryBudgetError('insufficient remaining Git budget');
   return execFileSync(
     ctx.gitExecutable,
     ['--no-optional-locks', '--no-replace-objects', '--literal-pathspecs', ...args],
@@ -469,6 +483,8 @@ function parentRecoveryTarget(ctx) {
       rest.length
     )
       continue;
+    if (!lstatSync(entry.path, { throwIfNoEntry: false })?.isDirectory())
+      recoveryRefusal('registered retained parent checkout unavailable: ' + entry.path);
     const dir = path.join(verifiedParentGitDir(ctx, entry.path), 'rebase-merge');
     if (!existsSync(dir)) continue;
     if (
@@ -515,7 +531,7 @@ function trackedSnapshot(ctx, root, entries, conflicts) {
   if (!['sha1', 'sha256'].includes(algorithm)) recoveryRefusal('unsupported object format');
   const unstaged = [];
   for (const [file, stages] of entries) {
-    if (Date.now() >= ctx.deadline) recoveryRefusal('tracked snapshot timed out');
+    if (ctx.now() >= ctx.deadline) throw recoveryBudgetError('tracked snapshot timed out');
     const target = path.join(root, file);
     let fact = null,
       mode,
@@ -730,6 +746,7 @@ function stageResolutions(ctx, choices) {
   const changes = [];
   const oidLength = gitText(ctx, ctx.parentDir, 'rev-parse', 'HEAD').length;
   for (const [file, { entry, bytes, stage }] of choices) {
+    if (ctx.now() >= ctx.stageDeadline) throw recoveryBudgetError('staging budget exhausted');
     const target = physicalFile(ctx.parentDir, file);
     changes.push('0 ' + '0'.repeat(oidLength) + '\t' + file);
     if (!entry) {
@@ -764,6 +781,7 @@ function stageResolutions(ctx, choices) {
           closeSync(fd);
         }
         if (!ownsSibling()) recoveryRefusal('custom temporary file changed');
+        if (ctx.now() >= ctx.stageDeadline) throw recoveryBudgetError('staging budget exhausted');
         renameSync(sibling, physicalFile(ctx.parentDir, file));
       } catch (error) {
         if (ownsSibling()) unlinkSync(sibling);
@@ -798,19 +816,87 @@ function recoverParent(ctx) {
   const choices = prepareResolutions(ctx, request, state);
   if (pausedSnapshot(ctx).result.snapshot !== request.expected)
     recoveryRefusal('recovery observations changed before mutation');
-  if (request.action === 'continue') stageResolutions(ctx, choices);
   const decision = {
     action: request.action,
     reason: request.reason,
     stopped: state.result.stopped,
     snapshot: request.expected,
   };
+  // The admission scans and mutation share one lock deadline. Reserve a full
+  // Git invocation before any conflict file/index write, and keep that reserve
+  // inaccessible to staging even if a filter or filesystem operation is slow.
+  const stageDeadline = ctx.deadline - GIT_TIMEOUT_MS;
+  if (stageDeadline - ctx.now() < (request.action === 'continue' && choices.size ? 1000 : 1))
+    recoveryRefusal('insufficient recovery budget before mutation; inspect and retry');
+  if (request.action === 'continue') {
+    try {
+      stageResolutions({ ...ctx, stageDeadline }, choices);
+    } catch (error) {
+      if (interruptedGit(error)) return interruptedResult(ctx, state, decision, 'staging', error);
+      throw error;
+    }
+  }
   let failure;
   try {
-    recoveryGit(ctx, ctx.parentDir, ['-c', 'core.editor=:', 'rebase', '--' + request.action]);
+    recoveryGit(
+      ctx,
+      ctx.parentDir,
+      ['-c', 'core.editor=:', 'rebase', '--' + request.action],
+      undefined,
+      GIT_TIMEOUT_MS
+    );
   } catch (error) {
+    if (interruptedGit(error))
+      return interruptedResult(
+        ctx,
+        state,
+        decision,
+        error.code === 'RECOVERY_BUDGET' ? 'rebase-admission' : 'rebase',
+        error
+      );
     failure = error;
   }
+  if (ctx.now() >= ctx.deadline)
+    return interruptedResult(
+      ctx,
+      state,
+      decision,
+      'readback',
+      failure ?? recoveryBudgetError('post-step observations unavailable')
+    );
+  try {
+    return readRecoveryOutcome(ctx, state, decision, failure);
+  } catch (error) {
+    if (interruptedGit(error))
+      return interruptedResult(ctx, state, decision, 'readback', failure ?? error);
+    if (failure && error !== failure)
+      throw new Error(failure.message + '\nParent recovery readback: ' + error.message, {
+        cause: failure,
+      });
+    throw error;
+  }
+}
+function interruptedGit(error) {
+  return Boolean(error.signal || error.code === 'ETIMEDOUT' || error.code === 'RECOVERY_BUDGET');
+}
+function interruptedResult(ctx, state, decision, phase, error) {
+  // These are pre-step identities and an existence check only. A killed or
+  // unverified command is never reported as a completed or actionable pause.
+  return {
+    status: 'interrupted',
+    phase,
+    decision,
+    signal: error.signal ?? null,
+    code: error.code ?? null,
+    cause: error.message,
+    parentDir: ctx.parentDir,
+    parentRef: ctx.parentBranch,
+    rebaseMetadataPresent: existsSync(ctx.rebaseDir),
+    childHeadBeforeStep: state.result.childHead,
+    leaseBeforeStep: state.result.lease,
+  };
+}
+function readRecoveryOutcome(ctx, state, decision, failure) {
   const afterLease = recoveryLease(ctx);
   const childHead = assertRecoveryChild(ctx);
   if (
