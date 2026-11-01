@@ -531,3 +531,59 @@ test('protected subtree proof refuses a case-folding ignored alias of its tracke
     /collides/
   );
 });
+
+for (const situation of ['missing consent', 'coherent', 'partial', 'tampered']) {
+  test('untracked child guidance triplet requires preservation: ' + situation, async (t) => {
+    const f = childRebaseFixture(t, { nativeLayout: true, untrackedCache: true });
+    assert.equal(loadGuidance({ projectRoot: f.target, need: 'agent' }).valid, true);
+    const names = ['agent-index.v1.json', 'human-catalog.v1.json', 'manifest.v1.json'];
+    const cache = path.join(f.target, '.tmp/aitm/guidance-cache');
+    const originals = Object.fromEntries(
+      names.map((name) => [name, readFileSync(path.join(cache, name))])
+    );
+    for (const name of names)
+      assert.ok(
+        git(f.target, 'ls-files', '--others', '--exclude-standard')
+          .split('\n')
+          .includes('.tmp/aitm/guidance-cache/' + name),
+        'cache is untracked rather than ignored'
+      );
+    if (situation === 'partial')
+      renameSync(
+        path.join(cache, 'manifest.v1.json'),
+        path.join(f.target, '.scratch/retained-manifest.json')
+      );
+    if (situation === 'tampered') writeFileSync(path.join(cache, 'manifest.v1.json'), '{}');
+    if (situation === 'coherent') {
+      const hook = path.join(f.main, '.git/hooks/post-commit');
+      writeFileSync(
+        hook,
+        '#!/bin/sh\nprintf regenerated > .tmp/aitm/guidance-cache/human-catalog.v1.json\n'
+      );
+      chmodSync(hook, 0o755);
+    }
+    const inspected = await f.inspect();
+    const request = {
+      action: 'continue',
+      expected: inspected.snapshot,
+      preserveWorkspaceData: true,
+      preserveGuidanceCache: situation !== 'missing consent',
+      reason: 'retain untracked guidance originals',
+      resolutions: [{ path: 'conflict.txt', stage: 3 }],
+    };
+    const before = f.state();
+    if (situation !== 'coherent') {
+      await assert.rejects(f.run(request), /guidance|preserve/);
+      assert.deepEqual(f.state(), before);
+    } else {
+      const result = await f.run(request);
+      assert.equal(result.status, 'completed');
+      assert.ok(result.cacheReceipt, 'untracked coherent cache needs a receipt');
+      assert.equal(readFileSync(path.join(cache, 'human-catalog.v1.json'), 'utf8'), 'regenerated');
+      const receipt = JSON.parse(readFileSync(path.join(f.repair, result.cacheReceipt.path)));
+      for (const file of receipt.files)
+        assert.deepEqual(Buffer.from(file.base64, 'base64'), originals[path.basename(file.path)]);
+    }
+    f.retained();
+  });
+}

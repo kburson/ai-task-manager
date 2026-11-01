@@ -1246,13 +1246,15 @@ function proveCacheTreeAbsence(ctx, facts, entries, todo, protectedRoots) {
 }
 
 function assessGuidanceEvidence(ctx, facts, entries, todo) {
-  if (!facts.ignored.some((file) => file.startsWith(CACHE_ROOT + '/'))) return null;
+  const candidates =
+    ctx.recoveryMode === 'child' ? [...facts.untracked, ...facts.ignored] : facts.ignored;
+  if (!candidates.some((file) => file.startsWith(CACHE_ROOT + '/'))) return null;
   try {
     if (
       (ctx.recoveryMode !== 'child' && (facts.untracked.length || facts.ignored.length !== 3)) ||
       [...facts.untracked, ...facts.ignored].filter((name) => name.startsWith(CACHE_ROOT + '/'))
         .length !== 3 ||
-      !CACHE_PATHS.every((name) => facts.ignored.includes(name))
+      !CACHE_PATHS.every((name) => candidates.includes(name))
     )
       recoveryRefusal('mixed or partial guidance cache');
     const files = CACHE_PATHS.map((name) => readEvidenceBytes(ctx.parentDir, name, CACHE_LIMIT));

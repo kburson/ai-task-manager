@@ -5,6 +5,7 @@ import path from 'node:path';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 import { childRebaseFixture, git } from '../../../helpers/child-rebase-fixture.mjs';
+import { registerTask } from '../../../../task-tracker/fleet-registry.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
 
 function fixtureEnv(f) {
@@ -25,7 +26,7 @@ function fixtureEnv(f) {
     AI_TASK_MANAGER_APP_NAME: 'codex',
   };
 }
-function hook(f, command) {
+function hook(f, command, invocationDir = f.executor) {
   const result = spawnSync(
     process.execPath,
     [path.join(f.sourceRoot, 'scripts/task-tracker/bash-guard.mjs')],
@@ -38,7 +39,7 @@ function hook(f, command) {
         session_id: f.sid,
         cwd: f.executor,
         tool_name: 'Bash',
-        tool_input: { command, cwd: f.executor },
+        tool_input: { command, cwd: invocationDir },
       }),
     }
   );
@@ -244,3 +245,97 @@ for (const command of [
     assert.equal(hook(f, command)?.decision, 'block');
     assert.deepEqual(f.state(), before);
   });
+
+test('Pause exception refuses a nested invocation directory containing a carrier decoy', (t) => {
+  const f = childRebaseFixture(t, { bindTarget: true });
+  f.installFixtureCarrier();
+  registerTask(f.target, '#2068', f.target, f.branch, 'worktree');
+  const nested = path.join(f.target, '.scratch/nested-source');
+  mkdirSync(path.join(nested, 'node_modules/@kburson/ai-task-manager/bin'), { recursive: true });
+  writeFileSync(
+    path.join(nested, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs'),
+    '#!/usr/bin/env node\nthrow Error("decoy must not execute");\n'
+  );
+  const before = f.state();
+  assert.equal(
+    hook(f, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs pause blocked', nested)?.decision,
+    'block'
+  );
+  assert.deepEqual(f.state(), before);
+});
+
+for (const pending of [false, true])
+  for (const replaceClaim of [true, false])
+    test(
+      'real Pause flush preserves its checkpoint and journal after authority loss: ' +
+        (pending ? 'pending reconciliation' : 'new publication') +
+        (replaceClaim ? ' replacement' : ' stable authority'),
+      (t) => {
+        const f = childRebaseFixture(t, { bindTarget: true });
+        f.installFixtureCarrier();
+        const script = `
+    import assert from 'node:assert/strict';
+    import { pathToFileURL } from 'node:url';
+    import path from 'node:path';
+    import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+    const get = (file) => import(pathToFileURL(path.join(${JSON.stringify(f.sourceRoot)}, file)));
+    const { buildContext } = await get('scripts/task-tracker/runtime.mjs');
+    const { verbPause } = await get('scripts/task-tracker/verbs/pause.mjs');
+    const { loadState } = await get('scripts/task-tracker/state.mjs');
+    const { occupancyPath } = await get('scripts/task-tracker/paths.mjs');
+    const { markerPathFor, saveMarker } = await get('scripts/task-tracker/word-counter.mjs');
+    const { actorTimingStatePath } = await get('scripts/task-tracker/lib/actor-timing-state.mjs');
+    const identity = { provider: 'codex', sid: ${JSON.stringify(f.sid)} };
+    const ctx = buildContext(['pause', 'blocked']);
+    // Read-only remote transport is fixed; flush, journal, cursor and state are real.
+    ctx.safeReadLastRow = async () => null;
+    const transcriptDir = path.join(process.cwd(), '.scratch/transcripts');
+    mkdirSync(transcriptDir, { recursive: true });
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
+    writeFileSync(path.join(transcriptDir, identity.sid + '.jsonl'), JSON.stringify({ type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'three fixture words' }] } }) + String.fromCharCode(10));
+    saveMarker(markerPathFor(identity.sid), 0, 0, '#2068', 0);
+    const journal = actorTimingStatePath(identity, process.cwd()) + '.flush.json';
+    if (${pending}) {
+      ctx.safePostTiming = async () => { throw Error('fixture publication unresolved'); };
+      await assert.rejects(ctx.flushActiveToGH(loadState(ctx.statePath), 'pause:blocked', 'blocked'), /fixture publication unresolved/);
+    }
+    const beforeState = loadState(ctx.statePath), beforeMarker = readFileSync(markerPathFor(identity.sid));
+    const beforeJournal = existsSync(journal) ? readFileSync(journal) : null;
+    const occupancy = occupancyPath(${JSON.stringify(f.main)});
+    let submitted;
+    ctx.safePostTiming = async () => {
+      submitted = readFileSync(journal);
+      if (${replaceClaim}) {
+      const rows = JSON.parse(readFileSync(occupancy));
+      rows['2068'].bindingGenerationId = '99999999-9999-4999-8999-999999999999';
+      writeFileSync(occupancy, JSON.stringify(rows));
+      }
+      await Promise.resolve();
+      return { ok: true };
+    };
+    if (${replaceClaim}) await assert.rejects(verbPause(ctx), /native-rebase-pause/);
+    else await verbPause(ctx);
+    assert.ok(submitted, 'actual journal reached publisher');
+    if (${replaceClaim}) {
+    assert.deepEqual(loadState(ctx.statePath), beforeState, 'checkpoint must not advance after authority loss');
+    assert.deepEqual(readFileSync(markerPathFor(identity.sid)), beforeMarker, 'cursor must not advance after authority loss');
+    assert.deepEqual(readFileSync(journal), beforeJournal ?? submitted, 'exact original row must remain pending');
+
+    assert.equal(JSON.parse(readFileSync(occupancy))['2068'].bindingGenerationId, '99999999-9999-4999-8999-999999999999');
+    } else {
+      assert.equal(loadState(ctx.statePath).active, null);
+      assert.equal(loadState(ctx.statePath).lastWordMarker, 3);
+      assert.equal(existsSync(journal), false);
+    }
+    assert.ok(JSON.parse(submitted).payload.cursor, 'real transcript cursor exercised');
+  `;
+        const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+          cwd: f.target,
+          env: fixtureEnv(f),
+          encoding: 'utf8',
+          timeout: 20000,
+        });
+        assert.equal(result.error, undefined);
+        assert.equal(result.status, 0, result.stderr);
+      }
+    );

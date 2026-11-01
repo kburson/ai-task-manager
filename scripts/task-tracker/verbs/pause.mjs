@@ -39,7 +39,12 @@ export async function verbPause(ctx) {
     deltaWords,
     ts,
     post,
-  } = await flushActiveToGH(s, pauseEvent, pauseDesc, undefined, { suppressRowWords: true });
+  } = await flushActiveToGH(s, pauseEvent, pauseDesc, undefined, {
+    suppressRowWords: true,
+    ...(admission
+      ? { withCheckpointAuthority: (commit) => withNativeRebasePauseAuthority(admission, commit) }
+      : {}),
+  });
   const deltaMin = activeEstimateMin ?? 'Unknown';
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   withNativeRebasePauseAuthority(admission, () =>

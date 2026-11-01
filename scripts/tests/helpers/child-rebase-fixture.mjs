@@ -24,6 +24,7 @@ export function childRebaseFixture(
     second = false,
     nativeLayout = false,
     protectedDelta,
+    untrackedCache = false,
   } = {}
 ) {
   const main = mkdtempProjectIsolated('child-rebase-');
@@ -61,6 +62,11 @@ export function childRebaseFixture(
   const base = git(main, 'rev-parse', 'HEAD');
   git(main, 'worktree', 'add', '-b', branch, target, base);
   writeFileSync(path.join(target, 'conflict.txt'), 'accepted child\n');
+  if (untrackedCache)
+    writeFileSync(
+      path.join(target, '.gitignore'),
+      readFileSync(path.join(target, '.gitignore'), 'utf8').replace('.tmp/\n', '')
+    );
   if (protectedDelta === 'change')
     writeFileSync(path.join(target, '.scratch/README.md'), 'changed contract\n');
   if (protectedDelta === 'remove') rmSync(path.join(target, '.scratch/README.md'));
