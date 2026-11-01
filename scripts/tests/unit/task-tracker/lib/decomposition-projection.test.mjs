@@ -433,7 +433,7 @@ test('owner cannot erase unresolved intent by marking the old operation supersed
     rmSync(dir, { recursive: true, force: true });
   }
 });
-test('new linked pending revision supersedes only after read-back reconciles original effects', async () => {
+test('new linked pending revision supersedes only after read-back reconciles original effects', async (t) => {
   const f = fixture();
   const a = await collect(f);
   const pub = publication(a.inputDigest);
@@ -447,6 +447,8 @@ test('new linked pending revision supersedes only after read-back reconciles ori
     const stored = readDecompositionRecords(f.body).publication;
     const next = {
       ...pub,
+      // Cancellation is a registered successor that can reconcile a failed predecessor effect.
+      writerId: 'cancel-plan',
       operationId: 'b41d3bf2-e26e-477e-88d1-b2db32793002',
       intendedInputDigest: a.inputDigest,
       proposal: {
@@ -463,6 +465,23 @@ test('new linked pending revision supersedes only after read-back reconciles ori
         ),
       },
     };
+    await t.test(
+      'a linked inflation without actor admission preserves the predecessor',
+      async () => {
+        const inflation = { ...next, writerId: 'inflate-estimate' };
+        const writes = f.writes.length;
+        f.deps.readPublicationEffect = async () => observed(7);
+        await assert.rejects(
+          () =>
+            runtime.withPublication({ subject, publication: inflation }, (context) =>
+              context.persistPublication(inflation)
+            ),
+          { message: 'decomposition:inflation-reconciliation-actor-required' }
+        );
+        assert.equal(f.writes.length, writes);
+        assert.deepEqual(readDecompositionRecords(f.body).publication, stored);
+      }
+    );
     f.deps.readPublicationEffect = async () => observed(8);
     await assert.rejects(
       () =>
