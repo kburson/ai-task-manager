@@ -192,6 +192,8 @@ async function evaluate(input) {
         await import('./lib/native-rebase-pause.mjs');
       const pauseRequest = rebasePauseCommand(rawCommand);
       if (pauseRequest) {
+        if (invocationDir !== projectRoot)
+          block('Native rebase Pause requires the bound project root as invocation directory.');
         try {
           inspectNativeRebasePause({
             root: projectRoot,

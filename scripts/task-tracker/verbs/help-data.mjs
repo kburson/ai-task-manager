@@ -104,7 +104,7 @@ export const VERB_REFERENCE = {
   pause: {
     topic: 'lifecycle',
     summary:
-      'Flush timing and pause the active task; sets the paused flag. During a verified own-branch rebase, only the selected direct public pause blocked carrier admits the branch mismatch; Git and binding assignment remain unchanged.',
+      'Flush timing and pause the active task; sets the paused flag. During a verified own-branch rebase, only the selected direct public pause blocked carrier invoked from the bound project root admits the branch mismatch; Git and binding assignment remain unchanged.',
     usage: '/task pause ["reason"]',
     examples: [
       '/task pause "pause for question"',

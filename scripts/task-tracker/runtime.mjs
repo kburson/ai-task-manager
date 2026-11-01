@@ -508,7 +508,7 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
     const actorKey = timingActorKey({ provider: aiAppName(), sid });
     const identity = { provider: aiAppName(), sid };
     const journalFile = actorTimingStatePath(identity, projectDir) + '.flush.json';
-    const commitFlush = async (payload) => {
+    const checkpointFlush = (payload) => {
       const current = loadState(statePath);
       if (current.active !== payload.issue) throw new Error('ACTOR_FLUSH_BINDING_CHANGED');
       const stateMatches = (expected) =>
@@ -530,6 +530,13 @@ export function buildContext(rawArgv = process.argv.slice(2), { executionContext
       saveState({ ...current, ...payload.checkpoint }, statePath);
       Object.assign(state, payload.checkpoint);
     };
+    // Native rebase Pause supplies synchronous claim exclusion at the actual
+    // checkpoint, after publication. A refusal retains the original journal.
+    // Both new rows and pending reconciliation use this same commit boundary.
+    const commitFlush = (payload) =>
+      opts.withCheckpointAuthority
+        ? opts.withCheckpointAuthority(() => checkpointFlush(payload))
+        : checkpointFlush(payload);
     const journal = (candidate = null) =>
       runActorFlushJournal({
         file: journalFile,
