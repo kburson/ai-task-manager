@@ -245,7 +245,22 @@ export function releaseOccupancyAtOrBefore(input) {
     const row = rows[issue];
     if (!row) return { status: 'absent', row: null };
     const boundAt = Date.parse(row.boundAt);
-    if (!sid || row.sid !== sid || !Number.isFinite(boundAt) || boundAt > closedAt) {
+    const claimIdentity = (value) => {
+      if (value === null) return null;
+      const { lastHeartbeatAt: _heartbeat, ...identity } = value;
+      return identity;
+    };
+    if (
+      !sid ||
+      row.sid !== sid ||
+      !Number.isFinite(boundAt) ||
+      boundAt > closedAt ||
+      (input.bindingGenerationId &&
+        boundAt === closedAt &&
+        row.bindingGenerationId !== input.bindingGenerationId) ||
+      (Object.hasOwn(input, 'expectedClaim') &&
+        stable(claimIdentity(row)) !== stable(claimIdentity(input.expectedClaim)))
+    ) {
       throw new OccupancyConflictError(
         `occupancy: terminal release refused for #${issue}; claim supersedes close authority`,
         'occupancy-terminal-release-refused',

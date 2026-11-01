@@ -49,6 +49,7 @@ async function runConverge({ boardState, reconcileSpy }) {
   const { statePath, dir } = tmpState(baseState());
   const ctx = {
     // @story #1848: terminal storage is outside these timing/label unit contracts.
+    readTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),

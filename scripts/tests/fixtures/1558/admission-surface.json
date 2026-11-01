@@ -1789,7 +1789,15 @@
         "./issue-mutator-lock.mjs",
         "./activity-policy.mjs",
         "./config.mjs",
-        "../lib/self-doc.mjs"
+        "../lib/self-doc.mjs",
+        "./lib/issue-worktree-location.mjs",
+        "./lib/occupancy.mjs",
+        "./paths.mjs",
+        "./lib/worktree-binding-lifecycle.mjs",
+        "./fleet-registry.mjs",
+        "./lib/native-worktree-bootstrap.mjs",
+        "./lib/native-branch-renewal.mjs",
+        "./lib/process-timeouts.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",
       "gateCall": "enforceDirectGuidance",

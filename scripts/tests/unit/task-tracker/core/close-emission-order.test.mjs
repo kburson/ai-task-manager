@@ -100,6 +100,7 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     statePath,
     projectDir: dir,
     // These tests exercise close ordering/labels, with terminal storage external.
+    readTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),
@@ -254,6 +255,7 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     statePath,
     projectDir: dir,
     // These tests exercise close ordering/labels, with terminal storage external.
+    readTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),
@@ -334,6 +336,7 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     statePath,
     projectDir: dir,
     // These tests exercise close ordering/labels, with terminal storage external.
+    readTerminalIssueBindingRelease: () => ({ status: 'released' }),
     releaseIssueBindings: () => ({ released: [] }),
     deregisterTask: () => {},
     releaseBindingOccupancy: () => ({ released: [] }),

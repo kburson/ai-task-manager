@@ -116,6 +116,8 @@ export async function runClose({
   writeFileSync(statePath, JSON.stringify(initialState));
 
   let liveBody = body;
+  let bindingReleasedObserved = false,
+    occupancyReleasedObserved = false;
   const calls = {
     boardReads: 0,
     bodyReads: 0,
@@ -395,12 +397,20 @@ export async function runClose({
                 },
               }
             : {}),
+          readTerminalIssueBindingRelease: () => ({
+            status:
+              bindingReleasedObserved && occupancyReleasedObserved ? 'released' : 'incomplete',
+          }),
           releaseIssueBindings: () => {
             calls.bindingReleases += 1;
+            bindingReleasedObserved = true;
             return { released: [] };
           },
           deregisterTask: () => {},
-          releaseBindingOccupancy: () => ({ status: 'released' }),
+          releaseBindingOccupancy: () => {
+            occupancyReleasedObserved = true;
+            return { status: 'released' };
+          },
           loadCloseDeliveryBody: async () => liveBody,
           locateAuthoritySource: lifecycleEvidence
             ? () => ({ kind: 'github-records/v1' })

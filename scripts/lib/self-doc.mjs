@@ -174,9 +174,9 @@ const ROUTABLE_SELF_DOC = {
     group: 'Epic Branching',
     path: 'scripts/task-tracker/draft-branch.mjs',
     synopsis:
-      'Create the canonical issue draft branch in a clean detached linked worktree, then renew exact binding.',
-    audience: 'The singleton issue owner drafting before implementation.',
-    usage: 'aitm draft-branch <issue#>',
+      'Name a clean detached linked worktree using its durable issue branch or initial draft branch, then renew exact binding.',
+    audience: 'The singleton issue owner naming a drafting or Develop checkout.',
+    usage: 'aitm draft-branch <issue#> [--role agent|orchestrator]',
   },
   'cut-epic-branch': {
     group: 'Epic Branching',
@@ -404,7 +404,13 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('<issue#>', 'Child issue to claim.'),
     argument('--description <text>', 'Timing-row description.'),
   ],
-  'draft-branch': [argument('<issue#>', 'Active issue whose draft branch is created.')],
+  'draft-branch': [
+    argument('<issue#>', 'Active issue whose checkout receives its durable branch.'),
+    argument(
+      '--role agent|orchestrator',
+      'Role preserved by ordinary Start renewal (default agent).'
+    ),
+  ],
   'cut-epic-branch': [argument('<epic#>', 'Epic whose role-typed branch is created.')],
   'cut-child-worktree': [
     argument('<child#>', 'Epic child issue.'),
@@ -661,17 +667,17 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   }),
   'draft-branch': routableContract({
     preconditions: [
-      'Exact active issue/session/worktree binding, singleton authenticated owner, drafting state, and clean detached linked worktree.',
+      'Exact active issue/session/worktree binding, singleton authenticated owner, drafting or Develop state, and clean detached linked worktree. Native Codex uses the direct selected bin/aitm.mjs carrier; npm transport refuses before mutation.',
     ],
     effects: [
-      'Creates only codex/<issue>-draft at observed HEAD and renews ordinary start binding. Drafts confer no refinement, estimate, or Plan approval.',
+      'Uses the existing named issue branch at exact observed HEAD, or creates codex/<issue>-draft when no named history exists. Refuses another checkout of that branch and renews ordinary Start without identity overrides. No refinement, estimate, or Plan approval is conferred.',
     ],
     output: ['Prints verified branch and HEAD.'],
     exitCodes: [
       exitCode(0, 'branch and renewed binding verified'),
       exitCode(1, 'arguments or authority preconditions refused'),
     ],
-    examples: ['npx aitm draft-branch 1847'],
+    examples: ['bin/aitm.mjs draft-branch 1847 --role agent'],
     relatedCommands: ['start', 'refine', 'plan-approve'],
   }),
   'cut-epic-branch': routableContract({

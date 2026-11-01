@@ -19,6 +19,7 @@ import { releaseBindingOccupancy } from './occupancy-lifecycle.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 
 export const CLOSED_BINDINGS_SCHEMA = 1;
+const GENERATION = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 function emptyLedger() {
   return { schema: CLOSED_BINDINGS_SCHEMA, sessions: {} };
@@ -57,7 +58,11 @@ export function readClosedBindingLedger(mainWorktreePath, deps = {}) {
   for (const [sessionId, entries] of Object.entries(value.sessions)) {
     if (!sessionId || !object(entries)) throw new Error('closed-bindings:invalid-session');
     for (const [issue, entry] of Object.entries(entries)) {
-      if (normalizeBindingIssue(issue) !== issue || !object(entry)) {
+      if (
+        normalizeBindingIssue(issue) !== issue ||
+        !object(entry) ||
+        (Object.hasOwn(entry, 'bindingGenerationId') && !GENERATION.test(entry.bindingGenerationId))
+      ) {
         throw new Error('closed-bindings:invalid-entry');
       }
       try {
@@ -81,26 +86,43 @@ function writeClosedBindingLedger(mainWorktreePath, ledger, deps = {}) {
   renameFile(temporary, ledgerPath);
 }
 
-export function markClosedBinding({ mainWorktreePath, sessionId, issue, closedAt }, deps = {}) {
+export function markClosedBinding(
+  { mainWorktreePath, sessionId, issue, closedAt, bindingGenerationId },
+  deps = {}
+) {
   const issueRef = normalizeBindingIssue(issue);
   if (!issueRef) throw new Error('closed-bindings:issue');
   if (!sessionId) throw new Error('closed-bindings:session');
   const closeMs = timestamp(closedAt, 'closed-at');
+  if (bindingGenerationId !== undefined && !GENERATION.test(bindingGenerationId))
+    throw new Error('closed-bindings:invalid-generation');
   const ledgerPath = (deps.closedBindingsPath || closedBindingsPath)(mainWorktreePath);
   const lock = deps.withLock || withLock;
   let result;
   lock(ledgerPath, () => {
     const ledger = (deps.readLedger || readClosedBindingLedger)(mainWorktreePath, deps);
-    const current = ledger.sessions?.[sessionId]?.[issueRef]?.closedAt;
+    const prior = ledger.sessions?.[sessionId]?.[issueRef];
+    const current = prior?.closedAt;
     const currentMs = current ? timestamp(current, 'existing-closed-at') : 0;
-    const effective = currentMs > closeMs ? current : closedAt;
+    if (
+      currentMs === closeMs &&
+      prior?.bindingGenerationId &&
+      bindingGenerationId &&
+      prior.bindingGenerationId !== bindingGenerationId
+    )
+      throw new Error('closed-bindings:conflicting-generation');
+    const terminal =
+      currentMs >= closeMs && prior
+        ? prior
+        : { closedAt, ...(bindingGenerationId ? { bindingGenerationId } : {}) };
+
     result = {
       ...ledger,
       sessions: {
         ...ledger.sessions,
         [sessionId]: {
           ...(ledger.sessions[sessionId] || {}),
-          [issueRef]: { closedAt: effective },
+          [issueRef]: terminal,
         },
       },
     };
@@ -117,8 +139,17 @@ export function isBindingRecordClosed({ record, sessionId, ledger }) {
   });
   const intrinsic = record.closedAt;
   if (intrinsic && timestamp(intrinsic, 'record-closed-at') >= boundMs) return true;
-  const shared = ledger?.sessions?.[sessionId]?.[issueRef]?.closedAt;
-  return Boolean(shared && timestamp(shared, 'ledger-closed-at') >= boundMs);
+  const terminal = ledger?.sessions?.[sessionId]?.[issueRef];
+  if (!terminal?.closedAt) return false;
+  const closedMs = timestamp(terminal.closedAt, 'ledger-closed-at');
+  // Earlier residue stays retired. A generation disambiguates equal instants;
+  // it never revives an independently closed or strictly older record.
+  return (
+    closedMs > boundMs ||
+    (closedMs === boundMs &&
+      (!terminal.bindingGenerationId ||
+        record.bindingGenerationId === terminal.bindingGenerationId))
+  );
 }
 
 export function parseGitWorktreePaths(output = '') {
@@ -208,8 +239,23 @@ export function releaseIssueBindings({
       normalizeBindingIssue(readActive(sessionId, candidate)?.issue) === issueRef
     )
       assertStoryBindingSettled({ projectRoot: candidate, issue: issueRef, sessionId });
+  const occupancyFile = (deps.occupancyPath || occupancyPath)(mainWorktreePath);
+  // Capture before publishing/sweeping. A subsequent same-SID rebind cannot
+  // replace the identity this terminal attempt is authorized to release.
+  const expectedClaim =
+    (deps.readOccupancy || readOccupancy)(occupancyFile)[String(Number(issueRef.slice(1)))] ?? null;
+  const bindingGenerationId = expectedClaim?.bindingGenerationId;
   const mark = deps.markClosedBinding || markClosedBinding;
-  const ledger = mark({ mainWorktreePath, sessionId, issue: issueRef, closedAt }, deps);
+  const ledger = mark(
+    {
+      mainWorktreePath,
+      sessionId,
+      issue: issueRef,
+      closedAt,
+      ...(bindingGenerationId ? { bindingGenerationId } : {}),
+    },
+    deps
+  );
 
   const compareAndClear = deps.compareAndClearActiveTask || compareAndClearActiveTask;
   const released = [];
@@ -220,7 +266,19 @@ export function releaseIssueBindings({
     });
     if (result?.status === 'cleared') released.push(candidate);
   }
-  return { issue: issueRef, closedAt, mainWorktreePath, released };
+  return {
+    issue: issueRef,
+    closedAt,
+    mainWorktreePath,
+    released,
+    occupancyAuthority: {
+      occupancyFile,
+      sid: sessionId,
+      closedAt,
+      expectedClaim,
+      ...(bindingGenerationId ? { bindingGenerationId } : {}),
+    },
+  };
 }
 
 export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {}) {
@@ -233,8 +291,27 @@ export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {
   }
   const occupancy = (deps.releaseBindingOccupancy || releaseBindingOccupancy)(
     { projectDir, issue },
-    { releaseOccupancy: deps.releaseOccupancy }
+    {
+      releaseOccupancy: (input) => {
+        if (!bindings.occupancyAuthority)
+          throw new Error('closed-bindings:release-claim-authority-missing');
+        return (deps.releaseOccupancyAtOrBefore || releaseOccupancyAtOrBefore)({
+          ...input,
+          ...bindings.occupancyAuthority,
+        });
+      },
+    }
   );
+  const readback = (deps.inspectTerminalIssueBindingRelease || inspectTerminalIssueBindingRelease)({
+    projectDir,
+    issue,
+    deps,
+  });
+  if (!object(readback) || typeof readback.then === 'function' || readback.status !== 'released')
+    throw new Error(
+      'closed-bindings:release-readback-' +
+        (readback?.status === 'released' ? 'invalid' : readback?.status || 'invalid')
+    );
   return { bindings, occupancy };
 }
 
@@ -250,7 +327,8 @@ export function inspectTerminalIssueBindingRelease({ projectDir, issue, deps = {
   const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
   const mainWorktreePath = resolveMain(projectDir, deps);
   const ledger = (deps.readLedger || readClosedBindingLedger)(mainWorktreePath, deps);
-  const closedAt = ledger.sessions?.[sessionId]?.[issueRef]?.closedAt;
+  const terminal = ledger.sessions?.[sessionId]?.[issueRef];
+  const closedAt = terminal?.closedAt;
   if (!closedAt) return { status: 'pending', closedAt: null };
   const closedMs = timestamp(closedAt, 'ledger-closed-at');
   const occupancyFile = (deps.occupancyPath || occupancyPath)(mainWorktreePath);
@@ -259,6 +337,9 @@ export function inspectTerminalIssueBindingRelease({ projectDir, issue, deps = {
   if (
     occupancyRow &&
     (occupancyRow.sid !== sessionId ||
+      (terminal.bindingGenerationId &&
+        timestamp(occupancyRow.boundAt, 'occupancy-bound-at') === closedMs &&
+        occupancyRow.bindingGenerationId !== terminal.bindingGenerationId) ||
       timestamp(occupancyRow.boundAt, 'occupancy-bound-at') > closedMs)
   ) {
     return { status: 'conflict', closedAt };
@@ -324,6 +405,9 @@ export function resumeTerminalIssueBindingRelease({ projectDir, issue, deps = {}
     issue: issueRef,
     sid: sessionId,
     closedAt: ledger.sessions[sessionId][issueRef].closedAt,
+    ...(ledger.sessions[sessionId][issueRef].bindingGenerationId
+      ? { bindingGenerationId: ledger.sessions[sessionId][issueRef].bindingGenerationId }
+      : {}),
   });
   return { status: 'released', occupancy };
 }

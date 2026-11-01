@@ -16,6 +16,9 @@ function fixture(state = 'CLOSED') {
     },
     deps: {
       readIssueState: async () => state,
+      inspectTerminalIssueBindingRelease: () => ({
+        status: released.length > 0 && occupancy.length > 0 ? 'released' : 'incomplete',
+      }),
       releaseIssueBindings: (input) => {
         released.push(input);
         return { released: ['/repo/wt', '/repo/other'] };
@@ -68,4 +71,15 @@ test('recovery fails closed when GitHub issue state is unavailable', async () =>
     /network unavailable/
   );
   assert.deepEqual(input.released, []);
+});
+
+test('#2134: recovery refuses a release that leaves modeled occupancy present', async () => {
+  const input = fixture();
+  input.deps.releaseBindingOccupancy = () => ({ status: 'released' });
+  await assert.rejects(
+    () => releaseClosedFleetBinding(input.ctx, input.deps),
+    /release-readback-incomplete/
+  );
+  assert.equal(input.released.length, 1);
+  assert.equal(input.occupancy.length, 0);
 });

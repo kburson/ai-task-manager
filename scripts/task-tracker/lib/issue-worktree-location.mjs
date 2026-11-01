@@ -3,6 +3,9 @@
 // active-task binding, this record survives sessions, worktrees, and machines.
 
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
+import { readDeliveredCloseTransactions, TERMINAL_CLOSE_STEPS } from './close-convergence.mjs';
+import { parseReviewApprovedMarker } from './markers.mjs';
+import { readLastKnownState } from '../gh-timing-comment.mjs';
 
 export const ISSUE_WORKTREE_LOCATION_RE = /<!--\s*aitm-worktree-location\s+worktree="/i;
 const ISSUE_WORKTREE_LOCATION_MARKER_RE = /<!--\s*aitm-worktree-location\b/i;
@@ -60,7 +63,7 @@ export function mostRecentIssueWorktreeLocation(body) {
 // no location history. This reader is intentionally stricter than the legacy
 // history reader: a marker-like record is authority, so a malformed one must
 // not silently degrade to the synthesized canonical epic branch.
-export function resolveCurrentIssueWorktreeLocation(body) {
+function strictIssueWorktreeLocations(body) {
   const records = [];
   for (const line of String(body || '').split('\n')) {
     if (!ISSUE_WORKTREE_LOCATION_MARKER_RE.test(line)) continue;
@@ -74,7 +77,7 @@ export function resolveCurrentIssueWorktreeLocation(body) {
     }
     records.push({ worktreePath: worktree, worktreeBranch: branch, sessionId: sid, ts });
   }
-  if (!records.length) return null;
+  if (!records.length) return records;
 
   const current = records[records.length - 1];
   for (const record of records) {
@@ -86,11 +89,48 @@ export function resolveCurrentIssueWorktreeLocation(body) {
       throw new Error('issue-worktree-location: ambiguous current worktree authority record');
     }
   }
+  return records;
+}
+
+// A completed existing Close transaction is durable release evidence. A status
+// label alone is not. A subsequent location or reopened lifecycle supersedes it.
+export function resolveCurrentIssueWorktreeLocation(body) {
+  const records = strictIssueWorktreeLocations(body);
+  const current = records.at(-1) ?? null;
+  const transactions = readDeliveredCloseTransactions(body);
+  const state = readLastKnownState(body);
+  const approved = parseReviewApprovedMarker(body);
+  const terminal = transactions[0];
+  if (
+    current &&
+    terminal &&
+    state.state === 'done' &&
+    terminal.completedSteps.length === TERMINAL_CLOSE_STEPS.length &&
+    approved?.approvedSha === terminal.acceptedSha &&
+    Number.isFinite(Date.parse(current.ts)) &&
+    Number.isFinite(Date.parse(state.ts)) &&
+    Date.parse(current.ts) <= Date.parse(state.ts)
+  )
+    return null;
   return current;
 }
 
+// Branch identity is durable independently of the last operator's directory or
+// a replacement checkout's temporary detached HEAD. It grants no write lease.
 export function resolveCurrentIssueWorktreeBranch(body) {
-  return resolveCurrentIssueWorktreeLocation(body)?.worktreeBranch ?? null;
+  const records = strictIssueWorktreeLocations(body);
+  const selected = records.findLast((entry) => entry.worktreeBranch !== 'HEAD');
+  if (
+    selected &&
+    records.some(
+      (entry) =>
+        entry.ts === selected.ts &&
+        (entry.worktreePath !== selected.worktreePath ||
+          entry.worktreeBranch !== selected.worktreeBranch)
+    )
+  )
+    throw new Error('issue-worktree-location: ambiguous named branch authority record');
+  return selected?.worktreeBranch ?? null;
 }
 
 export function sameIssueWorktreeLocation(left, right) {
