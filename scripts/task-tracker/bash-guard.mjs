@@ -190,9 +190,14 @@ async function evaluate(input) {
     if (nativeBranchMismatch) {
       const { rebasePauseCommand, inspectNativeRebasePause } =
         await import('./lib/native-rebase-pause.mjs');
-      if (rebasePauseCommand(rawCommand)) {
+      const pauseRequest = rebasePauseCommand(rawCommand);
+      if (pauseRequest) {
         try {
-          inspectNativeRebasePause({ root: projectRoot, sessionId: input.session_id });
+          inspectNativeRebasePause({
+            root: projectRoot,
+            sessionId: input.session_id,
+            ...pauseRequest,
+          });
         } catch (error) {
           block(error.message);
         }

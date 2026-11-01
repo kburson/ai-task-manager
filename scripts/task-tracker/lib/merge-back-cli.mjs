@@ -39,6 +39,7 @@ import { assertNativeBranchCarrier } from './native-branch-renewal.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 import {
   CHILD_PROTECTED_ROOTS,
+  proveChildProtectedTrees,
   childWorkspaceBoundary,
   selectChildRebaseTarget,
 } from './child-rebase-recovery.mjs';
@@ -679,6 +680,14 @@ function pausedSnapshot(ctx) {
     onto !== git('rev-parse', '--verify', 'refs/heads/' + ctx.epicBranch + '^{commit}')
   )
     recoveryRefusal('child rebase onto differs from current epic');
+  if (ctx.recoveryMode === 'child') {
+    try {
+      recoveryRead(ctx, parentDir, ['merge-base', '--is-ancestor', onto, 'HEAD']);
+    } catch (error) {
+      if (interruptedGit(error)) throw error;
+      recoveryRefusal('paused child HEAD does not descend from onto');
+    }
+  }
   if (![original, stopped, onto].every((oid) => /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(oid)))
     recoveryRefusal('invalid rebase object identity');
   const lastPick = read('done')
@@ -757,10 +766,6 @@ function pausedSnapshot(ctx) {
       read('git-rebase-todo'),
       CHILD_PROTECTED_ROOTS
     );
-    return {
-      result: { status: 'paused', snapshot: digest(JSON.stringify(facts)), ...facts },
-      entries,
-    };
   }
   const cache = assessGuidanceEvidence(ctx, facts, entries, read('git-rebase-todo'));
   if (cache) facts.guidanceCache = cache.observation;
@@ -780,6 +785,11 @@ function prepareResolutions(ctx, request, state) {
           (!request.preserveGuidanceCache || result.guidanceCache?.status !== 'verified'))
   )
     recoveryRefusal('untracked or ignored parent evidence must be preserved');
+  if (
+    result.guidanceCache &&
+    (!request.preserveGuidanceCache || result.guidanceCache.status !== 'verified')
+  )
+    recoveryRefusal('guidance cache originals require verified preservation consent');
   const choices = new Map();
   for (const choice of request.resolutions) {
     const stages = entries.get(choice?.path);
@@ -1038,6 +1048,14 @@ function readRecoveryOutcome(ctx, state, decision, failure) {
   )
     recoveryRefusal('epic moved during child recovery');
   const head = gitText(ctx, ctx.parentDir, 'rev-parse', 'HEAD');
+  if (ctx.recoveryMode === 'child') {
+    try {
+      recoveryRead(ctx, ctx.parentDir, ['merge-base', '--is-ancestor', state.result.onto, head]);
+    } catch (error) {
+      if (interruptedGit(error)) throw error;
+      recoveryRefusal('completed child HEAD does not descend from onto');
+    }
+  }
   verifiedParentGitDir(ctx, ctx.parentDir);
   const holders = worktrees((args) =>
     recoveryRead(ctx, ctx.childDir, args).toString('utf8')
@@ -1170,7 +1188,7 @@ function proveCacheTreeAbsence(ctx, facts, entries, todo, protectedRoots) {
   const collision = protectedRoots
     ? (name) => protectedRoots.some((root) => name.toLowerCase() === root.toLowerCase())
     : cacheRootCollision;
-  if ([...entries.keys()].some((file) => collision(file.split('/')[0])))
+  if (!protectedRoots && [...entries.keys()].some((file) => collision(file.split('/')[0])))
     recoveryRefusal('tracked cache root collision in index');
   const picks = todo
     .split('\n')
@@ -1189,6 +1207,23 @@ function proveCacheTreeAbsence(ctx, facts, entries, todo, protectedRoots) {
     commits.map(({ tree }) => tree),
     'tree'
   );
+  if (protectedRoots) {
+    const identities = proveChildProtectedTrees({
+      trees,
+      entries,
+      extra: [...facts.untracked, ...facts.ignored],
+      readTrees: (names) => gitBatchObjects(ctx, names, 'tree'),
+      checkBudget: () => {
+        if (ctx.now() >= ctx.deadline) throw recoveryBudgetError('workspace proof timed out');
+      },
+    });
+    return {
+      commits: new Set(commits.map(({ oid }) => oid)).size,
+      trees: trees.length,
+      identities,
+      digest: digest(JSON.stringify(trees.map(({ oid }) => oid).sort())),
+    };
+  }
   for (const { oid, bytes } of trees) {
     if (ctx.now() >= ctx.deadline) throw recoveryBudgetError('cache replay proof timed out');
     for (let pos = 0; pos < bytes.length;) {
@@ -1214,8 +1249,9 @@ function assessGuidanceEvidence(ctx, facts, entries, todo) {
   if (!facts.ignored.some((file) => file.startsWith(CACHE_ROOT + '/'))) return null;
   try {
     if (
-      facts.untracked.length ||
-      facts.ignored.length !== 3 ||
+      (ctx.recoveryMode !== 'child' && (facts.untracked.length || facts.ignored.length !== 3)) ||
+      [...facts.untracked, ...facts.ignored].filter((name) => name.startsWith(CACHE_ROOT + '/'))
+        .length !== 3 ||
       !CACHE_PATHS.every((name) => facts.ignored.includes(name))
     )
       recoveryRefusal('mixed or partial guidance cache');
@@ -1226,7 +1262,7 @@ function assessGuidanceEvidence(ctx, facts, entries, todo) {
       )
     )
       recoveryRefusal('incoherent guidance cache artifacts');
-    const proof = proveCacheTreeAbsence(ctx, facts, entries, todo);
+    const proof = facts.workspaceProof ?? proveCacheTreeAbsence(ctx, facts, entries, todo);
     return {
       files,
       observation: { status: 'verified', files: files.map(({ fact }) => fact), proof },

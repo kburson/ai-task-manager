@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 import { childRebaseFixture, git } from '../../../helpers/child-rebase-fixture.mjs';
 import { setActiveTask } from '../../../../task-tracker/session-state.mjs';
@@ -67,6 +67,71 @@ test('timer-only native rebase Pause also admits an owned Review child without g
   assert.equal(hook(f, 'git rebase --continue')?.decision, 'block');
   assert.deepEqual(f.state(), before);
 });
+
+test('Pause admission binds the parsed carrier rather than a different installed entry', (t) => {
+  const f = childRebaseFixture(t, { bindTarget: true });
+  f.installFixtureCarrier();
+  mkdirSync(path.join(f.target, 'bin'));
+  writeFileSync(
+    path.join(f.target, 'bin/aitm.mjs'),
+    '#!/usr/bin/env node\nthrow Error("decoy must not execute");\n'
+  );
+  assert.notEqual(
+    hook(f, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs pause blocked')?.decision,
+    'block'
+  );
+  assert.equal(hook(f, 'bin/aitm.mjs pause blocked')?.decision, 'block');
+});
+
+test('source-only Pause carrier admits only the actual selected entry spelling', (t) => {
+  const f = childRebaseFixture(t, { bindTarget: true });
+  symlinkSync(path.join(f.sourceRoot, 'bin'), path.join(f.target, 'bin'), 'dir');
+  assert.notEqual(hook(f, 'bin/aitm.mjs pause blocked')?.decision, 'block');
+  assert.equal(
+    hook(f, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs pause blocked')?.decision,
+    'block'
+  );
+});
+
+for (const boundary of ['queue', 'flush'])
+  test('Pause retains native claim authority across the ' + boundary + ' await', (t) => {
+    const f = childRebaseFixture(t, { bindTarget: true });
+    f.installFixtureCarrier();
+    const script = `
+    import assert from 'node:assert/strict';
+    import { pathToFileURL } from 'node:url';
+    import path from 'node:path';
+    import { readFileSync, writeFileSync } from 'node:fs';
+    const root = ${JSON.stringify(f.sourceRoot)};
+    const get = (file) => import(pathToFileURL(path.join(root, file)));
+    const { verbPause } = await get('scripts/task-tracker/verbs/pause.mjs');
+    const { occupancyPath } = await get('scripts/task-tracker/paths.mjs');
+    const { getActiveTask } = await get('scripts/task-tracker/session-state.mjs');
+    const file = occupancyPath(${JSON.stringify(f.main)});
+    const before = getActiveTask(${JSON.stringify(f.sid)}, process.cwd());
+    let flushes = 0;
+    const replace = () => {
+      const state = JSON.parse(readFileSync(file));
+      state['2068'].bindingGenerationId = '99999999-9999-4999-8999-999999999999';
+      writeFileSync(file, JSON.stringify(state));
+    };
+    await assert.rejects(verbPause({ projectDir: process.cwd(), statePath: path.join(process.cwd(), '.tmp/aitm/state.json'), rest: ['blocked'],
+      drainQueueIfAny: async () => { if (${JSON.stringify(boundary)} === 'queue') replace(); },
+      flushActiveToGH: async () => { flushes++; if (${JSON.stringify(boundary)} === 'flush') replace(); return { deltaMin: null, deltaWallMin: 1, deltaWords: 0, ts: '2026-11-01T17:00:00.000Z' }; },
+    }), /native-rebase-pause/);
+    assert.equal(flushes, ${boundary === 'queue' ? 0 : 1});
+    assert.deepEqual(getActiveTask(${JSON.stringify(f.sid)}, process.cwd()), before);
+    assert.equal(JSON.parse(readFileSync(file))['2068'].bindingGenerationId, '99999999-9999-4999-8999-999999999999');
+  `;
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+      cwd: f.target,
+      env: fixtureEnv(f),
+      encoding: 'utf8',
+      timeout: 20000,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+  });
 
 for (const situation of [
   'new generation',
