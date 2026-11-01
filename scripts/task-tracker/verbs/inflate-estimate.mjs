@@ -9,6 +9,11 @@ import {
   executeEstimateWriter,
   observedEstimateEffect,
 } from '../lib/estimate-writer-publication.mjs';
+import {
+  intendedInflationInput,
+  reconcileInflationAudit,
+  validateAuditRequest,
+} from '../lib/decomposition-inflation-audit.mjs';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
@@ -44,6 +49,13 @@ export function parseArgs(argv = []) {
     );
   }
 
+  if (args.includes('--reconcile-audit') || args.includes('--current-input')) {
+    if (args.length !== 4 || args[0] !== '--reconcile-audit' || args[2] !== '--current-input')
+      throw new Error('inflate-estimate: invalid reconciliation arguments');
+    const request = { issueNumber, reconcileAudit: args[1], currentInput: args[3] };
+    validateAuditRequest(request);
+    return request;
+  }
   const parsed = { issueNumber, size: null, estimate: null, reason: null, items: [] };
   let i = 0;
   while (i < args.length) {
@@ -67,7 +79,9 @@ export function parseArgs(argv = []) {
   return parsed;
 }
 
-export function validateArgs({ size, estimate, reason, items }) {
+export function validateArgs(request) {
+  if ('reconcileAudit' in request) return validateAuditRequest(request);
+  const { size, estimate, reason, items } = request;
   const errs = [];
   if (!size) errs.push('--size is required');
   else if (!SIZE_ORDER.includes(size)) errs.push(`--size must be one of: ${SIZE_ORDER.join(', ')}`);
@@ -143,7 +157,7 @@ async function defaultListComments({ issueNumber, repo }) {
       `repos/${repo}/issues/${issueNumber}/comments`,
       '--paginate',
       '--jq',
-      '[.[] | {id, body}]',
+      '[.[] | {id, node_id, body}]',
     ],
     { timeout: GH_API_TIMEOUT_MS * 2 }
   );
@@ -190,13 +204,11 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
   });
 }
 
-export async function runInflateEstimate(
-  { issueNumber, size, estimate, reason, items },
-  cfg,
-  deps = {}
-) {
+export async function runInflateEstimate(request, cfg, deps = {}) {
+  const { issueNumber, size, estimate, reason, items } = request;
   const listComments = deps.listComments ?? defaultListComments,
     patchComment = deps.patchComment ?? defaultPatchComment;
+  if ('reconcileAudit' in request) return reconcileInflationAudit(request, cfg, deps, listComments);
   const mutateBody = deps.mutateIssueBody ?? defaultMutateIssueBody;
   const fetchProjectValues = deps.projectValuesForIssue ?? projectValuesForIssue;
   const fieldDefs = (deps.loadProjectFieldDefs ?? loadProjectFieldDefs)();
@@ -233,12 +245,16 @@ export async function runInflateEstimate(
       size: parsed.values.size ?? null,
     });
   };
+  let nextComment;
+  const proposal = { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size };
   return executeEstimateWriter({
     cfg,
     issueNumber,
     writerId: 'inflate-estimate',
     key: { size, estimate: newEstimate, reason, items },
-    proposal: { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size },
+    proposal,
+    deriveIntendedInput: (initial) =>
+      intendedInflationInput(initial, proposal, comments, refine[0].id, nextComment),
     deps,
     effects: async ({ subject, operationId, createdAt }) => {
       const before = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
@@ -257,6 +273,7 @@ export async function runInflateEstimate(
             date: createdAt.slice(0, 10),
           }) +
           `\n${key}\n`;
+      nextComment = body;
       const options = await (deps.fieldOptionMap ?? fieldOptionMap)(cfg.projectId);
       const boardEffect = (field, value, resource) => ({
         id: field,
@@ -331,6 +348,10 @@ export async function verbInflateEstimate(argv, cfg) {
       `inflate-estimate: ${result.status}: ${result.reason ?? 'publication unconfirmed'}`
     );
     process.exitCode = 1;
+    return;
+  }
+  if (parsed.reconcileAudit) {
+    console.log(`✓ Inflation audit ${parsed.reconcileAudit} reconciled at ${result.operationId}`);
     return;
   }
   console.log(`✓ Inflation section appended to refine-estimate comment on #${parsed.issueNumber}`);

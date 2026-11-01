@@ -488,6 +488,7 @@ export async function withDecompositionPublicationOwner(
         )
           refuse('effect-read-back');
       };
+      const inflationReconciliation = superseding && rawPublication.writerId === 'inflate-estimate';
       const writeRecords = async (candidate, current) => {
         const before = readDecompositionRecords(current.sourceObservations.readIssue.value.body);
         const after = {
@@ -529,6 +530,7 @@ export async function withDecompositionPublicationOwner(
                 decompositionPublicationContextDigest(fresh.input) !== originalDigest
               )
                 refuse('semantic-drift');
+              if (inflationReconciliation) await deps.assertInflationReconciliationActor(fresh);
             },
             mutate: (base) =>
               replaceDecompositionRecords(deps.publicationMetadataBody?.(base) ?? base, after),
@@ -560,6 +562,14 @@ export async function withDecompositionPublicationOwner(
         )
           refuse('publication-before-intent');
         const current = await collect();
+        // An inflation audit successor confirms existing effects only. Its caller pins
+        // the complete observed input, including other comments outside the scope digest.
+        if (inflationReconciliation) {
+          if (current.inputDigest !== rawPublication.beforeInputDigest)
+            refuse('inflation-reconciliation-input-drift');
+          if (typeof deps.assertInflationReconciliationActor !== 'function')
+            refuse('inflation-reconciliation-actor-required');
+        }
         if (
           !(await snapshotUsable(current)) ||
           decompositionPublicationContextDigest(current.input) !== originalDigest

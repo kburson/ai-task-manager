@@ -750,12 +750,20 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary: 'Adjust Size/Estimate mid-flight and record the change on the board + comment.',
     usage:
-      '/task inflate-estimate <N> --size <S> --estimate <H> --reason "<text>" --item "<work (~effort)>" [--item "<work (~effort)>" ...]',
+      '/task inflate-estimate <N> (--size <S> --estimate <H> --reason "<text>" --item "<work (~effort)>" [--item "<work (~effort)>" ...] | --reconcile-audit <operation-uuid> --current-input <sha256>)',
     flags: [
       { flag: '--size <S>', desc: 'new size' },
       { flag: '--estimate <H>', desc: 'new estimate (hours)' },
       { flag: '--reason "<text>"', desc: 'why it grew' },
       { flag: '--item "<work (~effort)>"', desc: 'discovered work item (required, repeatable)' },
+      {
+        flag: '--reconcile-audit <operation-uuid>',
+        desc: 'Confirm an already-applied inflation whose audit changed its planned-estimate comment digest.',
+      },
+      {
+        flag: '--current-input <sha256>',
+        desc: 'Exact current decomposition input digest for that reconciliation.',
+      },
     ],
     examples: [
       '/task inflate-estimate 667 --size XL --estimate 12 --reason "scope grew" --item "parser audit (~2h)"',

@@ -329,6 +329,47 @@ export function collectDecompositionCommentProposals({
   } catch {
     available = false;
   }
+  return parsedCommentProposals({
+    comments,
+    subject,
+    published,
+    publication,
+    available,
+    confirmsPlan: (hours, size) =>
+      (hours === board.estimate &&
+        size === board.size &&
+        hours === bodyFields.estimate &&
+        size === bodyFields.size) ||
+      confirmedEstimateProjectionRevision({
+        publication,
+        project: { ...board, projectItemId: subject.projectItemId },
+        bodyFields,
+      }),
+  });
+}
+
+// Intended-value calculation only. A fully confirmed ordinary inflation has no
+// superseded comments. A planned comment matching its published forecast remains
+// historical through the confirmed project/body effects even after its fields change.
+export function previewInflationCommentProposals({ comments, subject, published }) {
+  return parsedCommentProposals({
+    comments,
+    subject,
+    published,
+    publication: null,
+    available: true,
+    confirmsPlan: () => true,
+  });
+}
+
+function parsedCommentProposals({
+  comments,
+  subject,
+  published,
+  publication,
+  available,
+  confirmsPlan,
+}) {
   const proposals = [];
   const commentIds = new Set();
   for (const comment of comments) {
@@ -410,15 +451,7 @@ export function collectDecompositionCommentProposals({
       published &&
       hours === published.estimate &&
       size === published.size &&
-      ((hours === board.estimate &&
-        size === board.size &&
-        hours === bodyFields.estimate &&
-        size === bodyFields.size) ||
-        confirmedEstimateProjectionRevision({
-          publication,
-          project: { ...board, projectItemId: subject.projectItemId },
-          bodyFields,
-        }));
+      confirmsPlan(hours, size);
     if (retired || adaptiveConfirmed) continue;
     proposals.push({
       proposalId: `${targetIdentity}:${mode}`,
