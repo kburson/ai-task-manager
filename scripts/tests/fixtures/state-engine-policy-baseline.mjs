@@ -310,14 +310,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      436,
+      440,
       'event-call',
       "'gate-refused'",
       ['gate-refused']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      512,
+      516,
       'event-call',
       "'lifecycle-warn'",
       ['lifecycle-warn']

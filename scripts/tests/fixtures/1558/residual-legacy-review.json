@@ -133,7 +133,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:5bfba2df1e161e198d3de9cc402c11df2cf6024d817b5ba8fbd5938ac32c2bd2"
+        "sitesSha256": "sha256:c93bd929ee9e38479dffd115b4afa00fc0fc90bba1f28c1ca5e3a6ab1606c1ea"
       },
       "rationale": "Current shared assessment emits typed pending, required and unavailable refusals; dynamically selected fallback sites stay inventoried and cannot admit prose waivers or erase publication intent."
     },
@@ -169,7 +169,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:a3d2e296bc8a99fb2f1cf376b9d63357833da9e8761d006e6c2f782065537b67"
+        "sitesSha256": "sha256:890348090fd1b34d3581e5fcb023fd982504f9740e76cd555583ee67dd46ffa4"
       },
       "rationale": "Plan approval needs an explicit valid marker or exception; no untyped text can approve it."
     },
@@ -187,7 +187,7 @@
       "disposition": "manual-investigation",
       "source": {
         "path": "scripts/task-tracker/lib/action-decision/legacy-refusals.json",
-        "sitesSha256": "sha256:8a51e5e9c5514ed3be365edefa2800f203b817f415fad6edd87a97b4005f106f"
+        "sitesSha256": "sha256:3a77b20beca7effdcd423fe43a982aced599bbece14172874ea0e395b7263fa0"
       },
       "rationale": "Plan estimate and forecast are governed records; an untyped refusal cannot change their values."
     },

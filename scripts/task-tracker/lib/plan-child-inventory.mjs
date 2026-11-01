@@ -3,16 +3,8 @@
 // genuine child identity; the mapped native row does not carry an opaque node ID.
 import { createHash } from 'node:crypto';
 import { canonicalRecordJson as json } from './github-records/canonical-json.mjs';
-const states = new Set([
-  'backlog',
-  'refine',
-  'ready-for-plan',
-  'plan',
-  'develop',
-  'test',
-  'review',
-  'done',
-]);
+import { stateIds } from './lifecycle-policy/index.mjs';
+const states = new Set(stateIds());
 function refuse(reason = 'invalid') {
   throw new Error('plan-candidate:native-child-inventory-' + reason);
 }
