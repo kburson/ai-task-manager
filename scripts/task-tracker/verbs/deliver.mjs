@@ -2276,7 +2276,10 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       const diagnostic = `${String(error?.stderr || '')}\n${String(error?.message || '')}`;
       if (
         exitCode === 1 &&
-        /(?:^|\n)no required checks reported on the '[^'\r\n]+' branch(?:\r?\n|$)/i.test(diagnostic)
+        String(error?.stdout || '').trim() === '' &&
+        /(?:^|\n)no (?:required )?checks reported on the '[^'\r\n]+' branch(?:\r?\n|$)/i.test(
+          diagnostic
+        )
       ) {
         return [];
       }
