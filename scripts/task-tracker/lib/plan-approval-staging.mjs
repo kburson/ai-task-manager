@@ -1,6 +1,11 @@
 // @story #2069
 // Private native approval producer; public writer activation belongs to #2071.
 import { createHash } from 'node:crypto';
+import {
+  readRetainedNativePlanApproval,
+  readNativeApprovalEnvelope,
+  NATIVE_APPROVAL_CANDIDATE_SCHEMA,
+} from './story-cache/view-payloads.mjs';
 import { canonicalRecordJson as json } from './github-records/canonical-json.mjs';
 import { runPlanApprove, verifyRetainedPlanApproval } from '../verbs/plan-approve.mjs';
 import { resolveRuntimeRoot } from './runtime-storage.mjs';
@@ -33,7 +38,7 @@ const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const clone = (value) => JSON.parse(json(value));
 const grants = new WeakMap();
 const reboundApprovals = new WeakMap();
-const SCHEMA = 'aitm.story-issue-update/v2';
+const SCHEMA = NATIVE_APPROVAL_CANDIDATE_SCHEMA;
 function refuse(reason) {
   throw new Error('plan-candidate:' + reason);
 }
@@ -43,31 +48,9 @@ function payload(record, entry) {
   return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.from(bytes));
 }
 function retained(record) {
-  if (!record) return null;
-  const key = `issue:${record.generation.identity.issueNodeId}`;
-  const entry = record.generation.working[key];
-  if (!entry) return null;
-  let value;
-  try {
-    value = JSON.parse(payload(record, entry));
-  } catch (error) {
-    if (!(error instanceof SyntaxError)) throw error;
-    if (entry.capabilityRef?.startsWith('plan-approved:')) refuse('approval-envelope');
-    return null;
-  }
-  if (value?.schema !== SCHEMA) {
-    if (entry.capabilityRef?.startsWith('plan-approved:')) refuse('approval-envelope');
-    return null;
-  }
-  if (
-    Object.keys(value).sort().join(',') !== 'body,nativeApproval,schema,title' ||
-    json(value) !== payload(record, entry)
-  )
-    refuse('approval-envelope');
-  if (entry.capabilityRef !== 'plan-approved:' + hash(json(value.nativeApproval)))
-    refuse('approval-reference');
-  return value;
+  return readNativeApprovalEnvelope(record);
 }
+export { readRetainedNativePlanApproval };
 // Recovered grants are capabilities only while the registered native owner holds the lock.
 export function validateNativePlanApprovalDelta(capability, { base, candidate } = {}) {
   const bound = reboundApprovals.get(capability);

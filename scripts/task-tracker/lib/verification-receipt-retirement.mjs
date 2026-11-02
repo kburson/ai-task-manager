@@ -1,8 +1,7 @@
 // @story #1481 #1887
 // Exact-identity retirement for invalid verification receipts.
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { readPublishedStoryObservation } from './story-cache/views.mjs';
 
 import { mutateIssueBody as defaultMutateIssueBody } from './issue-body-mutate.mjs';
 import {
@@ -12,9 +11,6 @@ import {
   parseValidatedVerificationReceipts,
   parseVerificationReceipts,
 } from './verification-receipt.mjs';
-import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-
-const pexec = promisify(execFile);
 
 function assertIdentity({ stage, receiptId }) {
   if (typeof stage !== 'string' || stage.trim() === '') {
@@ -89,12 +85,14 @@ function targetPresent(body, { expectedIssue, stage, receiptId }) {
 }
 
 async function defaultFetchBody({ cfg, issueNumber }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return String(stdout || '');
+  // @story #2049 — stale-receipt re-entry preserves exact published bytes.
+  return (
+    await readPublishedStoryObservation({
+      repository: cfg.repo,
+      issue: Number(issueNumber),
+      projectId: cfg.projectId,
+    })
+  ).body;
 }
 
 export async function retireVerificationReceipt({

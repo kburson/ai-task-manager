@@ -1,3 +1,4 @@
+import { readPublishedStoryObservation } from '../story-cache/views.mjs';
 import { sourceCommit } from '../artifact-subject.mjs';
 // @story #1666 #1887
 // Read-only Test-entry observations. An explanation is never an execution grant.
@@ -101,22 +102,17 @@ export async function evaluateTestReadiness({
 } = {}) {
   if (!Number.isSafeInteger(issue) || issue <= 0) throw new TypeError('test-readiness:issue');
   if (!cfg?.repo || typeof projectDir !== 'string') throw new TypeError('test-readiness:config');
+  // @story #2049 — keep the exact published body; CLI --jq adds a display newline.
   const readBody =
     deps.readBody ??
     (async () =>
       (
-        await pexec('gh', [
-          'issue',
-          'view',
-          String(issue),
-          '-R',
-          cfg.repo,
-          '--json',
-          'body',
-          '--jq',
-          '.body',
-        ])
-      ).stdout);
+        await readPublishedStoryObservation({
+          repository: cfg.repo,
+          issue,
+          projectId: cfg.projectId,
+        })
+      ).body);
   const readHead =
     deps.readHead ??
     (async () => (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir })).stdout.trim());

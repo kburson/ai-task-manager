@@ -534,25 +534,25 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 96,
+          "line": 64,
           "fingerprint": "sha256:a59a626c789a89b81b587ef20a91548d67b622a3c167cc62bca5ef8015344cf5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 102,
+          "line": 70,
           "fingerprint": "sha256:2caa9f02a36dd9613862ce1911c2b7ff1624b40c0a7ad38abc09a79c2325203f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 109,
+          "line": 77,
           "fingerprint": "sha256:ff22e5660b12089b26aac6620e0d7a38f7639498484e2d430dc71ea8a3146838",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
-          "line": 112,
+          "line": 80,
           "fingerprint": "sha256:62ee146c3e3f83257bafdd9a5a13cf0c065724d53cc536935d93a06e66a48022",
           "kind": "refusal"
         }
@@ -964,19 +964,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 851,
+          "line": 854,
           "fingerprint": "sha256:a5d9c8340bf9d6fbebf6f93c763f5ca7189a761bb4598925fd2d0ffbc163944f",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1538,
+          "line": 1541,
           "fingerprint": "sha256:8cc9d3ebf8e3df5d903cde58cec69efcfcdf958d583b3828264a93ee38e14902",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/verbs/test.mjs",
-          "line": 1540,
+          "line": 1543,
           "fingerprint": "sha256:5c2c3790301c73f999ca5c3b7636eb06f5b03795e722594dcdf7fdb41085426c",
           "kind": "refusal"
         }

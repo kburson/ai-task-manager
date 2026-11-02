@@ -4,6 +4,7 @@
 // process.exit. This function never calls process.exit and never prints usage.
 import { runGuardExecution as defaultRunGuardExecution } from './guard-execution.mjs';
 import { runTransitionBatch } from '../story-cache/transition-batch.mjs';
+import { readPublishedStoryObservation } from '../story-cache/views.mjs';
 import {
   runStatusWrite as defaultRunStatusWrite,
   stampEntryMarkers as defaultStampEntryMarkers,
@@ -61,24 +62,24 @@ export async function defaultProbeCompletion(ctx) {
   };
   if (SKIP_NETWORK) return notComplete;
 
-  // One read: the verified live body. An identity mutate is a pure read on
-  // issue-body-mutate's no-op path (issue-body-mutate.mjs §36-38) and clobbers
-  // no invariant marker (output === base).
+  // Explicit published observation: identity mutation may return a staged working candidate.
   const fetchBody =
+    ctx._fetchPublishedBody ||
     ctx._fetchBody ||
-    (async () => {
-      const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
-      const res = await mutateIssueBody({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        mutate: (base) => base,
-      });
-      return res?.body ?? '';
-    });
+    (async () =>
+      (
+        await readPublishedStoryObservation({
+          repository: cfg.repo,
+          issue: Number(issueArg),
+          projectId: cfg.projectId,
+          host: process.env.GH_HOST || 'github.com',
+          transport: ctx._publishedStoryTransport,
+        })
+      ).body);
 
   let body = '';
   try {
-    body = await fetchBody();
+    body = await fetchBody({ authority: 'published' });
   } catch {
     return notComplete;
   }

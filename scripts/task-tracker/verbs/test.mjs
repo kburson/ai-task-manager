@@ -1,3 +1,4 @@
+import { readPublishedStoryObservation } from '../lib/story-cache/views.mjs';
 import {
   captureIssueProofAuthority,
   assertIssueProofAuthority,
@@ -292,12 +293,14 @@ function defaultRunDevelopFinalization({
 }
 
 async function defaultFetchBody({ cfg, issueNum }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  return String(stdout || '');
+  // @story #2049 — native Test and its independent preflight compare exact published bytes.
+  return (
+    await readPublishedStoryObservation({
+      repository: cfg.repo,
+      issue: Number(issueNum),
+      projectId: cfg.projectId,
+    })
+  ).body;
 }
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`.

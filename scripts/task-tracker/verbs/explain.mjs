@@ -23,6 +23,13 @@ import { evaluateReviewReadiness } from '../lib/action-decision/review.mjs';
 import { evaluateCloseReadiness } from '../lib/action-decision/close.mjs';
 import { evaluateDeliveryReadiness } from '../lib/action-decision/deliver.mjs';
 import { createDefaultDeliverDeps } from './deliver.mjs';
+import {
+  storyViewDiagnostic,
+  publishedStoryBody,
+  storyView,
+  readLocalStoryView,
+  readPublishedStoryObservation,
+} from '../lib/story-cache/views.mjs';
 
 const DELIVERY_READ_PORT_NAMES = Object.freeze([
   'fetchIssue',
@@ -174,22 +181,6 @@ export async function runExplain(
   return envelope;
 }
 
-async function readIssueBody({ issue, repository }) {
-  return (
-    await pexec('gh', [
-      'issue',
-      'view',
-      String(issue),
-      '-R',
-      repository,
-      '--json',
-      'body',
-      '--jq',
-      '.body',
-    ])
-  ).stdout;
-}
-
 function observationKey({ resource, identity, scope }) {
   return JSON.stringify([resource, identity, scope]);
 }
@@ -262,48 +253,132 @@ export async function evaluateExplanation({
   projectRoot = getProjectDir(),
   deliveryDeps,
   artifactCommit,
+  readStoryGeneration,
+  storyIdentity,
+  deps = {},
 } = {}) {
   const artifactSubject = artifactCommit
     ? resolveArtifactSubject({ projectDir: projectRoot, commitSha: artifactCommit })
     : null;
-  const cfg = loadConfig();
+  const cfg = (deps.loadConfig ?? loadConfig)();
   const repository = cfg.repo;
   if (typeof repository !== 'string' || !repository.includes('/')) fail('repository');
+  const host = (process.env.GH_HOST || 'github.com').toLowerCase();
+  let local;
+  let cacheError = false;
+  let diagnostics = [];
+  try {
+    if (readStoryGeneration) {
+      const record = await readStoryGeneration();
+      local =
+        record != null
+          ? {
+              view: storyView({ generation: record, authority: 'published' }),
+              identity: storyIdentity,
+            }
+          : null;
+    } else
+      local = readLocalStoryView({
+        projectRoot,
+        repository,
+        issue,
+        host,
+        projectId: cfg.projectId,
+      });
+    if (local)
+      diagnostics = [
+        storyViewDiagnostic({
+          view: local.view,
+          identity: local.identity,
+          repository,
+          issue,
+          host,
+          projectId: cfg.projectId,
+        }),
+      ];
+  } catch {
+    cacheError = true;
+    diagnostics = [
+      {
+        guardId: 'authority-collection',
+        text: 'story-view:local-observation-unavailable',
+        untrusted: true,
+      },
+    ];
+  }
+  const result = (decision) => ({ decision, repository, diagnosticMessages: diagnostics });
+  const unavailable = async () =>
+    result(
+      await evaluateAction({
+        actionId,
+        repository,
+        issue,
+        inputs: { state: 'unknown', head: '0'.repeat(40), body: '', sessionState: {}, config: cfg },
+        attempt: failedAttempt({ repository, issue, actionId }),
+        deps: { effectAttempts: () => [] },
+      })
+    );
+  if (cacheError) return unavailable();
   if (actionId === 'deliver') {
-    const state = loadState(statePath(projectRoot));
-    const decision = await evaluateDeliveryReadiness({
-      issue,
-      cfg,
-      projectDir: projectRoot,
-      artifactSubject,
-      state,
-      deps: deliveryDeps ?? deliveryExplainReadPorts({ cfg, projectRoot }),
-    });
-    return { decision, diagnosticMessages: [] };
+    try {
+      const state = (deps.loadSessionState ?? (() => loadState(statePath(projectRoot))))();
+      const decision = await evaluateDeliveryReadiness({
+        issue,
+        cfg,
+        projectDir: projectRoot,
+        artifactSubject,
+        state,
+        deps: deliveryDeps ?? deliveryExplainReadPorts({ cfg, projectRoot }),
+      });
+      return result(decision);
+    } catch {
+      return unavailable();
+    }
   }
   let body;
   let head;
   let sessionState;
   try {
-    body = await readIssueBody({ issue, repository });
-    head = (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim();
-    sessionState = loadState(statePath(projectRoot));
-  } catch {
-    const decision = await evaluateAction({
-      actionId,
+    const observed = await (deps.readIssueObservation ?? readPublishedStoryObservation)({
+      issue,
+      repository,
+      projectId: cfg.projectId,
+      host,
+    });
+    if (local)
+      diagnostics = [
+        {
+          guardId: 'authority-collection',
+          text: 'story-view:observed-subject-validation-unavailable',
+          untrusted: true,
+        },
+      ];
+    body = publishedStoryBody({
+      body: observed.body,
+      view: local?.view,
+      identity: observed.identity ?? observed.subject,
       repository,
       issue,
-      inputs: {
-        state: 'unknown',
-        head: '0'.repeat(40),
-        body: '',
-        sessionState: {},
-        config: cfg,
-      },
-      attempt: failedAttempt({ repository, issue, actionId }),
-      deps: { effectAttempts: () => [] },
+      host,
+      projectId: cfg.projectId,
     });
-    return { decision, diagnosticMessages: [] };
+    if (local)
+      diagnostics = [
+        storyViewDiagnostic({
+          view: local.view,
+          identity: observed.identity ?? observed.subject,
+          repository,
+          issue,
+          host,
+          projectId: cfg.projectId,
+        }),
+      ];
+    head = deps.readHead
+      ? await deps.readHead()
+      : (await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim();
+    sessionState = (deps.loadSessionState ?? (() => loadState(statePath(projectRoot))))();
+  } catch {
+    return unavailable();
   }
   const state = readLastKnownState(body).state ?? 'unknown';
   const requestedAction = actionId;
@@ -384,5 +459,5 @@ export async function evaluateExplanation({
       closePorts: { cfg, projectDir: projectRoot },
     },
   });
-  return { decision, diagnosticMessages: [] };
+  return result(decision);
 }

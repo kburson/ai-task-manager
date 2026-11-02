@@ -128,9 +128,9 @@ function eventRecord(body) {
 /** Pure read-side split; published event bytes are immutable, later pending work is allowed.
  * Only the validated published native render mirrors are suppressed. No freshness authority.
  */
-export function readNativeTimingHistory(body, events) {
+function publishedTimingRecord(body, events) {
   if (typeof body !== 'string') fail('timing-body');
-  if (!body.includes('aitm-timing-events:')) return body;
+  if (!body.includes('aitm-timing-events:')) return null;
   const record = eventRecord(body);
   const current = new Map(mergeTimingEvents(events, []).map((event) => [event.eventId, event]));
   if (
@@ -139,6 +139,16 @@ export function readNativeTimingHistory(body, events) {
     )
   )
     fail('timing-history-event-mismatch');
+  return record;
+}
+// @story #2049 — exact authenticated membership, not a cross-actor scalar cursor.
+export function readPublishedNativeTimingEvents(body, events) {
+  const record = publishedTimingRecord(body, events);
+  return frozen(JSON.parse(json(record?.events ?? [])));
+}
+export function readNativeTimingHistory(body, events) {
+  const record = publishedTimingRecord(body, events);
+  if (record === null) return body;
   const remaining = new Map();
   for (const row of expectedTableRows(record)) remaining.set(row, (remaining.get(row) ?? 0) + 1);
   return body

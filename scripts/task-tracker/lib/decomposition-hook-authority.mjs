@@ -10,6 +10,7 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { canonicalDecompositionJson } from './decomposition-assessment.mjs';
 import { collectDecompositionAuthority } from './decomposition-authority.mjs';
 import { sessionNetworkSkipped } from './verb-preflight.mjs';
+import { publishedStoryBody, readLocalStoryView, storyView } from './story-cache/views.mjs';
 
 const fieldIdentity = 'field{... on ProjectV2FieldCommon{id name}}';
 const computedFieldTypes = ['Label', 'Milestone', 'PullRequest', 'Repository', 'Reviewer', 'User']
@@ -455,7 +456,49 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     clearTimeout(totalTimer);
   }
   if (performance.now() > totalDeadline) throw new Error('total-deadline');
-  const flags = readDeepDiveSignals(node.body);
+  let cacheTimer;
+  let local;
+  const host = (process.env.GH_HOST || 'github.com').toLowerCase();
+  try {
+    const remaining = Math.floor(totalDeadline - performance.now());
+    if (remaining <= 0) throw new Error('total-deadline');
+    local = await Promise.race([
+      Promise.resolve().then(async () => {
+        if (deps.readStoryGeneration) {
+          const generation = await deps.readStoryGeneration();
+          return generation == null
+            ? null
+            : { view: storyView({ generation, authority: 'published' }) };
+        }
+        return readLocalStoryView({
+          projectRoot: projectDir,
+          repository: cfg.repo,
+          issue,
+          host,
+          projectId: cfg.projectId,
+        });
+      }),
+      new Promise((_, reject) => {
+        cacheTimer = setTimeout(() => reject(new Error('total-deadline')), remaining);
+      }),
+    ]);
+  } finally {
+    clearTimeout(cacheTimer);
+  }
+  if (performance.now() > totalDeadline) throw new Error('total-deadline');
+  const publishedBody = publishedStoryBody({
+    body: node.body,
+    view: local?.view,
+    identity: {
+      host,
+      repository: cfg.repo.toLowerCase(),
+      issueNumber: issue,
+      issueNodeId: node.id,
+      projectId: cfg.projectId,
+      projectItemId: item.id,
+    },
+  });
+  const flags = readDeepDiveSignals(publishedBody);
   if (!Array.isArray(node.assignees?.nodes) || typeof response.data?.viewer?.login !== 'string')
     throw new Error('ownership unavailable');
   return {
@@ -463,7 +506,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     current,
     signals: {
       state: normalizeStateId(cfg.kanbanFieldId ? value('status') : item.fieldValueByName?.name),
-      body: node.body,
+      body: publishedBody,
       hasPostedMarker: flags.hasPosted,
       hasCompleteMarker: flags.hasComplete,
       assignees: node.assignees.nodes.map((owner) => owner.login),

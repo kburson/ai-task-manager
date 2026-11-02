@@ -43,6 +43,26 @@ function nativeJson(root, relative) {
   if (text !== canonicalRecordJson(value)) handoffFail('binding-native-json');
   return { value, bytes };
 }
+// @story #2049 — native private bytes, no directory creation, lease or freshness grant.
+export function readStoryGenerationObservation(claim, identity) {
+  const root = claim.cachePath;
+  if (exists(path.join(root, PROTOCOL, 'frozen.json'))) handoffFail('binding-frozen');
+  const { value: manifest } = nativeJson(root, 'manifest.json');
+  if (manifest.claimId !== claim.claimId) handoffFail('binding-claim');
+  const { value: generation, bytes } = nativeJson(root, manifest.payloadPath);
+  const payloads = new Map([[manifest.payloadPath, bytes]]);
+  const visit = (value) => {
+    if (!value || typeof value !== 'object') return;
+    if (Object.hasOwn(value, 'payloadPath') && !payloads.has(value.payloadPath))
+      payloads.set(value.payloadPath, readPrivateBytes(fs, root, value.payloadPath));
+    for (const child of Object.values(value)) visit(child);
+  };
+  visit(generation);
+  const verified = validateManifest(manifest, { identity, payloads });
+  if (!same(nativeJson(root, 'manifest.json').value, manifest))
+    handoffFail('binding-generation-race');
+  return { ...verified, payloads };
+}
 function cleanGeneration(claim, identity) {
   const root = claim.cachePath;
   if (exists(path.join(root, PROTOCOL, 'frozen.json'))) handoffFail('binding-frozen');
@@ -56,18 +76,7 @@ function cleanGeneration(claim, identity) {
     );
     if (!match || (match[1] ?? match[2]) !== f.digest) handoffFail('binding-retained-evidence');
   }
-  const { value: manifest } = nativeJson(root, 'manifest.json');
-  if (manifest.claimId !== claim.claimId) handoffFail('binding-claim');
-  const { value: generation, bytes } = nativeJson(root, manifest.payloadPath);
-  const payloads = new Map([[manifest.payloadPath, bytes]]);
-  const visit = (value) => {
-    if (!value || typeof value !== 'object') return;
-    if (Object.hasOwn(value, 'payloadPath') && !payloads.has(value.payloadPath))
-      payloads.set(value.payloadPath, readPrivateBytes(fs, root, value.payloadPath));
-    for (const child of Object.values(value)) visit(child);
-  };
-  visit(generation);
-  const verified = validateManifest(manifest, { identity, payloads });
+  const verified = readStoryGenerationObservation(claim, identity);
   if (!cacheRetentionDecision({ operation: 'reassign', generation: verified.generation }).allowed)
     handoffFail('binding-pending');
 }

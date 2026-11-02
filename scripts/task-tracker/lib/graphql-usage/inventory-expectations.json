@@ -350,6 +350,10 @@
       "count": 1
     },
     {
+      "key": "scripts/task-tracker/lib/story-cache/views.mjs|gh-api-graphql|planned",
+      "count": 1
+    },
+    {
       "key": "scripts/task-tracker/lib/versioned-issue-write.mjs|opaque-gh-cli|opaque",
       "count": 2
     },
@@ -606,7 +610,7 @@
     "scripts/task-tracker/hook-handler.mjs|79|uncovered|uncovered",
     "scripts/task-tracker/lib/action-decision/close.mjs|975|uncovered|uncovered",
     "scripts/task-tracker/lib/action-decision/review.mjs|92|uncovered|uncovered",
-    "scripts/task-tracker/lib/action-decision/test.mjs|163|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/action-decision/test.mjs|159|gh-api-graphql|planned",
     "scripts/task-tracker/lib/assigned-status-migration.mjs|127|gh-api-graphql|planned",
     "scripts/task-tracker/lib/assigned-status-migration.mjs|15|gh-api-graphql|planned",
     "scripts/task-tracker/lib/assignee-guard.mjs|165|out-of-scope|out-of-scope",
@@ -614,7 +618,7 @@
     "scripts/task-tracker/lib/close-gates-lineage.mjs|461|gh-api-graphql|planned",
     "scripts/task-tracker/lib/decomposition-audit-writer.mjs|11|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-authority.mjs|172|opaque-gh-cli|opaque",
-    "scripts/task-tracker/lib/decomposition-hook-authority.mjs|74|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/decomposition-hook-authority.mjs|75|gh-api-graphql|planned",
     "scripts/task-tracker/lib/decomposition-inflation-audit.mjs|52|rest-or-non-graphql|out-of-scope",
     "scripts/task-tracker/lib/decomposition-migration-writer.mjs|189|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/decomposition-projection.mjs|210|opaque-gh-cli|opaque",
@@ -673,6 +677,7 @@
     "scripts/task-tracker/lib/seed-kanban-cache.mjs|63|gh-api-graphql|planned",
     "scripts/task-tracker/lib/shelve-transaction.mjs|97|gh-api-graphql|planned",
     "scripts/task-tracker/lib/story-cache/provider-adapters.mjs|121|gh-api-graphql|planned",
+    "scripts/task-tracker/lib/story-cache/views.mjs|358|gh-api-graphql|planned",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|244|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/versioned-issue-write.mjs|264|opaque-gh-cli|opaque",
     "scripts/task-tracker/lib/workflow-policy/enforcement.mjs|158|gh-api-graphql|planned",
@@ -720,7 +725,7 @@
     "scripts/task-tracker/verbs/report.mjs|124|out-of-scope|out-of-scope",
     "scripts/task-tracker/verbs/review.mjs|97|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/split-plan.mjs|76|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/test.mjs|104|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/test.mjs|105|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/user-story.mjs|28|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/workflow-exception.mjs|184|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/workflow-exception.mjs|194|uncovered|uncovered",

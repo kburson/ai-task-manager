@@ -435,7 +435,15 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2070 adds one pure reporting authority leaf; fixture/test files remain excluded.
   const timingAuthorityEntries = ['scripts/task-tracker/lib/story-cache/timing-authority.mjs'];
   for (const entry of timingAuthorityEntries) assert.ok(files.includes(entry));
+  // #2049 ships views and two pure shared native payload/marker codecs.
+  const storyViewEntries = [
+    'scripts/task-tracker/lib/story-cache/views.mjs',
+    'scripts/task-tracker/lib/story-cache/view-payloads.mjs',
+    'scripts/task-tracker/lib/plan-approval-markers.mjs',
+  ];
+  for (const entry of storyViewEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    storyViewEntries.length +
     timingAuthorityEntries.length +
     planCandidateEntries.length +
     retainedRecoveryEntries.length +

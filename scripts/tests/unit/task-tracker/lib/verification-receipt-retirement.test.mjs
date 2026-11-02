@@ -271,3 +271,59 @@ test('stale retirement refuses fresh-base eligibility drift before writing', asy
     assert.equal(writes, 0);
   }
 });
+
+// @story #2049 — real default read-back must return content, not CLI display bytes.
+test('native receipt retirement readback preserves exact published bytes for strict re-entry', async (t) => {
+  const { installStubGh } = await import('../../../fixtures/stub-gh.mjs');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { body: initial, testReceipt } = fixture();
+  let published;
+  const expected = retireVerificationReceiptMarker(initial, {
+    expectedIssue: ISSUE,
+    stage: 'test',
+    receiptId: testReceipt.receiptId,
+  }).body;
+  const stub = installStubGh({
+    responses: [
+      {
+        match: ['gh', 'api', 'graphql'],
+        stdout: JSON.stringify({
+          data: {
+            repository: {
+              issue: {
+                id: 'I_test',
+                number: ISSUE,
+                body: expected,
+                repository: { nameWithOwner: 'o/r' },
+              },
+            },
+          },
+        }),
+      },
+    ],
+  });
+  t.after(() => stub.restore());
+  const display = path.join(stub.binDir, 'body-display.txt');
+  fs.writeFileSync(display, expected + '\n');
+  const quote = (v) => "'" + v.replaceAll("'", "'\\''") + "'";
+  fs.writeFileSync(path.join(stub.binDir, 'gh'), '#!/bin/sh\ncat ' + quote(display) + '\n', {
+    mode: 0o755,
+  });
+  const result = await retireVerificationReceipt({
+    cfg: { repo: 'o/r' },
+    issueNumber: ISSUE,
+    stage: 'test',
+    receiptId: testReceipt.receiptId,
+    staleHead: 'd'.repeat(40),
+    deps: {
+      mutateIssueBody: async ({ mutate }) => {
+        published = mutate(initial);
+        return { status: 'ok', body: published };
+      },
+    },
+  });
+  assert.equal(result.status, 'retired');
+  assert.equal(result.body, published);
+  assert.equal(parseVerificationReceipt(result.body, 'test'), null);
+});

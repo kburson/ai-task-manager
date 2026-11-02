@@ -1,6 +1,7 @@
 // @story #2039 #2047
 // Pure intent freezing only. The coordinator must persist before any provider effect.
 import { createHash } from 'node:crypto';
+import { validateStoryFieldCandidate } from './view-payloads.mjs';
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { validateManifest } from './manifest.mjs';
 import { freezeTimingCandidate } from './timing-candidate.mjs';
@@ -139,35 +140,9 @@ function owner(body, nodeId, identity) {
   return { key: `marker:${match[1]}`, binding: marker };
 }
 // Same exact typed row contract as the native snapshot/manifest; no value coercion.
-function fieldCandidate(row) {
-  exact(row, ['itemId', 'fieldId', 'type', 'value']);
-  if (
-    !token(row.itemId) ||
-    !token(row.fieldId) ||
-    !['NUMBER', 'TEXT', 'DATE', 'SINGLE_SELECT', 'ITERATION'].includes(row.type)
-  )
-    fail('field-value');
-  const value = row.value;
-  if (value === null || same(value, { state: 'absent' })) return;
-  if (row.type === 'NUMBER') {
-    if (typeof value !== 'number' || !Number.isFinite(value)) fail('field-value');
-    return;
-  }
-  if (row.type === 'SINGLE_SELECT') {
-    exact(value, ['optionId', 'name']);
-    if (!token(value.optionId) || typeof value.name !== 'string') fail('field-value');
-    return;
-  }
-  if (typeof value !== 'string' || !value.isWellFormed()) fail('field-value');
-  if (row.type === 'ITERATION' && !token(value)) fail('field-value');
-  if (
-    row.type === 'DATE' &&
-    (!/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-      !Number.isFinite(Date.parse(value)) ||
-      new Date(value).toISOString().slice(0, 10) !== value)
-  )
-    fail('field-value');
-}
+
+// @story #2049 — shared value validation only; this grants no publication authority.
+export { validateStoryFieldCandidate };
 
 function graph(effects) {
   const byKey = new Map(effects.map((effect) => [effect.key, effect]));
@@ -298,7 +273,7 @@ export function freezeStoryBatch(input) {
         exact(effect.target, ['identity', 'projectId', 'itemId', 'fieldId', 'type']);
         const target = effect.target;
         const before = generation.baseSnapshot.fields.find((row) => row.fieldId === target.fieldId);
-        fieldCandidate(effect.candidate);
+        validateStoryFieldCandidate(effect.candidate);
         if (
           !before ||
           target.projectId !== generation.identity.projectId ||

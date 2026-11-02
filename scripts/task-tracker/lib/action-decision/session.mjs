@@ -5,7 +5,6 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
-import { gql, splitRepo } from '../../../gh/lib/github-projects.mjs';
 import { fetchAssignmentSnapshot } from '../assignment-snapshot.mjs';
 import { findMainWorktreePath } from '../../fleet-registry.mjs';
 import { normalizeStateId } from '../lifecycle-policy/index.mjs';
@@ -19,6 +18,12 @@ import { currentSessionId } from '../../word-counter.mjs';
 import { computeScopeIdentity } from '../workflow-policy/scope-identity.mjs';
 import { createObservationAttempt } from './observations.mjs';
 import { sessionNetworkSkipped } from '../verb-preflight.mjs';
+import {
+  publishedStoryBody,
+  readLocalStoryView,
+  storyView,
+  readPublishedStoryObservation,
+} from '../story-cache/views.mjs';
 
 const pexec = promisify(execFile);
 
@@ -85,24 +90,50 @@ export async function evaluateSessionReadiness({
       observations: [],
     };
   }
+  let publishedIdentity;
+  const host = (process.env.GH_HOST || 'github.com').toLowerCase();
   const readIssueBody =
     deps.readIssueBody ??
     (async () => {
-      const { owner, repoName } = splitRepo(repository);
-      const data = await (deps.gql ?? gql)(
-        `query($owner: String!, $repo: String!, $issue: Int!) {
-        repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
-      }`,
-        { owner, repo: repoName, issue }
-      );
-      const body = data?.repository?.issue?.body;
-      if (typeof body !== 'string') throw new Error('issue body is unavailable');
-      return body;
+      const observed = await readPublishedStoryObservation({
+        repository,
+        issue,
+        host,
+        projectId: config.projectId,
+        transport: deps.gql,
+      });
+      publishedIdentity = observed.identity ?? observed.subject;
+      return observed.body;
     });
   // @story #2037 — scope and observation share one read in this invocation.
   // Keep rejection too: a new command, rather than a hidden retry, owns recovery.
   let issueBodyPromise;
-  const observeIssueBody = () => (issueBodyPromise ??= Promise.resolve().then(readIssueBody));
+  const observeIssueBody = () =>
+    (issueBodyPromise ??= Promise.resolve().then(async () => {
+      const body = await readIssueBody();
+      let local;
+      if (deps.readStoryGeneration) {
+        const generation = await deps.readStoryGeneration();
+        local =
+          generation == null ? null : { view: storyView({ generation, authority: 'published' }) };
+      } else
+        local = readLocalStoryView({
+          projectRoot: projectDir,
+          repository,
+          issue,
+          host,
+          projectId: config.projectId,
+        });
+      return publishedStoryBody({
+        body,
+        view: local?.view,
+        repository,
+        issue,
+        host,
+        projectId: config.projectId,
+        identity: publishedIdentity,
+      });
+    }));
   const skipNetwork = sessionNetworkSkipped();
   const read = async (request) => {
     let value;
