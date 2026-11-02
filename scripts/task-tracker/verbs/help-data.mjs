@@ -344,6 +344,10 @@ export const VERB_REFERENCE = {
       { flag: '--reason <text>', desc: 'refinement rationale (required)' },
       { flag: '--rank <n>', desc: 'optional board Rank' },
       {
+        flag: '--supersede-pending',
+        desc: 'explicitly reconcile a pending Refine predecessor against current authority',
+      },
+      {
         flag: '--labels <name[,name...]>',
         desc: 'optional comma-separated labels to add',
       },

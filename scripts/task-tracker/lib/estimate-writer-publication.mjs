@@ -278,7 +278,8 @@ export async function executeEstimateWriter({
     !prior &&
     initial.publication?.status === 'pending' &&
     deps.supersedePending &&
-    ['cancel-plan', 'shelve'].includes(writerId)
+    (['cancel-plan', 'shelve'].includes(writerId) ||
+      (writerId === 'refine' && initial.publication.writerId === 'refine'))
   )
     supersedes = await reconcileEstimatePredecessor({
       cfg,

@@ -39,6 +39,22 @@ Registered writers persist bounded pending intent before their first estimate/hi
 
 Retry the exact original `npx aitm inflate-estimate ...` invocation when its transport is usable; retry adaptive `npx aitm plan-estimate ...` with the same evidence/intent. Use current help and diagnostics. Never construct a publication marker, effect ID or supersession record manually. Cancellation and Shelve retain their journal/restore semantics; empty fields or Backlog alone do not erase pending intent.
 
+## Explicit recovery of a pending Refine publication
+
+If current scope or epic children changed after a Refine publication started,
+normal exact retry retains its drift refusal. Inspect the current issue and
+predecessor effects first. When the current Refine intent is authorized, invoke
+`npx aitm refine <issue> --size <size> --estimate <hours> --priority <priority> --rank <rank> --reason "<current rationale>" --supersede-pending`.
+
+The explicit option creates a distinct operation even when the field values and
+rationale match the predecessor. It requires complete current authority and can
+supersede only a pending Refine writer. Every predecessor effect is read through
+its registered reader and retained, with its observed result, under the new
+publication's `supersedes` record. It does not manufacture a completed snapshot
+or waive ownership, source, effect-readback or stage gates. A repeated identical
+recovery invocation resumes the new operation; omit the option for ordinary
+retries. Other writers' pending publications require their owning recovery route.
+
 ## Governed decomposition and partial creation
 
 Inspect current source and existing children before `npx aitm split-plan 1908 --dry-run`. Review every intent, bounded scope, verifier and pinned provenance; confirm only the reviewed proposal with `npx aitm split-plan 1908 --confirm`. Source, plan and ownership must be usable even while publication convergence is pending. A low old estimate alone does not make an otherwise bounded plan splittable; current plan signals must justify the proposal.
