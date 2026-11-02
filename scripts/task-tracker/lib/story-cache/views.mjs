@@ -334,11 +334,17 @@ export function readLocalStoryView({
   projectId,
   host = 'github.com',
 } = {}) {
-  if (
-    !fs.existsSync(path.join(projectRoot, '.git')) &&
-    !fs.existsSync(path.join(projectRoot, '.tmp', 'gh'))
-  )
-    return null;
+  // Only genuine absence permits remote-only reads. Malformed paths are local evidence.
+  for (const relative of ['.tmp', path.join('.tmp', 'gh')]) {
+    let stat;
+    try {
+      stat = fs.lstatSync(path.join(projectRoot, relative));
+    } catch (error) {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    }
+    if (stat.isSymbolicLink() || !stat.isDirectory()) fail('cache-path');
+  }
   const observed = inspectStoryWriterScope({ projectRoot, host, repository, issueNumber: issue });
   if (!observed) {
     const repoHash = createHash('sha256').update(repository.toLowerCase()).digest('hex');

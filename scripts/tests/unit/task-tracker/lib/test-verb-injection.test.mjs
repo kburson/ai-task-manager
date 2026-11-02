@@ -202,10 +202,11 @@ if (argv[0] === 'issue' && argv[1] === 'comment') {
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
   process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+    id: 'ISSUE_999', number: 999, body: ${JSON.stringify(fixtureBody)}, repository: { nameWithOwner: 'test-owner/test-repo' },
     subIssues: { nodes: [] },
     parent: null,
     assignees: { nodes: [{ login: 'kburson' }] },
-    projectItems: { nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Test' } }] },
+    projectItems: { nodes: [{ id: 'ITEM_999', project: { id: 'PVT_test' }, fieldValueByName: { name: 'Test' } }], pageInfo: { hasNextPage: false } },
     comments: { nodes: [] },
     subIssues: { totalCount: 0, nodes: [], pageInfo: { hasNextPage: false, endCursor: null } }
   } } } }));

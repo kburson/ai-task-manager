@@ -581,7 +581,7 @@ if (args[0] === 'api' && args[1] === 'graphql') {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: { number: ${issue}, body, parent: null } } } }));
     } else if (query.includes('projectItems')) {
       process.stdout.write(JSON.stringify({ data: { repository: { issue: {
-        id: 'ISSUE_CAPTURE', number:2100, body, comments:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}},
+        id: 'ISSUE_CAPTURE', number:2100, repository: { nameWithOwner: 'example/project' }, body, comments:{nodes:[],pageInfo:{hasNextPage:false,endCursor:null}},
         assignees: { nodes: [] },
         projectItems: { nodes: [{ id: 'I1', project: { id: 'P1' }, fieldValueByName: {
           name: snapshot.state.replace(/(^|-)\\w/g, (m) => m.toUpperCase())

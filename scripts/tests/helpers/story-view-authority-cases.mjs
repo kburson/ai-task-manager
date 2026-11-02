@@ -348,6 +348,8 @@ export function registerStoryViewAuthorityCases() {
       cfg: { repo: 'owner/repo' },
       SKIP_NETWORK: false,
       deps: {
+        // Standalone shared-row fixture owns no actor interval to flush.
+        flushBoundActorInterval: async () => {},
         ghTimingComment: {
           buildRow,
           postTimingEvent: async ({ row }) => posted.push(row),
