@@ -1,4 +1,4 @@
-// @story #2048 #2066 #2069
+// @story #2048 #2066 #2069 #2070
 // @story #2068
 // @story #2088
 // @story #2058 #2060 #2064 #2059 #2065 #2047
@@ -432,7 +432,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'plan-transition-native',
   ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
   for (const entry of planCandidateEntries) assert.ok(files.includes(entry));
+  // #2070 adds one pure reporting authority leaf; fixture/test files remain excluded.
+  const timingAuthorityEntries = ['scripts/task-tracker/lib/story-cache/timing-authority.mjs'];
+  for (const entry of timingAuthorityEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    timingAuthorityEntries.length +
     planCandidateEntries.length +
     retainedRecoveryEntries.length +
     bootstrapEntries.length +

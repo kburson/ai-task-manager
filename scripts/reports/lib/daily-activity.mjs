@@ -12,6 +12,7 @@
 // day. Pause-accurate per-sub-interval subtraction is out of scope (#770).
 
 import { parseTimingRows } from '../../task-tracker/timing-rollup.mjs';
+import { timingAuthority } from '../../task-tracker/lib/story-cache/timing-authority.mjs';
 
 // 'YYYY-MM-DD' for an epoch-ms in the machine's local calendar.
 function localDayKey(ms) {
@@ -69,6 +70,23 @@ export function bucketRowsByDay(issues, { fromMs = null, toMs = null } = {}) {
   };
 
   for (const issue of issues ?? []) {
+    if (issue.timingEvidence !== undefined) {
+      const authority = timingAuthority(issue.timingEvidence);
+      for (const event of authority.events) {
+        const end = Date.parse(event.timestamp);
+        const known = (event.activeSeconds ?? 0) + (event.idleSeconds ?? 0);
+        allocateWindow(end - known * 1000, end, known, (key, seconds) => {
+          const entry = touch(key);
+          entry.native = true;
+          entry.durationSec += seconds;
+          entry.unknownActive ||= event.activeSeconds === null;
+          entry.unknownIdle ||= event.idleSeconds === null;
+          if (seconds > 0 || entry.unknownActive || entry.unknownIdle)
+            entry.issues.add(issue.number);
+        });
+      }
+      continue;
+    }
     const rows = parseTimingRows(issue.body ?? '');
     let prev = null;
     for (const row of rows) {
@@ -120,8 +138,22 @@ export function bucketRowsByDay(issues, { fromMs = null, toMs = null } = {}) {
     const e = days.get(key);
     out.push({
       date: key,
-      durationSec: e ? Math.round(e.durationSec) : 0,
+      durationSec:
+        e?.unknownActive || e?.unknownIdle
+          ? null
+          : e?.native
+            ? e.durationSec
+            : e
+              ? Math.round(e.durationSec)
+              : 0,
       issueCount: e ? e.issues.size : 0,
+      ...(e?.native
+        ? {
+            knownDurationSec: e.durationSec,
+            unknownActive: !!e.unknownActive,
+            unknownIdle: !!e.unknownIdle,
+          }
+        : {}),
     });
     if (key === maxKey) break;
   }
@@ -137,7 +169,20 @@ export function extractTimingBody(comments) {
 
 function fmtDayLabel(key) {
   const [, m, d] = key.split('-').map(Number);
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${MONTHS[m - 1]} ${d}`;
 }
 
@@ -159,13 +204,19 @@ const CNT_COLOR = '#0ea5e9'; // sky-500   — distinct tasks (right axis)
 // own labelled Y-axis, with a dedicated bottom band for X labels so they no
 // longer collide with the plot.
 export function renderDailyChart(buckets) {
-  const hasData = Array.isArray(buckets) && buckets.some((b) => b.durationSec > 0);
+  const hasData =
+    Array.isArray(buckets) &&
+    buckets.some(
+      (b) => (b.knownDurationSec ?? b.durationSec) > 0 || b.unknownActive || b.unknownIdle
+    );
   if (!hasData) {
     return `<p class="tl-note">No timing-log activity in range.</p>`;
   }
 
   const n = buckets.length;
-  const mins = buckets.map((b) => b.durationSec / 60);
+  const incomplete = buckets.some((b) => b.unknownActive || b.unknownIdle);
+  const duration = (bucket) => bucket.knownDurationSec ?? bucket.durationSec;
+  const mins = buckets.map((b) => duration(b) / 60);
   const durMax = niceMax(Math.max(...mins, 1));
   // Task count is integer — pick an integer step so every gridline is a whole task.
   const rawCount = Math.max(...buckets.map((b) => b.issueCount), 1);
@@ -215,9 +266,13 @@ export function renderDailyChart(buckets) {
   const line = (pts, color) =>
     `<polyline points="${pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
   const dots = (pts, color) =>
-    pts.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${color}" />`).join('');
+    pts
+      .map(
+        (p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="${color}" />`
+      )
+      .join('');
 
-  const durPts = buckets.map((b, idx) => ({ x: x(idx), y: yDur(b.durationSec / 60) }));
+  const durPts = buckets.map((b, idx) => ({ x: x(idx), y: yDur(duration(b) / 60) }));
   const cntPts = buckets.map((b, idx) => ({ x: x(idx), y: yCnt(b.issueCount) }));
 
   const axisFrame =
@@ -226,7 +281,7 @@ export function renderDailyChart(buckets) {
     `<line x1="${M.left}" y1="${M.top + plotH}" x2="${M.left + plotW}" y2="${M.top + plotH}" stroke="#94a3b8" stroke-width="1" />`;
 
   const axisTitles =
-    `<text x="14" y="${M.top + plotH / 2}" text-anchor="middle" font-size="11" fill="${DUR_COLOR}" transform="rotate(-90 14 ${(M.top + plotH / 2).toFixed(1)})">minutes worked</text>` +
+    `<text x="14" y="${M.top + plotH / 2}" text-anchor="middle" font-size="11" fill="${DUR_COLOR}" transform="rotate(-90 14 ${(M.top + plotH / 2).toFixed(1)})">${incomplete ? 'known minutes worked' : 'minutes worked'}</text>` +
     `<text x="${W - 12}" y="${M.top + plotH / 2}" text-anchor="middle" font-size="11" fill="${CNT_COLOR}" transform="rotate(90 ${W - 12} ${(M.top + plotH / 2).toFixed(1)})">distinct tasks</text>`;
 
   const svg =
@@ -245,16 +300,16 @@ export function renderDailyChart(buckets) {
 
   const legend =
     `<div style="display:flex;gap:1.25rem;justify-content:center;margin:.35rem 0 .1rem;font-size:.72rem;color:#475569">` +
-    `<span><span style="display:inline-block;width:14px;height:2px;background:${DUR_COLOR};vertical-align:middle;margin-right:.35rem"></span>Minutes worked</span>` +
+    `<span><span style="display:inline-block;width:14px;height:2px;background:${DUR_COLOR};vertical-align:middle;margin-right:.35rem"></span>${incomplete ? 'Known minutes worked' : 'Minutes worked'}</span>` +
     `<span><span style="display:inline-block;width:14px;height:2px;background:${CNT_COLOR};vertical-align:middle;margin-right:.35rem"></span>Distinct tasks</span>` +
     `</div>`;
 
   return (
     `<hr class="tl-rule">` +
     `<h3 class="tl-heading">Daily Work Activity</h3>` +
-    `<p class="tl-meta">Minutes worked (left axis) and distinct tasks worked (right axis) per calendar day.</p>` +
+    `<p class="tl-meta">${incomplete ? 'Known minutes worked' : 'Minutes worked'} (left axis) and distinct tasks worked (right axis) per calendar day.</p>` +
     legend +
     `<div style="margin:.25rem .25rem 0">${svg}</div>` +
-    `<p class="tl-footnote">Both series are per calendar day: minutes = total active + idle wall-clock (midnight-crossing work prorated); distinct tasks = count of issues with recorded work that day.</p>`
+    `<p class="tl-footnote">Both series are per calendar day: minutes = ${incomplete ? 'known measured active + idle' : 'total active + idle wall-clock'} (midnight-crossing work prorated); distinct tasks = count of issues with recorded work that day.${incomplete ? ' Unknown durations retain their measured lower bounds.' : ''}</p>`
   );
 }

@@ -9,6 +9,9 @@ import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
 import { PHASE_EVENTS } from './phase-events.mjs';
 import { parseTimingRow } from './lib/timing-row-reader.mjs';
 import { deriveActorEngagement } from './lib/timing-engagement.mjs';
+import { timingAuthority } from './lib/story-cache/timing-authority.mjs';
+import { parseEntryMarkers as parseEntryHistory } from './lib/stage-entry-grammar.mjs';
+import { deriveLadder } from './lib/timing-ladder.mjs';
 
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
@@ -186,19 +189,33 @@ export function computePlanMin(rows) {
 // close window and report which halves are already present so the caller can
 // skip them. Any durable `issue:closed` row seals the ledger irreversibly and
 // reports both halves handled, even when malformed activity follows it.
-export function pendingClosePairState(body) {
+export function pendingClosePairState(body, { timingEvidence } = {}) {
   const rows = parseTimingRows(String(body || ''));
   const closedEvent = PHASE_EVENTS.done.complete.event; // issue:closed
   const approvedEvent = PHASE_EVENTS.review.complete.event; // review:approved
   const wrapEvent = PHASE_EVENTS.done.enter.event; // issue:wrap
 
-  if (rows.some((row) => row.event === closedEvent)) {
-    return { reviewApproved: true, issueWrap: true };
-  }
-
+  const closed = rows.some((row) => row.event === closedEvent);
+  const presence = {
+    reviewApproved: closed || rows.some((r) => r.event === approvedEvent),
+    issueWrap: closed || rows.some((r) => r.event === wrapEvent),
+  };
+  if (timingEvidence === undefined) return presence;
+  const authority = timingAuthority(timingEvidence);
+  const lastPair = authority.events
+    .filter((event) => event.event === approvedEvent || event.event === wrapEvent)
+    .at(-1)?.transitionId;
+  const completionVerified =
+    presence.reviewApproved &&
+    presence.issueWrap &&
+    authority.completedVisits.some(
+      (visit) => visit.id === lastPair && visit.from === 'review' && visit.to === 'done'
+    );
   return {
-    reviewApproved: rows.some((r) => r.event === approvedEvent),
-    issueWrap: rows.some((r) => r.event === wrapEvent),
+    ...presence,
+    completionVerified,
+    provisional: (presence.reviewApproved || presence.issueWrap) && !completionVerified,
+    authority,
   };
 }
 
@@ -219,14 +236,16 @@ export function pendingClosePairState(body) {
 //
 // Legacy single-visit issues (no `-N` suffix on markers) parse as visit=1 and
 // produce the same shape as multi-visit issues.
-export function computeStageDurations(body) {
+export function computeStageDurations(body, { timingEvidence } = {}) {
   const tuples = parseEntryMarkers(body);
   const visits = [];
+  const sourceIndexes = [];
   const perStageSec = Object.fromEntries(STAGES.map((s) => [s, 0]));
   for (let i = 0; i < tuples.length; i++) {
     const { stage, visit, ts } = tuples[i];
     const startMs = Date.parse(ts);
     if (!Number.isFinite(startMs)) continue;
+    sourceIndexes.push(i);
     const next = tuples[i + 1];
     const endMs = next ? Date.parse(next.ts) : null;
     if (endMs == null || !Number.isFinite(endMs) || endMs < startMs) {
@@ -238,6 +257,23 @@ export function computeStageDurations(body) {
     if (stage in perStageSec) perStageSec[stage] += durationSec;
   }
   const totalSec = Object.values(perStageSec).reduce((a, b) => a + b, 0);
+  if (timingEvidence !== undefined) {
+    const authority = timingAuthority(timingEvidence);
+    const history = parseEntryHistory(body);
+    for (const [index, visit] of visits.entries()) {
+      const next = history[sourceIndexes[index] + 1];
+      visit.completionVerified = Boolean(
+        next &&
+        authority.completedVisits.some(
+          (proof) =>
+            proof.id === next.move &&
+            proof.from === visit.stage &&
+            proof.to === next.state &&
+            proof.visit === next.visit
+        )
+      );
+    }
+  }
   return { visits, perStageSec, totalSec };
 }
 
@@ -302,7 +338,42 @@ export function upsertStageRollupMarker(body, rollup) {
 // pause/switch-out/resume + legacy per-turn rows) double-counts. Pass the raw
 // timing-comment `body` to take the span path; omit it and the function falls
 // back to the legacy per-row sum so pre-v2 callers keep working.
-export function rollupTotals(rows, thresholdMin, body = null) {
+export function rollupTotals(rows, thresholdMin, body = null, { timingEvidence } = {}) {
+  if (timingEvidence !== undefined) {
+    const { authority, states, prelude } = deriveLadder([], { timingEvidence });
+    const active = authority.unknownActive ? null : authority.measuredActiveSeconds;
+    const idle = authority.unknownIdle ? null : authority.measuredIdleSeconds;
+    const provisional = authority.events.some(
+      (event) =>
+        event.transitionId !== null &&
+        !authority.completedVisits.some((visit) => visit.id === event.transitionId)
+    );
+    const reasons = [
+      ...(authority.unknownActive ? ['unknown-active'] : []),
+      ...(authority.unknownIdle ? ['unknown-idle'] : []),
+      ...(provisional ? ['provisional-completion'] : []),
+      ...(authority.completionFailures.length ? ['invalid-completion-evidence'] : []),
+    ];
+    return {
+      rowCount: authority.events.length,
+      totalActiveSec: active,
+      totalActiveMin: active === null ? null : Math.round(active / 60),
+      knownEngagedSec: authority.measuredActiveSeconds,
+      totalIdleSec: idle,
+      totalIdleMin: idle === null ? null : Math.round(idle / 60),
+      reviewMin: null,
+      reviewSec: null,
+      planMin:
+        prelude.unknownActive || states.plan?.unknownActive
+          ? null
+          : (states.plan?.knownActiveSec ?? 0) / 60,
+      engagedSec: active,
+      engagedMin: active === null ? null : Math.round(active / 60),
+      lastWordMarker: null,
+      authority,
+      telemetry: { status: reasons.length ? 'incomplete' : 'complete', reasons },
+    };
+  }
   if (rows.some((row) => row.actorKey)) {
     const engagement = deriveActorEngagement(
       rows.map((row) => ({ ...row, ts: row.ts ?? row.tsMs })),
@@ -392,6 +463,7 @@ export function buildStructuredTimingProjection({
   issueBody = '',
   thresholdMin = 5,
   revision = 1,
+  timingEvidence,
 } = {}) {
   if (
     typeof timingBody !== 'string' ||
@@ -405,16 +477,33 @@ export function buildStructuredTimingProjection({
     throw new TypeError('timing-projection:input');
   }
   const rows = applyPauseSpansToRows(parseTimingRows(timingBody), timingBody);
-  const totals = rollupTotals(rows, thresholdMin, timingBody);
-  const stageTiming = computeStageDurations(issueBody);
+  const totals = rollupTotals(rows, thresholdMin, timingBody, { timingEvidence });
+  const stageTiming = computeStageDurations(issueBody, { timingEvidence });
+  const projectedRows =
+    timingEvidence === undefined
+      ? rows.map(({ tsMs, event, activeSec, idleSec, wordMarker }) => ({
+          tsMs,
+          event,
+          activeSec,
+          idleSec,
+          wordMarker,
+        }))
+      : totals.authority.events.map(
+          ({ eventId, actorId, transitionId, timestamp, event, activeSeconds, idleSeconds }) => ({
+            eventId,
+            actorId,
+            transitionId,
+            tsMs: Date.parse(timestamp),
+            event,
+            activeSec: activeSeconds,
+            idleSec: idleSeconds,
+            wordMarker: null,
+          })
+        );
   return Object.freeze({
     schema: 'aitm.timing-projection/v1',
     revision,
-    rows: Object.freeze(
-      rows.map(({ tsMs, event, activeSec, idleSec, wordMarker }) =>
-        Object.freeze({ tsMs, event, activeSec, idleSec, wordMarker })
-      )
-    ),
+    rows: Object.freeze(projectedRows.map((row) => Object.freeze({ ...row }))),
     totals: Object.freeze({ ...totals }),
     stageTiming: Object.freeze({
       perStageSec: Object.freeze({ ...stageTiming.perStageSec }),

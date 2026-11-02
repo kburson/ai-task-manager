@@ -16,6 +16,7 @@ export async function reconcileReviewApprovedTiming({
   fullWordMarker = 0,
   readTimingCommentBody = defaultReadTimingCommentBody,
   postTimingEvent = defaultPostTimingEvent,
+  timingEvidence,
 } = {}) {
   if (!issueNumber) throw new Error('review approval timing requires issueNumber');
   if (!repo) throw new Error('review approval timing requires repo');
@@ -34,8 +35,13 @@ export async function reconcileReviewApprovedTiming({
     );
   }
   const timingBody = bodyOf(read);
-  if (pendingClosePairState(timingBody).reviewApproved) {
-    return { status: 'present', ts: approval.ts };
+  const pending = pendingClosePairState(timingBody, { timingEvidence });
+  if (pending.reviewApproved) {
+    return {
+      status: 'present',
+      ts: approval.ts,
+      ...(timingEvidence === undefined ? {} : { completionVerified: pending.completionVerified }),
+    };
   }
 
   const delta = computePhaseCloseDelta(timingBody, 'review', approval.ts, wordMarker);

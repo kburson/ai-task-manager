@@ -27,6 +27,65 @@ import {
   EVENT_CLASS,
 } from './timing-events/index.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
+import { timingAuthority } from './story-cache/timing-authority.mjs';
+
+const PHASE_EVENT_TO_STATE = Object.fromEntries(
+  Object.entries(PHASE_EVENTS).flatMap(([state, events]) =>
+    Object.values(events).map(({ event }) => [event, state])
+  )
+);
+
+function nativeLadder(timingEvidence) {
+  const authority = timingAuthority(timingEvidence);
+  const bucket = () => ({
+    activeSec: 0,
+    idleSec: 0,
+    knownActiveSec: 0,
+    knownIdleSec: 0,
+    unknownActive: false,
+    unknownIdle: false,
+  });
+  const states = {},
+    prelude = bucket(),
+    totals = bucket(),
+    current = new Map();
+  const add = (target, event) => {
+    target.knownActiveSec += event.activeSeconds ?? 0;
+    target.knownIdleSec += event.idleSeconds ?? 0;
+    target.unknownActive ||= event.activeSeconds === null;
+    target.unknownIdle ||= event.idleSeconds === null;
+    target.activeSec = target.unknownActive ? null : target.knownActiveSec;
+    target.idleSec = target.unknownIdle ? null : target.knownIdleSec;
+  };
+  const rows = authority.events.map((event) => {
+    const state =
+      (Object.hasOwn(PHASE_EVENT_TO_STATE, event.event)
+        ? PHASE_EVENT_TO_STATE[event.event]
+        : undefined) ??
+      current.get(event.actorId) ??
+      null;
+    if (
+      state !== null &&
+      (Object.hasOwn(ENTER_SLUG_TO_STATE, event.event) || !current.has(event.actorId))
+    )
+      current.set(event.actorId, state);
+    add(state === null ? prelude : (states[state] ??= bucket()), event);
+    add(totals, event);
+    return {
+      ...event,
+      ts: event.timestamp,
+      actorKey: event.actorId,
+      class: classifyTimingEvent(event.event),
+      state,
+      activeSec: event.activeSeconds,
+      idleSec: event.idleSeconds,
+      lifecycleCompleted: authority.completedVisits.some(
+        (visit) => visit.id === event.transitionId
+      ),
+    };
+  });
+  return { rows, states, prelude, totals, authority };
+}
 
 // slug (`refine:started`) → state (`refine`) for canonical ENTER events only.
 // Built from the frozen table so it can never drift from the emitters.
@@ -89,7 +148,9 @@ export function parseTimingRows(body) {
 //     totals: { activeSec, idleSec },
 //   }
 // `deltaFloor` controls sub-second rounding (default: round to nearest second).
-export function deriveLadder(rows, { round = Math.round } = {}) {
+export function deriveLadder(rows, { round = Math.round, timingEvidence } = {}) {
+  // Native intervals are already measured; do not replace fractions with rounded spans.
+  if (timingEvidence !== undefined) return nativeLadder(timingEvidence);
   const list = Array.isArray(rows) ? rows : [];
   if (list.some((row) => row.actorKey)) {
     const engagement = deriveActorEngagement(list, list.at(-1)?.ts);
