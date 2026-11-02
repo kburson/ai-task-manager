@@ -46,6 +46,8 @@ export async function nativePlanFixture(
     epicProposal = false,
     epicChildMode = 'ready',
     publishedApproval = false,
+    timingBody,
+    extraTimingEvents = [],
     skipApproval = false,
     workingEdit = null,
     disposition = '',
@@ -67,11 +69,12 @@ export async function nativePlanFixture(
     ...row,
     event: row.event === 'develop:completed' ? 'plan:completed' : 'develop:started',
   }));
+  events.push(...extraTimingEvents);
   if (adaptive) {
     const { activateNativeForecastFixture } = await import('./native-plan-forecast-fixture.mjs');
     await activateNativeForecastFixture(t.unitRoot);
   }
-  const f = await fixture(t, { events });
+  const f = await fixture(t, { events, ...(timingBody === undefined ? {} : { timingBody }) });
   let base =
     initial.replace(
       '## Deep-Dive Analysis\n',

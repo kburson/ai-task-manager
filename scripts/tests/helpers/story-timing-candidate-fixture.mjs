@@ -89,7 +89,10 @@ export async function context(root, operation, sid = 'author-A') {
     else process.env.AI_TASK_MANAGER_SESSION_ID = beforeSid;
   }
 }
-export async function fixture(t, { absent = false, events = pair() } = {}) {
+export async function fixture(
+  t,
+  { absent = false, events = pair(), timingBody = historical } = {}
+) {
   assert.equal(
     typeof adapter.freezeTimingCandidate,
     'function',
@@ -128,7 +131,7 @@ export async function fixture(t, { absent = false, events = pair() } = {}) {
         includesCreatedEdit: false,
         userContentEdits: { totalCount: 0, nodes: [] },
       },
-      body: historical,
+      body: timingBody,
     });
     void ignored;
     initial.generation.baseSnapshot.resources['comment:C_timing'] = {
@@ -137,7 +140,7 @@ export async function fixture(t, { absent = false, events = pair() } = {}) {
       payloadPath: 'base/timing.md',
     };
     initial.generation.baseSnapshot.inventory = ['C_timing'];
-    initial.payloads.set('base/timing.md', historical);
+    initial.payloads.set('base/timing.md', timingBody);
   }
   await store.commitGeneration(initial, { expectedGeneration: null });
   await context(root, () => ingestTimingEvents({ store, claim, events }));

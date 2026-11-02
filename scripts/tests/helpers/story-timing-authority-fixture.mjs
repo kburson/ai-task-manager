@@ -19,7 +19,19 @@ export { test as nativeTest } from './story-timing-candidate-fixture.mjs';
 
 export async function legacyTimingAuthority(
   t,
-  { foreign = false, missingVisit = false, malformed = false, invalidTimestamp = false } = {}
+  {
+    foreign = false,
+    missingVisit = false,
+    malformed = false,
+    invalidTimestamp = false,
+    fencedComment = false,
+    fencedVisit = false,
+    close = false,
+    inlineComment = false,
+    inlineVisit = false,
+    quotedDuplicate = false,
+    exampleProse = false,
+  } = {}
 ) {
   const native = await nativePlanFixture(t);
   assert.equal((await native.run()).status, 'complete');
@@ -28,25 +40,41 @@ export async function legacyTimingAuthority(
   );
   const before = await native.store.readGeneration();
   const { identity } = before.generation;
-  const visitMarker = `<!-- aitm-entered-develop-2 ts="${invalidTimestamp ? 'invalid' : '2026-10-19T12:00:00Z'}" move="move:legacy" -->`;
+  const visitMarker = `<!-- aitm-entered-${close ? 'done' : 'develop-2'} ts="${invalidTimestamp ? 'invalid' : '2026-10-19T12:00:00Z'}" move="move:legacy" -->`;
   const record = {
     schema: 'aitm.transition-commit/v1',
     transitionId: 'move:legacy',
     repository: foreign ? 'foreign/repo' : identity.repository,
     issue: identity.issueNumber,
-    source: 'test',
-    target: 'develop',
+    source: close ? 'review' : 'test',
+    target: close ? 'done' : 'develop',
     visitMarker,
     actor: 'historical-login',
     sentinelFingerprint: 'sha256:' + hash('historical sentinel'),
   };
-  const body = malformed
+  let body = malformed
     ? '<!-- aitm-transition-commit broken -->'
     : renderTransitionCommitComment(record);
+  if (fencedComment) body = '```md\n' + body + '\n```';
+  const marker = renderTransitionCommitComment(record).split('\n').at(-1);
+  if (inlineComment) body = 'For example, `' + marker + '`';
+  if (quotedDuplicate) body += '\nFor example, `' + marker + '`';
+  if (exampleProse) body = 'Documentation example:\n' + body;
   await changeGeneration(native, (g, payloads) => {
     const issueRef = g.baseSnapshot.resources['issue:' + identity.issueNodeId];
     const original = Buffer.from(payloads.get(issueRef.payloadPath)).toString('utf8');
-    const issueBody = original + (missingVisit ? '' : '\n' + visitMarker);
+    const issueBody =
+      original +
+      (close ? '\n<!-- aitm-entered-review ts="2026-10-19T11:59:00Z" move="move:review" -->' : '') +
+      (missingVisit
+        ? ''
+        : '\n' +
+          (fencedVisit
+            ? '```md\n' + visitMarker + '\n```'
+            : inlineVisit
+              ? 'Documentation only: `' + visitMarker + '`'
+              : visitMarker)) +
+      (quotedDuplicate ? '\nDocumentation only: `' + visitMarker + '`' : '');
     setIssue(g, payloads, issueBody, issueBody);
     const { body: ignored, ...observed } = observeContent({
       identity,
@@ -67,24 +95,32 @@ export async function legacyTimingAuthority(
   return {
     generation: await native.store.readGeneration(),
     commentKey: 'comment:IC_legacy',
-    record,
   };
 }
 
-export async function completedTimingAuthority(t) {
-  const native = await nativePlanFixture(t);
+export async function completedTimingAuthority(t, options = {}) {
+  const native = await nativePlanFixture(t, options);
   assert.equal((await native.run()).status, 'complete');
   const generation = await native.store.readGeneration();
   return completedResult(native, generation);
 }
 
-export async function unpublishCompletion(f) {
+export async function unpublishCompletion(f, mode = 'missing') {
   const n = f.native;
   await context(n.root, () => prepareNextTransition({ store: n.store, claim: n.claim }));
   await changeGeneration(n, (g, payloads) => {
     const ref = g.baseSnapshot.resources['issue:' + g.identity.issueNodeId];
     const body = Buffer.from(payloads.get(ref.payloadPath)).toString('utf8');
-    setIssue(g, payloads, body.replace(/^<!-- aitm-transition-completion .+ -->\n?/gm, ''), body);
+    const marker = body.match(/^<!-- aitm-transition-completion .+ -->/m)[0];
+    const base =
+      mode === 'fenced-only'
+        ? body.replace(marker, '```md\n' + marker + '\n```')
+        : mode === 'inline-duplicate'
+          ? body + '\nDocumentation only: `' + marker + '`'
+          : mode === 'fenced-duplicate'
+            ? body + '\n```md\n' + marker + '\n```'
+            : body.replace(/^<!-- aitm-transition-completion .+ -->\n?/gm, '');
+    setIssue(g, payloads, base, body);
   });
   return { ...f.bundle, generation: await n.store.readGeneration() };
 }
@@ -151,6 +187,33 @@ export async function appendProvisionalTransition(f) {
     ...f,
     generation,
     events: effect.candidate.timing.sourceEvents,
+    bundle: { ...f.bundle, generation },
+  };
+}
+
+export async function appendUnpublishedWork(f) {
+  const n = f.native;
+  await context(n.root, () => prepareNextTransition({ store: n.store, claim: n.claim }));
+  const event = {
+    eventId: 'pending-work',
+    actorId: f.receipt.transition.actorId,
+    transitionId: null,
+    timestamp: new Date(
+      Math.max(...f.events.map((row) => Date.parse(row.timestamp))) + 60000
+    ).toISOString(),
+    event: 'paused',
+    activeSeconds: 2,
+    idleSeconds: 0,
+    sourceCursor: 'pending-work',
+  };
+  await context(n.root, () =>
+    ingestTimingEvents({ store: n.store, claim: n.claim, events: [event] })
+  );
+  const generation = await n.store.readGeneration();
+  return {
+    ...f,
+    generation,
+    events: generation.generation.timing.events,
     bundle: { ...f.bundle, generation },
   };
 }

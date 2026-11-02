@@ -70,6 +70,17 @@ function pair(events, transition) {
     fail('transition-pair');
   return exit[0].eventId;
 }
+function expectedTableRows(record) {
+  return record.transitions.flatMap((transition) =>
+    renderTimingEventBatch({
+      timingBody: '',
+      events: record.events.filter((event) => event.transitionId === transition.id),
+      exitEventId: pair(record.events, transition),
+    })
+      .split('\n')
+      .filter((line) => parseTimingRow(line)?.actorKey)
+  );
+}
 function eventRecord(body) {
   if (typeof body !== 'string' || !body.isWellFormed() || Buffer.byteLength(body) > 65536)
     fail('timing-body');
@@ -96,19 +107,7 @@ function eventRecord(body) {
     fail('native-timing-record');
   const table = body.slice(0, match.index);
   if (hash(table) !== record.tableDigest) fail('timing-table-digest');
-  const expectedRows = [];
-  for (const transition of record.transitions) {
-    const exitEventId = pair(record.events, transition);
-    expectedRows.push(
-      ...renderTimingEventBatch({
-        timingBody: '',
-        events: record.events.filter((e) => e.transitionId === transition.id),
-        exitEventId,
-      })
-        .split('\n')
-        .filter((line) => parseTimingRow(line)?.actorKey)
-    );
-  }
+  const expectedRows = expectedTableRows(record);
   if (
     record.events.some(
       (e) => e.transitionId !== null && !record.transitions.some((m) => m.id === e.transitionId)
@@ -125,6 +124,35 @@ function eventRecord(body) {
       fail('timing-table-correspondence');
   return record;
 }
+
+/** Pure read-side split; published event bytes are immutable, later pending work is allowed.
+ * Only the validated published native render mirrors are suppressed. No freshness authority.
+ */
+export function readNativeTimingHistory(body, events) {
+  if (typeof body !== 'string') fail('timing-body');
+  if (!body.includes('aitm-timing-events:')) return body;
+  const record = eventRecord(body);
+  const current = new Map(mergeTimingEvents(events, []).map((event) => [event.eventId, event]));
+  if (
+    record.events.some(
+      (event) => !current.has(event.eventId) || !same(event, current.get(event.eventId))
+    )
+  )
+    fail('timing-history-event-mismatch');
+  const remaining = new Map();
+  for (const row of expectedTableRows(record)) remaining.set(row, (remaining.get(row) ?? 0) + 1);
+  return body
+    .split('\n')
+    .filter((line) => {
+      if (line.includes('<!-- aitm-timing-events:')) return false;
+      const count = remaining.get(line) ?? 0;
+      if (!count) return true;
+      remaining.set(line, count - 1);
+      return false;
+    })
+    .join('\n');
+}
+
 function timingEffect(effect) {
   exact(effect.candidate, ['schema', 'body', 'timing']);
   const c = effect.candidate;

@@ -35,7 +35,11 @@ export async function reconcileReviewApprovedTiming({
     );
   }
   const timingBody = bodyOf(read);
-  const pending = pendingClosePairState(timingBody, { timingEvidence });
+  const pending = pendingClosePairState(timingBody, {
+    timingEvidence,
+    issueBody,
+    approvalTs: approval.ts,
+  });
   if (pending.reviewApproved) {
     return {
       status: 'present',
@@ -43,6 +47,13 @@ export async function reconcileReviewApprovedTiming({
       ...(timingEvidence === undefined ? {} : { completionVerified: pending.completionVerified }),
     };
   }
+  if (pending.presenceUnavailable)
+    return {
+      status: 'unavailable',
+      reason: 'current-review-visit-unavailable',
+      ts: approval.ts,
+      completionVerified: false,
+    };
 
   const delta = computePhaseCloseDelta(timingBody, 'review', approval.ts, wordMarker);
   if (!delta.matched) {

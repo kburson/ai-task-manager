@@ -27,7 +27,7 @@ import {
   EVENT_CLASS,
 } from './timing-events/index.mjs';
 import { PHASE_EVENTS } from '../phase-events.mjs';
-import { timingAuthority } from './story-cache/timing-authority.mjs';
+import { timingAuthority, historicalTimingBody } from './story-cache/timing-authority.mjs';
 
 const PHASE_EVENT_TO_STATE = Object.fromEntries(
   Object.entries(PHASE_EVENTS).flatMap(([state, events]) =>
@@ -47,8 +47,8 @@ function nativeLadder(timingEvidence) {
   });
   const states = {},
     prelude = bucket(),
-    totals = bucket(),
-    current = new Map();
+    totals = bucket();
+  let current = null;
   const add = (target, event) => {
     target.knownActiveSec += event.activeSeconds ?? 0;
     target.knownIdleSec += event.idleSeconds ?? 0;
@@ -62,13 +62,10 @@ function nativeLadder(timingEvidence) {
       (Object.hasOwn(PHASE_EVENT_TO_STATE, event.event)
         ? PHASE_EVENT_TO_STATE[event.event]
         : undefined) ??
-      current.get(event.actorId) ??
+      current ??
       null;
-    if (
-      state !== null &&
-      (Object.hasOwn(ENTER_SLUG_TO_STATE, event.event) || !current.has(event.actorId))
-    )
-      current.set(event.actorId, state);
+    if (state !== null && (Object.hasOwn(ENTER_SLUG_TO_STATE, event.event) || current === null))
+      current = state;
     add(state === null ? prelude : (states[state] ??= bucket()), event);
     add(totals, event);
     return {
@@ -79,9 +76,7 @@ function nativeLadder(timingEvidence) {
       state,
       activeSec: event.activeSeconds,
       idleSec: event.idleSeconds,
-      lifecycleCompleted: authority.completedVisits.some(
-        (visit) => visit.id === event.transitionId
-      ),
+      lifecycleCompleted: authority.completedEventIds.includes(event.eventId),
     };
   });
   return { rows, states, prelude, totals, authority };
@@ -150,7 +145,40 @@ export function parseTimingRows(body) {
 // `deltaFloor` controls sub-second rounding (default: round to nearest second).
 export function deriveLadder(rows, { round = Math.round, timingEvidence } = {}) {
   // Native intervals are already measured; do not replace fractions with rounded spans.
-  if (timingEvidence !== undefined) return nativeLadder(timingEvidence);
+  // Mixed history needs timingEvidence.timingBody to authenticate which table rows are mirrors.
+  if (timingEvidence !== undefined) {
+    if (rows?.length && typeof timingEvidence.timingBody !== 'string')
+      throw new Error('native-timing-history-body-required');
+    const native = nativeLadder(timingEvidence);
+    const legacyRows = parseTimingRows(historicalTimingBody(timingEvidence));
+    if (!legacyRows.length) return native;
+    const legacy = deriveLadder(legacyRows, { round });
+    const unattributed = legacyRows.some((row) => !row.actorKey);
+    const merge = (target, source) => {
+      target.knownActiveSec += source.knownActiveSec ?? source.activeSec ?? 0;
+      target.knownIdleSec += source.knownIdleSec ?? source.idleSec ?? 0;
+      target.unknownActive ||= unattributed || source.activeSec === null;
+      target.unknownIdle ||= unattributed || source.idleSec === null;
+      target.activeSec = target.unknownActive ? null : target.knownActiveSec;
+      target.idleSec = target.unknownIdle ? null : target.knownIdleSec;
+    };
+    merge(native.totals, legacy.totals);
+    merge(native.prelude, legacy.prelude);
+    for (const [state, source] of Object.entries(legacy.states)) {
+      native.states[state] ??= {
+        knownActiveSec: 0,
+        knownIdleSec: 0,
+        unknownActive: false,
+        unknownIdle: false,
+      };
+      merge(native.states[state], source);
+    }
+    native.rows = [
+      ...legacy.rows.map((row) => ({ ...row, source: 'legacy', lifecycleCompleted: false })),
+      ...native.rows,
+    ].sort((a, b) => parseRowTs(a.ts) - parseRowTs(b.ts));
+    return native;
+  }
   const list = Array.isArray(rows) ? rows : [];
   if (list.some((row) => row.actorKey)) {
     const engagement = deriveActorEngagement(list, list.at(-1)?.ts);

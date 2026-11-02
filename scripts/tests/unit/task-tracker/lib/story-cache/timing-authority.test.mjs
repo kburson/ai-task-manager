@@ -1,4 +1,5 @@
 // @story #2070
+import { registerTimingAuthorityProofCases } from '../../../../helpers/story-timing-authority-proof-cases.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -7,7 +8,10 @@ import {
   buildStructuredTimingProjection,
   computeStageDurations,
 } from '../../../../../task-tracker/timing-rollup.mjs';
-import { deriveLadder } from '../../../../../task-tracker/lib/timing-ladder.mjs';
+import {
+  deriveLadder,
+  parseTimingRows as parseLadderRows,
+} from '../../../../../task-tracker/lib/timing-ladder.mjs';
 import { bucketRowsByDay, renderDailyChart } from '../../../../../reports/lib/daily-activity.mjs';
 import { renderTimingEventBatch } from '../../../../../task-tracker/gh-timing-comment.mjs';
 import { timingActorKey } from '../../../../../task-tracker/lib/timing-actor.mjs';
@@ -15,6 +19,7 @@ import { reconcileReviewApprovedTiming } from '../../../../../task-tracker/lib/r
 import {
   completedTimingAuthority,
   appendProvisionalTransition,
+  appendUnpublishedWork,
   completeNextTimingAuthority,
   legacyTimingAuthority,
   unpublishCompletion,
@@ -46,6 +51,93 @@ const provisional = () => ({
 });
 
 nativeTest(
+  'first native publication and append preserve independent measured history exactly once',
+  async (t) => {
+    const timingBody =
+      '⏱ Timing Log\n\n| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |\n|---|---|---|---|---|---|---|---|\n| 2026-10-17 01:00:00 +00:00 | refine:started | 0 | 0 | | | historical actor | | <!-- row-sec: a=0 i=0 -->\n| 2026-10-17 01:01:00 +00:00 | refine:completed | 1 | 0 | | | historical actor | | <!-- row-sec: a=60 i=0 -->\n';
+    assert.equal(buildStructuredTimingProjection({ timingBody }).totals.totalActiveSec, 60);
+    const first = await completedTimingAuthority(t, { timingBody });
+    const pending = await appendUnpublishedWork(first);
+    for (const f of [first, pending, await appendProvisionalTransition(pending)]) {
+      const ref = f.generation.generation.baseSnapshot.resources[f.receipt.timing.key];
+      const body = Buffer.from(f.generation.payloads.get(ref.payloadPath)).toString('utf8');
+      const timingEvidence = { events: f.events, receipts: [f.bundle], timingBody: body };
+      const nativeSeconds = f.events.reduce((n, row) => n + (row.activeSeconds ?? 0), 0);
+      const totals = rollupTotals([], 5, body, { timingEvidence });
+      assert.equal(totals.knownEngagedSec, 60 + nativeSeconds);
+      assert.equal(totals.totalActiveSec, null);
+      const projection = buildStructuredTimingProjection({ timingBody: body, timingEvidence });
+      assert.ok(
+        projection.rows.some(
+          (row) =>
+            row.source === 'legacy' && row.event === 'refine:completed' && row.activeSec === 60
+        )
+      );
+      const ladder = deriveLadder(parseLadderRows(body), { timingEvidence });
+      assert.equal(ladder.totals.knownActiveSec, 60 + nativeSeconds);
+      assert.ok(ladder.rows.some((row) => row.source === 'legacy' && !row.eventId && !row.actorId));
+      const days = bucketRowsByDay([{ number: 2070, body, timingEvidence }]);
+      assert.equal(
+        days.find(
+          (day) => day.date === new Date('2026-10-17T01:00:00Z').toLocaleDateString('en-CA')
+        ).knownDurationSec,
+        60
+      );
+      assert.equal(
+        days.reduce((n, day) => n + (day.knownDurationSec ?? day.durationSec), 0),
+        60 + nativeSeconds
+      );
+    }
+  }
+);
+
+nativeTest(
+  'mixed publication preserves historical actor keys without inventing modern event identities',
+  async (t) => {
+    const actorId = timingActorKey({ provider: 'codex', sid: 'pre-native-historical' });
+    const base = { ...provisional().events[0], actorId, transitionId: null, idleSeconds: 0 };
+    const timingBody = renderTimingEventBatch({
+      timingBody: '',
+      events: [
+        {
+          ...base,
+          eventId: 'old-start',
+          event: 'resumed',
+          timestamp: '2026-10-17T10:00:00Z',
+          activeSeconds: 0,
+          sourceCursor: 'old-start',
+        },
+        {
+          ...base,
+          eventId: 'old-stop',
+          event: 'paused',
+          timestamp: '2026-10-17T10:00:02Z',
+          activeSeconds: 2,
+          sourceCursor: 'old-stop',
+        },
+      ],
+    });
+    const f = await completedTimingAuthority(t, { timingBody });
+    const ref = f.generation.generation.baseSnapshot.resources[f.receipt.timing.key];
+    const body = Buffer.from(f.generation.payloads.get(ref.payloadPath)).toString('utf8');
+    const timingEvidence = { events: f.events, receipts: [f.bundle], timingBody: body };
+    const result = buildStructuredTimingProjection({ timingBody: body, timingEvidence });
+    const historical = result.rows.filter((row) => row.source === 'legacy');
+    assert.equal(historical.length, 2);
+    assert.ok(
+      historical.every(
+        (row) => row.actorKey === actorId && row.eventId === undefined && row.actorId === undefined
+      )
+    );
+    assert.ok(
+      deriveLadder(parseLadderRows(body), { timingEvidence }).rows.some(
+        (row) => row.source === 'legacy' && row.actorKey === actorId && !row.lifecycleCompleted
+      )
+    );
+  }
+);
+
+nativeTest(
   'published legacy commit proof retains its original actor and visit despite a later sentinel',
   async (t) => {
     const f = await legacyTimingAuthority(t);
@@ -69,6 +161,11 @@ for (const [name, options] of Object.entries({
   foreign: { foreign: true },
   malformed: { malformed: true },
   'invalid-timestamp': { invalidTimestamp: true },
+  'fenced-comment': { fencedComment: true },
+  'fenced-visit': { fencedVisit: true },
+  'inline-comment': { inlineComment: true },
+  'inline-visit': { inlineVisit: true },
+  'example-prose': { exampleProse: true },
   'missing-visit': { missingVisit: true },
   duplicate: {},
 })) {
@@ -81,6 +178,14 @@ for (const [name, options] of Object.entries({
     assert.equal(result.measuredActiveSeconds, 30.25);
   });
 }
+
+nativeTest('quoted legacy examples do not invalidate genuine standalone proof', async (t) => {
+  const f = await legacyTimingAuthority(t, { quotedDuplicate: true });
+  assert.equal(
+    api.timingAuthority({ ...provisional(), legacyEvidence: [f] }).completedVisits.length,
+    1
+  );
+});
 
 test('native field rollup keeps measured fractions while completion and idle remain unavailable', () => {
   const totals = rollupTotals([], 5, '', { timingEvidence: provisional() });
@@ -146,6 +251,50 @@ test('provisional Plan work remains available to its field projection', () => {
   assert.equal(totals.planMin, 30.25 / 60);
 });
 
+test('known work without an observed phase cannot imply zero Plan work', () => {
+  const source = provisional();
+  source.events[0].event = 'paused';
+  const totals = rollupTotals([], 5, '', { timingEvidence: source });
+  assert.equal(totals.totalActiveSec, 30.25);
+  assert.equal(totals.planMin, null);
+});
+
+test('a handoff advances shared story phase while preserving each historical actor', () => {
+  const base = { ...provisional().events[0], activeSeconds: 0, idleSeconds: 0 };
+  const event = (eventId, actorId, ts, event, activeSeconds = 0) => ({
+    ...base,
+    eventId,
+    actorId,
+    timestamp: `2026-10-19T12:00:0${ts}.000Z`,
+    event,
+    activeSeconds,
+    sourceCursor: eventId,
+  });
+  const events = [
+    event('start', 'A', 0, 'plan:started'),
+    event('exit', 'B', 1, 'plan:completed', 1),
+    event('entry', 'B', 1, 'develop:started'),
+    event('work', 'A', 2, 'paused', 0.5),
+    event('new', 'C', 3, 'paused', 0.25),
+  ];
+  const result = deriveLadder([], { timingEvidence: { events } });
+  assert.equal(result.rows.find((row) => row.eventId === 'work').state, 'develop');
+  assert.equal(result.rows.at(-1).state, 'develop');
+  assert.equal(result.rows.find((row) => row.eventId === 'work').actorId, 'A');
+  assert.equal(rollupTotals([], 5, '', { timingEvidence: { events } }).planMin, 1 / 60);
+});
+
+test('daily Unknown aggregation never attributes work to a different zero-duration issue', () => {
+  const unknown = { number: 1, timingEvidence: provisional() };
+  const zero = {
+    number: 2,
+    timingEvidence: { events: [{ ...provisional().events[0], activeSeconds: 0, idleSeconds: 0 }] },
+  };
+  const forward = bucketRowsByDay([unknown, zero]);
+  assert.deepEqual(forward, bucketRowsByDay([zero, unknown]));
+  assert.equal(forward[0].issueCount, 1);
+});
+
 test('native daily activity retains measured work and labels incomplete duration as Unknown', () => {
   const buckets = bucketRowsByDay([{ number: 2070, body: '', timingEvidence: provisional() }]);
   assert.equal(buckets.length, 1);
@@ -172,8 +321,8 @@ test('Unknown-only native activity remains visible without invented measured dur
   assert.doesNotMatch(chart, /NaN|No timing-log activity/);
 });
 
-function provisionalClose() {
-  const source = provisional().events[0];
+function provisionalClose(timestamp = '2026-10-19T12:00:00.000Z') {
+  const source = { ...provisional().events[0], timestamp };
   const events = [
     { ...source, eventId: 'close-exit', transitionId: 'move:close', event: 'review:approved' },
     {
@@ -201,6 +350,96 @@ test('a provisional close pair is present for idempotency but is not verified co
   assert.equal(state.provisional, true);
 });
 
+test('fractional native timestamps retain canonical close-pair row presence', () => {
+  const f = provisionalClose('2026-10-19T12:00:00.125Z');
+  const state = pendingClosePairState(f.timingBody, { timingEvidence: f.timingEvidence });
+  assert.equal(state.reviewApproved, true);
+  assert.equal(state.issueWrap, true);
+  assert.equal(state.completionVerified, false);
+});
+
+test('an ordinary already-posted current approval is present before a close pair exists', async () => {
+  const base = { ...provisional().events[0], activeSeconds: 0, idleSeconds: 0 };
+  const entered = {
+    ...base,
+    eventId: 'review-enter',
+    transitionId: 'move:review-enter',
+    event: 'review:started',
+    sourceCursor: 'review-enter',
+  };
+  const approved = {
+    ...base,
+    eventId: 'ordinary-approval',
+    transitionId: null,
+    event: 'review:approved',
+    timestamp: '2026-10-19T12:01:00.000Z',
+    sourceCursor: 'ordinary-approval',
+  };
+  const body = renderTimingEventBatch({ timingBody: '', events: [entered, approved] });
+  const result = await reconcileReviewApprovedTiming({
+    issueNumber: 2070,
+    repo: 'owner/repo',
+    issueBody:
+      '<!-- aitm-entered-review ts="2026-10-19T12:00:00Z" move="move:review-enter" -->\n<!-- aitm-review-approved ts="2026-10-19T12:01:00Z" -->',
+    timingEvidence: { events: [entered] },
+    readTimingCommentBody: async () => ({ status: 'ok', body }),
+    postTimingEvent: async () => {
+      throw new Error('duplicate current approval');
+    },
+  });
+  assert.equal(result.status, 'present');
+  assert.equal(result.completionVerified, false);
+});
+
+for (const withOldRow of [true, false]) {
+  test(`an earlier-visit approval cannot authorize a post after reentry ${withOldRow ? 'with' : 'without'} its old row`, async () => {
+    const base = { ...provisional().events[0], activeSeconds: 0, idleSeconds: 0 };
+    const entry = (id, event, timestamp) => ({
+      ...base,
+      eventId: id,
+      transitionId: 'move:' + id,
+      event,
+      timestamp,
+      sourceCursor: id,
+    });
+    const first = entry('review-1', 'review:started', '2026-10-19T12:00:00Z');
+    const oldApproval = {
+      ...entry('old-approval', 'review:approved', '2026-10-19T12:01:00Z'),
+      transitionId: null,
+    };
+    const demoted = entry('demoted', 'develop:started', '2026-10-19T12:02:00Z');
+    const current = entry('review-2', 'review:started', '2026-10-19T12:03:00Z');
+    const body = renderTimingEventBatch({
+      timingBody: '',
+      events: [first, ...(withOldRow ? [oldApproval] : []), demoted, current],
+    });
+    const issueBody =
+      '<!-- aitm-entered-review ts="2026-10-19T12:00:00Z" move="move:review-1" -->\n<!-- aitm-review-approved ts="2026-10-19T12:01:00Z" -->\n<!-- aitm-entered-develop-2 ts="2026-10-19T12:02:00Z" move="move:demoted" -->\n<!-- aitm-entered-review-2 ts="2026-10-19T12:03:00Z" move="move:review-2" -->';
+    const timingEvidence = { events: [first, demoted, current] };
+    let posts = 0;
+    const result = await reconcileReviewApprovedTiming({
+      issueNumber: 2070,
+      repo: 'owner/repo',
+      issueBody,
+      timingEvidence,
+      readTimingCommentBody: async () => ({ status: 'ok', body }),
+      postTimingEvent: async () => {
+        posts++;
+      },
+    });
+    assert.equal(posts, 0);
+    assert.equal(result.status, 'unavailable');
+    const state = pendingClosePairState(body, {
+      timingEvidence,
+      issueBody,
+      approvalTs: '2026-10-19T12:01:00Z',
+    });
+    assert.equal(state.reviewApproved, false);
+    assert.equal(state.completionVerified, false);
+    assert.equal(state.presenceUnavailable, true);
+  });
+}
+
 test('existing projection callers retain their public row shape without explicit native evidence', () => {
   const result = buildStructuredTimingProjection({ timingBody: provisionalClose().timingBody });
   assert.deepEqual(Object.keys(result.rows[0]).sort(), [
@@ -227,6 +466,97 @@ test('approval reconciliation never posts a duplicate of an already present prov
   assert.equal(result.status, 'present');
   assert.equal(result.completionVerified, false);
 });
+
+test('a prior approval cannot suppress publication for a new Review visit', async () => {
+  const f = provisionalClose();
+  const entered = {
+    ...f.timingEvidence.events[1],
+    eventId: 'review-2',
+    transitionId: 'move:review-2',
+    event: 'review:started',
+    timestamp: '2026-10-19T12:01:00.000Z',
+    sourceCursor: 'review-2',
+  };
+  const calls = [];
+  const result = await reconcileReviewApprovedTiming({
+    issueNumber: 2070,
+    repo: 'owner/repo',
+    issueBody:
+      '<!-- aitm-entered-review-2 ts="2026-10-19T12:01:00Z" move="move:review-2" -->\n<!-- aitm-review-approved ts="2026-10-19T12:02:00Z" -->',
+    timingEvidence: { ...f.timingEvidence, events: [...f.timingEvidence.events, entered] },
+    readTimingCommentBody: async () => ({
+      status: 'ok',
+      body: renderTimingEventBatch({ timingBody: f.timingBody, events: [entered] }),
+    }),
+    postTimingEvent: async (...args) => calls.push(args),
+  });
+  assert.equal(result.status, 'posted');
+  assert.equal(calls.length, 1);
+});
+
+nativeTest('an old completed close cannot verify a later reopened Review visit', async (t) => {
+  let f = await completedTimingAuthority(t);
+  for (const to of ['test', 'review', 'done']) f = await completeNextTimingAuthority(f, { to });
+  const ref = f.generation.generation.baseSnapshot.resources[f.receipt.timing.key];
+  const body = Buffer.from(f.generation.payloads.get(ref.payloadPath)).toString('utf8');
+  const current = pendingClosePairState(body, {
+    timingEvidence: { events: f.events, receipts: [f.bundle] },
+    approvalTs: new Date(Date.parse(f.events.at(-1).timestamp) - 30000).toISOString(),
+  });
+  assert.equal(current.reviewApproved, true);
+  assert.equal(current.issueWrap, true);
+  assert.equal(current.completionVerified, true);
+  const entered = {
+    ...f.events.at(-1),
+    eventId: 'reopen',
+    transitionId: 'move:reopen',
+    event: 'review:started',
+    timestamp: new Date(Date.parse(f.events.at(-1).timestamp) + 60000).toISOString(),
+    activeSeconds: 0,
+    idleSeconds: 0,
+    sourceCursor: 'reopen',
+  };
+  const result = pendingClosePairState(body, {
+    timingEvidence: { events: [...f.events, entered], receipts: [f.bundle] },
+  });
+  assert.equal(result.reviewApproved, false);
+  assert.equal(result.issueWrap, false);
+  assert.equal(result.completionVerified, false);
+});
+
+nativeTest(
+  'a current authenticated legacy close is recognized without minting native event IDs',
+  async (t) => {
+    const f = await legacyTimingAuthority(t, { close: true });
+    const ref =
+      f.generation.generation.baseSnapshot.resources[
+        'issue:' + f.generation.generation.identity.issueNodeId
+      ];
+    const issueBody = Buffer.from(f.generation.payloads.get(ref.payloadPath)).toString('utf8');
+    const body =
+      '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |\n|---|---|---|---|---|---|---|---|\n| 2026-10-19 12:00:00 +00:00 | review:approved | 0 | 0 | | | | |\n| 2026-10-19 12:00:00 +00:00 | issue:wrap | 0 | 0 | | | | |';
+    const timingEvidence = { events: [], legacyEvidence: [f] };
+    const current = pendingClosePairState(body, { timingEvidence, issueBody });
+    assert.equal(current.completionVerified, true, JSON.stringify(current));
+    const terminalBody =
+      body.split('\n').slice(0, 2).join('\n') +
+      '\n| 2026-10-19 12:00:00 +00:00 | issue:closed | 0 | 0 | | | | |';
+    const sealed = pendingClosePairState(terminalBody, { timingEvidence, issueBody });
+    assert.equal(sealed.reviewApproved, true);
+    assert.equal(sealed.issueWrap, true);
+    assert.equal(sealed.completionVerified, true);
+    assert.equal(
+      pendingClosePairState(body, {
+        timingEvidence,
+        issueBody:
+          issueBody +
+          '\n<!-- aitm-entered-review-2 ts="2026-10-19T12:01:00Z" move="move:reopen" -->',
+      }).completionVerified,
+      false
+    );
+    assert.deepEqual(api.timingAuthority(timingEvidence).completedEventIds, []);
+  }
+);
 
 test('provisional completion preserves measured work and independent Unknown idle', () => {
   assert.equal(typeof api.timingAuthority, 'function', 'timing authority contract is missing');
@@ -264,6 +594,8 @@ nativeTest(
     assert.equal(result.unknownIdle, true);
   }
 );
+
+registerTimingAuthorityProofCases(api, provisional);
 
 nativeTest(
   'consecutive completed transitions and demotion reentry retain each historical visit',
@@ -388,3 +720,16 @@ nativeTest(
     assert.equal(result.visits.at(-1).completionVerified, false);
   }
 );
+
+nativeTest('inline entry examples cannot close an observed stage visit', async (t) => {
+  const f = await completedTimingAuthority(t);
+  const body =
+    '<!-- aitm-entered-plan ts="2026-10-19T00:00:00Z" -->\nDocumentation only: `' +
+    `<!-- aitm-entered-develop ts="2026-10-19T01:00:00Z" move="${f.receipt.transition.id}" -->` +
+    '`';
+  const result = computeStageDurations(body, {
+    timingEvidence: { events: f.events, receipts: [f.bundle] },
+  });
+  assert.equal(result.visits.length, 1);
+  assert.equal(result.visits[0].completionVerified, false);
+});

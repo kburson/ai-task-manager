@@ -9,9 +9,17 @@ import { parseEntryMarkers, STAGES } from './lib/stage-entry-markers.mjs';
 import { PHASE_EVENTS } from './phase-events.mjs';
 import { parseTimingRow } from './lib/timing-row-reader.mjs';
 import { deriveActorEngagement } from './lib/timing-engagement.mjs';
-import { timingAuthority } from './lib/story-cache/timing-authority.mjs';
-import { parseEntryMarkers as parseEntryHistory } from './lib/stage-entry-grammar.mjs';
+import {
+  timingAuthority,
+  historicalTimingBody,
+  readActiveEntryHistory,
+} from './lib/story-cache/timing-authority.mjs';
+import {
+  parseEntryMarkers as parseEntryHistory,
+  serializeEntryMarker,
+} from './lib/stage-entry-grammar.mjs';
 import { deriveLadder } from './lib/timing-ladder.mjs';
+import { renderTimingEventBatch } from './gh-timing-comment.mjs';
 
 // Support both legacy minute-precision (HH:MM) and current second-precision
 // (HH:MM:SS) timestamps.
@@ -189,7 +197,7 @@ export function computePlanMin(rows) {
 // close window and report which halves are already present so the caller can
 // skip them. Any durable `issue:closed` row seals the ledger irreversibly and
 // reports both halves handled, even when malformed activity follows it.
-export function pendingClosePairState(body, { timingEvidence } = {}) {
+export function pendingClosePairState(body, { timingEvidence, issueBody, approvalTs } = {}) {
   const rows = parseTimingRows(String(body || ''));
   const closedEvent = PHASE_EVENTS.done.complete.event; // issue:closed
   const approvedEvent = PHASE_EVENTS.review.complete.event; // review:approved
@@ -202,19 +210,116 @@ export function pendingClosePairState(body, { timingEvidence } = {}) {
   };
   if (timingEvidence === undefined) return presence;
   const authority = timingAuthority(timingEvidence);
-  const lastPair = authority.events
-    .filter((event) => event.event === approvedEvent || event.event === wrapEvent)
-    .at(-1)?.transitionId;
-  const completionVerified =
-    presence.reviewApproved &&
-    presence.issueWrap &&
-    authority.completedVisits.some(
-      (visit) => visit.id === lastPair && visit.from === 'review' && visit.to === 'done'
+  const history = readActiveEntryHistory(issueBody ?? '');
+  const enters = new Set(Object.values(PHASE_EVENTS).map((phase) => phase.enter?.event));
+  const floors = [
+    ...authority.events
+      .filter((row) => enters.has(row.event) && row.event !== wrapEvent)
+      .map((row) => Date.parse(row.timestamp)),
+    ...history.filter((row) => row.state !== 'done').map((row) => Date.parse(row.ts)),
+  ].filter(Number.isFinite);
+  const floor = Math.max(-Infinity, ...floors);
+  const approvalAt = Date.parse(approvalTs);
+  if (Number.isFinite(approvalAt) && approvalAt < floor) {
+    return {
+      reviewApproved: false,
+      issueWrap: false,
+      completionVerified: false,
+      presenceUnavailable: true,
+      provisional: true,
+      authority,
+    };
+  }
+  const eligible = authority.events.filter(
+    (row) =>
+      (row.event === approvedEvent || row.event === wrapEvent) &&
+      Date.parse(row.timestamp) >= floor &&
+      (!Number.isFinite(approvalAt) || Date.parse(row.timestamp) >= approvalAt)
+  );
+  const pair = eligible.at(-1);
+  const selected = pair
+    ? eligible.filter(
+        (row) =>
+          row.transitionId === pair.transitionId &&
+          row.actorId === pair.actorId &&
+          row.timestamp === pair.timestamp
+      )
+    : [];
+  const tableLines = new Set(String(body || '').split('\n'));
+  const present = (event) =>
+    selected.find(
+      (row) =>
+        row.event === event &&
+        renderTimingEventBatch({ timingBody: '', events: [row] })
+          .split('\n')
+          .some((line) => parseTimingRow(line)?.actorKey && tableLines.has(line))
     );
+  const approved = present(approvedEvent),
+    wrap = present(wrapEvent);
+  const currentReviewKnown =
+    history.some((entry) => entry.state === 'review' && Date.parse(entry.ts) === floor) ||
+    authority.events.some(
+      (event) =>
+        event.event === PHASE_EVENTS.review.enter.event && Date.parse(event.timestamp) === floor
+    );
+  const sameSecond = (a, b) =>
+    Number.isFinite(a) && Number.isFinite(b) && Math.floor(a / 1000) === Math.floor(b / 1000);
+  const ordinaryApprovalPresent =
+    currentReviewKnown &&
+    Number.isFinite(approvalAt) &&
+    rows.some(
+      (row) =>
+        row.event === approvedEvent &&
+        row.tsMs >= Math.floor(floor / 1000) * 1000 &&
+        sameSecond(row.tsMs, approvalAt)
+    );
+  let scoped = { reviewApproved: !!approved || ordinaryApprovalPresent, issueWrap: !!wrap };
+  let completionVerified =
+    !!approved &&
+    !!wrap &&
+    authority.completedEventIds.includes(approved.eventId) &&
+    authority.completedEventIds.includes(wrap.eventId) &&
+    authority.completedVisits.some(
+      (visit) => visit.id === pair.transitionId && visit.from === 'review' && visit.to === 'done'
+    );
+  for (const visit of authority.completedVisits.filter(
+    (visit) => visit.legacyActor && visit.from === 'review' && visit.to === 'done'
+  )) {
+    const entry = authority.legacyVisitEntries.find((entry) => entry.transitionId === visit.id);
+    const latest = issueBody === undefined ? entry?.latest : history.at(-1);
+    if (
+      !entry ||
+      latest?.state !== 'done' ||
+      latest.move !== visit.id ||
+      latest.visit !== visit.visit
+    )
+      continue;
+    const at = Number.isFinite(approvalAt) ? approvalAt : Date.parse(entry.timestamp);
+    const sealed = rows.some(
+      (row) =>
+        row.event === closedEvent &&
+        row.tsMs >= Math.floor(Date.parse(entry.timestamp) / 1000) * 1000
+    );
+    scoped = {
+      reviewApproved:
+        sealed || rows.some((row) => row.event === approvedEvent && sameSecond(row.tsMs, at)),
+      issueWrap:
+        sealed ||
+        rows.some(
+          (row) =>
+            row.event === wrapEvent &&
+            row.tsMs >= Math.floor(at / 1000) * 1000 &&
+            row.tsMs <= Date.parse(entry.timestamp)
+        ),
+    };
+    completionVerified = scoped.reviewApproved && scoped.issueWrap;
+  }
+  const presenceUnavailable = !pair && !completionVerified && !currentReviewKnown;
   return {
-    ...presence,
+    ...scoped,
     completionVerified,
-    provisional: (presence.reviewApproved || presence.issueWrap) && !completionVerified,
+    presenceUnavailable,
+    provisional: !completionVerified,
     authority,
   };
 }
@@ -237,7 +342,14 @@ export function pendingClosePairState(body, { timingEvidence } = {}) {
 // Legacy single-visit issues (no `-N` suffix on markers) parse as visit=1 and
 // produce the same shape as multi-visit issues.
 export function computeStageDurations(body, { timingEvidence } = {}) {
-  const tuples = parseEntryMarkers(body);
+  const source =
+    timingEvidence === undefined
+      ? body
+      : readActiveEntryHistory(body)
+          .filter((entry) => entry.ts && Number.isSafeInteger(entry.visit) && entry.visit > 0)
+          .map((entry) => serializeEntryMarker(entry))
+          .join('\n');
+  const tuples = parseEntryMarkers(source);
   const visits = [];
   const sourceIndexes = [];
   const perStageSec = Object.fromEntries(STAGES.map((s) => [s, 0]));
@@ -259,7 +371,7 @@ export function computeStageDurations(body, { timingEvidence } = {}) {
   const totalSec = Object.values(perStageSec).reduce((a, b) => a + b, 0);
   if (timingEvidence !== undefined) {
     const authority = timingAuthority(timingEvidence);
-    const history = parseEntryHistory(body);
+    const history = parseEntryHistory(source);
     for (const [index, visit] of visits.entries()) {
       const next = history[sourceIndexes[index] + 1];
       visit.completionVerified = Boolean(
@@ -340,36 +452,45 @@ export function upsertStageRollupMarker(body, rollup) {
 // back to the legacy per-row sum so pre-v2 callers keep working.
 export function rollupTotals(rows, thresholdMin, body = null, { timingEvidence } = {}) {
   if (timingEvidence !== undefined) {
-    const { authority, states, prelude } = deriveLadder([], { timingEvidence });
-    const active = authority.unknownActive ? null : authority.measuredActiveSeconds;
-    const idle = authority.unknownIdle ? null : authority.measuredIdleSeconds;
+    const evidence = { ...timingEvidence, timingBody: body || timingEvidence.timingBody || '' };
+    if (rows?.length && !evidence.timingBody)
+      throw new Error('native-timing-history-body-required');
+    const { authority, states, prelude, totals } = deriveLadder([], { timingEvidence: evidence });
+    const historyBody = historicalTimingBody(evidence);
+    const historyRows = applyPauseSpansToRows(parseTimingRows(historyBody), historyBody);
+    const legacy = historyRows.length ? rollupTotals(historyRows, thresholdMin, historyBody) : null;
+    const known =
+      authority.measuredActiveSeconds +
+      (legacy?.knownEngagedSec ?? legacy?.engagedSec ?? legacy?.totalActiveSec ?? 0);
+    const knownIdle = authority.measuredIdleSeconds + (legacy?.totalIdleSec ?? 0);
+    const active = totals.unknownActive ? null : known;
+    const idle = totals.unknownIdle ? null : knownIdle;
     const provisional = authority.events.some(
-      (event) =>
-        event.transitionId !== null &&
-        !authority.completedVisits.some((visit) => visit.id === event.transitionId)
+      (event) => event.transitionId !== null && !authority.completedEventIds.includes(event.eventId)
     );
     const reasons = [
-      ...(authority.unknownActive ? ['unknown-active'] : []),
-      ...(authority.unknownIdle ? ['unknown-idle'] : []),
+      ...(totals.unknownActive ? ['unknown-active'] : []),
+      ...(totals.unknownIdle ? ['unknown-idle'] : []),
       ...(provisional ? ['provisional-completion'] : []),
       ...(authority.completionFailures.length ? ['invalid-completion-evidence'] : []),
     ];
     return {
-      rowCount: authority.events.length,
+      rowCount: authority.events.length + historyRows.length,
       totalActiveSec: active,
       totalActiveMin: active === null ? null : Math.round(active / 60),
-      knownEngagedSec: authority.measuredActiveSeconds,
+      knownEngagedSec: known,
+      knownIdleSec: knownIdle,
       totalIdleSec: idle,
       totalIdleMin: idle === null ? null : Math.round(idle / 60),
       reviewMin: null,
       reviewSec: null,
       planMin:
-        prelude.unknownActive || states.plan?.unknownActive
+        prelude.unknownActive || prelude.knownActiveSec > 0 || states.plan?.unknownActive
           ? null
           : (states.plan?.knownActiveSec ?? 0) / 60,
       engagedSec: active,
       engagedMin: active === null ? null : Math.round(active / 60),
-      lastWordMarker: null,
+      lastWordMarker: legacy?.lastWordMarker ?? null,
       authority,
       telemetry: { status: reasons.length ? 'incomplete' : 'complete', reasons },
     };
@@ -488,18 +609,24 @@ export function buildStructuredTimingProjection({
           idleSec,
           wordMarker,
         }))
-      : totals.authority.events.map(
-          ({ eventId, actorId, transitionId, timestamp, event, activeSeconds, idleSeconds }) => ({
-            eventId,
-            actorId,
-            transitionId,
-            tsMs: Date.parse(timestamp),
-            event,
-            activeSec: activeSeconds,
-            idleSec: idleSeconds,
-            wordMarker: null,
-          })
-        );
+      : [
+          ...parseTimingRows(historicalTimingBody(timingEvidence, timingBody)).map((row) => ({
+            ...row,
+            source: 'legacy',
+          })),
+          ...totals.authority.events.map(
+            ({ eventId, actorId, transitionId, timestamp, event, activeSeconds, idleSeconds }) => ({
+              eventId,
+              actorId,
+              transitionId,
+              tsMs: Date.parse(timestamp),
+              event,
+              activeSec: activeSeconds,
+              idleSec: idleSeconds,
+              wordMarker: null,
+            })
+          ),
+        ];
   return Object.freeze({
     schema: 'aitm.timing-projection/v1',
     revision,

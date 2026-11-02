@@ -12,7 +12,10 @@
 // day. Pause-accurate per-sub-interval subtraction is out of scope (#770).
 
 import { parseTimingRows } from '../../task-tracker/timing-rollup.mjs';
-import { timingAuthority } from '../../task-tracker/lib/story-cache/timing-authority.mjs';
+import {
+  timingAuthority,
+  historicalTimingBody,
+} from '../../task-tracker/lib/story-cache/timing-authority.mjs';
 
 // 'YYYY-MM-DD' for an epoch-ms in the machine's local calendar.
 function localDayKey(ms) {
@@ -81,13 +84,16 @@ export function bucketRowsByDay(issues, { fromMs = null, toMs = null } = {}) {
           entry.durationSec += seconds;
           entry.unknownActive ||= event.activeSeconds === null;
           entry.unknownIdle ||= event.idleSeconds === null;
-          if (seconds > 0 || entry.unknownActive || entry.unknownIdle)
+          if (seconds > 0 || event.activeSeconds === null || event.idleSeconds === null)
             entry.issues.add(issue.number);
         });
       }
-      continue;
     }
-    const rows = parseTimingRows(issue.body ?? '');
+    const rows = parseTimingRows(
+      issue.timingEvidence === undefined
+        ? (issue.body ?? '')
+        : historicalTimingBody(issue.timingEvidence, issue.body ?? '')
+    );
     let prev = null;
     for (const row of rows) {
       if (row.tsMs == null) {
@@ -106,7 +112,16 @@ export function bucketRowsByDay(issues, { fromMs = null, toMs = null } = {}) {
       allocateWindow(start, end, payload, (key, seconds) => {
         const e = touch(key);
         e.durationSec += seconds;
-        if (seconds > 0) e.issues.add(issue.number);
+        if (issue.timingEvidence !== undefined) {
+          e.native = true;
+          e.unknownActive ||= !row.actorKey || row.activeSec === null;
+          e.unknownIdle ||= !row.actorKey || row.idleSec === null;
+        }
+        if (
+          seconds > 0 ||
+          (issue.timingEvidence !== undefined && (row.activeSec === null || row.idleSec === null))
+        )
+          e.issues.add(issue.number);
       });
       prev = row;
     }
