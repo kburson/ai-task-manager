@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #939 #1635
+// @story #939 #1635 #2140
 
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
@@ -806,5 +806,34 @@ test('#1504 default delivery adapter propagates unrelated exit-one check failure
   await assert.rejects(
     deps.fetchRequiredChecks({ prNumber: 1503, expectedHeadSha: HEAD }),
     /authentication failed/
+  );
+});
+
+test('#2140 explicit no-checks diagnostic is readable only at the expected PR head', async () => {
+  for (const [liveHeadSha, readable] of [
+    [HEAD, true],
+    ['b'.repeat(40), false],
+  ]) {
+    const checkError = new Error('no checks available');
+    checkError.code = 1;
+    checkError.stdout = '';
+    checkError.stderr = "no checks reported on the 'docs-only' branch\n";
+    const deps = requiredChecksDeps({ checkError, liveHeadSha });
+    assert.deepEqual(await deps.fetchRequiredChecks({ prNumber: 201, expectedHeadSha: HEAD }), {
+      readable,
+      required: [],
+    });
+  }
+});
+
+test('#2140 absence diagnostics never discard nonempty check-failure output', async () => {
+  const checkError = new Error('check failure');
+  checkError.code = 1;
+  checkError.stdout = '[{"name":"required","state":"FAILURE"}]';
+  checkError.stderr = "no checks reported on the 'docs-only' branch";
+  const deps = requiredChecksDeps({ checkError });
+  await assert.rejects(
+    deps.fetchRequiredChecks({ prNumber: 201, expectedHeadSha: HEAD }),
+    (error) => error === checkError
   );
 });
