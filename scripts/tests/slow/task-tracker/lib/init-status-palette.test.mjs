@@ -131,7 +131,11 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     exit 0
   fi
   if [[ "$args" == *"projectV2(number:"* ]]; then
-    echo '{"id":"PVT_LINKED","title":"Linked Board","number":2}'
+    if [[ "$args" == *"number=5"* ]]; then
+      echo '{"id":"PVT_OWNER","title":"Owner Board","number":5}'
+    else
+      echo '{"id":"PVT_LINKED","title":"Linked Board","number":2}'
+    fi
     exit 0
   fi
   if [[ "$args" == *"repository(owner:"*" id "* ]]; then
