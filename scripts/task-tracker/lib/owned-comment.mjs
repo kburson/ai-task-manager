@@ -17,7 +17,7 @@ const LIST_QUERY = `
         number
         repository { nameWithOwner }
         comments(first: 100, after: $after) {
-          nodes { id body issue { number repository { nameWithOwner } } }
+          nodes { id body url issue { number repository { nameWithOwner } } }
           pageInfo { hasNextPage endCursor }
         }
       }
@@ -28,7 +28,7 @@ const NODE_QUERY = `
   query AitmOwnedComment($id: ID!) {
     node(id: $id) {
       ... on IssueComment {
-        id body issue { number repository { nameWithOwner } }
+        id body url issue { number repository { nameWithOwner } }
       }
     }
   }
@@ -74,7 +74,13 @@ function validateComment(comment, { repository, issue, expectedId } = {}) {
   if (typeof id !== 'string' || id === '' || typeof body !== 'string') fail('response-shape');
   if (expectedId && id !== expectedId) fail('node-mismatch');
   if (Number(actualIssue) !== Number(issue) || actualRepository !== repository) fail('correlation');
-  return { id, body, repository, issue: Number(issue) };
+  return {
+    id,
+    body,
+    repository,
+    issue: Number(issue),
+    ...(comment.url === undefined ? {} : { url: comment.url }),
+  };
 }
 
 export async function listIssueComments({ repository, issue, graphql = defaultGraphql } = {}) {

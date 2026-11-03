@@ -942,6 +942,18 @@ export const VERB_REFERENCE = {
     ],
     examples: ['/task issue-body 667 --operation-file .scratch/gh/667-body-operation.json'],
   },
+  'plan-analysis': {
+    topic: 'evidence',
+    summary: 'Publish and canonically mirror bounded Plan analysis without deliverable authority.',
+    usage: '/task plan-analysis #N --body-file <path>',
+    flags: [
+      {
+        flag: '--body-file <path>',
+        desc: 'grounded planning narrative without policy or proof markers',
+      },
+    ],
+    examples: ['/task plan-analysis 667 --body-file .scratch/gh/667-analysis.md'],
+  },
   comment: {
     topic: 'evidence',
     summary: 'Idempotently create or update one marker-owned issue comment from a file.',

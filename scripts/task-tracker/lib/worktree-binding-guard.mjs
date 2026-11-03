@@ -28,6 +28,7 @@ const ISSUE_TARGET_VERBS = new Set([
   'close',
   'commit-trace',
   'comment',
+  'plan-analysis',
   'demote',
   'dod-stamp',
   'end',

@@ -485,7 +485,8 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
-    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    1; // #2143: exactly one registered bounded Plan analysis operation.
   for (const module of [
     'artifact-subject',
     'artifact-execution',
@@ -507,6 +508,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   ])
     assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/action-decision/decomposition.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/verbs/plan-analysis.mjs'));
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(
