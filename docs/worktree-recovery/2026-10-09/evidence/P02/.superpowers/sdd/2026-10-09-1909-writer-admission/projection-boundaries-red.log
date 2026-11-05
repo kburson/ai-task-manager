@@ -1,0 +1,150 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (110.449292ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (236.432167ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (17.086708ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (16.272792ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (18.768042ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (351.774709ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (71.666083ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (233.195166ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (17.407625ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (17.6145ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (22.307709ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (422.425709ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (68.986458ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (213.55275ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (16.949042ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (16.847458ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (15.982167ms)
+✔ independent createIssueComment approved retains its complete original algorithm (337.565542ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (68.911083ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (210.382666ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (16.704333ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (16.908833ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (16.425167ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (327.238875ms)
+✖ durable projection repair pending retains custody and rereads revision admission (70.102917ms)
+✖ durable projection repair stale retains custody and rereads revision admission (178.418541ms)
+✖ durable projection repair malformed retains custody and rereads revision admission (27.267291ms)
+✖ durable projection repair unavailable retains custody and rereads revision admission (31.011625ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (30.628833ms)
+✔ durable projection repair approved retains custody and rereads revision admission (260.499417ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 26
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3679.42175
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:288:3
+✖ durable projection repair pending retains custody and rereads revision admission (70.102917ms)
+  AssertionError [ERR_ASSERTION]: Historical transition custody cannot admit current unapproved repair effects
+  + actual - expected
+  
+  + [
+  +   'projection-read',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:312:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'projection-read', 'projection-read', 'projection-write', 'projection-read', 'projection-write', 'projection-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:288:3
+✖ durable projection repair stale retains custody and rereads revision admission (178.418541ms)
+  AssertionError [ERR_ASSERTION]: Historical transition custody cannot admit current unapproved repair effects
+  + actual - expected
+  
+  + [
+  +   'projection-read',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:312:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'projection-read', 'projection-read', 'projection-write', 'projection-read', 'projection-write', 'projection-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:288:3
+✖ durable projection repair malformed retains custody and rereads revision admission (27.267291ms)
+  AssertionError [ERR_ASSERTION]: Historical transition custody cannot admit current unapproved repair effects
+  + actual - expected
+  
+  + [
+  +   'projection-read',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:312:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'projection-read', 'projection-read', 'projection-write', 'projection-read', 'projection-write', 'projection-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:288:3
+✖ durable projection repair unavailable retains custody and rereads revision admission (31.011625ms)
+  AssertionError [ERR_ASSERTION]: Historical transition custody cannot admit current unapproved repair effects
+  + actual - expected
+  
+  + [
+  +   'projection-read',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read',
+  +   'projection-write',
+  +   'projection-read'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:312:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'projection-read', 'projection-read', 'projection-write', 'projection-read', 'projection-write', 'projection-read' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

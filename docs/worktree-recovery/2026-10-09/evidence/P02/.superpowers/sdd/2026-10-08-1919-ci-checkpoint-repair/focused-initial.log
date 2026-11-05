@@ -1,0 +1,99 @@
+✖ UTC phase publication and original actor arithmetic retain strict raw-zero refusal (51.692958ms)
+ℹ 
+(node:9709) Warning: node:test run() is being called recursively within a test file. skipping running files.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+✖ Chicago control reaches the same original phase-11 intent without timezone substitution (51.9235ms)
+ℹ 
+(node:9710) Warning: node:test run() is being called recursively within a test file. skipping running files.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+✖ complete linked-source cases preserve original restart, current-source and admission behavior (46.58075ms)
+ℹ 
+(node:9711) Warning: node:test run() is being called recursively within a test file. skipping running files.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+✔ makeLegacyRevisionFixture: complete initial and recovery requests validate (51.386125ms)
+✔ makeCanonicalRevisionFixture: complete initial and recovery requests validate (59.4255ms)
+✔ unknown nested keys cannot be laundered by resealing (36.548375ms)
+✔ caller dispositions, identities and write bytes must reproduce tool derivation (26.937708ms)
+✔ actions, modes, prior references and recovery-vector digests agree (21.969042ms)
+✔ ID bounds and declaration-only edits reject supplied proof or arbitrary body prose (26.1ms)
+✔ no production mutation command, action or public package export is reachable (0.385416ms)
+✔ canonical dependency fixture includes a natively valid active grant (29.442041ms)
+✔ current and old approval fixtures bind all Plan sources and target contract epochs (26.53175ms)
+✔ closed canonical added-root request reproduces contract-resolvable declaration identities (34.544042ms)
+✔ one synchronous validation scope hashes an equal-byte proposal once and expires on return (19.197375ms)
+✔ schema scope preserves exact cold refusal and detects changed or repaired DATA (69.717292ms)
+✔ schema scope rechecks nested accessors and preserves original input identity (19.623958ms)
+✔ schema bridge retains original records callback then observation and cleanup order (22.711541ms)
+✔ one synchronous validation scope avoids equal-byte request derivation twice (23.344167ms)
+✔ schema scope rejects then repairs the same actual request object (23.612917ms)
+✔ both native proposal forms preserve cold and warm initial and recovery input references (130.963667ms)
+✔ schema-only bridge expires at return, throw and a real await without observing then (21.441291ms)
+✔ warm request validation refuses changed missing and foreign complete archived DATA (51.989167ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 19
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 829.632333
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:43:1
+✖ UTC phase publication and original actor arithmetic retain strict raw-zero refusal (51.692958ms)
+  AssertionError [ERR_ASSERTION]: No empty or partial owned selection
+      at qualify (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:34:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:47:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:51:1
+✖ Chicago control reaches the same original phase-11 intent without timezone substitution (51.9235ms)
+  AssertionError [ERR_ASSERTION]: No empty or partial owned selection
+      at qualify (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:34:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:57:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:65:1
+✖ complete linked-source cases preserve original restart, current-source and admission behavior (46.58075ms)
+  AssertionError [ERR_ASSERTION]: No empty or partial owned selection
+      at qualify (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:34:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:69:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

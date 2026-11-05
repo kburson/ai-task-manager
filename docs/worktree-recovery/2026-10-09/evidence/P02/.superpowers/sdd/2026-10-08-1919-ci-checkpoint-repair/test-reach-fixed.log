@@ -1,0 +1,32 @@
+lint:test-reach — 30 test file(s) exercise no repo source (32 baselined, 0 new):
+  [baseline] scripts/tests/integration/task-tracker/core/status-vocabulary.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/beta-report-templates-497.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/ci-actions-node-pins.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/ci-memory-parity-index.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/codex-support-matrix.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/defect-first-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/demonstrable-ac-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/discuss-label-action-499.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/docs-735-attribution.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/docs-issue-body-forbiddance.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/evidence-marker-guidance.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/full-auto-doctrine-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/guard-trust-boundary-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/lock-primitive-doc.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/memory-seed-docs.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-has-checkpoint.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-recovery.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/pickup-directive-token-floor.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/relicense-manifest.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/relicense-no-mit.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/scope-rename.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/sequence-rules-docs.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/session-boot.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/session-state-template.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/state-walk-ac-stamp-test-carveout.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/core/worker-context-contract.test.mjs
+  [baseline] scripts/tests/unit/task-tracker/coverage-config.test.mjs
+lint:test-reach — 1593 test file(s) scanned, 30 baselined offender(s), 0 new

@@ -1,0 +1,23 @@
+npm notice run @kburson/ai-task-manager@0.1.0 format:check
+npm notice run prettier --check .
+Checking formatting...
+[warn] docs/superpowers/plans/2026-10-08-1918-preserved-implementation-checkpoint.md
+[warn] scripts/gh/move-state.mjs
+[warn] scripts/gh/update-event-fields.mjs
+[warn] scripts/task-tracker/lib/criteria-revision/source-correction.mjs
+[warn] scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+[warn] scripts/task-tracker/lib/criteria-revision/store.mjs
+[warn] scripts/task-tracker/lib/event-field-update.mjs
+[warn] scripts/task-tracker/lib/move-state/audit-timing.mjs
+[warn] scripts/task-tracker/lib/move-state/cache-unpark.mjs
+[warn] scripts/task-tracker/lib/move-state/move-state-core.mjs
+[warn] scripts/task-tracker/lib/move-state/post-commit-tail.mjs
+[warn] scripts/task-tracker/lib/state-recording.mjs
+[warn] scripts/task-tracker/state.mjs
+[warn] scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
+[warn] scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+[warn] scripts/tests/integration/task-tracker/lib/revision-transport-quarantine.test.mjs
+[warn] scripts/tests/unit/task-tracker/lib/move-state/event-field-program.test.mjs
+[warn] scripts/tests/unit/task-tracker/lib/move-state/local-tail-program.test.mjs
+[warn] scripts/tests/unit/task-tracker/lib/move-state/state-save-program.test.mjs
+[warn] Code style issues found in 19 files. Run Prettier with --write to fix.

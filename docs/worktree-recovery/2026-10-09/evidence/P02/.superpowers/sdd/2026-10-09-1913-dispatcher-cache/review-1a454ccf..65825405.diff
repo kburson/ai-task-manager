@@ -1,0 +1,1861 @@
+# Review package: 1a454ccf8..HEAD
+
+## Commits
+65825405 [#1918] [#1913] Execute original cache with private custody and shared lock
+b7a14dd0 [#1918] [#1913] Stop native phase errors before next entry
+
+## Files changed
+ .../lib/criteria-revision/source-correction.mjs    |  16 ++
+ .../lib/criteria-revision/stage-execution.mjs      |  82 ++++++-
+ .../task-tracker/lib/criteria-revision/store.mjs   | 181 ++++++++++++++
+ .../task-tracker/lib/move-state/audit-timing.mjs   |   3 +-
+ .../task-tracker/lib/move-state/cache-unpark.mjs   | 103 +++++---
+ .../lib/move-state/move-state-core.mjs             | 260 ++++++++++++++++++++-
+ scripts/task-tracker/session-state.mjs             |  60 ++++-
+ ...vision-cache-effect-readback-failAfter.test.mjs |   6 +
+ ...ision-cache-effect-readback-failBefore.test.mjs |   6 +
+ ...-revision-cache-effect-write-failAfter.test.mjs |   6 +
+ ...revision-cache-effect-write-failBefore.test.mjs |   6 +
+ ...vision-cache-intent-readback-failAfter.test.mjs |   6 +
+ ...ision-cache-intent-readback-failBefore.test.mjs |   6 +
+ ...-revision-cache-intent-write-failAfter.test.mjs |   6 +
+ ...revision-cache-intent-write-failBefore.test.mjs |   6 +
+ .../criteria-revision-cache-late-config.test.mjs   |   3 +
+ .../lib/criteria-revision-cache-late-read.test.mjs |   3 +
+ .../lib/criteria-revision-cache-native.test.mjs    |   3 +
+ ...riteria-revision-local-transition-tail.test.mjs |  61 +++++
+ .../lib/move-state-native-command.test.mjs         |  51 +++-
+ .../lib/native-stage-continuation-fixture.mjs      | 252 +++++++++++++++++++-
+ .../native-stage-cache-boundary.test.mjs           |  97 ++++++++
+ 22 files changed, 1186 insertions(+), 37 deletions(-)
+
+## Diff
+diff --git a/scripts/task-tracker/lib/criteria-revision/source-correction.mjs b/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
+index 107a35f0..62acdac1 100644
+--- a/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
+@@ -784,20 +784,36 @@ async function replayNativeEpoch({
+           !equal(resources, dispatch.resources) ||
+           !equal(observation.body, dispatch.body) ||
+           observation.stage !== dispatch.stage ||
+           !equal(resources, backend.snapshot.nativeStageResources)
+         )
+           revisionError('native-stage-tail-dispatch-prefix');
+         exactPrefix = true;
+         expectedStageObservation.body = structuredClone(dispatch.body);
+         expectedStageObservation.stage = dispatch.stage;
+       }
++      if (j.steps.length === 18) {
++        const { reconstructNativeStageTailCache } = await import('./stage-execution.mjs');
++        const cache = await reconstructNativeStageTailCache({ header: j.header, steps: j.steps });
++        const after = equal(resources, cache.afterResources);
++        const before = !cache.complete && equal(resources, cache.beforeResources);
++        if (
++          (!after && !before) ||
++          !equal(observation.body, cache.body) ||
++          observation.stage !== cache.stage ||
++          !equal(resources, backend.snapshot.nativeStageResources)
++        )
++          revisionError('native-stage-tail-cache-prefix');
++        exactPrefix = true;
++        expectedStageObservation.body = structuredClone(cache.body);
++        expectedStageObservation.stage = cache.stage;
++      }
+       if (
+         !sameRevisionObservation(projected, expectedStageObservation) ||
+         !exactPrefix ||
+         !equal(
+           resolvedSources(observation.body.bytes, observation.executor.worktree).bindings,
+           currentPlanSources
+         )
+       )
+         revisionError('native-stage-pending-prefix');
+       return {
+diff --git a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+index 9217ec41..61cca28b 100644
+--- a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+@@ -1438,21 +1438,23 @@ export function validateNativeStageJournal(journal) {
+       'schema',
+       'header',
+       'steps',
+       ...(Object.hasOwn(journal, 'compensation') ? ['compensation'] : []),
+     ]);
+     if (journal.schema !== 'aitm.native-stage/v1') throw new TypeError();
+     const { id, ...unsigned } = journal.header;
+     if (
+       id !== hashBytes(canonicalRecordJson(unsigned)) ||
+       !Array.isArray(journal.steps) ||
+-      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(journal.steps.length)
++      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(
++        journal.steps.length
++      )
+     )
+       throw new TypeError();
+     if (Object.hasOwn(journal, 'compensation')) {
+       if (journal.steps.length !== 14 || journal.steps[13]?.outcome?.kind !== 'unconfirmed')
+         throw new TypeError();
+       validateNativeCompensationData(journal.compensation, journal.header, journal.steps);
+     }
+     const first = journal.steps[0];
+     exactKeys(first, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+     exactKeys(first.intent, ['journalBytes']);
+@@ -1741,35 +1743,55 @@ export function validateNativeStageJournal(journal) {
+         step.previous !== hashBytes(canonicalRecordJson(previous)) ||
+         typeof step.intent.commentId !== 'string' ||
+         typeof step.intent.nodeId !== 'string' ||
+         typeof step.intent.commentBytes !== 'string'
+       )
+         throw new TypeError();
+       if (step.readback !== null) exactKeys(step.readback, ['create', 'read', 'census']);
+       // Full allocation, original markers, actor and census are derived by the
+       // asynchronous complete-predecessor codec, never constructor authority.
+     }
+-    if (journal.steps.length === 17) {
++    if (journal.steps.length >= 17) {
+       const step = journal.steps[16],
+         previous = journal.steps[15];
+       exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+       if (
+         previous.readback === null ||
+         step.ordinal !== 17 ||
+         step.kind !== 'tail-dispatch' ||
+         step.previous !== hashBytes(canonicalRecordJson(previous)) ||
+         !same(step.intent, { target: 'test', actions: [] })
+       )
+         throw new TypeError();
+       if (step.readback !== null)
+         exactKeys(step.readback, ['actions', 'resources', 'body', 'stage']);
+     }
++    if (journal.steps.length === 18) {
++      const step = journal.steps[17],
++        previous = journal.steps[16];
++      exactKeys(step, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
++      exactKeys(step.intent, ['file', 'sid', 'beforeBytes', 'bytes', 'operations']);
++      if (
++        previous.readback === null ||
++        step.ordinal !== 18 ||
++        step.kind !== 'tail-cache' ||
++        step.previous !== hashBytes(canonicalRecordJson(previous)) ||
++        typeof step.intent.file !== 'string' ||
++        typeof step.intent.sid !== 'string' ||
++        !(step.intent.beforeBytes === null || typeof step.intent.beforeBytes === 'string') ||
++        !(step.intent.bytes === null || typeof step.intent.bytes === 'string') ||
++        !Array.isArray(step.intent.operations)
++      )
++        throw new TypeError();
++      if (step.readback !== null)
++        exactKeys(step.readback, ['file', 'bytes', 'resources', 'body', 'stage']);
++    }
+     return journal;
+   } catch {
+     revisionError('native-stage-journal');
+   }
+ }
+ 
+ // Backend fixture allocation DATA from the sealed BEFORE census only. This
+ // neither allocates a production ID nor grants a publication capability.
+ export function nativeStageTimingAllocation(header) {
+   const entries = header.original.resources.comments;
+@@ -2881,10 +2903,66 @@ export async function reconstructNativeStageCompensation(input) {
+       afterBody,
+       bodyPrefixes: last?.write === null ? [current, afterBody] : [current],
+       beforeResources: resources,
+       afterResources,
+       stage: board.afterRecognized ? board.afterStage : board.beforeStage,
+     };
+   } catch {
+     revisionError('native-stage-compensation');
+   }
+ }
++
++// #1913 — closed original cache DATA, never execution or lock membership.
++export async function reconstructNativeStageTailCache(input) {
++  try {
++    const detached = JSON.parse(canonicalRecordJson(input));
++    exactKeys(detached, ['header', 'steps']);
++    const { header, steps } = detached;
++    if (steps.length !== 18) throw new TypeError();
++    validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps });
++    const before = await reconstructNativeStageTailDispatch({ header, steps: steps.slice(0, 17) });
++    if (!before.complete) throw new TypeError();
++    const { deriveRecordedNativeLocalTail } = await import('../move-state/cache-unpark.mjs');
++    const actor = header.original.actor;
++    const projected = deriveRecordedNativeLocalTail({
++      kind: 'refreshKanbanStateCache',
++      issue: String(header.scope.issue),
++      projectDir: header.original.observation.executor.worktree,
++      statePath: actor.capture.statePath,
++      identity: actor.identity,
++      boundAt: null,
++      local: before.resources.local,
++    });
++    const step = steps[17];
++    const { activeTaskPath } = await import('../../paths.mjs');
++    const file = activeTaskPath(actor.identity.sid, actor.capture.projectDir);
++    const intent = {
++      file,
++      sid: actor.identity.sid,
++      beforeBytes: before.resources.local.activeTask?.bytes ?? null,
++      bytes: projected.local.activeTask?.bytes ?? null,
++      operations: projected.operations,
++    };
++    if (!same(step.intent, intent)) throw new TypeError();
++    const afterResources = structuredClone(before.resources);
++    afterResources.local = structuredClone(projected.local);
++    const readback = {
++      file,
++      bytes: intent.bytes,
++      resources: afterResources,
++      body: before.body,
++      stage: before.stage,
++    };
++    if (step.readback !== null && !same(step.readback, readback)) throw new TypeError();
++    return freezeStageData({
++      beforeResources: before.resources,
++      afterResources,
++      body: before.body,
++      stage: before.stage,
++      intent,
++      readback,
++      complete: step.readback !== null,
++    });
++  } catch {
++    revisionError('native-stage-tail-cache');
++  }
++}
+diff --git a/scripts/task-tracker/lib/criteria-revision/store.mjs b/scripts/task-tracker/lib/criteria-revision/store.mjs
+index db80324c..c4f8c2d3 100644
+--- a/scripts/task-tracker/lib/criteria-revision/store.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/store.mjs
+@@ -4391,10 +4391,191 @@ export async function writeMemoryNativeStageCompensationAudit(input) {
+       canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
+       canonicalRecordJson(m.nativeStageResources.comments.at(-1)) !== canonicalRecordJson(intent)
+     )
+       revisionError('native-stage-compensation-audit-readback');
+     c.audit.write = { kind: 'returned' };
+     c.audit.readback = { resource: clone(intent) };
+     retainCompensationCurrent(input);
+     validateNativeStageJournal(journal);
+   });
+ }
++
++// #1913 — original cache18 uses the SAME activeTask resource lock as checkpoints.
++const nativeCacheIntentReads = new WeakSet();
++const nativeCachePersisting = new WeakSet();
++const nativeCacheCompleting = new WeakSet();
++async function cacheAuthority(input) {
++  const unchanged = commentStoreContinuity(input, [
++    'backend',
++    'capability',
++    'context',
++    'token',
++    'invocation',
++  ]);
++  const { backend, capability, context, token, invocation } = input;
++  assertMemoryCapability(backend, capability, context);
++  const core = await import('../move-state/move-state-core.mjs');
++  unchanged();
++  const m = memory(backend),
++    journal = m.nativeStageRecords.at(-1);
++  const current = () => {
++    unchanged();
++    assertMemoryCapability(backend, capability, context);
++    const origin = core.readNativeStageTailCacheIntent(token, backend, invocation);
++    validateNativeOrder(m);
++    validateNativeStageJournal(journal);
++    if (
++      m.nativeStageRecords.at(-1) !== journal ||
++      canonicalRecordJson(journal.header) !== canonicalRecordJson(origin.header)
++    )
++      revisionError('native-stage-cache-authority');
++    return origin;
++  };
++  current();
++  return { m, journal, current, core };
++}
++function cacheLock(m, input) {
++  checkpointLock(m, input, 'activeTask');
++}
++export async function acquireMemoryNativeStageCache(input) {
++  const { m, current } = await cacheAuthority(input);
++  current();
++  if (m.nativeCheckpointResourceLocks.activeTask !== null)
++    revisionError('native-stage-cache-lock-conflict');
++  m.nativeCheckpointResourceLocks.activeTask = { token: input.token, invocation: input.invocation };
++}
++export function releaseMemoryNativeStageCache(input) {
++  assertCommentStoreKeys(input, ['backend', 'token', 'invocation']);
++  const m = memory(input.backend);
++  cacheLock(m, input);
++  m.nativeCheckpointResourceLocks.activeTask = null;
++}
++export async function readMemoryNativeStageCache(input) {
++  const { m, journal, current, core } = await cacheAuthority(input);
++  current();
++  cacheLock(m, input);
++  core.assertNativeStageTailCacheRead(input.invocation);
++  if (journal.steps.length !== 17 || journal.steps[16].readback === null)
++    revisionError('native-stage-cache-read-prefix');
++  return { beforeBytes: m.nativeStageResources.local.activeTask?.bytes ?? null };
++}
++export async function persistMemoryNativeStageCache(input) {
++  const unchanged = commentStoreContinuity(input, [
++    'backend',
++    'capability',
++    'context',
++    'token',
++    'invocation',
++    'step',
++  ]);
++  const { step: supplied, ...authority } = input;
++  const step = JSON.parse(canonicalRecordJson(supplied));
++  const { m, journal, current: check, core } = await cacheAuthority(authority);
++  const current = () => {
++    unchanged();
++    check();
++    cacheLock(m, authority);
++    core.assertNativeStageTailCacheWrite(authority.invocation, step.intent);
++  };
++  current();
++  if (
++    journal.steps.length !== 17 ||
++    journal.steps[16].readback === null ||
++    step.readback !== null ||
++    nativeCachePersisting.has(authority.invocation)
++  )
++    revisionError('native-stage-cache-prefix');
++  nativeCachePersisting.add(authority.invocation);
++  const codec = await import('./stage-execution.mjs');
++  current();
++  const derived = await codec.reconstructNativeStageTailCache({
++    header: journal.header,
++    steps: [...journal.steps, step],
++  });
++  current();
++  const before = () => {
++    if (
++      canonicalRecordJson(m.nativeStageResources) !==
++        canonicalRecordJson(derived.beforeResources) ||
++      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
++      m.observation.stage !== derived.stage
++    )
++      revisionError('native-stage-cache-current');
++  };
++  before();
++  operation(m, 'native-stage-cache-intent-write', () => {
++    current();
++    before();
++    if (journal.steps.length !== 17) revisionError('native-stage-cache-prefix');
++    journal.steps.push(clone(step));
++  });
++  operation(m, 'native-stage-cache-intent-readback', () => {
++    current();
++    before();
++    if (canonicalRecordJson(journal.steps[17]) !== canonicalRecordJson(step))
++      revisionError('native-stage-cache-intent-readback');
++    nativeCacheIntentReads.add(journal.steps[17]);
++  });
++}
++export async function writeMemoryNativeStageCache(input) {
++  const { m, journal, current: check, core } = await cacheAuthority(input);
++  const current = () => {
++    check();
++    cacheLock(m, input);
++    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
++  };
++  current();
++  const step = journal.steps[17];
++  if (journal.steps.length !== 18 || step.readback !== null || !nativeCacheIntentReads.has(step))
++    revisionError('native-stage-cache-intent-unread');
++  const codec = await import('./stage-execution.mjs');
++  current();
++  const derived = await codec.reconstructNativeStageTailCache({
++    header: journal.header,
++    steps: journal.steps,
++  });
++  current();
++  operation(m, 'native-stage-cache-effect-write', () => {
++    current();
++    if (
++      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
++    )
++      revisionError('native-stage-cache-current');
++    m.nativeStageResources.local.activeTask = clone(derived.afterResources.local.activeTask);
++  });
++}
++export async function completeMemoryNativeStageCache(input) {
++  const { m, journal, current: check, core } = await cacheAuthority(input);
++  const current = () => {
++    check();
++    cacheLock(m, input);
++    core.assertNativeStageTailCacheWrite(input.invocation, journal.steps[17]?.intent);
++  };
++  current();
++  const step = journal.steps[17];
++  if (
++    journal.steps.length !== 18 ||
++    step.readback !== null ||
++    !nativeCacheIntentReads.has(step) ||
++    nativeCacheCompleting.has(input.invocation)
++  )
++    revisionError('native-stage-cache-return');
++  nativeCacheCompleting.add(input.invocation);
++  const codec = await import('./stage-execution.mjs');
++  current();
++  const derived = await codec.reconstructNativeStageTailCache({
++    header: journal.header,
++    steps: journal.steps,
++  });
++  current();
++  operation(m, 'native-stage-cache-effect-readback', () => {
++    current();
++    if (
++      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
++      canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.body) ||
++      m.observation.stage !== derived.stage
++    )
++      revisionError('native-stage-cache-readback');
++    step.readback = clone(derived.readback);
++    validateNativeStageJournal(journal);
++  });
++}
+diff --git a/scripts/task-tracker/lib/move-state/audit-timing.mjs b/scripts/task-tracker/lib/move-state/audit-timing.mjs
+index 066b3b84..4638d19f 100644
+--- a/scripts/task-tracker/lib/move-state/audit-timing.mjs
++++ b/scripts/task-tracker/lib/move-state/audit-timing.mjs
+@@ -68,28 +68,28 @@ export function readNativePhaseTimingInput(input, context) {
+ 
+ // #128 — Paired lifecycle row emission. The chokepoint for all kanban
+ // transitions emits `<prev>:complete` + `<next>:enter` rows (both share
+ // the same wall-clock `ts`) from the canonical PHASE_EVENTS table. Demote
+ // substitutes a `demoted` row (no completion event) before the
+ // `<next>:enter`. Skip when SKIP_NETWORK is set or when both halves are
+ // absent (e.g. transitions with no completion event for the previous
+ // state and no entry event for the target). Best-effort — failures here
+ // do not roll back the committed board move.
+ export async function emitPhasePairRows(ctx) {
++  const nativeMemory = isMemoryStageEffectScope();
+   const { issueArg, stateArg, resolvedFromState, demoteFlag, demoteReason, cfg, SKIP_NETWORK } =
+     ctx;
+   if (SKIP_NETWORK) return;
+   try {
+     const { timing, events } = await resolveTimingDeps(ctx);
+     const { buildRow, postTimingEvent } = timing;
+     const { PHASE_EVENTS } = events;
+-    const nativeMemory = isMemoryStageEffectScope();
+     if (
+       nativeMemory &&
+       (buildRow !== nativeBuildRow ||
+         postTimingEvent !== nativePostTimingEvent ||
+         ctx.deps !== undefined ||
+         demoteFlag ||
+         resolvedFromState !== 'develop' ||
+         stateArg !== 'test')
+     )
+       throw new TypeError('native-phase:original-emitter');
+@@ -240,20 +240,21 @@ export async function emitPhasePairRows(ctx) {
+         activeSec: 0,
+         idleSec: 0,
+         deltaWords: 0,
+         wordMarker: _phaseMarker,
+         fullWordMarker: _phaseFullObservation,
+       });
+       await postSharedPhase(`${stateArg}:enter`, row);
+     }
+   } catch (err) {
+     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
++    if (nativeMemory) throw err;
+   }
+ }
+ 
+ // #169 — Full-Auto review-gate audit. When the move lands at `done`, the
+ // audit resolves a genuine approval marker first, then explicit
+ // `reviewAuthority`, then the legacy reviewer-environment fallback. The
+ // resulting Full-Auto comment or `aitm-human-reviewer` marker is idempotent.
+ export async function emitFullAutoReviewAudit(ctx) {
+   assertRevisionStageHostEffect();
+   const { issueArg, stateArg, cfg, SKIP_NETWORK, pexec, reviewAuthority } = ctx;
+diff --git a/scripts/task-tracker/lib/move-state/cache-unpark.mjs b/scripts/task-tracker/lib/move-state/cache-unpark.mjs
+index 22ada3cd..865d5382 100644
+--- a/scripts/task-tracker/lib/move-state/cache-unpark.mjs
++++ b/scripts/task-tracker/lib/move-state/cache-unpark.mjs
+@@ -25,20 +25,24 @@ import {
+ import { loadState, saveState } from '../../state.mjs';
+ import { getProjectDir, statePath as resolveStatePath } from '../../paths.mjs';
+ import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../process-timeouts.mjs';
+ import { STAGES } from '../stage-entry-markers.mjs';
+ import { existsSync } from 'node:fs';
+ import path from 'node:path';
+ 
+ import {
+   beginNativeStageTailDispatch,
+   assertNativeStageTailDispatchModule,
++  beginNativeStageTailCache,
++  executeNativeStageCacheOperation,
++  assertNativeStageTailCacheCurrent,
++  assertNativeStageCacheValue,
+ } from './move-state-core.mjs';
+ 
+ // Testable seam (#629): the helpers below resolve their gh-backed / session
+ // collaborator modules through `ctx.deps`. Production assembles `ctx` without a
+ // `deps` key (see move-state.mjs), so every call falls through to the real
+ // dynamic import — byte-identical to the prior inline `await import(...)`.
+ // Unit tests pass `ctx.deps` to inject fakes and avoid spawning `gh` or
+ // touching real session state. Mirrors the #627/#628 injection seam.
+ async function importOr(dep, spec) {
+   return dep || (await import(spec));
+@@ -115,60 +119,105 @@ function* kanbanRefreshProgram(ctx) {
+       }
+     }
+   } catch (err) {
+     yield {
+       kind: 'stderr',
+       bytes: `[move-state] #${issueArg}: kanbanState cache refresh failed: ${err.message}\n`,
+     };
+   }
+ }
+ 
+-export async function refreshKanbanStateCache(ctx) {
+-  assertRevisionStageHostEffect();
++const nativeCacheOperations = new WeakMap();
++const nativeCacheReturns = new WeakMap();
++export function assertOriginalNativeCacheOperation(input, ctx, operation) {
++  const original = nativeCacheOperations.get(input);
++  if (
++    !original ||
++    original.ctx !== ctx ||
++    original.operation !== operation ||
++    canonicalRecordJson(operation) !== original.bytes
++  )
++    throw new TypeError('native-cache-operation');
++}
++export function assertOriginalNativeCacheReturn(input, ctx, result) {
++  const original = nativeCacheReturns.get(input);
++  if (!original || original.ctx !== ctx || result !== undefined)
++    throw new TypeError('native-cache-return');
++  nativeCacheReturns.delete(input);
++}
++export async function refreshKanbanStateCache(ctx, nativeInput) {
++  const nativeMemory = isMemoryStageEffectScope();
++  if (nativeMemory) beginNativeStageTailCache(nativeInput, ctx);
++  else assertRevisionStageHostEffect();
+   const program = kanbanRefreshProgram(ctx);
+   let setSessionKanbanState, getActiveTask, currentSessionId;
++  let nativeFailure = null;
+   let next = program.next();
+   while (!next.done) {
+     const operation = next.value;
+     let value;
+     try {
+-      switch (operation.kind) {
+-        case 'modules':
+-          [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
+-            importOr(operation.deps.sessionState, '../../session-state.mjs'),
+-            importOr(operation.deps.wordCounter, '../../word-counter.mjs'),
+-          ]);
+-          break;
+-        case 'sid':
+-          value = currentSessionId();
+-          break;
+-        case 'root':
+-          value = getProjectDir();
+-          break;
+-        case 'active':
+-          value = getActiveTask(operation.sid, operation.projectDir);
+-          break;
+-        case 'set':
+-          value = setSessionKanbanState(operation.sid, operation.stateArg, operation.projectDir);
+-          break;
+-        case 'stderr':
+-          value = process.stderr.write(operation.bytes);
+-          break;
+-        default:
+-          throw new TypeError('kanban-refresh-operation');
+-      }
++      if (nativeMemory) {
++        nativeCacheOperations.set(nativeInput, {
++          ctx,
++          operation,
++          bytes: canonicalRecordJson(operation),
++        });
++        value = await executeNativeStageCacheOperation(nativeInput, ctx, operation);
++        assertNativeStageTailCacheCurrent(nativeInput, ctx);
++        assertNativeStageCacheValue(nativeInput, ctx, operation, value);
++      } else
++        switch (operation.kind) {
++          case 'modules':
++            [{ setSessionKanbanState, getActiveTask }, { currentSessionId }] = await Promise.all([
++              importOr(operation.deps.sessionState, '../../session-state.mjs'),
++              importOr(operation.deps.wordCounter, '../../word-counter.mjs'),
++            ]);
++            break;
++          case 'sid':
++            value = currentSessionId();
++            break;
++          case 'root':
++            value = getProjectDir();
++            break;
++          case 'active':
++            value = getActiveTask(operation.sid, operation.projectDir);
++            break;
++          case 'set':
++            value = setSessionKanbanState(operation.sid, operation.stateArg, operation.projectDir);
++            break;
++          case 'stderr':
++            value = process.stderr.write(operation.bytes);
++            break;
++          default:
++            throw new TypeError('kanban-refresh-operation');
++        }
+     } catch (error) {
++      if (nativeMemory) {
++        // Run the same original generator catch/warning before surfacing the
++        // actual failed native callback to the pending transition boundary.
++        if (nativeFailure || operation.kind === 'stderr') {
++          nativeCacheOperations.delete(nativeInput);
++          throw error;
++        }
++        nativeFailure = error;
++      }
+       next = program.throw(error);
+       continue;
+     }
+     next = program.next(value);
+   }
++  if (nativeMemory) {
++    nativeCacheOperations.delete(nativeInput);
++    if (nativeFailure) throw nativeFailure;
++    nativeCacheReturns.set(nativeInput, { ctx });
++  }
+ }
+ 
+ // #249/#1557 — Reconcile dependent Dispositions after a move lands at `done`.
+ // sibling whose `aitm-blocked-by` marker references this issue: strip the ref
+ // (and, on a full clear, drop the BLOCKED label) via child (b)'s marker API.
+ // Best-effort — failures are surfaced, never block the committed board move.
+ export async function unparkDoneDependents(ctx) {
+   assertRevisionStageHostEffect();
+   const { issueArg, stateArg, cfg, SKIP_NETWORK } = ctx;
+   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
+diff --git a/scripts/task-tracker/lib/move-state/move-state-core.mjs b/scripts/task-tracker/lib/move-state/move-state-core.mjs
+index 1ea36a0d..d4320efe 100644
+--- a/scripts/task-tracker/lib/move-state/move-state-core.mjs
++++ b/scripts/task-tracker/lib/move-state/move-state-core.mjs
+@@ -43,20 +43,23 @@ import {
+   rollbackRecordedState as defaultRollbackRecordedState,
+   assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
+ } from './github-mutation.mjs';
+ import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
+ import {
+   runPostCommitTail as defaultRunPostCommitTail,
+   DEFAULT_TAIL_STEPS,
+ } from './post-commit-tail.mjs';
+ import * as nativeTailCache from './cache-unpark.mjs';
+ import * as nativeTailAudit from './audit-timing.mjs';
++import * as nativeCacheSession from '../../session-state.mjs';
++import * as nativeCacheWords from '../../word-counter.mjs';
++import { getProjectDir as nativeCacheRoot } from '../../paths.mjs';
+ const originalTailDispatch = nativeTailCache.dispatchOnEnterActions;
+ import { writeMoveCompleteMarker, readMoveCompleteMarker, isMoveComplete } from './sentinel.mjs';
+ import {
+   parseEntryMarkers as parseGrammarEntryMarkers,
+   serializeEntryMarker,
+ } from '../stage-entry-grammar.mjs';
+ import {
+   createTransitionId as defaultCreateTransitionId,
+   repairTransitionCommit as defaultRepairTransitionCommit,
+   writeTransitionCommit as defaultWriteTransitionCommit,
+@@ -1012,20 +1015,21 @@ function checkPreparation(record) {
+         ...(record.actorPrefixes ?? []),
+         ...(record.timingPrefixes ?? []),
+         ...(record.cursorPrefixes ?? []),
+         ...(record.checkpointPrefixes ?? []),
+         ...(record.removalPrefixes ?? []),
+         ...(record.entryPrefixes ?? []),
+         ...(record.boardPrefixes ?? []),
+         ...(record.sentinelPrefixes ?? []),
+         ...(record.transitionCommentPrefixes ?? []),
+         ...(record.tailPrefixes ?? []),
++        ...(record.cachePrefixes ?? []),
+       ].includes(canonicalRecordJson(record.backend.snapshot)))
+   )
+     throw preparationRefusal('current-authority-drift');
+   assertNativeTransitionContext(record.sagaContext, true);
+   checkOriginalFieldSources(record);
+   checkOriginalLocalSources(record);
+   if (record.outerContext) record.assertOuterContext(record.outerContext);
+ }
+ 
+ // A comparison-only reader of a live, lexical saga token. Detached DATA cannot
+@@ -2659,21 +2663,21 @@ function assertNativeStageTransitionContext(ctx) {
+     !record.consistencyRead
+   )
+     throw preparationRefusal('original-transition-context');
+   checkPreparation(record);
+   checkOriginalStageSources(record);
+   assertOriginalNativeBoardResult(record.boardResult, ctx);
+   const currentJournal = record.backend.snapshot.nativeStageRecords.at(-1);
+   // Tail records remain independently bound to full current snapshots; compare
+   // original body/comment custody against its unchanged complete16 prefix.
+   const journal =
+-    record.tailInput && currentJournal.steps.length === 17
++    record.tailInput && [17, 18].includes(currentJournal.steps.length)
+       ? { ...currentJournal, steps: currentJournal.steps.slice(0, 16) }
+       : currentJournal;
+   if (journal.steps.length === 15) {
+     if (journal.steps[14].readback === null) throw preparationRefusal('transition-sentinel-prefix');
+   } else if (journal.steps.length === 16) {
+     if (
+       !record.transitionCommentBefore ||
+       !record.transitionCommentStep ||
+       canonicalRecordJson(journal.steps.slice(0, 15)) !==
+         canonicalRecordJson(record.transitionCommentBefore.nativeStageRecords.at(-1).steps) ||
+@@ -4580,20 +4584,26 @@ function tailAuthority(record, invocation) {
+   return {
+     backend: record.backend,
+     capability: record.capability,
+     context: record.context,
+     token: record.stageToken,
+     invocation,
+   };
+ }
+ export async function runNativeStageTailStep(input, ctx, step) {
+   const record = tailCurrent(input, ctx);
++  if (
++    record.tailNext === 1 &&
++    step === DEFAULT_TAIL_STEPS[1] &&
++    step.fn === nativeTailCache.refreshKanbanStateCache
++  )
++    return runNativeStageCache(input, ctx, step);
+   if (
+     !record.tailStarted ||
+     record.tailLeaf ||
+     record.tailNext !== 0 ||
+     step !== DEFAULT_TAIL_STEPS[0] ||
+     step.fn !== originalTailDispatch
+   ) {
+     // All later original leaves retain their existing fail-closed host fence.
+     assertRevisionStageHostEffect();
+     throw preparationRefusal('original-tail-order');
+@@ -5028,10 +5038,258 @@ export function readNativeStageCompensationAttemptNumber(token, backend, invocat
+     record.compOperation?.kind !== 'write-body'
+   )
+     throw preparationRefusal('original-compensation-attempt');
+   record.compRecordingModule.assertOriginalNativeRecordingOperation(
+     record.compInput,
+     invocation,
+     record.compOperation
+   );
+   return record.compAttemptNumber;
+ }
++
++// #1913 — original cache leaf, lexical operation window and current fixed sinks.
++function cacheLeaf(input, ctx) {
++  const leaf = tailLeafCurrent(input, ctx);
++  if (leaf.kind !== 'cache' || !['new', 'call', 'running', 'returned'].includes(leaf.phase))
++    throw preparationRefusal('original-cache-invocation');
++  return leaf;
++}
++export function beginNativeStageTailCache(input, ctx) {
++  const leaf = originalTailLeaves.get(input);
++  if (!leaf || leaf.kind !== 'cache' || leaf.ctx !== ctx || leaf.phase !== 'call')
++    throw preparationRefusal('original-cache-window');
++  leaf.phase = 'running';
++  cacheLeaf(input, ctx);
++}
++export function assertNativeStageTailCacheCurrent(input, ctx) {
++  cacheLeaf(input, ctx);
++}
++export function readNativeStageTailCacheIntent(token, backend, input) {
++  const leaf = originalTailLeaves.get(input);
++  if (!leaf) throw preparationRefusal('original-cache-invocation');
++  cacheLeaf(input, leaf.ctx);
++  if (leaf.record.stageToken !== token || leaf.record.backend !== backend)
++    throw preparationRefusal('original-cache-token');
++  return { header: structuredClone(leaf.record.header) };
++}
++function currentCacheOperation(input) {
++  const leaf = originalTailLeaves.get(input);
++  if (!leaf) throw preparationRefusal('original-cache-invocation');
++  cacheLeaf(input, leaf.ctx);
++  if (leaf.phase !== 'running' || !leaf.operation)
++    throw preparationRefusal('original-cache-operation');
++  nativeTailCache.assertOriginalNativeCacheOperation(input, leaf.ctx, leaf.operation);
++  return leaf;
++}
++export function assertNativeStageTailCacheRead(input) {
++  const leaf = currentCacheOperation(input);
++  if (!['active', 'set'].includes(leaf.operation.kind))
++    throw preparationRefusal('original-cache-read');
++}
++export function assertNativeStageTailCacheSet(input, operation) {
++  const leaf = currentCacheOperation(input);
++  if (
++    leaf.operation !== operation ||
++    operation.kind !== 'set' ||
++    operation.sid !== leaf.record.actorIdentity.sid ||
++    operation.projectDir !== leaf.record.context.executor.worktree ||
++    operation.stateArg !== 'test'
++  )
++    throw preparationRefusal('original-cache-set');
++}
++export async function readNativeStageTailCacheSource(input, operation) {
++  const leaf = currentCacheOperation(input);
++  if (
++    leaf.operation !== operation ||
++    !['active', 'set'].includes(operation.kind) ||
++    operation.sid !== leaf.record.actorIdentity.sid ||
++    operation.projectDir !== leaf.record.context.executor.worktree
++  )
++    throw preparationRefusal('original-cache-read');
++  const read = await leaf.store.readMemoryNativeStageCache(tailAuthority(leaf.record, input));
++  currentCacheOperation(input);
++  return {
++    beforeBytes: read.beforeBytes,
++    file: leaf.record.localPaths.activeTask,
++    sid: operation.sid,
++    projectDir: operation.projectDir,
++  };
++}
++export async function executeNativeStageCacheOperation(input, ctx, operation) {
++  const leaf = cacheLeaf(input, ctx);
++  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
++  if (leaf.operation) throw preparationRefusal('original-cache-operation-reentry');
++  leaf.operation = operation;
++  leaf.operations.push(JSON.parse(canonicalRecordJson(operation)));
++  try {
++    if (operation.kind === 'modules') {
++      if (canonicalRecordJson(operation.deps) !== '{}')
++        throw preparationRefusal('original-cache-modules');
++      const [session, words] = await Promise.all([
++        import('../../session-state.mjs'),
++        import('../../word-counter.mjs'),
++      ]);
++      currentCacheOperation(input);
++      if (session !== nativeCacheSession || words !== nativeCacheWords)
++        throw preparationRefusal('original-cache-modules');
++      leaf.modules = { session, words };
++      return;
++    }
++    if (!leaf.modules) throw preparationRefusal('original-cache-modules');
++    if (operation.kind === 'sid') {
++      const value = leaf.modules.words.currentSessionId();
++      currentCacheOperation(input);
++      if (value !== leaf.record.actorIdentity.sid)
++        throw preparationRefusal('original-cache-identity');
++      return value;
++    }
++    if (operation.kind === 'root') {
++      const value = nativeCacheRoot();
++      currentCacheOperation(input);
++      if (value !== leaf.record.context.executor.worktree)
++        throw preparationRefusal('original-cache-root');
++      return value;
++    }
++    if (operation.kind === 'active') {
++      const result = await leaf.modules.session.getNativeStageCachedTask(input, operation);
++      currentCacheOperation(input);
++      leaf.modules.session.assertOriginalNativeCacheRead(input, result);
++      return result;
++    }
++    if (operation.kind === 'set') {
++      const result = await leaf.modules.session.setNativeStageKanbanState(input, operation);
++      currentCacheOperation(input);
++      return result;
++    }
++    if (operation.kind === 'stderr') {
++      process.stderr.write(operation.bytes);
++      return;
++    }
++    throw preparationRefusal('original-cache-operation-kind');
++  } finally {
++    leaf.operation = null;
++  }
++}
++export function assertNativeStageTailCacheWrite(input, intent) {
++  const leaf = currentCacheOperation(input);
++  assertNativeStageTailCacheSet(input, leaf.operation);
++  if (!leaf.writeIntent) throw preparationRefusal('original-cache-write');
++  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, leaf.writeIntent);
++  if (intent !== undefined && canonicalRecordJson(intent) !== canonicalRecordJson(leaf.step.intent))
++    throw preparationRefusal('original-cache-write');
++}
++export async function persistNativeStageTailCache(input, intent) {
++  const leaf = currentCacheOperation(input);
++  assertNativeStageTailCacheSet(input, leaf.operation);
++  nativeCacheSession.assertOriginalNativeStageKanbanWrite(input, intent);
++  if (leaf.step) throw preparationRefusal('original-cache-write-reentry');
++  leaf.writeIntent = intent;
++  const snapshot = leaf.record.backend.snapshot,
++    journal = snapshot.nativeStageRecords.at(-1);
++  if (journal.steps.length !== 17) throw preparationRefusal('original-cache-prefix');
++  const step = {
++    ordinal: 18,
++    kind: 'tail-cache',
++    previous: hashNativeStep(journal.steps[16]),
++    intent: {
++      file: intent.file,
++      sid: leaf.record.actorIdentity.sid,
++      beforeBytes: intent.beforeBytes,
++      bytes: intent.bytes,
++      operations: structuredClone(leaf.operations),
++    },
++    readback: null,
++  };
++  const codec = await import('../criteria-revision/stage-execution.mjs');
++  currentCacheOperation(input);
++  const derived = await codec.reconstructNativeStageTailCache({
++    header: leaf.record.header,
++    steps: [...journal.steps, step],
++  });
++  currentCacheOperation(input);
++  if (
++    canonicalRecordJson(snapshot) !== canonicalRecordJson(leaf.record.backend.snapshot) ||
++    canonicalRecordJson(snapshot.nativeStageResources) !==
++      canonicalRecordJson(derived.beforeResources)
++  )
++    throw preparationRefusal('original-cache-before');
++  leaf.step = step;
++  const intended = structuredClone(snapshot);
++  intended.nativeStageRecords.at(-1).steps.push(step);
++  const effected = structuredClone(intended);
++  effected.nativeStageResources = structuredClone(derived.afterResources);
++  const completed = structuredClone(effected);
++  completed.nativeStageRecords.at(-1).steps[17].readback = structuredClone(derived.readback);
++  leaf.record.cachePrefixes = [intended, effected, completed].map(canonicalRecordJson);
++  await leaf.store.persistMemoryNativeStageCache({ ...tailAuthority(leaf.record, input), step });
++  currentCacheOperation(input);
++}
++export async function writeNativeStageTailCache(input) {
++  const leaf = currentCacheOperation(input);
++  assertNativeStageTailCacheWrite(input);
++  await leaf.store.writeMemoryNativeStageCache(tailAuthority(leaf.record, input));
++  currentCacheOperation(input);
++}
++export async function completeNativeStageTailCache(input) {
++  const leaf = currentCacheOperation(input);
++  assertNativeStageTailCacheWrite(input);
++  await leaf.store.completeMemoryNativeStageCache(tailAuthority(leaf.record, input));
++  currentCacheOperation(input);
++}
++async function runNativeStageCache(sequence, ctx, step) {
++  const record = tailCurrent(sequence, ctx);
++  if (record.tailNext !== 1 || record.tailLeaf || step !== DEFAULT_TAIL_STEPS[1])
++    throw preparationRefusal('original-cache-order');
++  const input = Object.freeze({});
++  const leaf = {
++    kind: 'cache',
++    record,
++    sequence,
++    ctx,
++    phase: 'new',
++    operations: [],
++    operation: null,
++  };
++  originalTailLeaves.set(input, leaf);
++  record.tailLeaf = input;
++  let acquired = false;
++  try {
++    cacheLeaf(input, ctx);
++    leaf.store = await import('../criteria-revision/store.mjs');
++    cacheLeaf(input, ctx);
++    await leaf.store.acquireMemoryNativeStageCache(tailAuthority(record, input));
++    acquired = true;
++    cacheLeaf(input, ctx);
++    leaf.phase = 'call';
++    const result = await nativeTailCache.refreshKanbanStateCache(ctx, input);
++    cacheLeaf(input, ctx);
++    nativeTailCache.assertOriginalNativeCacheReturn(input, ctx, result);
++    if (
++      leaf.phase !== 'running' ||
++      record.backend.snapshot.nativeStageRecords.at(-1).steps[17]?.readback == null
++    )
++      throw preparationRefusal('original-cache-return');
++    leaf.phase = 'returned';
++    record.tailNext = 2;
++  } finally {
++    if (acquired)
++      leaf.store.releaseMemoryNativeStageCache({
++        backend: record.backend,
++        token: record.stageToken,
++        invocation: input,
++      });
++    originalTailLeaves.delete(input);
++    record.tailLeaf = null;
++  }
++}
++
++// Comparison at the actual original generator's consumer boundary, after await.
++export function assertNativeStageCacheValue(input, ctx, operation, value) {
++  const leaf = cacheLeaf(input, ctx);
++  nativeTailCache.assertOriginalNativeCacheOperation(input, ctx, operation);
++  if (leaf.phase !== 'running') throw preparationRefusal('original-cache-value');
++  if (operation.kind === 'active') nativeCacheSession.assertOriginalNativeCacheRead(input, value);
++  else if (operation.kind === 'sid' && value !== leaf.record.actorIdentity.sid)
++    throw preparationRefusal('original-cache-value');
++  else if (operation.kind === 'root' && value !== leaf.record.context.executor.worktree)
++    throw preparationRefusal('original-cache-value');
++}
+diff --git a/scripts/task-tracker/session-state.mjs b/scripts/task-tracker/session-state.mjs
+index 2f716e82..aa2d85d1 100644
+--- a/scripts/task-tracker/session-state.mjs
++++ b/scripts/task-tracker/session-state.mjs
+@@ -18,28 +18,34 @@ import { withLock } from './fleet-registry.mjs';
+ function normalizeCachedKanbanState(record) {
+   if (!record || typeof record !== 'object' || typeof record.kanbanState !== 'string') {
+     return record;
+   }
+   return { ...record, kanbanState: normalizeStateId(record.kanbanState) };
+ }
+ 
+ function readJson(p) {
+   if (!existsSync(p)) return null;
+   try {
+-    const raw = readFileSync(p, 'utf8');
+-    if (!raw.trim()) return null;
+-    return JSON.parse(raw);
++    return parseActiveTaskBytes(readFileSync(p, 'utf8'));
+   } catch {
+     return null;
+   }
+ }
+ 
++function parseActiveTaskBytes(raw) {
++  if (raw === null || !raw.trim()) return null;
++  try {
++    return JSON.parse(raw);
++  } catch {
++    return null;
++  }
++}
+ function atomicWrite(p, payload) {
+   mkdirSync(path.dirname(p), { recursive: true });
+   const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
+   writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+   renameSync(tmp, p);
+ }
+ 
+ // Returns the active-task record for `sid` or null when none is bound.
+ // Shape: { issue, entryStartTs, wordsAtStart, kanbanState, boundAt,
+ // worktreePath, worktreeBranch, worktreeResolvedAt, bindingGenerationId,
+@@ -277,10 +283,58 @@ export function compareAndClearActiveTask(sid, projDir, predicate) {
+     if (!record) return { status: 'absent', record: null };
+     if (!predicate(record)) return { status: 'superseded', record };
+     rmSync(p);
+     return { status: 'cleared', record };
+   });
+ }
+ 
+ // Re-export the path helpers so callers that already import session-state
+ // don't need a second import line for the directory layout.
+ export { sessionDir, activeTaskPath };
++
++// #1913 — genuine original cache read/set leaves; no DATA grants membership.
++const nativeStageKanbanWrites = new WeakMap();
++const nativeStageCacheReads = new WeakMap();
++export function assertOriginalNativeCacheRead(input, result) {
++  const original = nativeStageCacheReads.get(input);
++  if (!original || original.result !== result || canonicalRecordJson(result) !== original.bytes)
++    throw new TypeError('native-cache-read-return');
++}
++export function assertOriginalNativeStageKanbanWrite(input, intent) {
++  const original = nativeStageKanbanWrites.get(input);
++  if (!original || original.intent !== intent || canonicalRecordJson(intent) !== original.bytes)
++    throw new TypeError('native-cache-set-intent');
++}
++export async function getNativeStageCachedTask(input, operation) {
++  const native = await import('./lib/move-state/move-state-core.mjs');
++  const source = await native.readNativeStageTailCacheSource(input, operation);
++  native.assertNativeStageTailCacheRead(input);
++  const result = normalizeCachedKanbanState(parseActiveTaskBytes(source.beforeBytes));
++  nativeStageCacheReads.set(input, { result, bytes: canonicalRecordJson(result) });
++  return result;
++}
++export async function setNativeStageKanbanState(input, operation) {
++  const native = await import('./lib/move-state/move-state-core.mjs');
++  const source = await native.readNativeStageTailCacheSource(input, operation);
++  native.assertNativeStageTailCacheSet(input, operation);
++  const rawExisting = parseActiveTaskBytes(source.beforeBytes);
++  const { payload, changed } = sessionKanbanPayload(rawExisting, operation.stateArg);
++  const intent = {
++    file: source.file,
++    beforeBytes: source.beforeBytes,
++    bytes: changed ? JSON.stringify(payload, null, 2) + '\n' : source.beforeBytes,
++  };
++  nativeStageKanbanWrites.set(input, { intent, bytes: canonicalRecordJson(intent) });
++  try {
++    await native.persistNativeStageTailCache(input, intent);
++    native.assertNativeStageTailCacheSet(input, operation);
++    if (changed) await native.writeNativeStageTailCache(input);
++    native.assertNativeStageTailCacheSet(input, operation);
++    await native.completeNativeStageTailCache(input);
++    native.assertNativeStageTailCacheSet(input, operation);
++    return payload;
++  } finally {
++    nativeStageKanbanWrites.delete(input);
++  }
++}
++
++import { canonicalRecordJson } from './lib/github-records/canonical-json.mjs';
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..40c5f055
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..963c1bfc
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..59761a3a
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..d4a7319d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-effect-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..9209a07a
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..656b4a54
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..7a3d7211
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..79d8a258
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-intent-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-config.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-config.test.mjs
+new file mode 100644
+index 00000000..5c08ed8d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-config.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache-late-config', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-read.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-read.test.mjs
+new file mode 100644
+index 00000000..5dec5052
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-late-read.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache-late-read', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-native.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-native.test.mjs
+new file mode 100644
+index 00000000..705ca307
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-cache-native.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1913
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('tail-cache', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs
+new file mode 100644
+index 00000000..f5a720c0
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-local-transition-tail.test.mjs
+@@ -0,0 +1,61 @@
++// @story #1913
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  budget,
++  discoverOriginalCases,
++  qualifyOriginalCases,
++  qualify,
++} from '../../../helpers/criteria-revision-transition-profiles.mjs';
++const discovered = discoverOriginalCases();
++const original = discovered.filter(
++  ({ mode, fault }) =>
++    ['tail-dispatch', 'tail-dispatch-reentry', 'phase-pair', 'phase-adversarial'].includes(mode) ||
++    (mode === 'phase-12-prefix' &&
++      fault?.when === 'failAfter' &&
++      fault.suffix === 'effect-readback')
++);
++test('independent dispatcher and requested phase frontier discovery retains all five originals', (t) => {
++  assert.deepEqual(
++    original.map(({ filename }) => filename).sort(),
++    [
++      'native-stage-tail-dispatch.test.mjs',
++      'native-stage-tail-dispatch-reentry.test.mjs',
++      'native-stage-phase-pair.test.mjs',
++      'native-stage-phase-adversarial.test.mjs',
++      'native-stage-phase-12-prefix-after-effect-readback.test.mjs',
++    ].sort()
++  );
++  t.diagnostic(JSON.stringify(original));
++});
++const cacheTransport = discovered.filter(
++  ({ mode, fault }) =>
++    mode === 'tail-cache' && fault && ['intent-write', 'intent-readback'].includes(fault.suffix)
++);
++const firstGroup = [...original, ...cacheTransport];
++test('cache intent transport membership retains both sides of every original boundary', () => {
++  assert.deepEqual(
++    cacheTransport.map(({ fault }) => fault.when + ':' + fault.suffix).sort(),
++    ['failBefore', 'failAfter']
++      .flatMap((when) => ['intent-write', 'intent-readback'].map((suffix) => when + ':' + suffix))
++      .sort()
++  );
++  assert.equal(firstGroup.length, 9);
++});
++test(
++  'complete original dispatcher and phase frontiers preserve actual effects and private window',
++  { timeout: budget, concurrency: true },
++  (t) => qualifyOriginalCases(firstGroup, t)
++);
++test('complete ordinary cache and tail profiles remain intact', { timeout: budget }, (t) =>
++  qualify(
++    [
++      'scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs',
++      'scripts/tests/unit/task-tracker/lib/move-state/move-state-terminal-tail-isolation.test.mjs',
++      'scripts/tests/unit/task-tracker/lib/move-state/move-state-tail-profiles.test.mjs',
++      'scripts/tests/unit/task-tracker/lib/move-state/local-tail-program.test.mjs',
++    ],
++    40,
++    t
++  )
++);
+diff --git a/scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs b/scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
+index 05ab8f8e..7a391ca6 100644
+--- a/scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
++++ b/scripts/tests/integration/task-tracker/lib/move-state-native-command.test.mjs
+@@ -1,11 +1,11 @@
+-// @story #1855
++// @story #1855 #1913
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ import { execFile } from 'node:child_process';
+ import { promisify } from 'node:util';
+ import {
+   withMemoryTransportQuarantine,
+   withMemoryStageEffectQuarantine,
+ } from '../../../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
+ const original = promisify(execFile);
+ const load = () => import('../../../../task-tracker/lib/move-state/native-command.mjs');
+@@ -72,10 +72,59 @@ for (const [name, scope] of [
+               },
+             });
+           }),
+         (error) => error.code === 'revision-authority-unavailable'
+       );
+       assert.equal(result, undefined);
+       assert.equal(gets, 0);
+     }
+   );
+ }
++
++// #1913 complete original cache effect/current input profiles, independently selected.
++import {
++  budget,
++  discoverOriginalCases,
++  qualifyOriginalCases,
++  qualify,
++} from '../../../helpers/criteria-revision-transition-profiles.mjs';
++const allCache = discoverOriginalCases().filter(({ mode }) => mode.startsWith('tail-cache'));
++const effects = allCache.filter(
++  ({ mode, fault }) =>
++    mode !== 'tail-cache' || !fault || ['effect-write', 'effect-readback'].includes(fault.suffix)
++);
++test('complete cache descriptor partition retains positive all eight faults and two late sources', () => {
++  assert.equal(allCache.length, 11);
++  assert.equal(effects.length, 7);
++  assert.deepEqual(
++    allCache
++      .filter(({ fault }) => fault)
++      .map(({ fault }) => fault.when + ':' + fault.suffix)
++      .sort(),
++    ['failBefore', 'failAfter']
++      .flatMap((when) =>
++        ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'].map(
++          (suffix) => when + ':' + suffix
++        )
++      )
++      .sort()
++  );
++  assert.deepEqual(
++    allCache
++      .filter(({ mode }) => mode !== 'tail-cache')
++      .map(({ mode }) => mode)
++      .sort(),
++    ['tail-cache-late-config', 'tail-cache-late-read']
++  );
++});
++test('complete original cache public boundary profiles', { timeout: budget }, (t) =>
++  qualify(
++    ['scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-cache-boundary.test.mjs'],
++    11,
++    t
++  )
++);
++test(
++  'actual cache effects and current-source cases preserve full original predecessor and resources',
++  { timeout: budget, concurrency: true },
++  (t) => qualifyOriginalCases(effects, t)
++);
+diff --git a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+index 284c4dd7..ad2915fa 100644
+--- a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
++++ b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+@@ -35,20 +35,21 @@ import {
+   test,
+   updateMarker,
+   verbAcStamp,
+   verbEnsureChecked,
+   withRevisionConsumer,
+   writeFileSync,
+ } from './native-continuation-fixtures.mjs';
+ 
+ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+   const faultMode = mode;
++  const cacheMode = ['tail-cache', 'tail-cache-late-read', 'tail-cache-late-config'].includes(mode);
+   const compensationMode = [
+     'compensation',
+     'compensation-audit',
+     'compensation-late-read',
+     'compensation-late-config',
+     'compensation-return-custody',
+   ].includes(mode);
+   const transitionCustody = {
+     'transition-create-response': ['create', 'response'],
+     'transition-read-response': ['read', 'response'],
+@@ -60,20 +61,23 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+   const transitionMode =
+     transitionCustody ||
+     [
+       'transition-comment',
+       'transition-comment-prefix',
+       'transition-result-custody',
+       'transition-history',
+       'recovery-from-comment',
+       'tail-dispatch',
+       'tail-dispatch-reentry',
++      'tail-cache',
++      'tail-cache-late-read',
++      'tail-cache-late-config',
+     ].includes(mode);
+   const consistencyCustody = {
+     'consistency-response-accessor': 'response-accessor',
+     'consistency-request-value': 'request-value',
+     'consistency-current-config': 'current-config',
+     'consistency-result-accessor': 'result-accessor',
+   }[mode];
+   const entryResultCustody = {
+     'entry-result-accessor': 'accessor',
+     'entry-result-value': 'value',
+@@ -2481,23 +2485,36 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+         const originalRetryContext = faultMode === 'recovery-from-comment' ? { ...ctx } : null;
+         assert.equal(Object.hasOwn(ctx, 'transitionCommit'), false);
+         assert.equal(Object.hasOwn(ctx, 'deps'), false);
+         const files = captureFiles();
+         const operations = [
+           'intent-write',
+           'intent-readback',
+           'effect-write',
+           'effect-readback',
+         ].map((x) => 'native-stage-transition-' + x);
+-        if (fault) f.backend[fault.when] = 'native-stage-transition-' + fault.suffix;
+-        else if (!['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
++        if (fault)
++          f.backend[fault.when] =
++            (faultMode === 'tail-cache' ? 'native-stage-cache-' : 'native-stage-transition-') +
++            fault.suffix;
++        else if (
++          ![
++            'tail-dispatch',
++            'tail-dispatch-reentry',
++            'tail-cache',
++            'tail-cache-late-read',
++            'tail-cache-late-config',
++          ].includes(faultMode)
++        )
+           f.backend.failBefore = 'native-stage-tail-dispatch-intent-write';
++        if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode))
++          f.backend.failBefore = 'native-stage-cache-intent-write';
+         const filesystem = (await import('node:fs')).default;
+         const { syncBuiltinESMExports } = await import('node:module');
+         const originalRead = filesystem.readFileSync,
+           originalDescriptors = Object.getOwnPropertyDescriptors;
+         const store = await import('../../../../task-tracker/lib/criteria-revision/store.mjs');
+         let lockCaptures = 0,
+           lockChecks = 0,
+           lockFailure = null,
+           lockPromise = null,
+           lockQueuedFailure = null;
+@@ -2733,28 +2750,134 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+           return descriptors;
+         };
+         let beforeComment = null;
+         filesystem.readFileSync = function (...args) {
+           const value = Reflect.apply(originalRead, this, args);
+           if (!beforeComment && f.backend.effects.includes('native-stage-sentinel-effect-readback'))
+             beforeComment = f.backend.snapshot;
+           return value;
+         };
+         syncBuiltinESMExports();
++        const originalStderr = process.stderr.write;
++        const originalDescriptor = Object.getOwnPropertyDescriptor;
++        let cacheReentryProbe = false,
++          cacheReentryError = null,
++          cacheLockError = null;
++        let cacheReentryPromise = null,
++          cacheLockPromise = null;
++        let cacheWarnings = '',
++          cacheLateInjected = false,
++          cacheLateGets = 0;
++        let cacheLateEffects = null,
++          cacheLateSnapshot = null;
++        if (cacheMode) {
++          process.stderr.write = function (chunk, ...args) {
++            cacheWarnings += String(chunk);
++            return Reflect.apply(originalStderr, this, [chunk, ...args]);
++          };
++        }
++        if (faultMode === 'tail-cache' && fault === null) {
++          const originalCache = (
++            await import('../../../../task-tracker/lib/move-state/cache-unpark.mjs')
++          ).refreshKanbanStateCache;
++          Object.getOwnPropertyDescriptors = function (value) {
++            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
++            if (
++              !cacheReentryProbe &&
++              Reflect.ownKeys(descriptors).sort().join(',') ===
++                'backend,capability,context,invocation,token' &&
++              new Error().stack.includes('readMemoryNativeStageCache')
++            ) {
++              cacheReentryProbe = true;
++              const authority = Object.fromEntries(
++                Object.entries(descriptors).map(([key, d]) => [key, d.value])
++              );
++              queueMicrotask(() => {
++                cacheReentryPromise = originalCache(ctx, authority.invocation).catch((error) => {
++                  cacheReentryError = error;
++                });
++                cacheLockPromise = store.acquireMemoryNativeStageCache(authority).catch((error) => {
++                  cacheLockError = error;
++                });
++              });
++            }
++            return descriptors;
++          };
++        }
++        const cacheOriginalRepo = Object.getOwnPropertyDescriptor(cfg, 'repo');
++        if (faultMode === 'tail-cache-late-config') {
++          Object.getOwnPropertyDescriptors = function (value) {
++            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
++            if (
++              !cacheLateInjected &&
++              Reflect.ownKeys(descriptors).sort().join(',') ===
++                'backend,capability,context,invocation,token' &&
++              new Error().stack.includes('readMemoryNativeStageCache')
++            ) {
++              cacheLateInjected = true;
++              queueMicrotask(() => {
++                Object.defineProperty(cfg, 'repo', {
++                  enumerable: true,
++                  configurable: true,
++                  get() {
++                    cacheLateGets++;
++                    throw Error('late cache cfg getter');
++                  },
++                });
++                cacheLateEffects = f.backend.effects;
++                cacheLateSnapshot = f.backend.snapshot;
++              });
++            }
++            return descriptors;
++          };
++        }
++        if (faultMode === 'tail-cache-late-read') {
++          Object.getOwnPropertyDescriptor = function (value, key) {
++            const descriptor = Reflect.apply(originalDescriptor, this, arguments);
++            if (
++              !cacheLateInjected &&
++              key === 'issue' &&
++              descriptor &&
++              Object.hasOwn(value, 'boundAt') &&
++              new Error().stack.includes('assertOriginalNativeCacheRead')
++            ) {
++              cacheLateInjected = true;
++              queueMicrotask(() => {
++                Object.defineProperty(value, 'issue', {
++                  enumerable: true,
++                  configurable: true,
++                  get() {
++                    cacheLateGets++;
++                    return '#124';
++                  },
++                });
++                cacheLateEffects = f.backend.effects;
++                cacheLateSnapshot = f.backend.snapshot;
++              });
++            }
++            return descriptor;
++          };
++        }
+         let result;
+         try {
+           result = await moveState(ctx);
+           if (lockPromise) await lockPromise;
+           if (reentryPromise) await reentryPromise;
++          if (cacheReentryPromise) await cacheReentryPromise;
++          if (cacheLockPromise) await cacheLockPromise;
+         } finally {
+           filesystem.readFileSync = originalRead;
+           Object.getOwnPropertyDescriptors = originalDescriptors;
++          if (cacheMode) process.stderr.write = originalStderr;
++          Object.getOwnPropertyDescriptor = originalDescriptor;
++          if (faultMode === 'tail-cache-late-config')
++            Object.defineProperty(cfg, 'repo', cacheOriginalRepo);
+           if (frozenProbe) Object.freeze = originalFreeze;
+           syncBuiltinESMExports();
+         }
+         if (frozenProbe) {
+           t.diagnostic(
+             JSON.stringify({
+               transitionFrozenResult: {
+                 captures: frozenCaptures,
+                 checks: frozenChecks,
+                 gets: frozenGets,
+@@ -2801,20 +2924,140 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+                   : null,
+               },
+             })
+           );
+           assert.equal(reentryFixtureError, null);
+           assert.equal(reentryCaptures, 1);
+           assert.equal(reentryChecks, 1);
+           assert.equal(reentryError?.code, 'revision-authority-unavailable');
+           assert.equal(reentryError?.preparationReason, 'original-tail-dispatch-window');
+         }
++        if (['tail-cache-late-read', 'tail-cache-late-config'].includes(faultMode)) {
++          assert.equal(
++            cacheLateInjected,
++            true,
++            'actual native active-task return reached late boundary'
++          );
++          assert.equal(cacheLateGets, 0, 'cache program never reads a post-await caller getter');
++          assert.deepEqual(
++            f.backend.effects,
++            cacheLateEffects,
++            'no effects after late return mutation'
++          );
++          assert.deepEqual(f.backend.snapshot, cacheLateSnapshot);
++          assert.equal(journal.steps.length, 17);
++          assert.equal(result.exit, 4);
++          return;
++        }
++        if (faultMode === 'tail-cache') {
++          if (fault === null) {
++            assert.equal(cacheReentryProbe, true, 'actual cache read selected under owned lock');
++            assert.equal(cacheReentryError?.preparationReason, 'original-cache-window');
++            assert.equal(
++              cacheLockError?.message,
++              'criteria-revision:native-stage-cache-lock-conflict'
++            );
++          }
++          const points = ['intent-write', 'intent-readback', 'effect-write', 'effect-readback'];
++          const end = fault
++            ? points.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
++            : 4;
++          assert.ok(end >= 0, 'cache fault descriptor belongs to original protocol');
++          if (fault)
++            assert.match(
++              cacheWarnings,
++              /kanbanState cache refresh failed:/,
++              'actual original cache warning branch runs'
++            );
++          assert.equal(
++            journal.steps.length,
++            end === 0 ? 17 : 18,
++            'actual original cache has exact durable prefix'
++          );
++          assert.ok(journal.steps.slice(0, 17).every((step) => step.readback !== null));
++          if (end > 0) {
++            assert.equal(journal.steps[17].kind, 'tail-cache');
++            assert.equal(journal.steps[17].readback !== null, end === 4);
++          }
++          assert.deepEqual(
++            f.backend.effects.filter((x) => x.startsWith('native-stage-cache-')),
++            points.slice(0, end).map((x) => 'native-stage-cache-' + x)
++          );
++          const beforeActive = JSON.parse(
++            beforeComment.nativeStageResources.local.activeTask.bytes
++          );
++          const expected = {
++            ...beforeActive,
++            kanbanState: end >= 3 ? 'test' : beforeActive.kanbanState,
++          };
++          assert.equal(
++            snapshot.nativeStageResources.local.activeTask.bytes,
++            end >= 3
++              ? JSON.stringify(expected, null, 2) + '\n'
++              : beforeComment.nativeStageResources.local.activeTask.bytes
++          );
++          for (const key of ['actorTiming', 'actorFlush', 'wordCursor', 'trackerState', 'queue'])
++            assert.deepEqual(
++              snapshot.nativeStageResources.local[key],
++              beforeComment.nativeStageResources.local[key]
++            );
++          assert.deepEqual(journal.steps.slice(0, 15), beforeComment.nativeStageRecords[0].steps);
++          assert.deepEqual(snapshot.observation, beforeComment.observation);
++          assert.equal(result.exit, 4, 'next original owner remains fenced');
++          assert.deepEqual(captureFiles(), files, 'actual cache effects never touch host state');
++          const observed = await observeRevision({
++            context: f.context,
++            deps: createRevisionMemory(snapshot),
++          });
++          assert.equal(observed.status, 'pending-native-stage');
++          assert.equal(observed.nativeHistoryApproved, false);
++          if (fault === null) {
++            const codec =
++              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
++            const input = structuredClone({ header: journal.header, steps: journal.steps });
++            const bad = structuredClone(input);
++            bad.steps[17].intent.sid = 'foreign';
++            await assert.rejects(
++              codec.reconstructNativeStageTailCache(bad),
++              /criteria-revision:native-stage-tail-cache/
++            );
++            const lost = structuredClone(snapshot);
++            lost.nativeStageResources.local.activeTask = structuredClone(
++              beforeComment.nativeStageResources.local.activeTask
++            );
++            const rejected = await observeRevision({
++              context: f.context,
++              deps: createRevisionMemory(lost),
++            });
++            assert.equal(rejected.status, 'indeterminate', 'verified cache delta cannot disappear');
++            let getter = 0;
++            const pending = codec.reconstructNativeStageTailCache(input);
++            const intent = input.steps[17].intent;
++            queueMicrotask(() =>
++              Object.defineProperty(input.steps[17], 'intent', {
++                enumerable: true,
++                get() {
++                  getter++;
++                  return intent;
++                },
++              })
++            );
++            assert.equal((await pending).complete, true);
++            assert.equal(getter, 0, 'cache DATA stays detached across awaits');
++            assert.deepEqual(
++              f.backend.snapshot,
++              snapshot,
++              'DATA copies never mutate actual execution'
++            );
++          }
++          return;
++        }
+         if (['tail-dispatch', 'tail-dispatch-reentry'].includes(faultMode)) {
+           assert.equal(
+             journal.steps.slice(0, 16).every((step) => step.readback !== null),
+             true
+           );
+           assert.equal(ctx.transitionCommit.verified, true);
+           assert.equal(
+             journal.steps.length,
+             17,
+             'original first tail has durable intent and readback'
+@@ -5303,20 +5546,25 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+         'actor-final-tracker-prefix',
+         'entry-body',
+         'phase-pair',
+         'phase-11-prefix',
+         'phase-12-prefix',
+         'phase-adversarial',
+         'transition-native',
+       ].includes(expectStage)
+         ? captureFiles()
+         : null;
++      // Phase-only profiles keep their requested original frontier once the
++      // next original entry route is implemented. This is an actual intent
++      // fault, not a skipped callback, reduced fixture or changed assertion.
++      if (['phase-pair', 'phase-adversarial'].includes(expectStage))
++        f.backend.failBefore = 'native-stage-body-intent-write';
+       if (faultMode === 'entry-intent') f.backend.failBefore = 'native-stage-body-effect-write';
+       if (['preparation', 'intent'].includes(expectStage))
+         f.backend.failBefore = 'native-stage-actor-effect-write';
+       if (expectStage === 'actor-remove')
+         f.backend.failBefore = 'native-stage-actor-final-local-session-intent-write';
+       if (String(expectStage).startsWith('actor-final') || expectStage === 'transition-native')
+         f.backend.failBefore = 'native-stage-phase-11-intent-write';
+       if (expectStage === 'actor-journal')
+         f.backend.failBefore = 'native-stage-timing-intent-write';
+       if (String(expectStage).startsWith('actor-checkpoint'))
+diff --git a/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-cache-boundary.test.mjs b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-cache-boundary.test.mjs
+new file mode 100644
+index 00000000..9b1bf50c
+--- /dev/null
++++ b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-cache-boundary.test.mjs
+@@ -0,0 +1,97 @@
++// @story #1913
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as store from '../../../../../task-tracker/lib/criteria-revision/store.mjs';
++import * as core from '../../../../../task-tracker/lib/move-state/move-state-core.mjs';
++import * as cache from '../../../../../task-tracker/lib/move-state/cache-unpark.mjs';
++import * as session from '../../../../../task-tracker/session-state.mjs';
++import { withMemoryStageEffectQuarantine } from '../../../../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
++for (const root of [
++  store.acquireMemoryNativeStageCache,
++  store.readMemoryNativeStageCache,
++  store.persistMemoryNativeStageCache,
++  store.writeMemoryNativeStageCache,
++  store.completeMemoryNativeStageCache,
++]) {
++  test(root.name + ' refuses every authority getter and non-DATA shape before lookup', async () => {
++    const input = () => ({
++      backend: {},
++      capability: {},
++      context: {
++        repository: 'example/criteria',
++        issue: 124,
++        executor: { provider: 'claude', sessionId: 'fixture-cache', worktree: process.cwd() },
++      },
++      token: {},
++      invocation: {},
++      ...(root === store.persistMemoryNativeStageCache ? { step: {} } : {}),
++    });
++    let gets = 0;
++    for (const key of Object.keys(input())) {
++      const value = input();
++      Object.defineProperty(value, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw Error('unowned cache getter');
++        },
++      });
++      await assert.rejects(root(value));
++    }
++    for (const shape of ['inherited', 'hidden', 'symbol', 'extra', 'missing']) {
++      const value = input();
++      if (shape === 'inherited') Object.setPrototypeOf(value, { granted: true });
++      if (shape === 'hidden') Object.defineProperty(value, 'token', { enumerable: false });
++      if (shape === 'symbol') value[Symbol('token')] = {};
++      if (shape === 'extra') value.afterBytes = 'forged';
++      if (shape === 'missing') delete value.invocation;
++      await assert.rejects(root(value));
++    }
++    const nested = input();
++    Object.defineProperty(nested.context.executor, 'sessionId', {
++      enumerable: true,
++      get() {
++        gets++;
++        throw Error('nested getter');
++      },
++    });
++    await assert.rejects(root(nested));
++    assert.equal(gets, 0);
++  });
++}
++test('cache release rejects resource getters before selecting a lock', () => {
++  let gets = 0;
++  for (const key of ['backend', 'token', 'invocation']) {
++    const value = { backend: {}, token: {}, invocation: {} };
++    Object.defineProperty(value, key, {
++      enumerable: true,
++      get() {
++        gets++;
++        throw Error('release getter');
++      },
++    });
++    assert.throws(() => store.releaseMemoryNativeStageCache(value));
++  }
++  assert.equal(gets, 0);
++});
++for (const [name, invoke] of [
++  ['public refresh', (value) => cache.refreshKanbanStateCache(value, {})],
++  ['cache sequence', (value) => core.beginNativeStageTailCache({}, value)],
++  ['operation driver', (value) => core.executeNativeStageCacheOperation({}, value, {})],
++  ['original read', (value) => session.getNativeStageCachedTask({}, value)],
++  ['original set', (value) => session.setNativeStageKanbanState({}, value)],
++])
++  test(name + ' rejects unowned getter inputs before callback or field access', async () => {
++    let gets = 0;
++    const value = {};
++    for (const key of ['issueArg', 'stateArg', 'cfg', 'deps', 'kind', 'sid', 'projectDir'])
++      Object.defineProperty(value, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw Error('public cache getter');
++        },
++      });
++    await assert.rejects(withMemoryStageEffectQuarantine(async () => invoke(value)));
++    assert.equal(gets, 0);
++  });

@@ -1,0 +1,83 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (101.974958ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (233.112583ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (19.667958ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (17.901125ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (18.492583ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (354.314167ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (69.682ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (234.834459ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (15.62125ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (16.315875ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (19.46425ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (405.683334ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (68.151833ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (213.16925ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (16.112042ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (15.272834ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (16.394583ms)
+✔ independent createIssueComment approved retains its complete original algorithm (324.845375ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (68.3395ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (209.773208ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (16.412041ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (16.214333ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (15.979125ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (329.061125ms)
+✔ durable projection repair pending retains custody and rereads revision admission (96.854333ms)
+✔ durable projection repair stale retains custody and rereads revision admission (241.926417ms)
+✔ durable projection repair malformed retains custody and rereads revision admission (38.354916ms)
+✔ durable projection repair unavailable retains custody and rereads revision admission (43.656708ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (40.445958ms)
+✔ durable projection repair approved retains custody and rereads revision admission (348.603292ms)
+✔ independent lifecycle append pending cannot reuse historical custody as current readiness (88.90175ms)
+✔ independent lifecycle append stale cannot reuse historical custody as current readiness (246.63ms)
+✔ independent lifecycle append malformed cannot reuse historical custody as current readiness (44.034916ms)
+✔ independent lifecycle append unavailable cannot reuse historical custody as current readiness (41.892ms)
+✔ independent lifecycle append baseline cannot reuse historical custody as current readiness (41.9665ms)
+✔ independent lifecycle append approved cannot reuse historical custody as current readiness (349.449458ms)
+✔ independent singleton convergence pending requires fresh admission before reads and writes (64.969542ms)
+✔ independent singleton convergence stale requires fresh admission before reads and writes (211.924334ms)
+✔ independent singleton convergence malformed requires fresh admission before reads and writes (15.526792ms)
+✔ independent singleton convergence unavailable requires fresh admission before reads and writes (16.415584ms)
+✔ independent singleton convergence baseline requires fresh admission before reads and writes (16.090458ms)
+✔ independent singleton convergence approved requires fresh admission before reads and writes (322.846666ms)
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ coordination and evidence projections are deterministic over accepted record order (10.50725ms)
+✔ timing projection preserves the existing timing table and emits normalized totals (2.410875ms)
+✔ projection convergence is ordered, read-back validated, idempotent, and never writes the issue body (26.209041ms)
+✔ interruption leaves a stale projection that replay repairs without duplicate writes (27.809583ms)
+✔ local fleet and cache observations cannot alter projection authority (2.953166ms)
+ℹ tests 47
+ℹ suites 0
+ℹ pass 47
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5289.683833

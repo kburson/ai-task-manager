@@ -1,0 +1,19 @@
+✔ partial report refuses unowned backend getter before lookup (0.7625ms)
+✔ partial report refuses unowned capability getter before lookup (0.07925ms)
+✔ partial report refuses unowned context getter before lookup (0.066292ms)
+✔ partial report refuses unowned holder getter before lookup (0.064833ms)
+✔ partial report refuses prototype input before borrowed custody (0.103458ms)
+✔ partial report refuses hidden input before borrowed custody (0.082375ms)
+✔ partial report refuses symbol input before borrowed custody (0.0565ms)
+✔ partial report refuses extra input before borrowed custody (0.053666ms)
+✔ partial report refuses missing input before borrowed custody (0.071041ms)
+✔ partial report rejects nested identity getters without executing them (0.490042ms)
+✔ a public copied holder tuple cannot create private report membership (1.047167ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.361583
