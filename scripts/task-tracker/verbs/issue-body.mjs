@@ -14,6 +14,8 @@ import { parseBodyVersion } from '../lib/body-version.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { stripBodyVersion } from '../lib/versioned-issue-write.mjs';
 import { loadState } from '../state.mjs';
+import { assertGovernedMutationSession } from '../lib/governed-mutation-session.mjs';
+export { assertGovernedMutationSession } from '../lib/governed-mutation-session.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 
 const SCHEMA = 'aitm.issue-body-operation/v1';
@@ -263,15 +265,6 @@ export async function runIssueBodyOperation({
     return { ...result, decomposition: refreshed };
   }
   return result;
-}
-
-export function assertGovernedMutationSession(state, issueNumber) {
-  const active = String(state?.active || '').replace(/^#/, '');
-  const target = String(normalizeIssueNumber(issueNumber));
-  if (active !== target)
-    fail('session', `active issue #${active || 'none'} differs from target #${target}`);
-  if (!state?.entryStartTs || state?.pausedAtTs)
-    fail('session', 'an open timing session is required');
 }
 
 export async function runIssueBodyVerb(ctx, deps = {}) {

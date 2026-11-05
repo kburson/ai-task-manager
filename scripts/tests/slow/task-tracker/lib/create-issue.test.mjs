@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1872
+// @story #2161 — forwarding-only parent fixture is already an Epic.
 import { initializeFixtureActor } from '../../../helpers/fixture-actor.mjs';
 initializeFixtureActor(import.meta.url);
 import { createRuntimeRootFixture } from '../../../helpers/runtime-root-fixture.mjs';
@@ -67,6 +68,10 @@ function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = nu
     `
 if [[ "$1 $2" == "issue create" ]]; then
   echo "https://github.com/kburson/ai-task-manager/issues/9999"
+  exit 0
+fi
+if [[ "$1 $2 $3" == "issue view 42" ]]; then
+  echo '{"body":"## AITM Progress Markers\\n<!-- aitm-issue-kind kind=\\"epic\\" -->\\n"}'
   exit 0
 fi
 if [[ "$1" == "api" && "$3" == "PATCH" ]]; then
