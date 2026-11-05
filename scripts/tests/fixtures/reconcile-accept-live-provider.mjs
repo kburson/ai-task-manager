@@ -21,6 +21,7 @@ const queries = new Map([
   ['b0aa2f053278ca7729318540ae5c20bbb6730144fcaa4f815a742f4ccbfee009', 'board'],
 ]);
 const bindReads = new Set([
+  '4cca214c084669e6b00b3907cb3b818c78e05caa2f3f2dd92d47f3df0f9bb642',
   'c5db3166672690db60c6546eee3cfa98f4cbb797efd98cc85fb0ba25db33382c',
   '1310c5d3d186a3a93a19fa18542776dd259ddfe86cabf45c3b3b5028b44c03fc',
   'bf20a8a660f5ae7d16effb9ff5b392129f285271b46fc6d8405e36163f2f373a',
@@ -99,6 +100,7 @@ function graphql() {
   };
   return JSON.stringify({
     data: {
+      viewer: { login: 'operator' },
       repository: {
         id: 'R',
         nameWithOwner: 'fixture-b1/reconcile',
@@ -108,6 +110,7 @@ function graphql() {
           title: 'Fixture issue',
           url: 'https://example.invalid/71',
           body,
+          state: 'OPEN',
           comments: comments(),
           createdAt: '2026-11-03T00:00:00Z',
           assignees: { nodes: [{ login: 'operator' }] },
@@ -122,6 +125,8 @@ function handle() {
   if (matches('api', 'user', '--jq', '.login')) return 'operator';
   if (matches('api', 'graphql', '--input', '-')) return graphql();
   if (state.setup) {
+    if (matches('issue', 'view', ...issueArgs, '--json', 'body'))
+      return JSON.stringify({ body: state.body });
     const updateTimingQuery = `
     mutation($id: ID!, $body: String!) {
       updateIssueComment(input: { id: $id, body: $body }) { issueComment { id } }
