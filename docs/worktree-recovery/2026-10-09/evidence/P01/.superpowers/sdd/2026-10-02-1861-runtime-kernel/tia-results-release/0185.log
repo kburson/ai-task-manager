@@ -1,0 +1,11 @@
+✔ project provider owns Develop and Test plans with typed exact-SHA evidence (42.770292ms)
+✔ Develop-to-Test guard accepts project-provider Develop-final classifications (0.473292ms)
+✔ Develop-to-Test guard does not let Node receipts override lint and format requirements (0.28025ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.41475

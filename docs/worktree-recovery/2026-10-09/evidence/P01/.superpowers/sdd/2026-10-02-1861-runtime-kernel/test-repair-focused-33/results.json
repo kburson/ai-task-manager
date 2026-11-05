@@ -1,0 +1,32 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/session-state.test.mjs",
+    "status": 0,
+    "durationMs": 2085,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-33/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/on-ask.test.mjs",
+    "status": 0,
+    "durationMs": 1480,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-33/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs",
+    "status": 0,
+    "durationMs": 500,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-33/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs",
+    "status": 0,
+    "durationMs": 250,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-33/0003.log"
+  },
+  {
+    "file": "scripts/tests/unit/providers/parity.test.mjs",
+    "status": 0,
+    "durationMs": 219,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-33/0004.log"
+  }
+]

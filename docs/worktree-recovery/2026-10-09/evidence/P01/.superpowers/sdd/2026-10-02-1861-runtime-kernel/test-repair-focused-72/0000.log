@@ -1,0 +1,37 @@
+✔ a selected list of isolated action queries is not a lifecycle transcript (14.1975ms)
+✖ the corrected public CLI capture has one contiguous authority history (31413.013625ms)
+✔ required query and external boundaries cannot disappear from the total (0.67625ms)
+✔ the committed corrected artifact is bound to its runner and preserves the historical capture (34.044583ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31750.338375
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs:28:1
+✖ the corrected public CLI capture has one contiguous authority history (31413.013625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'blocked'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs:71:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

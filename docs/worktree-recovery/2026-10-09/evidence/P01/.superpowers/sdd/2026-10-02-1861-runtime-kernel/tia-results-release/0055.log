@@ -1,0 +1,16 @@
+✔ issue-attributed diff excludes epic, similarly numbered, and later sibling commits (381.570541ms)
+✔ estimation timing freezes at the first terminal issue wrap (0.9715ms)
+✔ close accepts the persisted exact-SHA Test receipt after its worktree is removed (3.045458ms)
+✔ outcome writer resolves the active leaf of a linear immutable correction chain (0.5315ms)
+✔ outcome writer fails closed on forked and dangling correction chains (0.422417ms)
+✔ estimation samples exclude superseded outcomes from the learning cohort (0.178833ms)
+✔ outcome repair changes only issue-scoped landscape evidence (0.176583ms)
+✔ outcome repair appends a validated immutable correction linked to the active record (0.894458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 392.024542

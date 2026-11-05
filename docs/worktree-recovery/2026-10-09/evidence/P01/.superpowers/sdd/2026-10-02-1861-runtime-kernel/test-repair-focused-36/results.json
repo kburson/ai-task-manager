@@ -1,0 +1,26 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs",
+    "status": 0,
+    "durationMs": 731,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-36/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs",
+    "status": 0,
+    "durationMs": 233,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-36/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs",
+    "status": 0,
+    "durationMs": 274,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-36/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs",
+    "status": 0,
+    "durationMs": 1835,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-36/0003.log"
+  }
+]

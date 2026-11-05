@@ -1,0 +1,38 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+    "status": 0,
+    "durationMs": 6473,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+    "status": 0,
+    "durationMs": 1040,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+    "status": 1,
+    "durationMs": 19196,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "status": 1,
+    "durationMs": 92461,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+    "status": 0,
+    "durationMs": 54970,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+    "status": 1,
+    "durationMs": 229578,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-2/0005.log"
+  }
+]

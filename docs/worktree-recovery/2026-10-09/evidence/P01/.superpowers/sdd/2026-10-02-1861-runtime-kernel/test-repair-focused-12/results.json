@@ -1,0 +1,38 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs",
+    "status": 0,
+    "durationMs": 196,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs",
+    "status": 0,
+    "durationMs": 700,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs",
+    "status": 0,
+    "durationMs": 186,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs",
+    "status": 1,
+    "durationMs": 862,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0003.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
+    "status": 1,
+    "durationMs": 1308,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0004.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs",
+    "status": 0,
+    "durationMs": 953,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-12/0005.log"
+  }
+]

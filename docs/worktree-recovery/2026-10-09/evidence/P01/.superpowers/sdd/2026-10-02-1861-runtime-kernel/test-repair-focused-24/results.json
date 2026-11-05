@@ -1,0 +1,26 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs",
+    "status": 0,
+    "durationMs": 994,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-24/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs",
+    "status": 0,
+    "durationMs": 760,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-24/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/seed-kanban-cache.test.mjs",
+    "status": 0,
+    "durationMs": 630,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-24/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/bound-worktree-project-dir.test.mjs",
+    "status": 0,
+    "durationMs": 240,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-24/0003.log"
+  }
+]

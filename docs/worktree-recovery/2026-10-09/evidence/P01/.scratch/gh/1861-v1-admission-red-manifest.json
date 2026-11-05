@@ -1,0 +1,13 @@
+{
+  "profileSha256": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "sourcePaths": [
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs",
+      "sha256": "b84c2c651c9f8618c63ea5e103d652f1513a12394ff0d9f91b48b8dcf84b2c59"
+    }
+  ],
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-v1-admission.test.mjs"
+  ]
+}

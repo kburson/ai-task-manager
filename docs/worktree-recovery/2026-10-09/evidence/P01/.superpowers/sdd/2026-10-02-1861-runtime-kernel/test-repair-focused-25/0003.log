@@ -1,0 +1,20 @@
+✔ exports the marker-authorized approval timing capabilities (0.604209ms)
+✔ #1127 marker-authorized boundary is inserted at approval and deduplicated (18.390125ms)
+✔ marker-authorized boundary ignores fenced approval lookalikes (0.375ms)
+✔ legacy colon approval marker remains valid reconciliation authority (0.147917ms)
+✔ #1127 delayed close cannot inflate Review or published active totals (1.611125ms)
+✔ legacy repair uses the last marker at approval, not a later close marker (0.652625ms)
+✔ legacy repair preserves an explicit unavailable full marker at approval (0.437709ms)
+✔ legacy repair treats an empty historical full-marker cell as unavailable (0.391584ms)
+✔ post-close retry cannot duplicate the same authoritative approval event (1.01625ms)
+✔ runApprove reconciles timing after first approval and on an already-approved retry (169.116834ms)
+✔ runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation (83.835833ms)
+✔ runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval (83.792959ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 535.449416

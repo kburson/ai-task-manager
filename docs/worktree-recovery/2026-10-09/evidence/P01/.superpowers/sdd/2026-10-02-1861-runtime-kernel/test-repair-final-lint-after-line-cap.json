@@ -1,0 +1,6 @@
+{
+  "command": "npm run lint",
+  "status": 0,
+  "durationMs": 32747,
+  "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-final-lint-after-line-cap.log"
+}

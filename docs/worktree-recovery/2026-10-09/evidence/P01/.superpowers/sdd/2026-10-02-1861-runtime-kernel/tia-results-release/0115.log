@@ -1,0 +1,31 @@
+✔ hookStampKey hashes the complete normalized identity without exposing the sid (1.035625ms)
+✔ claimHookStamp deduplicates exact identities and anchors sibling worktrees together (1937.872416ms)
+✔ claimHookStamp propagates non-EEXIST write errors (992.028125ms)
+✔ isPausedTask: returns true when entry status is "paused" (0.160125ms)
+✔ isPausedTask: returns false when entry status is "active" (0.072083ms)
+✔ isPausedTask: returns false when entry status is "done" (0.048583ms)
+✔ isPausedTask: returns false when entry is absent (post-close) (0.046417ms)
+✔ isPausedTask: returns false when lastActive is null (0.0415ms)
+✔ isPausedTask: returns false when lastActive is undefined (0.058125ms)
+✔ isPausedTask: returns false when fleet is null (0.103166ms)
+✔ isPausedTask: returns false when entry has no status field (0.054959ms)
+✔ isTerminalIssueState: true for CLOSED (case-insensitive, padded) (0.065834ms)
+✔ isTerminalIssueState: false for OPEN and unknown/nullish (fail-open) (0.041291ms)
+✔ fetchIssueState: returns trimmed state from injected runner (0.138084ms)
+✔ fetchIssueState: returns null on runner error (offline fail-open) (0.126125ms)
+✔ fetchIssueState: returns null for non-numeric / missing active ref (0.061875ms)
+✔ fetchIssueState: returns null when runner yields empty stdout (0.047041ms)
+✔ claimRecoveryOnce: first call wins, second call for same path loses (18.4565ms)
+✔ claimRecoveryOnce: a fresh path in the same dir wins independently (11.54875ms)
+✔ buildOrphanRecoveryRowSpecs: below threshold posts a single active session-end-recovery row (0.150375ms)
+✔ buildOrphanRecoveryRowSpecs: at the threshold still posts the active row (boundary is exclusive) (0.038916ms)
+✔ buildOrphanRecoveryRowSpecs: above threshold posts an honest pause/resumed pair, no fabricated active time (0.048375ms)
+✔ terminal state lookup accepts the actual hash-prefixed binding reference (0.070667ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2966.436166

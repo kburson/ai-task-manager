@@ -1,0 +1,10 @@
+✔ question marker cannot substitute another event for the frozen resume (14221.479417ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (1669.107125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16136.668167

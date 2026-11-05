@@ -1,0 +1,15 @@
+✔ solo shape: canonical structure (444.546459ms)
+✔ sub-issue shape: canonical structure + parent line (359.646ms)
+✔ epic shape: canonical structure (416.087625ms)
+✔ #272: --status flag is rejected on shape-based creation (213.672792ms)
+✔ stub shape: canonical structure without scope/ac/plan-metadata files (457.122375ms)
+✔ stub shape: --idea-file seeds the Scope section (371.791125ms)
+✔ sub-issue shape requires --parent (170.791875ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2437.34625

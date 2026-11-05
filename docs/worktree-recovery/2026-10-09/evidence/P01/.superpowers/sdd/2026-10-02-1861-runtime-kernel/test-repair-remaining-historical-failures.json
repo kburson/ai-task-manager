@@ -1,0 +1,994 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-test-worktree.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 945,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0022.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 192,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0053.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 274,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0062.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7017,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0063.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 305,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0074.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 696,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0081.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 478,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0082.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 517,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0083.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1724,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0088.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 439,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0089.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 991,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0093.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 229,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0115.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 5361,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0120.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 6308,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0124.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1260,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0135.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 32043,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0137.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1386,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0142.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 16971,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0143.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 8510,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0144.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 12406,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0145.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 333,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0154.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 832,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0157.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 513,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0159.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 496,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0161.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7737,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0162.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7680,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0163.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7050,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0164.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 2070,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0166.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 423,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0178.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 681,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0181.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1094,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0185.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 400,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0187.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 107,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0191.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 148,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0193.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 168,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0194.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 345,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0196.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 206,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0218.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 250,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0223.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7771,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0225.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 7060,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0226.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 658,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0228.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1871,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0229.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 6526,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0230.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1202,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0231.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 129603,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0232.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 817,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0234.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/cli.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 668,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0235.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1200,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0236.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 3955,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0239.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1142,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0240.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 2327,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0241.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1224,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0243.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 475,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0244.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 315,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0245.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 364,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0247.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 13066,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0250.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/gates.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 922,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0252.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1226,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0255.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 10445,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0256.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 582,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0257.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 267,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0258.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/move-state.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1286,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0259.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 618,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0261.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 497,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0262.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1183,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0263.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 547,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0264.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1487,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0265.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 460,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0266.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 2476,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0268.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 4579,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0270.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 430,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0271.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 568,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0272.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 279,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0273.log"
+  },
+  {
+    "file": "scripts/tests/unit/providers/parity.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 142,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0288.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1651,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0290.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 488,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0321.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 123,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0341.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1365,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0397.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 1185,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0398.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 380,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0440.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 227,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0453.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 239,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0461.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 272,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0482.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/flock-contention.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 87,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0576.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 12704,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0599.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 14280,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0600.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 996,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0617.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/locks.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 81,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0627.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 390,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0640.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 505,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0644.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 456,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0645.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/occupancy.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 385,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0660.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/on-ask.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 111,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0661.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/on-stop.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 197,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0662.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/paths.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 62,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0665.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/queue.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 80,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0674.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 156,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0679.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 333,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0680.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 272,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0696.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/save-plan.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 79,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0702.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 59,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0704.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/session-state.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 142,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0708.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 363,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0723.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/state.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 88,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0724.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 85,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0731.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 156,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0735.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 125,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0745.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 240,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0752.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 241,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0753.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 82,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0765.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 72,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0766.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-counter.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 71,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0767.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 116,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0768.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 149,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0777.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 358,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0789.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 385,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0790.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 860,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0791.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 738,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0792.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 254,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0801.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 834,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0810.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 236,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0816.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 490,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0820.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 472,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0865.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs",
+    "status": 1,
+    "signal": null,
+    "error": null,
+    "durationMs": 356,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/tia-results-valid/0884.log"
+  }
+]

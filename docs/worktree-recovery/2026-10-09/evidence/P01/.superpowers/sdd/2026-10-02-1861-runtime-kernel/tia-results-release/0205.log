@@ -1,0 +1,19 @@
+✔ (a) every dispatched verb has a VERB_REFERENCE entry (2.054959ms)
+✔ standalone commands never resolve as /task verbs (0.127208ms)
+✔ (b) every entry has a non-empty usage and >=1 example (0.237208ms)
+✔ (c) declared flags are well-formed (0.464375ms)
+✔ (d) top-level help contains the state-transition map and gate/evidence headers (0.489375ms)
+✔ (e) per-verb help names the requested verb and shows exit codes (0.581958ms)
+✔ Shelve help documents the narrow schema-1 stale-blocker migration (0.113333ms)
+✔ Park help omits the Shelve-only stale-blocker migration flag (0.0645ms)
+✔ Deliver help documents the re-entrant Review-only provider handoff (0.192625ms)
+✔ (f) the aitm wrapper routes every user-facing help form to verbHelp (1676.311208ms)
+✔ resolveVerb follows aliases to canonical keys (0.157958ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1685.022875

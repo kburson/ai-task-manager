@@ -1,0 +1,16 @@
+[task-tracker] ✓ #501 removed native blockers #999
+✔ AC4: runDemote succeeds on a marker-heavy body (write path is not fragile) (3.339083ms)
+✔ AC4: runUnblock clears a native blocker without rewriting a marker-heavy body (1.1055ms)
+✔ AC4: backward demote exit guard fires while a blocker is open (confirmed contract) (0.535459ms)
+✔ AC (#572): main-anchored resolvers use an actual owning root (1642.011917ms)
+✔ AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling worktree cwd (219.901583ms)
+✔ AC (#574): relocated .ai-task-manager/templates survive a fresh worktree checkout (120.391958ms)
+✔ AC (#572): getProjectDir verifies every alias against the physical invoking root (1682.939792ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3674.451708

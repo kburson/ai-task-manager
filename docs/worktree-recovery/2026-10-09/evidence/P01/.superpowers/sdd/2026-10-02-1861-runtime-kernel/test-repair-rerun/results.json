@@ -1,0 +1,440 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-test-worktree.test.mjs",
+    "status": 0,
+    "durationMs": 1855,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+    "status": 1,
+    "durationMs": 309,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+    "status": 0,
+    "durationMs": 474,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs",
+    "status": 1,
+    "durationMs": 397,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
+    "status": 1,
+    "durationMs": 2373,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs",
+    "status": 1,
+    "durationMs": 1174,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs",
+    "status": 1,
+    "durationMs": 12153,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0006.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs",
+    "status": 1,
+    "durationMs": 4614,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0007.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs",
+    "status": 1,
+    "durationMs": 105,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0008.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs",
+    "status": 1,
+    "durationMs": 256,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0009.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-review.test.mjs",
+    "status": 1,
+    "durationMs": 339,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0010.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+    "status": 1,
+    "durationMs": 3945,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0011.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+    "status": 1,
+    "durationMs": 3460,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0012.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs",
+    "status": 1,
+    "durationMs": 640,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0013.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs",
+    "status": 1,
+    "durationMs": 704,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0014.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs",
+    "status": 1,
+    "durationMs": 533,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0015.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-contract.test.mjs",
+    "status": 1,
+    "durationMs": 1021,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0016.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs",
+    "status": 1,
+    "durationMs": 312,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0017.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs",
+    "status": 1,
+    "durationMs": 2837,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0018.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs",
+    "status": 1,
+    "durationMs": 485,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0019.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs",
+    "status": 1,
+    "durationMs": 1428,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0020.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs",
+    "status": 1,
+    "durationMs": 217,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0021.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs",
+    "status": 1,
+    "durationMs": 174,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0022.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+    "status": 1,
+    "durationMs": 9865,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0023.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs",
+    "status": 1,
+    "durationMs": 421,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0024.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs",
+    "status": 1,
+    "durationMs": 108,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0025.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs",
+    "status": 1,
+    "durationMs": 206,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0026.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+    "status": 1,
+    "durationMs": 7629,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0027.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/evidence-v2/rehearsal-cli.test.mjs",
+    "status": 1,
+    "durationMs": 8283,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0028.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs",
+    "status": 1,
+    "durationMs": 454,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0029.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs",
+    "status": 1,
+    "durationMs": 185,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0030.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs",
+    "status": 1,
+    "durationMs": 1442,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0031.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "status": 1,
+    "durationMs": 59436,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0032.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+    "status": 1,
+    "durationMs": 995,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0033.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+    "status": 1,
+    "durationMs": 38119,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0034.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "status": 1,
+    "durationMs": 1966,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0035.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+    "status": 1,
+    "durationMs": 21437,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0036.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release-refusal.test.mjs",
+    "status": 1,
+    "durationMs": 9058,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0037.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 1,
+    "durationMs": 14135,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0038.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs",
+    "status": 1,
+    "durationMs": 413,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0039.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs",
+    "status": 1,
+    "durationMs": 599,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0040.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs",
+    "status": 1,
+    "durationMs": 506,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0041.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs",
+    "status": 1,
+    "durationMs": 1029,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0042.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs",
+    "status": 1,
+    "durationMs": 553,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0043.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs",
+    "status": 1,
+    "durationMs": 189,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0044.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs",
+    "status": 1,
+    "durationMs": 363,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0045.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "status": 1,
+    "durationMs": 7289,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0046.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "status": 1,
+    "durationMs": 8323,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0047.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "status": 1,
+    "durationMs": 7376,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0048.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "status": 1,
+    "durationMs": 1925,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0049.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs",
+    "status": 1,
+    "durationMs": 2701,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0050.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs",
+    "status": 1,
+    "durationMs": 299,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0051.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs",
+    "status": 1,
+    "durationMs": 490,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0052.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs",
+    "status": 1,
+    "durationMs": 465,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0053.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs",
+    "status": 1,
+    "durationMs": 211,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0054.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate-workflow-policy.test.mjs",
+    "status": 1,
+    "durationMs": 93,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0055.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs",
+    "status": 0,
+    "durationMs": 395,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0056.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs",
+    "status": 1,
+    "durationMs": 809,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0057.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs",
+    "status": 1,
+    "durationMs": 184,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0058.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs",
+    "status": 1,
+    "durationMs": 408,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0059.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs",
+    "status": 1,
+    "durationMs": 1042,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0060.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs",
+    "status": 1,
+    "durationMs": 381,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0061.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs",
+    "status": 1,
+    "durationMs": 397,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0062.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/tracked-templates.test.mjs",
+    "status": 0,
+    "durationMs": 1685,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0063.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs",
+    "status": 1,
+    "durationMs": 187,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0064.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs",
+    "status": 1,
+    "durationMs": 148,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0065.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs",
+    "status": 1,
+    "durationMs": 199,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0066.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs",
+    "status": 1,
+    "durationMs": 377,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0067.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+    "status": 1,
+    "durationMs": 314,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0068.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/bind.test.mjs",
+    "status": 1,
+    "durationMs": 305,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0069.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+    "status": 1,
+    "durationMs": 1051,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0070.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs",
+    "status": 1,
+    "durationMs": 207,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0071.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs",
+    "status": 1,
+    "durationMs": 667,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-rerun/0072.log"
+  }
+]

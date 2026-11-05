@@ -1,0 +1,10 @@
+✔ genuine child issue reentrancy validates its live ancestor and exact protected proof while siblings still contend (2765.31675ms)
+✔ registered bootstrap observes and recovers an exact SIGKILLed operation without age or manual lock edits (3567.218375ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6416.015333

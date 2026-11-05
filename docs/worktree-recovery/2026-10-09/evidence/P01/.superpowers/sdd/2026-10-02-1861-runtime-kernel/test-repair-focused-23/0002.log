@@ -1,0 +1,41 @@
+dod-stamp-state-gate.test.mjs: defined
+[task-tracker] dod-stamp tests: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] dod-stamp tests on #778: running 1 verifier(s)…
+  ✓ npm run test:all (exit=0)
+[task-tracker] ✓ dod-stamp tests on #778: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb).
+[task-tracker] ac-stamp: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] ac-stamp on #780: running 1 verifier(s) for AC "full suite must pass"…
+  ✓ npm run test:all (exit=0)
+[task-tracker] ✓ ac-stamp on #780: run-props (key=3bdb5b17) upserted onto the AC line's aitm-verified marker (sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb).
+[task-tracker] dod-stamp tests on #781: reusing Test receipt 01KYZ7Q780MQDSKNZG6XC9ZETJ; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #781: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests on #783: reusing Test receipt 01KYZ7Q780J7JV4VP7VYFXTNEM; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #783: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] ac-stamp on #784: reusing Test receipt 01KYZ7Q78053NF0F9R9EX6K7YC; standard commands were not rerun.
+[task-tracker] ✓ ac-stamp on #784: evidence stamped from Test receipt (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: live issue state could not be resolved; verifier execution is refused.
+[task-tracker] ac-stamp: live issue state could not be resolved; verifier execution is refused.
+✔ dod-stamp tests: refuses in develop, verifier never runs (165.408917ms)
+✔ dod-stamp tests: proceeds normally once in test state (247.531458ms)
+✔ ac-stamp: refuses a restricted verifier command in develop, verifier never runs (128.185125ms)
+✔ ac-stamp: proceeds normally once in test state (213.028875ms)
+✔ dod-stamp tests: Review + valid receipt reuses and does not spawn npm (122.285334ms)
+✔ dod-stamp tests: Review + stale receipt refuses and does not spawn npm (126.7995ms)
+✔ dod-stamp tests: Test + valid receipt reuses and does not spawn npm (126.279083ms)
+✔ ac-stamp: Review + valid receipt reuses Test provenance and does not spawn npm (125.733833ms)
+✔ Review + uncovered lint refuses on both stamp surfaces without spawning npm (248.320791ms)
+✔ Review + issue-mismatched receipt refuses on both stamp surfaces (247.427166ms)
+✔ unavailable live state refuses on both stamp surfaces (243.213208ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2122.727417

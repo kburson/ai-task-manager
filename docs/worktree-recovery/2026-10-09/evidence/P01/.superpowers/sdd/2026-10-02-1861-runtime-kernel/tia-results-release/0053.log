@@ -1,0 +1,18 @@
+Started #1163.
+already active: #1163
+✔ resolves one atomic worktree identity from the invoking directory (1.021917ms)
+✔ active-task state overwrites all worktree identity fields together (1885.502667ms)
+✔ legacy active-task records without worktree identity remain readable (921.621458ms)
+✔ binding outside Git fails before a null identity can be persisted (11.372958ms)
+✔ explicit bind persists identity and a same-issue rebind replaces it (9205.191542ms)
+✔ bind resolution failure happens before active-task state mutation (2954.378875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14983.184
+[dependency-disposition] #1163: binding remains active; retry dependency projection (dependency-disposition:config)
+[dependency-disposition] #1163: binding remains active; retry dependency projection (dependency-disposition:config)

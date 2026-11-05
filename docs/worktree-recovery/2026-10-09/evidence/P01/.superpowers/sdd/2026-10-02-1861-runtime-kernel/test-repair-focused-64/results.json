@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/gates.test.mjs",
+    "status": 0,
+    "durationMs": 23947,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-64/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+    "status": 1,
+    "durationMs": 1424,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-64/0001.log"
+  }
+]

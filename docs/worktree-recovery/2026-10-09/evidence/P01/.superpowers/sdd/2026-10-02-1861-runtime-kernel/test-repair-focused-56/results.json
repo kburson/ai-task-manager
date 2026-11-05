@@ -1,0 +1,14 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs",
+    "status": 1,
+    "durationMs": 12236,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-56/0000.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs",
+    "status": 1,
+    "durationMs": 5300,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-56/0001.log"
+  }
+]

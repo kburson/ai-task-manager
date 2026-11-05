@@ -1,0 +1,30 @@
+✔ shim preserves exact request, stdout, stderr, and exit while recording body-file bytes (4338.902375ms)
+✔ shim captures piped stdin and refuses invalid metadata before child execution (4153.259458ms)
+✔ shim preserves a terminating signal while recording the outcome (3538.555417ms)
+✔ shim does not wait for EOF on an unused execFile stdin pipe (4314.532333ms)
+✖ concurrent shim processes allocate unique ordered action directories (5250.357334ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21738.558042
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:204:1
+✖ concurrent shim processes allocate unique ordered action directories (5250.357334ms)
+  AssertionError [ERR_ASSERTION]: [{"code":0,"signal":null,"stderr":""},{"code":0,"signal":null,"stderr":""},{"code":0,"signal":null,"stderr":""},{"code":0,"signal":null,"stderr":""},{"code":0,"signal":null,"stderr":""},{"code":0,"signal":null,"stderr":""},{"code":1,"signal":null,"stderr":"[aitm] action capture unresolved: RUNTIME_MIGRATION_BUSY: Coordinator ownership requires explicit recovery; age is not authority\n"},{"code":0,"signal":null,"stderr":""}]
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs:217:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
