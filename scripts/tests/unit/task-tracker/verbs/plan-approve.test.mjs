@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// @story #122 #1714
+// @story #122 #1714 #2153
+// cspell:ignore WFFQSAYKTYJ
 // Unit tests for scripts/task-tracker/verbs/plan-approve.mjs.
 //
 // Covers:
@@ -18,11 +19,7 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 import { test } from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  formatPlanApproveOutcome,
-  runPlanApprove,
-  verbPlanApprove,
-} from '../../../../task-tracker/verbs/plan-approve.mjs';
+import { runPlanApprove, verbPlanApprove } from '../../../../task-tracker/verbs/plan-approve.mjs';
 import {
   buildPlanApprovedMarker,
   hasPlanApprovedMarker,

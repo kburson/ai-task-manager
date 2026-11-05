@@ -1,10 +1,12 @@
+<!-- cspell:ignore aaff WFFQSAYKTYJ precheck digestless handwaved -->
+
 # Current Plan approval after a policy-exempt transition — #2153
 
 ## Problem and evidence
 
 Issue #2147 legitimately entered Develop with a durable `approval.plan` outcome of `not-required`. It subsequently passed source verification and Test, but resident Review requires a canonical Full-Auto Plan-Approval Audit. Ordinary later-stage approval routes into waived-transition reconstruction; that reader first loses historical completion when the singleton move-complete sentinel advances and then only admits a revoked waiver. There is no waiver in this incident.
 
-The native failure report is https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6651060778 . The authority and completion comments are https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6620373277 and https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6620377056 . The authority's old scope identity differs from the current scope identity. This design makes no claim that the difference is harmless.
+The native failure report is <https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6651060778> . The authority and completion comments are <https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6620373277> and <https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6620377056> . The authority's old scope identity differs from the current scope identity. This design makes no claim that the difference is harmless.
 
 The baseline is trunk `13dba5c003eb3dd13d8042d5874bd0cc752d8653`. Relevant existing contracts are #1720 (immutable transition authority), #1716 (strict revoked-waiver repair), and #1721 (separate open session-mode selection defect). #2148 is complete and is not reopened. This is one bounded defect in the #2039 completion chain.
 

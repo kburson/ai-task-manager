@@ -1,3 +1,5 @@
+<!-- cspell:ignore aaff WFFQSAYKTYJ precheck digestless handwaved -->
+
 # Current Plan approval after a policy-exempt transition — Implementation Plan #2153
 
 > **For agentic workers:** Use `executing-plans` for native implementation in this owning chat, task by task. Do not implement before the ordered spec and plan review is accepted. Steps use checkboxes for tracking.
@@ -16,7 +18,7 @@ Implement only the explicit current-scope lane, its strict evidence reader, mark
 
 ## Context
 
-Native failure: https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6651060778 . Baseline trunk: `13dba5c003eb3dd13d8042d5874bd0cc752d8653`. Historical #2147 scope differs from current scope and must not be assumed equivalent. Existing late approval only reconstructs waived authority; the singleton completion sentinel advances to Review.
+Native failure: <https://github.com/kburson/ai-task-manager/issues/2147#issuecomment-6651060778> . Baseline trunk: `13dba5c003eb3dd13d8042d5874bd0cc752d8653`. Historical #2147 scope differs from current scope and must not be assumed equivalent. Existing late approval only reconstructs waived authority; the singleton completion sentinel advances to Review.
 
 ## Plan Metadata
 
@@ -121,7 +123,8 @@ node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test
 - Modify: `scripts/task-tracker/lib/agent-review/review-gate.mjs`
 - Modify: `scripts/task-tracker/lib/resident-actions/review-agent-validation.mjs`
 - Extend: `scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs`
-- Extend the existing resident Review and review-context tests for new-digest freshness only.
+- Create: `scripts/tests/unit/task-tracker/verbs/plan-approve-current-scope.test.mjs` for producer/parser coverage beyond the existing suite line cap.
+- Create: `scripts/tests/unit/task-tracker/verbs/review-current-plan-approval.test.mjs` for new-digest resident Review/review-context coverage.
 - Create: `scripts/tests/integration/task-tracker/plan-approval-current-scope.test.mjs`
 - Create: `docs/workflows/current-plan-approval.md`
 
@@ -149,7 +152,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test.mjs scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test.mjs scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve-current-scope.test.mjs scripts/tests/unit/task-tracker/verbs/review-current-plan-approval.test.mjs
 node --test scripts/tests/integration/task-tracker/plan-approval-current-scope.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs
 ```

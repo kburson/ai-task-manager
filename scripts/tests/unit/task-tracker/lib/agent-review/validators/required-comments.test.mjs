@@ -1,4 +1,5 @@
-// @story #811
+// @story #811 #2153
+// cspell:ignore digestless
 // Tests for the V2 required-comments validator (#811).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,6 +9,11 @@ import {
 } from '../../../../../../task-tracker/lib/agent-review/validators/required-comments.mjs';
 import { buildPlanApprovalAuditComment } from '../../../../../../task-tracker/lib/plan-approval-audit.mjs';
 import { buildPlanApprovedMarker } from '../../../../../../task-tracker/lib/markers.mjs';
+import {
+  createCurrentPlanApprovalEvidence,
+  currentPlanApprovalDigest,
+} from '../../../../../../task-tracker/lib/plan-approval-current-scope.mjs';
+import { computeScopeIdentity } from '../../../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 
 // One satisfying comment body per required row. Signals mirror the live
 // #810 comment stream.
@@ -272,3 +278,111 @@ test('bootstrap registers the validator on the shared singleton', async () => {
     'required-comments not registered'
   );
 });
+
+// @story #2153
+function currentAuditFixture() {
+  const issueNumber = 2153,
+    repo = 'o/r',
+    acceptedSourceHead = 'e'.repeat(40),
+    ts = '2026-11-05T07:00:00Z';
+  const base =
+    '## User Story\n\nAs a release operator\nI want to stop partial publication because checks fail\nSo that consumers receive complete releases\n\n## Scope\n\nStop partial publication.\n\n## Plan Metadata\n\n- Implementation-plan: plan.md\n\n## Acceptance Criteria\n\n- [ ] Reject incomplete publication.\n';
+  const binding = {
+    storyDigest: 'b'.repeat(64),
+    storyIntentDigest: 'c'.repeat(64),
+    storyIntentSource: 'linked-plan',
+  };
+  const currentEvidence = createCurrentPlanApprovalEvidence({
+    repository: repo,
+    issue: issueNumber,
+    scopeIdentity: computeScopeIdentity({ repository: repo, issue: issueNumber, body: base }),
+    sourceHead: acceptedSourceHead,
+    trunkSha: 'f'.repeat(40),
+    planPath: 'plan.md',
+    planContentSha256: 'a'.repeat(64),
+    storyBinding: binding,
+    forecastRecordId: null,
+    admission: {
+      transitionId: 'move:bbec1b1c-b113-4ae3-8037-9db4ea1152b0',
+      authorityCommentId: '1',
+      commitCommentId: '2',
+      historicalScopeIdentity: `sha256:${'4'.repeat(64)}`,
+      authorityFingerprint: `sha256:${'5'.repeat(64)}`,
+      commitFingerprint: `sha256:${'6'.repeat(64)}`,
+    },
+  });
+  const marker = buildPlanApprovedMarker(ts, {
+    ...binding,
+    mode: 'full-auto',
+    trunkSha: currentEvidence.trunkSha,
+    currentApprovalDigest: currentPlanApprovalDigest(currentEvidence),
+  });
+  const audit = buildPlanApprovalAuditComment({ issueNumber, ts, currentEvidence });
+  const withProgress = base + '\n## AITM Progress Markers\n';
+  return {
+    issueNumber,
+    repo,
+    acceptedSourceHead,
+    ts,
+    base: withProgress,
+    marker,
+    audit,
+    currentEvidence,
+    body: withProgress + '\n' + marker,
+    comments: [...commentsExcept('Full-Auto plan-approval audit'), { body: audit }],
+  };
+}
+test('#2153 matching current audit passes against selected source HEAD without live trunk equality', () => {
+  const f = currentAuditFixture();
+  assert.equal(validate(f).pass, true);
+});
+for (const [name, alter] of Object.entries({
+  'ordinary audit with same timestamp': (f) => {
+    f.comments.at(-1).body = buildPlanApprovalAuditComment({
+      issueNumber: f.issueNumber,
+      ts: f.ts,
+    });
+  },
+  'waiver audit with same timestamp': (f) => {
+    f.comments.at(-1).body = buildPlanApprovalAuditComment({
+      issueNumber: f.issueNumber,
+      ts: f.ts,
+      repairEvidence: {
+        approvalPlanRecordId: '01M2Y000000000000000000001',
+        revokedRecordId: '01M2Y000000000000000000002',
+      },
+    });
+  },
+  'current audit for digestless marker': (f) => {
+    f.body = f.base + '\n' + buildPlanApprovedMarker(f.ts, { mode: 'full-auto' });
+  },
+  'changed accepted HEAD': (f) => {
+    f.acceptedSourceHead = 'd'.repeat(40);
+  },
+  'missing source context': (f) => {
+    delete f.acceptedSourceHead;
+  },
+  'changed scope at same HEAD': (f) => {
+    f.body = f.body.replace('Reject incomplete publication.', 'Publish every result.');
+  },
+  'changed plan path at same HEAD': (f) => {
+    f.body = f.body.replace('Implementation-plan: plan.md', 'Implementation-plan: other.md');
+  },
+  'changed story binding': (f) => {
+    f.body = f.body.replace('story-digest="' + 'b'.repeat(64), 'story-digest="' + 'a'.repeat(64));
+  },
+  'current marker relabeled human': (f) => {
+    f.body = f.body.replace('mode="full-auto"', 'mode="human"');
+  },
+  'malformed current digest': (f) => {
+    f.body = f.body.replace(/current-approval-digest="[^"]+"/, 'current-approval-digest="broken"');
+  },
+  'duplicate current audit': (f) => {
+    f.comments.push({ body: f.audit });
+  },
+}))
+  test(`#2153 current approval refuses ${name}`, () => {
+    const f = currentAuditFixture();
+    alter(f);
+    assert.equal(validate(f).pass, false);
+  });
