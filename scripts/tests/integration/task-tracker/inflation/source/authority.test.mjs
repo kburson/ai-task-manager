@@ -4,9 +4,14 @@ import { test } from 'node:test';
 import { renameSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { readDecompositionRecords } from '../../../task-tracker/lib/decomposition-records.mjs';
-import { createInflationPublicEntryFixture } from '../../fixtures/inflation-public-entry-fixture.mjs';
-import { root, source, inflation, startFixture } from '../../fixtures/inflation-test-context.mjs';
+import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
+import { createInflationPublicEntryFixture } from '../../../../fixtures/inflation-public-entry-fixture.mjs';
+import {
+  root,
+  source,
+  inflation,
+  startFixture,
+} from '../../../../fixtures/inflation-test-context.mjs';
 function transport(start, argv, input) {
   return spawnSync(process.execPath, [path.join(start.environment.PATH, 'gh'), ...argv], {
     cwd: start.cwd,

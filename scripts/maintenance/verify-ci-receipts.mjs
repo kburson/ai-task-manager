@@ -1,4 +1,4 @@
-// @story #1873
+// @story #1873 #2163
 // Repository-only bridge: validate genuine CI artifacts; core records the real command.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { configPath } from '../task-tracker/paths.mjs';
 import { validateShardReceipts } from '../run-tests-shards.mjs';
 
 const LANES = ['unit', 'integration', 'slow'];
+const LANE_GROUPS = Object.freeze({ unit: 1, integration: 9, slow: 3 });
 function fail(reason) {
   throw new Error(`cloud-receipt:${reason}`);
 }
@@ -34,7 +35,7 @@ export function validateCloudLanes(records, { head, commit, run, inventories }) 
   let count = 0;
   for (const lane of LANES) {
     const record = records.find((r) => r.lane === lane);
-    const total = lane === 'unit' ? 1 : 3;
+    const total = LANE_GROUPS[lane];
     if (
       !record ||
       record.schema !== 'aitm.ci-lane-results/v1' ||
@@ -94,8 +95,8 @@ export function verifyCurrentCloudReceipts({ projectDir = process.cwd() } = {}) 
   const attempt = run.run_attempt;
   const names = [
     'ci-unit-1',
-    ...['1', '2', '3'].map((i) => `ci-integration-${i}`),
-    ...['1', '2', '3'].map((i) => `ci-slow-group-${i}`),
+    ...Array.from({ length: LANE_GROUPS.integration }, (_, i) => `ci-integration-${i + 1}`),
+    ...Array.from({ length: LANE_GROUPS.slow }, (_, i) => `ci-slow-group-${i + 1}`),
     'ci-fast-receipts',
     'ci-slow-receipt',
   ].map((n) => `${n}-${attempt}`);

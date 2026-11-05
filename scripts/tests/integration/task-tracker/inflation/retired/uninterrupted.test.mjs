@@ -1,8 +1,8 @@
 // @story #2163 — retirement is reached through actual registered commands.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { startFixture, inflation } from '../../fixtures/inflation-test-context.mjs';
-import { readDecompositionRecords } from '../../../task-tracker/lib/decomposition-records.mjs';
+import { startFixture, inflation } from '../../../../fixtures/inflation-test-context.mjs';
+import { readDecompositionRecords } from '../../../../../task-tracker/lib/decomposition-records.mjs';
 
 test('registered cancellation then inflation preserves retired forecast authority', async (t) => {
   const { fixture } = await startFixture(t, { scenario: 'retired-forecast' });

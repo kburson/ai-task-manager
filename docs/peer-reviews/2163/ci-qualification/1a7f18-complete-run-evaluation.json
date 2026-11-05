@@ -1,0 +1,120 @@
+{
+  "schema": "aitm.2163-ci-qualification/v1",
+  "kind": "completed-second-run-timing-and-derived-replay-analysis",
+  "nativeReceipt": false,
+  "run": {
+    "id": 42122846359,
+    "sourceHead": "1a7f187c50598f95cf34d04ad1f344058668bc7c",
+    "testedCommit": "4006b384b0b0d69c837a5f2e9d231452e6ad44f2",
+    "job": 127579375219,
+    "artifactId": 13462935644,
+    "zipBytes": 11746,
+    "zipSha256": "2bfb4d785bd5968c31720145499087ea3df0e12b1111c7d3115eecb1c9b00aac",
+    "exitCode": 1,
+    "reportedFailure": "assigned-state-residue.test.mjs only; all nine inflation files passed; runner exited before ceiling evaluation"
+  },
+  "pin": {
+    "path": "1a7f18-group3-timing.json",
+    "bytes": 36993,
+    "sha256": "8547c49eb90949bce59889f143b1eff1f28457e198bde21a7e35beffa3aaa750"
+  },
+  "evaluator": {
+    "path": "scripts/run-tests-ceiling.mjs",
+    "sha256": "20899cf0ece9c511742b2010d6bbc8297e1d1d479f94920b7df024fe6ed61543",
+    "input": {
+      "lane": "integration",
+      "env": {},
+      "sections": [
+        {
+          "name": "serial",
+          "count": 99,
+          "elapsedMs": 2625080.8
+        }
+      ]
+    },
+    "result": {
+      "lane": "integration",
+      "sections": [
+        {
+          "name": "serial",
+          "count": 99,
+          "breached": true,
+          "exempt": false,
+          "ceilingMs": 600000,
+          "elapsedMs": 2625080.8,
+          "message": "run-tests: lane 'integration' section 'serial' ran 2625.1s, over the 600s section ceiling (fail-closed). Split the section (see #945) — do not relax the ceiling."
+        }
+      ],
+      "totalElapsedMs": 2625080.8,
+      "breached": true
+    }
+  },
+  "model": {
+    "kind": "same-run-per-file-replay-estimate-not-final-ci",
+    "sourceTimingFiles": [
+      "1a7f18-group1-timing.json",
+      "1a7f18-group2-timing.json",
+      "1a7f18-group3-timing.json"
+    ],
+    "renames": {
+      "scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/authority.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-drift-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/drift.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-input-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/input.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-active-retry-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/active/retry.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retry-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/plain/before.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retry-after-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/plain/after.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/uninterrupted.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-before-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/before.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-after-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/after.test.mjs"
+    },
+    "groups": [
+      {
+        "group": 1,
+        "count": 33,
+        "observedReplayMs": 512980.9
+      },
+      {
+        "group": 2,
+        "count": 33,
+        "observedReplayMs": 348286.8
+      },
+      {
+        "group": 3,
+        "count": 33,
+        "observedReplayMs": 202667.8
+      },
+      {
+        "group": 4,
+        "count": 33,
+        "observedReplayMs": 396460.1
+      },
+      {
+        "group": 5,
+        "count": 33,
+        "observedReplayMs": 161690.8
+      },
+      {
+        "group": 6,
+        "count": 33,
+        "observedReplayMs": 557186.7
+      },
+      {
+        "group": 7,
+        "count": 33,
+        "observedReplayMs": 307828.4
+      },
+      {
+        "group": 8,
+        "count": 33,
+        "observedReplayMs": 277033.7
+      },
+      {
+        "group": 9,
+        "count": 33,
+        "observedReplayMs": 503974.1
+      }
+    ],
+    "maximumMs": 557186.7,
+    "limitMs": 600000
+  }
+}
