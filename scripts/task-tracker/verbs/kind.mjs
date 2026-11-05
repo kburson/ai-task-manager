@@ -79,10 +79,9 @@ export async function verbKind(ctx) {
     projectDir: ctx.projectDir,
     deps: ctx.deps ?? {},
   };
-  await assertGovernedDecompositionRecovery(recovery);
   if (kind === 'epic') {
     const reconcileEpicMetadata = ctx.reconcileEpicMetadata || defaultReconcileEpicMetadata;
-    await reconcileEpicMetadata({
+    const result = await reconcileEpicMetadata({
       issueNumber: Number(target),
       repo: cfg.repo,
       forceEpic: true,
@@ -90,9 +89,13 @@ export async function verbKind(ctx) {
       cfg,
       projectDir: ctx.projectDir,
     });
-    console.log(`[task-tracker] ✓ kind on #${target}: set to "epic".`);
+    console.log(
+      `[task-tracker] ✓ kind on #${target}: ${result.status === 'already-converged' ? 'already converged' : 'reconciled'}.`
+    );
     return;
   }
+
+  await assertGovernedDecompositionRecovery(recovery);
 
   await mutateIssueBody({
     issueNumber: target,

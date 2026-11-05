@@ -169,7 +169,10 @@ test('unrelated children coexist but cannot satisfy a missing WBS task', async (
 });
 
 // @story #1991 — decisions use the real current collector, not legacy permission fixtures.
-import { governedFixture } from './decomposition-governed-fixtures.mjs';
+import {
+  governedFixture,
+  installEpicConvergenceFixturePorts,
+} from './decomposition-governed-fixtures.mjs';
 import { currentUnitAuthority } from './decomposition-unit-admission-fixture.mjs';
 import { formatDecomposeCheck } from '../../../../task-tracker/verbs/decompose-check.mjs';
 import { unavailable } from './decomposition-authority-fixtures.mjs';
@@ -291,6 +294,7 @@ for (const terminal of [false, true])
   );
 test('unreviewed converted epic cannot claim planning or completion from kind alone', async () => {
   const f = await governedFixture();
+  installEpicConvergenceFixturePorts(f);
   f.ctx.rest = ['1', 'epic'];
   const { verbKind } = await import('../../../../task-tracker/verbs/kind.mjs');
   await verbKind(f.ctx);
