@@ -63,7 +63,7 @@ export function mostRecentIssueWorktreeLocation(body) {
 // no location history. This reader is intentionally stricter than the legacy
 // history reader: a marker-like record is authority, so a malformed one must
 // not silently degrade to the synthesized canonical epic branch.
-function strictIssueWorktreeLocations(body) {
+export function strictIssueWorktreeLocations(body) {
   const records = [];
   for (const line of String(body || '').split('\n')) {
     if (!ISSUE_WORKTREE_LOCATION_MARKER_RE.test(line)) continue;

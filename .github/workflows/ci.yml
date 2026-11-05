@@ -26,6 +26,9 @@
 
 name: CI
 
+# #2148: retain the verified Linux tool layout while ubuntu-latest migrates to
+# 26.04. Native executable trust must be qualified before changing this image.
+
 on:
   pull_request:
   push:
@@ -59,7 +62,7 @@ jobs:
     if: >-
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && inputs.release_candidate)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       # The capture source can become unreachable after squash delivery. Fetch
@@ -82,7 +85,7 @@ jobs:
   guidance-cache-benchmark:
     name: Guidance cache runtime budget
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -118,7 +121,7 @@ jobs:
     outputs:
       skip_tests: ${{ github.event_name == 'pull_request' && (steps.scope.outputs.docs_only == 'true' || contains(github.event.pull_request.labels.*.name, 'docs-only')) }}
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
@@ -242,7 +245,7 @@ jobs:
     name: Fast lane (format, lint, unit + integration)
     needs: fast-tests
     if: ${{ always() && !startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Require every quality and test group to pass
         env:
@@ -291,7 +294,7 @@ jobs:
             npm: '11.8.0'
           - node: 26
             npm: '12.0.2'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -325,7 +328,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        contains(github.event.pull_request.labels.*.name, 'ci-slow'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       # Real-git close-gate tests (#733) need a local
@@ -371,7 +374,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        contains(github.event.pull_request.labels.*.name, 'ci-slow')))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Require all slow groups to pass
         env:

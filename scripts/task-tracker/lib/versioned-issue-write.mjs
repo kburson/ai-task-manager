@@ -360,7 +360,7 @@ export async function versionedWriteBody({
       assertMutateReturnedString({ ourLocal, issueNumber });
       checkStaleInput({ ourLocal, remoteVersion, issueNumber });
       if (typeof validateFreshBaseAsync === 'function') {
-        await validateFreshBaseAsync(ourBase, ourLocal);
+        await validateFreshBaseAsync(ourBase, ourLocal, remote);
       }
       // #697 — no-op short-circuit, first attempt. The retry path already
       // returns 'no-op' when the previous mutate changed nothing; without this
@@ -393,7 +393,7 @@ export async function versionedWriteBody({
         // they expected to persist — no extra GitHub round-trip: `remote` was
         // already fetched at the top of this iteration (line ~279).
         if (typeof validateFreshBaseAsync === 'function') {
-          await validateFreshBaseAsync(remoteBase, remoteBase);
+          await validateFreshBaseAsync(remoteBase, remoteBase, remote);
         }
         return { status: 'no-op', attempts, version: remoteVersion, body: remote };
       }
@@ -401,7 +401,7 @@ export async function versionedWriteBody({
       ourLocal = rebaseOnto({ ourEdit, theirEdit, remote: remoteBase });
       if (typeof validateMutation === 'function') validateMutation(ourBase, ourLocal);
       if (typeof validateFreshBaseAsync === 'function') {
-        await validateFreshBaseAsync(ourBase, ourLocal);
+        await validateFreshBaseAsync(ourBase, ourLocal, remote);
       }
     }
 
