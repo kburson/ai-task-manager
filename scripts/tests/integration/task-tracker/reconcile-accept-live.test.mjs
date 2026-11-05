@@ -24,8 +24,24 @@ const originalVisit = '<!-- aitm-entered-backlog ts="2026-11-03T00:00:00Z" -->';
 const nativeHost = Boolean(
   process.env.CODEX_THREAD_ID && process.env.CODEX_THREAD_ID === process.env.CODEX_SESSION_ID
 );
+const coreCases = new WeakSet();
 
-function run(t, mode, marker = '', { bind = false, expectBoardRead = true } = {}) {
+function writerTest(name, optionsOrVerify, verify = optionsOrVerify) {
+  test(name, { skip: !nativeHost }, verify);
+  test('portable core: ' + name.replace(/^public /, ''), (t) => {
+    coreCases.add(t);
+    return verify(t);
+  });
+}
+
+function run(
+  t,
+  mode,
+  marker = '',
+  { bind = false, expectBoardRead = true, terminal = false } = {}
+) {
+  const core = coreCases.has(t);
+  assert.ok(!core || !bind, 'portable core must not claim a native binding');
   const root = realpathSync(createRuntimeRootFixture('accept-live-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const bin = path.join(root, '.tmp/provider');
@@ -70,9 +86,14 @@ function run(t, mode, marker = '', { bind = false, expectBoardRead = true } = {}
   const file = path.join(bin, 'state.json');
   writeFileSync(file, JSON.stringify({ mode, initial, body: initial, setup: bind }));
   writeFileSync(path.join(bin, 'events'), '');
-  const env = { PATH: bin, HOME: process.env.HOME, AITM_GRAPHQL_USAGE: '0' };
-  for (const key of ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'])
-    if (process.env[key]) env[key] = process.env[key];
+  const env = {
+    PATH: bin,
+    HOME: core || terminal ? root : process.env.HOME,
+    AITM_GRAPHQL_USAGE: '0',
+  };
+  if (!core && !terminal)
+    for (const key of ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'])
+      if (process.env[key]) env[key] = process.env[key];
   const entry = path.join(root, 'node_modules/@kburson/ai-task-manager/bin/aitm.mjs');
   let activeFile, before;
   if (bind) {
@@ -102,13 +123,21 @@ function run(t, mode, marker = '', { bind = false, expectBoardRead = true } = {}
     });
     writeFileSync(file, JSON.stringify(state));
   }
-  const cli = spawnSync(process.execPath, [entry, 'reconcile', '71', '--mode', 'accept-live'], {
+  const args = core
+    ? [fileURLToPath(new URL('../../fixtures/reconcile-accept-live-core.mjs', import.meta.url))]
+    : [entry, 'reconcile', '71', '--mode', 'accept-live'];
+  const cli = spawnSync(process.execPath, args, {
     cwd: root,
     env,
     encoding: 'utf8',
     timeout: 30000,
   });
   assert.ifError(cli.error);
+  if (core) {
+    const record = JSON.parse(cli.stdout);
+    assert.equal(record.surface, 'portable-core');
+    t.diagnostic('Core result: ' + JSON.stringify(record.result));
+  }
   const { body } = JSON.parse(readFileSync(file, 'utf8'));
   const events = readFileSync(path.join(bin, 'events'), 'utf8').trim().split('\n');
   assert.ok(!events.some((e) => e.startsWith('unexpected')), events.join('\n'));
@@ -139,8 +168,18 @@ function run(t, mode, marker = '', { bind = false, expectBoardRead = true } = {}
   };
 }
 
-// The native binding assertion needs a real host identity. The public writer
-// tests below also run without any provider session (including in CI).
+// Every public CLI case requires a genuine native actor at dispatcher startup.
+// Portable duplicates call the exported core with the real writer and provider.
+test('public reconcile without an actor refuses before remote effects', (t) => {
+  const { cli, body, initial, events } = run(t, 'confirm', '', {
+    terminal: true,
+    expectBoardRead: false,
+  });
+  assert.notEqual(cli.status, 0);
+  assert.match(cli.stderr, /TIMING_ACTOR_INVALID/);
+  assert.equal(body, initial);
+  assert.deepEqual(events.filter(Boolean), []);
+});
 for (const mode of ['reject', 'stale', 'confirm']) {
   test(
     'native Start cache after ' + mode,
@@ -169,7 +208,8 @@ for (const mode of [
   'audit-fleeting-visit',
 ]) {
   for (const bind of [false, true]) {
-    test(
+    const register = bind ? test : writerTest;
+    register(
       `${bind ? 'native cache' : 'public writer'} after ${mode}`,
       { skip: bind && !nativeHost },
       (t) => {
@@ -252,7 +292,7 @@ for (const seedWarning of [false, true]) {
 }
 
 for (const mode of ['reject', 'drop']) {
-  test('public accept-live refuses a ' + mode + ' from the provider', (t) => {
+  writerTest('public accept-live refuses a ' + mode + ' from the provider', (t) => {
     const { cli, body, initial, events } = run(t, mode);
     assert.ok(events.includes('marker.write'));
     assert.ok(events.includes('failure.comment'));
@@ -271,7 +311,7 @@ for (const mode of [
   'audit-read-outage',
   'lost-ack-moved',
 ]) {
-  test('public accept-live reports partial after confirmed write and ' + mode, (t) => {
+  writerTest('public accept-live reports partial after confirmed write and ' + mode, (t) => {
     const { cli, body, events } = run(t, mode);
     assert.match(body, /aitm-last-known-state state="backlog"/);
     assert.notEqual(cli.status, 0);
@@ -280,30 +320,28 @@ for (const mode of [
     if (mode === 'lost-ack-moved') assert.ok(!events.includes('failure.comment'));
   });
 }
-test('refuse a transient competing state seen by primary verify before rebase', (t) => {
+writerTest('refuse a transient competing state seen by primary verify before rebase', (t) => {
   const { cli, events } = run(t, 'verify-fleeting');
   assert.notEqual(cli.status, 0);
   assert.equal(events.filter((e) => e === 'marker.write').length, 1);
   assert.ok(!events.includes('audit.write'));
 });
-test('audit overlapping state change is partial and does not publish cache', (t) => {
-  const bind = Boolean(
-    process.env.CODEX_THREAD_ID && process.env.CODEX_THREAD_ID === process.env.CODEX_SESSION_ID
-  );
+writerTest('audit overlapping state change is partial and does not publish cache', (t) => {
+  const bind = nativeHost && !coreCases.has(t);
   const { cli, body, before, after } = run(t, 'audit-overlap', '', { bind });
   assert.match(body, /aitm-last-known-state: review/);
   assert.notEqual(cli.status, 0);
   assert.match(cli.stderr, /partial/);
   if (bind) assert.deepEqual(after, before);
 });
-test('concurrent prose after the audit write does not duplicate that audit', (t) => {
+writerTest('concurrent prose after the audit write does not duplicate that audit', (t) => {
   const { cli, body, events } = run(t, 'audit-prose');
   assert.equal(cli.status, 0, cli.stderr);
   assert.match(body, /Concurrent audit note/);
   assert.equal(body.match(/<!-- aitm-reconciled\b/g)?.length, 1);
   assert.equal(events.filter((e) => e === 'audit.write').length, 1);
 });
-test('public accept-live refuses a success audit on a conflicting new body', (t) => {
+writerTest('public accept-live refuses a success audit on a conflicting new body', (t) => {
   const { cli, body, events } = run(t, 'audit-drift');
   assert.match(body, /aitm-last-known-state state="plan"/);
   assert.notEqual(cli.status, 0);
@@ -311,7 +349,7 @@ test('public accept-live refuses a success audit on a conflicting new body', (t)
   assert.ok(!events.includes('audit.write'));
 });
 for (const mode of ['history-drift', 'marker-drift', 'prewrite-board-drift', 'fleeting-conflict']) {
-  test('public accept-live refuses concurrent ' + mode, (t) => {
+  writerTest('public accept-live refuses concurrent ' + mode, (t) => {
     const { cli, events } = run(t, mode);
     assert.notEqual(cli.status, 0);
     assert.ok(!events.includes('marker.write'));
@@ -332,19 +370,19 @@ for (const marker of [
   '<!-- aitm-entered-review ts="2026-06-01T00:00:00Z" move="one" move="two" -->',
   '<!-- aitm-entered-BACKLOG: 2026-06-10T00:00:00Z -->',
 ]) {
-  test('public accept-live refuses ambiguous evidence ' + marker, (t) => {
+  writerTest('public accept-live refuses ambiguous evidence ' + marker, (t) => {
     const { cli, body, initial, events } = run(t, 'confirm', marker);
     assert.notEqual(cli.status, 0);
     assert.equal(body, initial);
     assert.ok(!events.includes('marker.write'));
   });
 }
-test('reconciliation preserves Markdown indentation following a prior marker', (t) => {
+writerTest('reconciliation preserves Markdown indentation following a prior marker', (t) => {
   const { cli, body } = run(t, 'confirm', '<!-- aitm-last-known-state: plan -->\n    code block');
   assert.equal(cli.status, 0, cli.stderr);
   assert.ok(body.includes('\n    code block\n'));
 });
-test('accept-live normalizes a historical two-marker development state', (t) => {
+writerTest('accept-live normalizes a historical two-marker development state', (t) => {
   const { cli, body } = run(
     t,
     'demote',
@@ -357,7 +395,7 @@ test('accept-live normalizes a historical two-marker development state', (t) => 
   assert.ok(!body.includes('aitm-last-known-state-ts:'));
 });
 for (const mode of ['lost-ack', 'rebase']) {
-  test('public accept-live retains one new visit across ' + mode, (t) => {
+  writerTest('public accept-live retains one new visit across ' + mode, (t) => {
     const { cli, body, events } = run(t, mode);
     assert.equal(cli.status, 0, cli.stderr);
     assert.equal(events.filter((e) => e === 'marker.write').length, mode === 'rebase' ? 2 : 1);
@@ -374,22 +412,26 @@ for (const mode of ['lost-ack', 'rebase']) {
     }
   });
 }
-test('public admission refuses an unsupported legacy board label without repair', (t) => {
-  const { cli, body, initial, events } = run(
-    t,
-    'legacy-destination',
-    '<!-- aitm-last-known-state: validate -->',
-    { expectBoardRead: false }
-  );
-  assert.notEqual(cli.status, 0);
-  assert.match(cli.stderr, /could not verify the assignee/);
-  assert.equal(body, initial);
-  assert.ok(events.includes('query.owner'));
-  assert.ok(!events.includes('marker.write'));
-  assert.ok(!events.includes('audit.write'));
-});
+test(
+  'public admission refuses an unsupported legacy board label without repair',
+  { skip: !nativeHost },
+  (t) => {
+    const { cli, body, initial, events } = run(
+      t,
+      'legacy-destination',
+      '<!-- aitm-last-known-state: validate -->',
+      { expectBoardRead: false }
+    );
+    assert.notEqual(cli.status, 0);
+    assert.match(cli.stderr, /could not verify the assignee/);
+    assert.equal(body, initial);
+    assert.ok(events.includes('query.owner'));
+    assert.ok(!events.includes('marker.write'));
+    assert.ok(!events.includes('audit.write'));
+  }
+);
 for (const mode of ['demote', 'retired-demote', 'restored-proof']) {
-  test('public demotion invalidation with ' + mode, (t) => {
+  writerTest('public demotion invalidation with ' + mode, (t) => {
     const declarations = Array.from(
       { length: 15 },
       (_, i) =>
@@ -417,17 +459,20 @@ for (const mode of ['demote', 'retired-demote', 'restored-proof']) {
     }
   });
 }
-test('public accept-live preserves concurrent prose and visits, verifies the repair then audits', (t) => {
-  const { cli, body, events } = run(t, 'prose');
-  assert.equal(cli.status, 0, cli.stderr);
-  assert.ok(body.includes('Concurrent prose.'));
-  assert.ok(body.includes(originalVisit));
-  assert.match(body, /aitm-entered-backlog-2 /);
-  assert.match(body, /aitm-last-known-state state="backlog"/);
-  assert.match(body, /aitm-reconciled/);
-  const marker = events.indexOf('marker.write'),
-    audit = events.indexOf('audit.write');
-  assert.ok(marker >= 0 && audit > marker);
-  assert.ok(events.slice(marker + 1, audit).includes('query.body'));
-  assert.ok(events.slice(marker + 1, audit).includes('query.board'));
-});
+writerTest(
+  'public accept-live preserves concurrent prose and visits, verifies the repair then audits',
+  (t) => {
+    const { cli, body, events } = run(t, 'prose');
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.ok(body.includes('Concurrent prose.'));
+    assert.ok(body.includes(originalVisit));
+    assert.match(body, /aitm-entered-backlog-2 /);
+    assert.match(body, /aitm-last-known-state state="backlog"/);
+    assert.match(body, /aitm-reconciled/);
+    const marker = events.indexOf('marker.write'),
+      audit = events.indexOf('audit.write');
+    assert.ok(marker >= 0 && audit > marker);
+    assert.ok(events.slice(marker + 1, audit).includes('query.body'));
+    assert.ok(events.slice(marker + 1, audit).includes('query.board'));
+  }
+);
