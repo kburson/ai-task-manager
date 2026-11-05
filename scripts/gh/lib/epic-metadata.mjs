@@ -144,14 +144,16 @@ export async function reconcileEpicMetadata({
     ]);
   let visibleWritten = false;
   async function fence() {
-    const live = await read(target);
-    if (!allowedBodies.has(live.body)) throw new Error('epic-convergence:body-drift');
-    const result = await assertSource({ ...recovery, body: live.body, requirePlan: false });
+    const result = await assertSource({ ...recovery, requirePlan: false });
+    if (!allowedBodies.has(result.body)) throw new Error('epic-convergence:body-drift');
     if (
       JSON.stringify(result.operatorContext) !== JSON.stringify(initial.operatorContext) ||
       childFrame(result) !== childFrame(initial)
     )
       throw new Error('epic-convergence:source-frame-drift');
+    const live = await read(target);
+    if (live.body !== result.body || !allowedBodies.has(live.body))
+      throw new Error('epic-convergence:body-drift');
     if (
       live.title !== (visibleWritten ? plan.desiredTitle : before.title) ||
       labels(live.labels) !== (visibleWritten ? desiredLabels : initialLabels)

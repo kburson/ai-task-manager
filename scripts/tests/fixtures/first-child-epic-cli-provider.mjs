@@ -23,6 +23,13 @@ export function runFirstChildGh(args) {
   const write = (kind) => {
     state.effects.push(kind);
   };
+  const drift = (point) => {
+    if (state.tetherDriftPoint === point && state.effectsAtDrift === undefined) {
+      state.issues[42].assignees.nodes = [{ login: 'other' }];
+      state.effectsAtDrift = state.effects.length;
+      save();
+    }
+  };
   const comment = (number, body) => {
     const target = issue(number),
       count = allNodes().filter((entry) => entry.__typename === 'IssueComment').length + 1;
@@ -61,6 +68,7 @@ export function runFirstChildGh(args) {
   }
   if (args[0] === 'issue' && args[1] === 'view') {
     const target = issue(Number(args[2]));
+    if (target.number === 43 && state.effects.includes('create:43')) drift('child-body-read');
     if (at('-R') !== 'o/r' && at('--repo') !== 'o/r') throw new Error('foreign repository');
     const fields = at('--json').split(',');
     const value = Object.fromEntries(
@@ -199,6 +207,8 @@ export function runFirstChildGh(args) {
       root.addComment = { commentEdge: { node: created } };
     } else throw new Error('unclassified fixture mutation ' + mutation.name);
     write(mutation.name);
+    if (mutation.name === 'linkProjectV2ToRepository') drift('project-link');
+    if (mutation.name === 'updateProjectV2ItemFieldValue') drift('field-write');
     save();
   }
   function resolve(source, field) {

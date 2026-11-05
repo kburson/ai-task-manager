@@ -382,13 +382,13 @@
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 233,
+          "line": 238,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 236,
+          "line": 241,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         }

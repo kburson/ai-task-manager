@@ -192,7 +192,12 @@ export async function assertProspectiveEpicParent({
     body,
   });
   if (result.childInventory.length) throw new Error('convergence:recover-kind-first');
-  return { status: 'admitted' };
+  return {
+    status: 'admitted',
+    operatorContext: result.operatorContext,
+    subject: result.subject,
+    body: result.body,
+  };
 }
 export async function refreshGovernedDecomposition({ issueNumber, cfg, projectDir, deps = {} }) {
   try {

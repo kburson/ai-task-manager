@@ -5,7 +5,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PROJECT_ROOT_ALIASES } from '../../../task-tracker/lib/runtime-storage.mjs';
 import { sessionIdEnvKeys } from '../../../task-tracker/lib/session-id.mjs';
-import { setActiveTask } from '../../../task-tracker/session-state.mjs';
+import { setActiveTask, getActiveTask } from '../../../task-tracker/session-state.mjs';
+import { stampBodyVersion, parseBodyVersion } from '../../../task-tracker/lib/body-version.mjs';
 import {
   firstChildFixture,
   installFirstChildCli,
@@ -64,6 +65,13 @@ test('public Start switches from another issue into restricted recovery before e
   assert.equal(initial.status, 0, initial.stdout + initial.stderr);
   const started = cli.run(['start', '42', '--role', 'agent'], nativeEnv);
   assert.equal(started.status, 0, started.stdout + started.stderr);
+  const bound = getActiveTask(sid, f.root);
+  assert.equal(bound.issue, '#42');
+  assert.equal(bound.worktreePath, f.root);
+  assert.equal(bound.worktreeBranch, 'codex/fixture');
+  assert.ok(bound.bindingGenerationId);
+  assert.ok(Number.isFinite(Date.parse(bound.entryStartTs)));
+  assert.ok(!bound.closedAt && !bound.pausedAtTs);
   const resumeDecision = cli.run(['explain', '42', '--action', 'resume', '--json'], nativeEnv);
   assert.equal(resumeDecision.status, 0, resumeDecision.stdout + resumeDecision.stderr);
   const explanation = JSON.parse(resumeDecision.stdout);
@@ -76,6 +84,13 @@ test('public Start switches from another issue into restricted recovery before e
   assert.notEqual(JSON.parse(implementDecision.stdout).result.status, 'ready');
   const recovered = cli.run(['kind', '42', 'epic'], nativeEnv);
   assert.equal(recovered.status, 0, recovered.stdout + recovered.stderr);
+  const afterKind = getActiveTask(sid, f.root);
+  assert.equal(afterKind.issue, bound.issue);
+  assert.equal(afterKind.worktreePath, bound.worktreePath);
+  assert.equal(afterKind.worktreeBranch, bound.worktreeBranch);
+  assert.equal(afterKind.bindingGenerationId, bound.bindingGenerationId);
+  assert.equal(afterKind.entryStartTs, bound.entryStartTs);
+  assert.ok(!afterKind.closedAt && !afterKind.pausedAtTs);
   assert.deepEqual(cli.read().issues[42].childNumbers, [43]);
 });
 
@@ -148,6 +163,22 @@ test('authority drift after legitimate create retains the created ID and stops b
   assert.deepEqual(actual.issues[42].childNumbers, []);
   assert.ok(actual.issues[43]);
 });
+
+for (const point of ['child-body-read', 'project-link', 'field-write'])
+  test('tether rechecks parent authority after admission at ' + point, (t) => {
+    const { cli } = splitFixture(t),
+      state = cli.read();
+    state.tetherDriftPoint = point;
+    cli.write(state);
+    const result = cli.run(['split-plan', '42', '--confirm', '--json']);
+    assert.equal(result.status, 6, result.stdout + result.stderr);
+    const outcome = JSON.parse(result.stdout),
+      actual = cli.read();
+    assert.equal(outcome.createdChildren[0].issueNumber, 43);
+    assert.ok(Number.isInteger(actual.effectsAtDrift));
+    assert.equal(actual.effects.length, actual.effectsAtDrift, JSON.stringify(actual.effects));
+    assert.deepEqual(actual.issues[42].childNumbers, []);
+  });
 
 for (const stage of ['backlog', 'refine', 'plan', 'develop', 'test', 'review'])
   test(
@@ -262,3 +293,39 @@ test('label order alone does not invalidate the fixed visible frame', async (t) 
   await f.kind();
   assert.deepEqual([...f.node.labels].sort(), ['bug', 'epic', 'feature']);
 });
+
+for (const phase of ['pre-visible', 'final-success'])
+  for (const change of ['title', 'label', 'body-version'])
+    test(
+      change +
+        ' drift during ' +
+        phase +
+        ' source collection refuses before success or later effects',
+      async (t) => {
+        const f = firstChildFixture(t);
+        const graphql = f.deps.graphql;
+        let injected = false;
+        f.deps.graphql = async (input) => {
+          const visible = f.writes.includes('visible');
+          if (
+            !injected &&
+            f.writes.includes('body') &&
+            visible === (phase === 'final-success') &&
+            input.query.includes('viewer') &&
+            input.query.includes('comments(')
+          ) {
+            injected = true;
+            if (change === 'title') f.node.title = 'Concurrent title';
+            if (change === 'label') f.node.labels.push('concurrent');
+            if (change === 'body-version')
+              f.node.body = stampBodyVersion(f.node.body, parseBodyVersion(f.node.body) + 1);
+          }
+          return graphql(input);
+        };
+        await assert.rejects(f.kind(), /epic-convergence:/);
+        assert.ok(injected);
+        assert.deepEqual(f.writes, phase === 'pre-visible' ? ['body'] : ['body', 'visible']);
+        if (change === 'title') assert.equal(f.node.title, 'Concurrent title');
+        if (change === 'label') assert.ok(f.node.labels.includes('concurrent'));
+      }
+    );
