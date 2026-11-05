@@ -1,13 +1,39 @@
 // @story #2153
 // Pure consumer: source HEAD is the selected acceptance subject, never an operator lookup.
-import { parsePlanApprovedMarker, PLAN_APPROVED_RE, stripFencedCodeBlocks } from './markers.mjs';
+import {
+  parsePlanApprovedMarker,
+  PLAN_APPROVED_RE,
+  stripFencedCodeBlocks,
+  buildPlanApprovedMarker,
+} from './markers.mjs';
 import { computeScopeIdentity } from './workflow-policy/scope-identity.mjs';
 import { linkedPlanReference } from './decomposition-policy.mjs';
 import { readCurrentPlanApprovalAuditComment } from './plan-approval-audit.mjs';
 import { readCurrentForecastId } from './plan-approval-current-source.mjs';
 
 export function hasCurrentApprovalDigestSyntax(body) {
-  return /\bcurrent-approval-digest\s*=/i.test(stripFencedCodeBlocks(body));
+  return [
+    ...stripFencedCodeBlocks(body).matchAll(/<!--\s*aitm-plan-approved\b[^]*?(?:-->|$)/gi),
+  ].some(([claim]) => /\bcurrent-approval-digest\s*=/i.test(claim));
+}
+export function isCanonicalCurrentApprovalMarker(body) {
+  const visible = stripFencedCodeBlocks(body);
+  const claims = visible.match(/<!--\s*aitm-plan-approved\b/gi) ?? [];
+  const markers = [...visible.matchAll(new RegExp(PLAN_APPROVED_RE.source, 'gi'))];
+  const approved = parsePlanApprovedMarker(body);
+  if (
+    claims.length !== 1 ||
+    markers.length !== 1 ||
+    !approved?.currentApprovalDigest ||
+    approved.mode !== 'full-auto' ||
+    approved.repairRecordId
+  )
+    return false;
+  try {
+    return markers[0][0] === buildPlanApprovedMarker(approved.ts, approved);
+  } catch {
+    return false;
+  }
 }
 export function validateCurrentScopeApproval({
   body = '',
@@ -29,6 +55,7 @@ export function validateCurrentScopeApproval({
     return { applicable: relevant.length > 0, pass: relevant.length === 0 };
   const fail = () => ({ applicable: true, pass: false });
   if (
+    !isCanonicalCurrentApprovalMarker(body) ||
     !approved ||
     approved.mode !== 'full-auto' ||
     approved.repairRecordId ||
@@ -60,6 +87,7 @@ export function validateCurrentScopeApproval({
       record.scopeIdentity !== computeScopeIdentity({ repository, issue: Number(issue), body }) ||
       record.planPath !== linkedPlanReference(body)?.path ||
       record.forecastRecordId !== readCurrentForecastId(body) ||
+      record.forecastRecordId !== approved.forecastRecordId ||
       record.trunkSha !== approved.trunkSha
     )
       return fail();

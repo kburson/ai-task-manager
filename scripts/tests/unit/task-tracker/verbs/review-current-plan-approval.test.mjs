@@ -16,7 +16,7 @@ import {
 import { computeScopeIdentity } from '../../../../task-tracker/lib/workflow-policy/scope-identity.mjs';
 
 // @story #2153
-function currentResidentFixture() {
+function currentResidentFixture(forecastRecordId = null) {
   const repo = 'o/r',
     issue = 2153,
     head = 'e'.repeat(40),
@@ -37,7 +37,7 @@ function currentResidentFixture() {
     planPath: 'plan.md',
     planContentSha256: 'a'.repeat(64),
     storyBinding: binding,
-    forecastRecordId: null,
+    forecastRecordId,
     admission: {
       transitionId: 'move:bbec1b1c-b113-4ae3-8037-9db4ea1152b0',
       authorityCommentId: '1',
@@ -50,8 +50,12 @@ function currentResidentFixture() {
   const body = stampAgentReviewPassed(
     base +
       '\n' +
+      (forecastRecordId
+        ? `<!-- aitm-estimation-forecast-ready record-id="${forecastRecordId}" -->\n`
+        : '') +
       buildPlanApprovedMarker(ts, {
         ...binding,
+        forecastRecordId,
         mode: 'full-auto',
         trunkSha: evidence.trunkSha,
         currentApprovalDigest: currentPlanApprovalDigest(evidence),
@@ -92,6 +96,24 @@ for (const [name, alter] of Object.entries({
   'missing selected source': (f) => {
     delete f.snapshot.headSha;
   },
+  'frozen forecast differs from audited null': (f) => {
+    f.snapshot.body.value = f.snapshot.body.value.replace(
+      ' mode="full-auto"',
+      ' forecast-record-id="01M00000000000000000000001" mode="full-auto"'
+    );
+  },
+  'malformed forecast wrapper': (f) => {
+    f.snapshot.body.value += '\n<!-- aitm-estimation-forecast-ready record-id="BROKEN" -->';
+  },
+  'malformed second approval claim': (f) => {
+    f.snapshot.body.value += '\n<!-- aitm-plan-approved -->';
+  },
+  'duplicate approval mode attribute': (f) => {
+    f.snapshot.body.value = f.snapshot.body.value.replace(
+      'mode="full-auto"',
+      'mode="full-auto" mode="human"'
+    );
+  },
   'ordinary audit at same timestamp': (f) => {
     f.comments[0].body = buildPlanApprovalAuditComment({ issueNumber: f.issue, ts: f.ts });
   },
@@ -121,3 +143,20 @@ test('#2153 review context retains the selected acceptance source', () => {
   const ctx = buildReviewContext({ acceptedSourceHead: 'e'.repeat(40) });
   assert.equal(ctx.acceptedSourceHead, 'e'.repeat(40));
 });
+
+for (const replacement of ['', ' forecast-record-id="01M00000000000000000000002"'])
+  test('#2153 resident refuses changed or missing present frozen forecast', async () => {
+    const f = currentResidentFixture('01M00000000000000000000001');
+    assert.equal(
+      (await reviewAgentValidationAction.verify(f.context, f.snapshot)).status,
+      'complete'
+    );
+    f.snapshot.body.value = f.snapshot.body.value.replace(
+      / forecast-record-id="[^"]+"/,
+      replacement
+    );
+    assert.notEqual(
+      (await reviewAgentValidationAction.verify(f.context, f.snapshot)).status,
+      'complete'
+    );
+  });

@@ -280,7 +280,7 @@ test('bootstrap registers the validator on the shared singleton', async () => {
 });
 
 // @story #2153
-function currentAuditFixture() {
+function currentAuditFixture(forecastRecordId = null) {
   const issueNumber = 2153,
     repo = 'o/r',
     acceptedSourceHead = 'e'.repeat(40),
@@ -301,7 +301,7 @@ function currentAuditFixture() {
     planPath: 'plan.md',
     planContentSha256: 'a'.repeat(64),
     storyBinding: binding,
-    forecastRecordId: null,
+    forecastRecordId,
     admission: {
       transitionId: 'move:bbec1b1c-b113-4ae3-8037-9db4ea1152b0',
       authorityCommentId: '1',
@@ -313,12 +313,18 @@ function currentAuditFixture() {
   });
   const marker = buildPlanApprovedMarker(ts, {
     ...binding,
+    forecastRecordId,
     mode: 'full-auto',
     trunkSha: currentEvidence.trunkSha,
     currentApprovalDigest: currentPlanApprovalDigest(currentEvidence),
   });
   const audit = buildPlanApprovalAuditComment({ issueNumber, ts, currentEvidence });
-  const withProgress = base + '\n## AITM Progress Markers\n';
+  const withProgress =
+    base +
+    '\n## AITM Progress Markers\n' +
+    (forecastRecordId
+      ? `<!-- aitm-estimation-forecast-ready record-id="${forecastRecordId}" -->\n`
+      : '');
   return {
     issueNumber,
     repo,
@@ -337,6 +343,21 @@ test('#2153 matching current audit passes against selected source HEAD without l
   assert.equal(validate(f).pass, true);
 });
 for (const [name, alter] of Object.entries({
+  'frozen forecast differs from audited null': (f) => {
+    f.body = f.body.replace(
+      ' mode="full-auto"',
+      ' forecast-record-id="01M00000000000000000000001" mode="full-auto"'
+    );
+  },
+  'malformed forecast wrapper': (f) => {
+    f.body += '\n<!-- aitm-estimation-forecast-ready record-id="BROKEN" -->';
+  },
+  'malformed second approval claim': (f) => {
+    f.body += '\n<!-- aitm-plan-approved -->';
+  },
+  'duplicate approval mode attribute': (f) => {
+    f.body = f.body.replace('mode="full-auto"', 'mode="full-auto" mode="human"');
+  },
   'ordinary audit with same timestamp': (f) => {
     f.comments.at(-1).body = buildPlanApprovalAuditComment({
       issueNumber: f.issueNumber,
@@ -386,3 +407,24 @@ for (const [name, alter] of Object.entries({
     alter(f);
     assert.equal(validate(f).pass, false);
   });
+
+for (const replacement of ['', ' forecast-record-id="01M00000000000000000000002"'])
+  test('#2153 present audited forecast cannot lose or change its frozen marker field', () => {
+    const f = currentAuditFixture('01M00000000000000000000001');
+    assert.equal(validate(f).pass, true);
+    f.body = f.body.replace(/ forecast-record-id="[^"]+"/, replacement);
+    assert.equal(validate(f).pass, false);
+  });
+
+test('#2153 descriptive digest prose does not change legacy human approval requirements', () => {
+  const body =
+    'Documentation names current-approval-digest="example" as a field.\n' +
+    buildPlanApprovedMarker('2026-11-05T07:00:00Z', { mode: 'human' });
+  const result = validate({
+    body,
+    issueNumber: 2153,
+    repo: 'o/r',
+    comments: commentsExcept('Full-Auto plan-approval audit'),
+  });
+  assert.equal(result.pass, true, JSON.stringify(result.failures));
+});

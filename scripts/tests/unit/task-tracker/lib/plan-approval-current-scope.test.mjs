@@ -370,3 +370,27 @@ test('array current approval digest cannot be serialized as a valid marker', () 
     /currentApprovalDigest/
   );
 });
+
+test('encoded candidate identity with conflicting completion wrapper fails closed', () => {
+  const f = fixture();
+  f.comments.push({
+    ...f.comments[1],
+    id: '3',
+    body: f.comments[1].body.replace(
+      `id="${transitionId}"`,
+      'id="move:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"'
+    ),
+  });
+  assert.equal(evaluate(f).status, 'unavailable');
+});
+
+test('unterminated encoded candidate after unrelated completion cannot hide a collision', () => {
+  const f = fixture();
+  const other = 'move:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const unrelated = renderTransitionCommitComment({ ...commit, transitionId: other });
+  const collision = renderTransitionCommitComment(commit)
+    .replace(`id="${transitionId}"`, `id="${other}"`)
+    .replace(/-->$/, '');
+  f.comments.push(observation('3', unrelated + '\n' + collision, '2026-11-04T01:52:06Z'));
+  assert.equal(evaluate(f).status, 'unavailable');
+});

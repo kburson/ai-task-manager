@@ -1,5 +1,8 @@
 // @story #2153
 import path from 'node:path';
+import { stripFencedCodeBlocks } from './markers.mjs';
+import { loadForecastProjection } from './estimation/runtime-adapter.mjs';
+import { validateForecastProjection } from './plan-exit-planned-estimate-guard.mjs';
 import { realpathSync, lstatSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -11,12 +14,15 @@ import { defaultResolveTrunkSha } from './plan-approved-guard.mjs';
 const execute = promisify(execFile);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 export const readCurrentForecastId = (body) => {
+  const visible = stripFencedCodeBlocks(body);
+  const claims = visible.match(/<!--\s*aitm-estimation-forecast-ready\b/gi) ?? [];
   const matches = [
-    ...String(body).matchAll(
+    ...visible.matchAll(
       /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/gi
     ),
   ];
-  if (matches.length > 1) throw Error('current-scope-forecast-ambiguous');
+  if (claims.length > 1) throw Error('current-scope-forecast-ambiguous');
+  if (claims.length !== matches.length) throw Error('current-scope-forecast-malformed');
   return matches[0]?.[1] ?? null;
 };
 export async function observeCurrentPlanSource({
@@ -68,6 +74,18 @@ export async function observeCurrentPlanSource({
   const forecastRecordId = readCurrentForecastId(body);
   if (cfg.estimationRubricIssue > 0 && !forecastRecordId)
     throw Error('current-scope-forecast-missing');
+  if (forecastRecordId !== null || cfg.estimationRubricIssue > 0) {
+    const projection = await (deps.plannedEstimate?.forecastProjection ?? loadForecastProjection)({
+      cfg,
+      issueNumber: Number(issueNumber),
+      deps: deps.plannedEstimate,
+    });
+    const result = validateForecastProjection({
+      ...projection,
+      readyForecastRecordId: forecastRecordId,
+    });
+    if (!result.ok) throw Error(result.blockers.join('; '));
+  }
   if (
     (await git('rev-parse', 'HEAD')) !== sourceHead ||
     (await git('status', '--porcelain', '--untracked-files=normal'))

@@ -280,3 +280,125 @@ test('#2153 changed persisted marker refuses before audit', async (t) => {
   assert.equal((await f.run()).status, 'current-scope-refused');
   assert.equal(f.calls.audits, 0);
 });
+
+// Independent review F1: successful POST is not final canonical readback.
+for (const [name, alter] of Object.entries({
+  deleted: (f) => f.comments.pop(),
+  edited: (f) => {
+    f.comments.at(-1).body += '\nChanged after POST';
+  },
+  duplicate: (f) => f.comments.push({ ...f.comments.at(-1), id: 'another' }),
+}))
+  test(`#2153 final audit ${name} refuses success`, async (t) => {
+    const f = currentScopeFixture(t);
+    const post = f.deps.postComment;
+    f.deps.postComment = async (input) => {
+      await post(input);
+      alter(f);
+    };
+    assert.equal((await f.run()).status, 'current-scope-refused');
+  });
+for (const extra of [
+  buildPlanApprovedMarker(FIXED_TS, { mode: 'human' }),
+  '<!-- aitm-plan-approved -->',
+])
+  test('#2153 conflicting or malformed persisted approval claim refuses before audit', async (t) => {
+    const f = currentScopeFixture(t);
+    const mutate = f.deps.mutateIssueBody;
+    f.deps.mutateIssueBody = async (input) => {
+      const result = await mutate(input);
+      f.body += '\n' + extra;
+      return result;
+    };
+    assert.equal((await f.run()).status, 'current-scope-refused');
+    assert.equal(f.calls.audits, 0);
+  });
+test('#2153 malformed existing approval claim cannot be treated as absence', async (t) => {
+  const f = currentScopeFixture(t);
+  f.body += '\n<!-- aitm-plan-approved -->';
+  assert.equal((await f.run()).status, 'current-scope-refused');
+  assert.equal(f.calls.writes, 0);
+});
+
+const READY = '01M00000000000000000000001';
+const projection = () => ({
+  forecast: {
+    recordId: READY,
+    supersededBy: null,
+    payload: { plan: { size: 'M', humanHours: 6 } },
+  },
+  activeForecastRecordIds: [READY],
+  board: { size: 'M', estimate: 6 },
+  bodyFields: { size: 'M', estimate: 6 },
+});
+for (const [name, alter] of Object.entries({
+  absent: (p) => {
+    p.forecast = null;
+  },
+  superseded: (p) => {
+    p.forecast.supersededBy = '01M00000000000000000000002';
+  },
+  multiple: (p) => {
+    p.activeForecastRecordIds.push('01M00000000000000000000002');
+  },
+  board: (p) => {
+    p.board.estimate = 7;
+  },
+  body: (p) => {
+    p.bodyFields.size = 'S';
+  },
+}))
+  test(`#2153 current adaptive forecast refuses ${name} authority`, async (t) => {
+    const f = currentScopeFixture(t);
+    f.body += `\n<!-- aitm-estimation-forecast-ready record-id="${READY}" -->`;
+    const p = projection();
+    alter(p);
+    f.deps.plannedEstimate = { forecastProjection: async () => p };
+    assert.equal(
+      (await f.run({ cfg: { repo: 'o/r', trunkRef: 'HEAD', estimationRubricIssue: 99 } })).status,
+      'current-scope-refused'
+    );
+    assert.equal(f.calls.writes, 0);
+  });
+test('#2153 current adaptive forecast validates authority on every fresh base and readback', async (t) => {
+  const f = currentScopeFixture(t);
+  f.body += `\n<!-- aitm-estimation-forecast-ready record-id="${READY}" -->`;
+  let reads = 0;
+  f.deps.plannedEstimate = {
+    forecastProjection: async () => {
+      reads++;
+      return projection();
+    },
+  };
+  assert.equal(
+    (await f.run({ cfg: { repo: 'o/r', trunkRef: 'HEAD', estimationRubricIssue: 99 } })).status,
+    'approved-current-scope'
+  );
+  assert.ok(reads >= 4);
+});
+test('#2153 forecast authority drift before write refuses', async (t) => {
+  const f = currentScopeFixture(t);
+  f.body += `\n<!-- aitm-estimation-forecast-ready record-id="${READY}" -->`;
+  let p = projection();
+  f.deps.plannedEstimate = { forecastProjection: async () => p };
+  const normal = f.deps.mutateIssueBody;
+  f.deps.mutateIssueBody = async (input) => {
+    p = { ...p, activeForecastRecordIds: [] };
+    return normal(input);
+  };
+  assert.equal((await f.run()).status, 'current-scope-refused');
+  assert.equal(f.calls.writes, 0);
+});
+
+test('#2153 forecast reader ignores fences and rejects malformed or duplicate live claims', async () => {
+  const { readCurrentForecastId } =
+    await import('../../../../task-tracker/lib/plan-approval-current-source.mjs');
+  const ready = `<!-- aitm-estimation-forecast-ready record-id="${READY}" -->`;
+  assert.equal(readCurrentForecastId('```html\n' + ready + '\n```'), null);
+  for (const body of [
+    '<!-- aitm-estimation-forecast-ready record-id="BROKEN" -->',
+    ready + '\n<!-- aitm-estimation-forecast-ready record-id="BROKEN" -->',
+    ready + '\n<!-- aitm-estimation-forecast-ready',
+  ])
+    assert.throws(() => readCurrentForecastId(body));
+});

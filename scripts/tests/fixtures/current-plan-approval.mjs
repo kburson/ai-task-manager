@@ -1,5 +1,5 @@
 // @story #2153
-// Real local Git and approval producer; only provider transport is substituted.
+// Real local Git/producer unit fixture; integration installs the actual governed writers.
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -70,6 +70,14 @@ export function currentScopeFixture(t, scratchBase = projectScratchDir('test')) 
   const calls = { writes: 0, audits: 0, waiverReads: 0 };
   const deps = {
     env: { TT_FULL_AUTO: '1' },
+    plannedEstimate: {
+      forecastProjection: async () => ({
+        forecast: null,
+        activeForecastRecordIds: [],
+        board: {},
+        bodyFields: {},
+      }),
+    },
     fetchIssueBody: async () => body,
     getBoardState: async () => state,
     fetchEpicChildren: async () => [],

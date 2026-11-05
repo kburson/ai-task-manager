@@ -21,6 +21,11 @@ import {
 import { observeCurrentPlanSource } from './plan-approval-current-source.mjs';
 import { ensureFullAutoPlanApprovalAudit } from './plan-approval-audit.mjs';
 
+import {
+  isCanonicalCurrentApprovalMarker,
+  validateCurrentScopeApproval,
+} from './plan-approval-current-review.mjs';
+
 const refused = (...blockers) => ({
   status: 'current-scope-refused',
   blockers,
@@ -43,11 +48,14 @@ async function listCompleteComments({ issueNumber, repo }) {
 function compatibleMarker(body) {
   const visible = stripFencedCodeBlocks(body);
   const markers = [...visible.matchAll(new RegExp(PLAN_APPROVED_RE.source, 'gi'))];
-  if (markers.length > 1) throw Error('current-scope-approval-ambiguous');
+  const claims = visible.match(/<!--\s*aitm-plan-approved\b/gi) ?? [];
+  if (claims.length !== markers.length || markers.length > 1)
+    throw Error('current-scope-approval-ambiguous');
   const prior = parsePlanApprovedMarker(body);
   if (!markers.length) return null;
   if (!prior || prior.mode !== 'full-auto' || prior.repairRecordId || !prior.currentApprovalDigest)
     throw Error('current-scope-existing-approval-provenance');
+  if (!isCanonicalCurrentApprovalMarker(body)) throw Error('current-scope-approval-malformed');
   if ((markers[0][0].match(/\bcurrent-approval-digest=/g) || []).length !== 1)
     throw Error('current-scope-approval-digest-invalid');
   return prior;
@@ -200,6 +208,7 @@ export async function runCurrentScopePlanApprove({
       },
     });
     const persisted = await read(target);
+    compatibleMarker(persisted);
     const approved = parsePlanApprovedMarker(persisted);
     if (
       !expected ||
@@ -217,9 +226,18 @@ export async function runCurrentScopePlanApprove({
       postComment: deps.postComment,
     });
     const finalBody = await read(target);
+    compatibleMarker(finalBody);
+    const finalObservation = await observe(finalBody);
     if (
+      !validateCurrentScopeApproval({
+        body: finalBody,
+        comments: finalObservation.comments,
+        repository: cfg.repo,
+        issue: issueNumber,
+        acceptedSourceHead: evidence.sourceHead,
+      }).pass ||
       JSON.stringify(parsePlanApprovedMarker(finalBody)) !== JSON.stringify(expected) ||
-      currentPlanApprovalDigest((await observe(finalBody)).evidence) !== digest
+      currentPlanApprovalDigest(finalObservation.evidence) !== digest
     )
       return refused('current-scope-post-audit-mismatch');
     return {

@@ -50,6 +50,20 @@ function wrappers(body, name) {
   return [...String(body).matchAll(new RegExp(`<!--\\s*aitm-${name}\\b[^]*?-->`, 'gi'))];
 }
 
+// Untrusted decoding only classifies possible collisions; strict codecs still
+// authenticate every record. Noncanonical payloads must not hide a candidate.
+function hasEncodedIdentity(claim, transitionId) {
+  return [...String(claim).matchAll(/\bdata="([^"]+)"/g)].some((match) => {
+    try {
+      return (
+        JSON.parse(Buffer.from(match[1], 'base64url').toString('utf8'))?.transitionId ===
+        transitionId
+      );
+    } catch {
+      return false;
+    }
+  });
+}
 export function evaluateCurrentScopeAdmission({ body = '', comments, repository, issue } = {}) {
   if (!Array.isArray(comments)) return denied('current-scope-comments-unavailable');
   const authorities = [];
@@ -100,9 +114,14 @@ export function evaluateCurrentScopeAdmission({ body = '', comments, repository,
   for (const observation of comments) {
     const text = String(observation?.body ?? '');
     const found = wrappers(text, 'transition-commit');
-    const matching = found.filter((x) => x[0].includes(record.transitionId));
+    const matching = found.filter(
+      (x) => x[0].includes(record.transitionId) || hasEncodedIdentity(x[0], record.transitionId)
+    );
     if (!matching.length) {
-      if (text.includes(record.transitionId) && /<!--\s*aitm-transition-commit\b/i.test(text))
+      if (
+        (text.includes(record.transitionId) || hasEncodedIdentity(text, record.transitionId)) &&
+        /<!--\s*aitm-transition-commit\b/i.test(text)
+      )
         return denied('current-scope-completion-malformed');
       continue;
     }

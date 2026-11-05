@@ -6,6 +6,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installCurrentApprovalProvider } from '../../fixtures/current-plan-approval-provider.mjs';
 import { currentScopeFixture } from '../../fixtures/current-plan-approval.mjs';
 import '../../../task-tracker/lib/agent-review/bootstrap.mjs';
 import { runAgentReviewGate } from '../../../task-tracker/lib/agent-review/review-gate.mjs';
@@ -24,6 +25,8 @@ import { parseVerificationCommands } from '../../../task-tracker/lib/verificatio
 import { resolveReviewVerificationEvidence } from '../../../task-tracker/verbs/review.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const providerUrl = new URL('../../fixtures/current-plan-approval-provider.mjs', import.meta.url)
+  .href;
 const scratchUrl = new URL('../../../task-tracker/lib/scratch-dir.mjs', import.meta.url).href;
 const fixtureUrl = new URL('../../fixtures/current-plan-approval.mjs', import.meta.url).href;
 const verbUrl = new URL('../../../task-tracker/verbs/plan-approve.mjs', import.meta.url).href;
@@ -32,12 +35,14 @@ function publicCommand(args, setup = '') {
   // The fixture replaces GitHub reads/writes; all validation and local Git are real.
   const code = `import {currentScopeFixture} from ${JSON.stringify(fixtureUrl)};
     import {verbPlanApprove} from ${JSON.stringify(verbUrl)};
+    import {installCurrentApprovalProvider} from ${JSON.stringify(providerUrl)};
     const {mkdtempOutsideRepo}=await import(${JSON.stringify(scratchUrl)});
     const {rmSync}=await import('node:fs');
     const outside=mkdtempOutsideRepo('current-approval-cli-');
     const cleanup=[()=>rmSync(outside,{recursive:true,force:true})]; const f=currentScopeFixture({after:fn=>cleanup.push(fn)},outside);
     process.on('exit',()=>{for(const fn of cleanup) fn();});
     process.chdir(f.projectDir);
+    await installCurrentApprovalProvider(f);
     ${setup}
     try { await verbPlanApprove(${JSON.stringify(args)}, {repo:'o/r',trunkRef:'HEAD'}, f.deps);
       console.log('RESULT '+JSON.stringify({body:f.body,comments:f.comments,calls:f.calls,head:f.git('rev-parse','HEAD')}));
@@ -199,6 +204,7 @@ function qualifyFixture(f) {
 
 test('real resident Review normalizes, converges with at most one reapproval, then reuses the pass', async (t) => {
   const f = currentScopeFixture(t);
+  await installCurrentApprovalProvider(f);
   readyForReview(f);
   const head = f.git('rev-parse', 'HEAD');
   const receipt = qualifyFixture(f);
@@ -280,6 +286,7 @@ test('real resident Review normalizes, converges with at most one reapproval, th
 
 test('delivered correction is genuine code rework and old source approval cannot qualify its new HEAD', async (t) => {
   const f = currentScopeFixture(t);
+  await installCurrentApprovalProvider(f);
   readyForReview(f);
   assert.equal((await f.run()).status, 'approved-current-scope');
   const oldHead = f.git('rev-parse', 'HEAD');
@@ -364,4 +371,14 @@ test('delivered correction is genuine code rework and old source approval cannot
     }).pass,
     true
   );
+});
+
+test('registered dispatcher exposes the delivered current-scope command', () => {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(root, 'scripts/task-tracker/task-tracker.mjs'), 'plan-approve', '--help'],
+    { cwd: root, env: { ...process.env, TT_SKIP_NETWORK: '1' }, encoding: 'utf8', timeout: 15000 }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /--current-scope/);
 });
