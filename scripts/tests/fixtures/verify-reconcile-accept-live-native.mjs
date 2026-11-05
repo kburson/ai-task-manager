@@ -1,4 +1,5 @@
 // @story #2147 — required host qualification; cloud skips are not evidence.
+// cspell:ignore Subtest
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
