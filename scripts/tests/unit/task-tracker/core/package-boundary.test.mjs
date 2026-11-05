@@ -507,7 +507,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
-    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    1; // #2161: shared pure governed mutation-session assertion, exactly one runtime leaf.
+  assert.ok(files.includes('scripts/task-tracker/lib/governed-mutation-session.mjs'));
+  assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-provider.mjs'));
+  assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-cli-provider.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',

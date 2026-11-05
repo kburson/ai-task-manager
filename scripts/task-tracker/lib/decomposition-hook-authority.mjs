@@ -48,7 +48,7 @@ function captureConvergenceFrame({ issue, projectDir, deps = {} }) {
     operator.worktreePath !== projectDir ||
     !operator.bindingGenerationId ||
     binding?.bindingGenerationId !== operator.bindingGenerationId ||
-    Number(binding?.issue) !== issue ||
+    Number(String(binding?.issue ?? '').replace(/^#/, '')) !== issue ||
     binding.closedAt ||
     !binding.entryStartTs ||
     binding.pausedAtTs ||

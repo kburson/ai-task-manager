@@ -4,6 +4,7 @@ import { loadConfig } from '../../task-tracker/config.mjs';
 import { getProjectDir } from '../../task-tracker/paths.mjs';
 import {
   assertGovernedDecompositionRecovery,
+  assertEpicConvergenceRecovery,
   refreshGovernedDecomposition,
 } from '../../task-tracker/lib/decomposition-plan-exit-guard.mjs';
 import { execFile } from 'node:child_process';
@@ -21,6 +22,8 @@ import { setIssueKindMarker, parseIssueKind } from '../../task-tracker/lib/issue
 import { locateFunctionalSection } from '../../task-tracker/lib/lifecycle-dod.mjs';
 import { appendVcCommands } from '../../task-tracker/lib/vc-emit.mjs';
 import { dodPath } from '../../task-tracker/paths.mjs';
+import { stripBodyVersion } from '../../task-tracker/lib/versioned-issue-write.mjs';
+import { stampBodyVersion, parseBodyVersion } from '../../task-tracker/lib/body-version.mjs';
 
 const pexec = promisify(execFile);
 
@@ -122,27 +125,70 @@ export async function reconcileEpicMetadata({
     projectDir,
     deps,
   };
-  await assertGovernedDecompositionRecovery({ ...recovery, body: before.body });
-  const desiredBody = reconcileEpicBody(before.body, templateDodText);
-  const bodyChanged = desiredBody !== before.body;
+  const assertSource =
+    parseIssueKind(before.body) === 'epic'
+      ? assertGovernedDecompositionRecovery
+      : assertEpicConvergenceRecovery;
+  const initial = await assertSource({ ...recovery, body: before.body, requirePlan: false });
+  const desiredBody = reconcileEpicBody(stripBodyVersion(before.body), templateDodText);
+  const bodyChanged = desiredBody !== stripBodyVersion(before.body);
+  const nextBody = stampBodyVersion(desiredBody, parseBodyVersion(before.body) + 1);
+  const allowedBodies = new Set([before.body]);
+  const labels = (value) => JSON.stringify([...new Set(labelNames(value))].sort());
+  const initialLabels = labels(before.labels);
+  const desiredLabels = labels([...labelNames(before.labels), ...plan.labelsToAdd]);
+  const childFrame = (result) =>
+    JSON.stringify([
+      result.childInventory ?? result.sourceObservations.readProject.value?.children,
+      result.childSourceDigest ?? null,
+    ]);
+  let visibleWritten = false;
+  async function fence() {
+    const live = await read(target);
+    if (!allowedBodies.has(live.body)) throw new Error('epic-convergence:body-drift');
+    const result = await assertSource({ ...recovery, body: live.body, requirePlan: false });
+    if (
+      JSON.stringify(result.operatorContext) !== JSON.stringify(initial.operatorContext) ||
+      childFrame(result) !== childFrame(initial)
+    )
+      throw new Error('epic-convergence:source-frame-drift');
+    if (
+      live.title !== (visibleWritten ? plan.desiredTitle : before.title) ||
+      labels(live.labels) !== (visibleWritten ? desiredLabels : initialLabels)
+    )
+      throw new Error('epic-convergence:visible-drift');
+    return live;
+  }
   if (bodyChanged) {
     await mutateBody({
       ...target,
       deps: { ...deps, pexec: run },
-      validateFreshBaseAsync: (body) => assertGovernedDecompositionRecovery({ ...recovery, body }),
-      mutate: (liveBody) => reconcileEpicBody(liveBody, templateDodText),
+      expectedVersion: parseBodyVersion(before.body),
+      validateFreshBaseAsync: async (_base, _next, remote) => {
+        if (remote !== undefined && remote !== before.body)
+          throw new Error('epic-convergence:body-drift');
+        await fence();
+      },
+      mutate: (liveBody) => {
+        if (stripBodyVersion(liveBody) !== stripBodyVersion(before.body))
+          throw new Error('epic-convergence:body-drift');
+        return desiredBody;
+      },
     });
+    allowedBodies.clear();
+    allowedBodies.add(nextBody);
   }
   if (plan.titleChanged || plan.labelsToAdd.length > 0) {
-    await assertGovernedDecompositionRecovery({ ...recovery, body: (await read(target)).body });
+    await fence();
     await write({
       ...target,
       title: plan.titleChanged ? plan.desiredTitle : null,
       labelsToAdd: plan.labelsToAdd,
     });
+    visibleWritten = true;
   }
 
-  const after = await read(target);
+  const after = await fence();
   const readback = planEpicMetadata({ ...after, forceEpic });
   const bodyConverged = reconcileEpicBody(after.body, templateDodText) === after.body;
   if (readback.labelsToAdd.length > 0 || readback.titleChanged || !bodyConverged) {
