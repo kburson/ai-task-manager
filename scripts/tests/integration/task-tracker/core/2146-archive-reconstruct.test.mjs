@@ -20,6 +20,26 @@ const identity = () => ({
   index: readFileSync(git(['rev-parse', '--git-path', 'index']).trim()),
   refs: git(['show-ref']),
 });
+const ciIdentity = Object.freeze({
+  GIT_AUTHOR_NAME: 'kendrick burson',
+  GIT_AUTHOR_EMAIL: 'kpburson@pm.me',
+  GIT_COMMITTER_NAME: 'kendrick burson',
+  GIT_COMMITTER_EMAIL: 'kpburson@pm.me',
+});
+
+for (const [name, value] of Object.entries(ciIdentity)) {
+  test(`admits unchanged inherited ${name} metadata`, () => {
+    const env = Object.freeze({ [name]: value });
+    assert.doesNotThrow(() => assertGitEnvironment(env));
+    assert.deepEqual(env, { [name]: value });
+  });
+}
+test('admits all four identity names without rewriting metadata values', () => {
+  const env = Object.freeze({ ...ciIdentity, GIT_AUTHOR_NAME: 'name with spaces ; literal text' });
+  const before = { ...env };
+  assert.doesNotThrow(() => assertGitEnvironment(env));
+  assert.deepEqual(env, before);
+});
 
 // These negatives catch environment/configuration redirection before Git can act.
 for (const name of [
@@ -28,14 +48,68 @@ for (const name of [
   'GIT_CONFIG_COUNT',
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',
   'GIT_PAGER',
+  'GIT_WORK_TREE',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_CONFIG_SYSTEM',
+  'GIT_CONFIG_GLOBAL',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_TEMPLATE_DIR',
+  'GIT_SSH_COMMAND',
+  'GIT_EXTERNAL_DIFF',
+  'GIT_TRACE',
+  'GIT_AUTHOR_DATE',
+  'GIT_COMMITTER_DATE',
+  'GIT_AUTHOR_NAME_EXTRA',
+  'GIT_AUTHOR_name',
 ]) {
   test(`rejects inherited ${name} before any subprocess`, () => {
-    assert.throws(
-      () => assertGitEnvironment({ [name]: 'unexpected' }),
-      /reconstruct:git-environment/
-    );
+    for (const admitted of [{}, ciIdentity]) {
+      assert.throws(() => assertGitEnvironment({ ...admitted, [name]: 'unexpected' }), {
+        message: 'reconstruct:git-environment:' + name,
+      });
+    }
   });
 }
+test('allocator refuses a control variable after metadata before helpers, Git or allocation', async () => {
+  const beforeEnv = { ...process.env };
+  const fixtureParent = path.join(carrier, '.ai-task-manager/runtime/test-fixtures/2146-archive');
+  const entries = () => (existsSync(fixtureParent) ? readdirSync(fixtureParent).sort() : []);
+  const beforeEntries = entries();
+  let helpers = 0,
+    calls = 0;
+  const childEnv = { ...beforeEnv };
+  for (const [name, value] of Object.entries(ciIdentity)) {
+    if (!Object.hasOwn(childEnv, name)) childEnv[name] = value;
+  }
+  // This test process alone receives the deliberate refusal input; no Git may run.
+  childEnv.GIT_DIR = 'unexpected-test-control';
+  const originalEnv = process.env;
+  const mocked = mock.method(childProcess, 'execFileSync', () => {
+    calls++;
+  });
+  syncBuiltinESMExports();
+  try {
+    process.env = childEnv;
+    await assert.rejects(
+      () =>
+        allocateValidationRoot(carrier, {
+          resolveRoot: () => {
+            helpers++;
+            return carrier;
+          },
+        }),
+      { message: 'reconstruct:git-environment:GIT_DIR' }
+    );
+  } finally {
+    process.env = originalEnv;
+    mocked.mock.restore();
+    syncBuiltinESMExports();
+  }
+  assert.equal(helpers, 0);
+  assert.equal(calls, 0);
+  assert.deepEqual(entries(), beforeEntries);
+  assert.deepEqual({ ...process.env }, beforeEnv);
+});
 test('allows only the exact benign Git environment values', () => {
   assert.doesNotThrow(() =>
     assertGitEnvironment({ GIT_PAGER: 'cat', GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' })

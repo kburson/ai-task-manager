@@ -3,6 +3,8 @@
 // or uncommitted tooling is a failure, never a skip or network fallback.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
@@ -11,13 +13,30 @@ const script = fileURLToPath(
 );
 
 for (const mode of ['report', 'plan']) {
-  test(`strict committed carrier verifies ${mode} with actual historical objects`, () => {
+  test(`strict committed carrier verifies ${mode} with actual historical objects and CI metadata`, () => {
+    const beforeEnv = { ...process.env };
+    const childEnv = { ...beforeEnv };
+    const workflow = readFileSync(path.join(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
+    for (const name of [
+      'GIT_AUTHOR_NAME',
+      'GIT_AUTHOR_EMAIL',
+      'GIT_COMMITTER_NAME',
+      'GIT_COMMITTER_EMAIL',
+    ]) {
+      const declaration = workflow.split('\n').find((line) => line.startsWith('  ' + name + ': '));
+      assert.ok(declaration, name + ' workflow declaration missing');
+      // Test-only CI fixture: preserve existing values, including empty strings.
+      if (!Object.hasOwn(childEnv, name))
+        childEnv[name] = declaration.slice(('  ' + name + ': ').length);
+    }
     const run = spawnSync(process.execPath, [script, mode], {
       cwd: process.cwd(),
+      env: childEnv,
       encoding: 'utf8',
       timeout: 60000,
       maxBuffer: 2 * 1024 * 1024,
     });
+    assert.deepEqual({ ...process.env }, beforeEnv);
     assert.equal(run.status, 0, run.stderr);
     const result = JSON.parse(run.stdout);
     assert.match(result.archiveCarrierCommit, /^[a-f0-9]{40}$/);

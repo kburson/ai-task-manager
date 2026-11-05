@@ -17,10 +17,17 @@ const fail = (reason) => {
 };
 const allocated = new WeakSet();
 const BENIGN_ENV = { GIT_PAGER: 'cat', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' };
+// Identity metadata may affect the new clone's reflog, never command or path selection.
+const IDENTITY_ENV = new Set([
+  'GIT_AUTHOR_NAME',
+  'GIT_AUTHOR_EMAIL',
+  'GIT_COMMITTER_NAME',
+  'GIT_COMMITTER_EMAIL',
+]);
 
 export function assertGitEnvironment(env = process.env) {
   for (const [key, value] of Object.entries(env)) {
-    if (key.startsWith('GIT_') && value && BENIGN_ENV[key] !== value)
+    if (key.startsWith('GIT_') && value && !IDENTITY_ENV.has(key) && BENIGN_ENV[key] !== value)
       fail('git-environment:' + key);
   }
 }

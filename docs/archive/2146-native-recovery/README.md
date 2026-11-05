@@ -36,6 +36,8 @@ The strict `verify.mjs report` and `verify.mjs plan` commands distinguish the ac
 
 The successful output's `gitCommands` and a failure ledger's `commands` record historical reconstruction commands and later source-Git callbacks. They do not include the carrier's configuration, status or committed-blob inspection reads. A refusal before reconstruction allocation can therefore have an empty command ledger even though carrier inspection ran. Carrier Git reads disable optional writes with `--no-optional-locks`, including status refreshes of the index; they preserve the caller's environment and retain the existing configuration checks.
 
+The fixed Git runner also preserves inherited `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME` and `GIT_COMMITTER_EMAIL` metadata. These values can appear in the new reconstruction repository's reflog; they do not change the pinned historical commit or authorize an AITM actor. The runner does not set or normalize identity values. All other nonempty `GIT_` variables remain refused except the exact pairs `GIT_PAGER=cat`, `GIT_TERMINAL_PROMPT=0` and `GIT_OPTIONAL_LOCKS=0`. Repository, index, object, configuration, trace, helper, transport and date overrides remain refused. Invalid inherited identity may cause a normal Git failure.
+
 The original failed native Test, rejected absolute-path alternative, failed trunk CI setup, successful historical e3 CI and premature local reconstruction remain separate records. None qualifies a new carrier commit. Complete exact-head CI, independent implementation review and a fresh native Test receipt are required for delivery.
 
 ## Related records
