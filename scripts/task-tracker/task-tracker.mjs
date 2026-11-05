@@ -183,6 +183,7 @@ export const PREFLIGHT_MODE = {
   'plan-approve': 'target-required',
   'issue-body': 'target-required',
   comment: 'target-required',
+  'spike-deliverable': 'target-required',
   assign: 'target-required',
   transfer: 'target-required',
   unassign: 'target-required',
@@ -475,6 +476,17 @@ if (_isMain)
     }
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
+    // Validate the closed grammar before comment IDs can be mistaken for issue targets.
+    if (foreignWorktree.argv[0] === 'spike-deliverable') {
+      const { parseSpikeDeliverableArgs } = await import('./lib/spike-deliverable.mjs');
+      try {
+        parseSpikeDeliverableArgs(foreignWorktree.argv.slice(1));
+      } catch (error) {
+        process.stderr.write(`${error.message}\n`);
+        process.exitCode = 2;
+        return;
+      }
+    }
     const ctx = buildContext(foreignWorktree.argv, { executionContext });
     const shouldAnnotate =
       admission.trust === 'project-owned-diverged' &&
@@ -771,6 +783,11 @@ if (_isMain)
         case 'epic-reconcile': {
           const { verbEpicReconcile } = await import('./verbs/epic-reconcile.mjs');
           await verbEpicReconcile(ctx);
+          break;
+        }
+        case 'spike-deliverable': {
+          const { verbSpikeDeliverable } = await import('./verbs/spike-deliverable.mjs');
+          await verbSpikeDeliverable(ctx);
           break;
         }
         case 'report': {

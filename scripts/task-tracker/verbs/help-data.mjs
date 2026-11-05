@@ -661,6 +661,20 @@ export const VERB_REFERENCE = {
     exitCodes: [{ code: 1, meaning: 'no target issue (no #N and no active bound issue)' }],
     examples: ['/task board', '/task board 900'],
   },
+  'spike-deliverable': {
+    topic: 'evidence',
+    summary: 'Publish an existing same-issue report as a spike deliverable in Develop.',
+    usage: '/task spike-deliverable <N> --from-comment <id|url>',
+    flags: [{ flag: '--from-comment <id|url>', desc: 'required existing comment on this spike' }],
+    exitCodes: [
+      {
+        code: 1,
+        meaning: 'native/source/comment authority, marker conflict or verified readback refused',
+      },
+      { code: 2, meaning: 'missing, malformed, duplicate or unknown command arguments' },
+    ],
+    examples: ['/task spike-deliverable 2156 --from-comment 50'],
+  },
   'epic-reconcile': {
     topic: 'board',
     summary:

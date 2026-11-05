@@ -425,7 +425,16 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     'plan-approve-current-scope',
   ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
   for (const entry of currentApprovalEntries) assert.ok(files.includes(entry));
+  // #2156: exactly two spike publication runtime leaves; guide and fixtures stay excluded.
+  const spikeDeliverableEntries = [
+    'scripts/task-tracker/lib/spike-deliverable.mjs',
+    'scripts/task-tracker/verbs/spike-deliverable.mjs',
+  ];
+  for (const entry of spikeDeliverableEntries) assert.ok(files.includes(entry));
+  assert.ok(!files.includes('docs/workflows/spike-deliverable.md'));
+  assert.ok(!files.includes('scripts/tests/fixtures/spike-deliverable-provider.mjs'));
   const effectiveCeiling =
+    spikeDeliverableEntries.length +
     currentApprovalEntries.length +
     locationAuthorityEntries.length +
     retainedRecoveryEntries.length +
