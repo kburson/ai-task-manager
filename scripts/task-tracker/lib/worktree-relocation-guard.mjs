@@ -13,7 +13,7 @@ import {
 } from './issue-worktree-location.mjs';
 import { readWorktreeIdentity } from './worktree-binding-guard.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { currentSessionId } from '../word-counter.mjs';
+import { currentIssueLockOwner, withIssueLock } from '../issue-mutator-lock.mjs';
 
 const LOCATION_GUARDED_VERBS = new Set([
   'ac-stamp',
@@ -85,7 +85,9 @@ function issueNumberFromVerb({ verb, rest }) {
   const shorthand = String(verb || '').match(/^#(\d+)$/);
   if (shorthand) return { applicable: true, issueNumber: Number(shorthand[1]) };
   if (!LOCATION_GUARDED_VERBS.has(verb)) return { applicable: false, issueNumber: null };
-  const target = (rest || []).find((arg) => /^#?\d+$/.test(String(arg)));
+  // Start/resume consume their first positional argument; other numbers can be option values.
+  const candidates = isBindVerb(verb) ? (rest || []).slice(0, 1) : rest || [];
+  const target = candidates.find((arg) => /^#?\d+$/.test(String(arg)));
   return {
     applicable: true,
     issueNumber: target == null ? null : Number(String(target).replace(/^#/, '')),
@@ -99,18 +101,29 @@ function isBindVerb(verb) {
 async function fetchIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body'],
     { timeout: GH_API_TIMEOUT_MS }
   );
-  return stdout;
+  const { body } = JSON.parse(stdout);
+  if (typeof body !== 'string') throw new Error('location authority: issue body unreadable');
+  return body;
 }
 
-async function writeLocation({ issueNumber, repo, entry, confirmRelocation, deps }) {
+async function writeLocation({
+  issueNumber,
+  repo,
+  entry,
+  confirmRelocation,
+  validateFreshBaseAsync,
+  fetchBody,
+  deps,
+}) {
   const mutateIssueBody = deps.mutateIssueBody || defaultMutateIssueBody;
   await mutateIssueBody({
     issueNumber,
     repo,
-    deps: { pexec },
+    deps: { pexec, fetchBody },
+    validateFreshBaseAsync,
     mutate(base) {
       const recorded = mostRecentIssueWorktreeLocation(base);
       if (recorded && !sameIssueWorktreeLocation(recorded, entry) && !confirmRelocation) {
@@ -127,6 +140,9 @@ export async function enforceIssueWorktreeLocation({
   cfg,
   invokingDir = process.cwd(),
   confirmRelocation = false,
+  allowForeignWorktree = false,
+  renewal = null,
+  observeRenewal,
   deps = {},
 } = {}) {
   const target = issueNumberFromVerb({ verb, rest });
@@ -138,13 +154,16 @@ export async function enforceIssueWorktreeLocation({
   const resolveIdentity = deps.resolveIdentity || readWorktreeIdentity;
   const live = resolveIdentity({ projectDir: invokingDir });
   const getBody = deps.fetchIssueBody || fetchIssueBody;
-  const body = await getBody({ issueNumber: target.issueNumber, repo: cfg.repo });
+  const readCurrentBody = () => getBody({ issueNumber: target.issueNumber, repo: cfg.repo });
+  const body = await readCurrentBody();
   const recorded = mostRecentIssueWorktreeLocation(body);
+  const bind = isBindVerb(verb);
 
-  if (recorded && sameIssueWorktreeLocation(recorded, live)) {
+  const matched = recorded && sameIssueWorktreeLocation(recorded, live);
+  if (matched && !bind) {
     return { status: 'matched', issueNumber: target.issueNumber, recorded, live };
   }
-  if (recorded && !confirmRelocation) {
+  if (recorded && !matched && !confirmRelocation) {
     throw new WorktreeRelocationRequiredError({
       issueNumber: target.issueNumber,
       recorded,
@@ -155,26 +174,73 @@ export async function enforceIssueWorktreeLocation({
   // that is invoked without the required bind may still run its existing
   // semantic preflight, but this entry guard must not mutate the body before
   // that preflight decides whether the verb itself is permitted.
-  if (!recorded && !isBindVerb(verb)) {
+  if (!recorded && !bind) {
     return { status: 'unrecorded', issueNumber: target.issueNumber, live };
   }
 
-  const sessionIdProvider = deps.sessionId || currentSessionId;
-  let sessionId = '';
-  try {
-    sessionId = sessionIdProvider() || '';
-  } catch {
-    sessionId = '';
+  const { readLocationMutationAuthority, assertLocationMutationAuthority } =
+    await import('./location-mutation-authority.mjs');
+  const readAuthority = deps.readAuthority ?? readLocationMutationAuthority;
+  const context = {
+    issueNumber: target.issueNumber,
+    verb,
+    rest,
+    cfg,
+    invokingDir,
+    bind,
+    allowForeignWorktree,
+    renewal,
+    deps,
+  };
+  const authority = await readAuthority({ ...context, body });
+  if (!sameIssueWorktreeLocation(live, authority.live)) {
+    throw new Error('location authority changed after entry observation');
+  }
+  if (matched) {
+    const fresh = await readAuthority({ ...context, body, observeRenewal });
+    assertLocationMutationAuthority(authority, fresh);
+    return { status: 'matched', issueNumber: target.issueNumber, recorded, live };
   }
   const now = deps.now || (() => new Date().toISOString());
-  const entry = { ...live, sessionId, ts: now() };
-  await writeLocation({
-    issueNumber: target.issueNumber,
-    repo: cfg.repo,
-    entry,
-    confirmRelocation,
-    deps,
-  });
+  const entry = { ...authority.live, sessionId: authority.actor.sid, ts: now() };
+  const lock = deps.withIssueLock ?? withIssueLock;
+  const assertOwner = () => {
+    const owner = (deps.currentIssueLockOwner ?? currentIssueLockOwner)(target.issueNumber);
+    if (!owner || owner.projDir !== authority.mainRoot || owner.sessionId !== entry.sessionId) {
+      throw new Error('location authority: physical issue lock ownership required');
+    }
+  };
+  await lock(
+    {
+      issue: target.issueNumber,
+      verb: 'worktree-location',
+      projDir: authority.live.worktreePath,
+      sessionId: entry.sessionId,
+    },
+    () => {
+      assertOwner();
+      return writeLocation({
+        issueNumber: target.issueNumber,
+        repo: cfg.repo,
+        entry,
+        confirmRelocation,
+        fetchBody: readCurrentBody,
+        deps,
+        async validateFreshBaseAsync(base, next, rawBody) {
+          const fresh = await readAuthority({
+            ...context,
+            body: rawBody,
+            observeRenewal,
+          });
+          assertLocationMutationAuthority(authority, fresh);
+          assertOwner();
+          if (recordIssueWorktreeLocationOnChange(base, entry).body !== next) {
+            throw new Error('location authority: retry no longer represents the authorized append');
+          }
+        },
+      });
+    }
+  );
   return {
     status: recorded ? 'relocated' : 'recorded',
     issueNumber: target.issueNumber,

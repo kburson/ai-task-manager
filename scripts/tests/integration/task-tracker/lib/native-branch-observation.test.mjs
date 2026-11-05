@@ -12,7 +12,7 @@ import { claimOccupancy, readOccupancy } from '../../../../task-tracker/lib/occu
 import { occupancyPath } from '../../../../task-tracker/paths.mjs';
 import { inspectNativeBranchRenewal } from '../../../../task-tracker/lib/native-branch-renewal.mjs';
 
-function fixture(t) {
+function fixture(t, sid = 'native-branch-unit-fixture') {
   const root = realpathSync(createRuntimeRootFixture('native-branch-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const git = (...args) =>
@@ -33,7 +33,6 @@ function fixture(t) {
   );
   git('add', 'README.md', '.gitignore');
   git('commit', '-q', '-m', 'seed');
-  const sid = 'native-branch-unit-fixture';
   const claim = claimOccupancy({
     projectDir: root,
     issue: '#2105',
@@ -379,6 +378,47 @@ test('a source change during the remote read invalidates admission', async (t) =
   };
   await assert.rejects(inspectNativeBranchRenewal(f.options), /dirty source/);
 });
+
+for (const change of ['none', 'body', 'owner', 'state', 'checkout']) {
+  const nativeSid =
+    process.env.CODEX_THREAD_ID === process.env.CODEX_SESSION_ID && process.env.CODEX_THREAD_ID;
+  test(
+    'location writer renews against final authority, change=' + change,
+    { skip: change === 'none' && !nativeSid },
+    async (t) => {
+      const f = fixture(t, nativeSid || undefined);
+      const expectedLocation = {
+        ...f.remote.snapshot,
+        currentUser: f.remote.currentUser,
+        body: f.remote.issue.body,
+        issueState: f.remote.issue.state,
+      };
+      const inspect = () =>
+        inspectNativeBranchRenewal({
+          ...f.options,
+          expectedLocation,
+          deps: {
+            readRemote: async (_issue, _cfg, compareLocation) => {
+              assert.equal(compareLocation, true);
+              if (change === 'body') f.remote.issue.body += 'concurrent note\n';
+              if (change === 'owner') f.remote.snapshot.assignees = [];
+              if (change === 'state') f.remote.snapshot.state = 'review';
+              if (change === 'checkout')
+                writeFileSync(path.join(f.root, 'README.md'), 'changed after observation\n');
+              return f.remote;
+            },
+          },
+        });
+      if (change === 'none') assert.equal((await inspect()).head, f.git('rev-parse', 'HEAD'));
+      else
+        await assert.rejects(
+          inspect,
+          change === 'checkout' ? /dirty source/ : /location authority changed/
+        );
+      assert.deepEqual(getActiveTask(f.sid, f.root), f.record);
+    }
+  );
+}
 
 test('inspection does not execute configured clean filters', async (t) => {
   const f = fixture(t);

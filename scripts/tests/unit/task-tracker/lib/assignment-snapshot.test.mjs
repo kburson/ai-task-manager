@@ -220,6 +220,72 @@ test('fetchAssignmentSnapshot refuses owner drift across project-membership page
   );
 });
 
+for (const paginated of [false, true]) {
+  test('location snapshot uses one final authority response, paginated=' + paginated, async () => {
+    const item = { id: 'item', project: { id: cfg.projectId }, fieldValueByName: { name: 'Plan' } };
+    const snapshot = await fetchAssignmentSnapshot({
+      issueNumber: 12,
+      cfg,
+      includeLocation: true,
+      deps: {
+        gql: async (query, vars) => {
+          assert.ok(query.includes('viewer { login }'));
+          assert.ok(query.includes('issue(number: $issue) { body state'));
+          const another = paginated && !vars.cursor && !vars.item;
+          const final = !paginated || Boolean(vars.item);
+          return {
+            viewer: { login: final ? 'Operator' : 'old' },
+            node: item,
+            repository: {
+              issue: {
+                body: final ? 'current\n' : 'old',
+                state: final ? 'OPEN' : 'CLOSED',
+                assignees: { nodes: [{ login: 'operator' }] },
+                projectItems: {
+                  nodes: another ? [] : [item],
+                  pageInfo: { hasNextPage: another, endCursor: 'next' },
+                },
+              },
+            },
+          };
+        },
+      },
+    });
+    assert.deepEqual(snapshot, {
+      state: 'plan',
+      assignees: ['operator'],
+      body: 'current\n',
+      issueState: 'OPEN',
+      currentUser: 'operator',
+    });
+  });
+}
+test('location snapshot refuses unreadable viewer, owners or body', async () => {
+  const issue = {
+    body: '',
+    state: 'OPEN',
+    assignees: { nodes: [] },
+    projectItems: {
+      nodes: [{ project: { id: cfg.projectId }, fieldValueByName: { name: 'Plan' } }],
+    },
+  };
+  for (const [viewer, fields] of [
+    [null, {}],
+    [{ login: 'ok' }, { body: null }],
+    [{ login: 'ok' }, { assignees: { nodes: [null] } }],
+  ]) {
+    await assert.rejects(
+      fetchAssignmentSnapshot({
+        issueNumber: 12,
+        cfg,
+        includeLocation: true,
+        deps: { gql: async () => ({ viewer, repository: { issue: { ...issue, ...fields } } }) },
+      }),
+      /location authority is unreadable/
+    );
+  }
+});
+
 test('owner helpers are case-insensitive but reject duplicate singleton claims', () => {
   assert.equal(singletonOwner(['Alice']), 'alice');
   assert.equal(singletonOwner(['Alice', 'alice']), null);

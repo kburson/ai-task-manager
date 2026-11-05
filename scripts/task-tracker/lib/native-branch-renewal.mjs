@@ -14,7 +14,7 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { loadConfig } from '../config.mjs';
 import { readOccupancy } from './occupancy.mjs';
 import { ownershipDecision } from './ownership-policy.mjs';
-import { fetchAssignmentSnapshot } from './assignment-snapshot.mjs';
+import { fetchAssignmentSnapshot, sameOwnerSet } from './assignment-snapshot.mjs';
 import {
   resolveCurrentIssueWorktreeLocation,
   resolveCurrentIssueWorktreeBranch,
@@ -146,7 +146,15 @@ function inspectCleanCheckout(root, identity, oldBranch, newBranch, git) {
   return before[0];
 }
 
-async function readRemote(issueNumber, cfg) {
+async function readRemote(issueNumber, cfg, compareLocation = false) {
+  if (compareLocation) {
+    const snapshot = await fetchAssignmentSnapshot({ issueNumber, cfg, includeLocation: true });
+    return {
+      snapshot,
+      currentUser: snapshot.currentUser,
+      issue: { state: snapshot.issueState, body: snapshot.body },
+    };
+  }
   const snapshot = await fetchAssignmentSnapshot({ issueNumber, cfg });
   const user = await pexec('gh', ['api', 'user', '--jq', '.login'], { timeout: GH_API_TIMEOUT_MS });
   const issue = await pexec(
@@ -204,6 +212,7 @@ export async function inspectNativeBranchRenewal({
   identitySource = 'hook',
   env = process.env,
   cfg,
+  expectedLocation,
   deps = {},
 }) {
   if (
@@ -266,7 +275,21 @@ export async function inspectNativeBranchRenewal({
     git
   );
   const configuration = cfg ?? loadConfig({ projectPath: configPath(root) });
-  const remote = await (deps.readRemote ?? readRemote)(request.issueNumber, configuration);
+  const remote = await (deps.readRemote ?? readRemote)(
+    request.issueNumber,
+    configuration,
+    Boolean(expectedLocation)
+  );
+  if (
+    expectedLocation &&
+    (remote.issue?.body !== expectedLocation.body ||
+      remote.issue?.state !== expectedLocation.issueState ||
+      remote.currentUser !== expectedLocation.currentUser ||
+      remote.snapshot?.state !== expectedLocation.state ||
+      !sameOwnerSet(remote.snapshot.assignees, expectedLocation.assignees))
+  ) {
+    refuse('location authority changed during renewal');
+  }
   const state = remote.snapshot?.state;
   const owners = ownershipDecision({
     state,
@@ -318,7 +341,13 @@ export async function inspectNativeBranchRenewal({
   };
 }
 
-export async function enforceNativeBranchRenewalEntry({ argv, root, cfg, env = process.env }) {
+export async function enforceNativeBranchRenewalEntry({
+  argv,
+  root,
+  cfg,
+  expectedLocation,
+  env = process.env,
+}) {
   if (!env.CODEX_THREAD_ID && !env.CODEX_SESSION_ID) return null;
   if (argv?.[0] !== 'start') return null;
   const sid = currentSessionId();
@@ -338,5 +367,6 @@ export async function enforceNativeBranchRenewalEntry({ argv, root, cfg, env = p
     identitySource: 'cli',
     env,
     cfg,
+    expectedLocation,
   });
 }

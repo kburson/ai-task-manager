@@ -504,19 +504,35 @@ if (_isMain)
         : null;
     let annotationVerbResult;
     try {
-      await enforceNativeBranchRenewalEntry({
-        argv: process.argv.slice(2),
-        root: process.cwd(),
-        cfg: ctx.cfg,
-      });
+      const observeRenewal = (expectedLocation) =>
+        enforceNativeBranchRenewalEntry({
+          argv: process.argv.slice(2),
+          root: process.cwd(),
+          cfg: ctx.cfg,
+          expectedLocation,
+        });
+      const renewal = await observeRenewal();
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
         rest: ctx.rest,
         cfg: ctx.cfg,
         invokingDir: process.cwd(),
         confirmRelocation: relocation.confirmRelocation,
+        allowForeignWorktree: foreignWorktree.allowForeignWorktree,
+        renewal,
+        observeRenewal: renewal ? observeRenewal : undefined,
       });
     } catch (error) {
+      const { LocationPreflightError } = await import('./lib/location-mutation-authority.mjs');
+      if (error instanceof LocationPreflightError) {
+        const { refuseVerbPreflight } = await import('./lib/verb-preflight.mjs');
+        return refuseVerbPreflight(ctx.verb, error.verdict);
+      }
+      if (error instanceof ForeignWorktreeBindingError) {
+        process.stderr.write(error.message + '\n');
+        process.exitCode = 7;
+        return;
+      }
       if (!(error instanceof WorktreeRelocationRequiredError)) throw error;
       process.stdout.write(`${error.promptToken}\n`);
       process.stderr.write(`${error.message}\n`);
