@@ -29,7 +29,7 @@ function commentUrl(value) {
   return { repository: `${match[1]}/${match[2]}`, issue: match[3], id: match[4] };
 }
 
-export function parseSpikeDeliverableArgs(argv = []) {
+export function parseSpikeDeliverableArgs(argv = [], { repository } = {}) {
   let issueNumber = null;
   let commentReference = null;
   for (let index = 0; index < argv.length; index++) {
@@ -46,8 +46,15 @@ export function parseSpikeDeliverableArgs(argv = []) {
   }
   if (issueNumber === null || commentReference === null) throw spikeDeliverableRefusal('usage');
   if (/^[1-9]\d*$/.test(commentReference)) positiveId(commentReference, 'usage');
-  else if (commentUrl(commentReference).issue !== String(issueNumber))
-    throw spikeDeliverableRefusal('usage');
+  else {
+    const location = commentUrl(commentReference);
+    if (
+      location.issue !== String(issueNumber) ||
+      (repository !== undefined &&
+        location.repository.toLowerCase() !== String(repository).toLowerCase())
+    )
+      throw spikeDeliverableRefusal('usage');
+  }
   return { issueNumber, commentReference };
 }
 

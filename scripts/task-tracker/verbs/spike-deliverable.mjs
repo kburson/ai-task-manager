@@ -48,7 +48,9 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
 export async function runSpikeDeliverable(ctx, deps = {}) {
   try {
-    const { issueNumber, commentReference } = parseSpikeDeliverableArgs(ctx.rest);
+    const { issueNumber, commentReference } = parseSpikeDeliverableArgs(ctx.rest, {
+      repository: ctx.cfg?.repo,
+    });
     const projectDir = ctx.projectDir ?? process.cwd();
     const cfg = ctx.cfg;
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(cfg?.repo ?? '') || !cfg?.projectId)
@@ -224,7 +226,7 @@ export async function runSpikeDeliverable(ctx, deps = {}) {
 
 export async function verbSpikeDeliverable(ctx) {
   try {
-    parseSpikeDeliverableArgs(ctx.rest);
+    parseSpikeDeliverableArgs(ctx.rest, { repository: ctx.cfg?.repo });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 2;

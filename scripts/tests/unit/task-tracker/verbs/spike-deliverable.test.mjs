@@ -288,6 +288,63 @@ test('mixed returned marker refuses despite actual provider publication', async 
   await assert.rejects(() => run(f), /spike-deliverable:body-readback/);
   assert.equal(f.writes.length, 1);
 });
+
+for (const change of ['edit', 'delete']) {
+  test(`report ${change} during real governed retry prevents a second write`, async () => {
+    const f = spikeProviderFixture();
+    const original = f.body;
+    f.hooks.push = () => {
+      f.body = stampBodyVersion(original + '\n\n## Notes\n\nConcurrent note.\n', 2);
+      if (change === 'edit') f.comment.body += '\nChanged during retry';
+      else f.comment = null;
+    };
+    await assert.rejects(() => run(f), /spike-deliverable:/);
+    assert.equal(f.writes.length, 1);
+  });
+
+  test(`report ${change} only at final observation refuses after earlier readbacks passed`, async () => {
+    const f = spikeProviderFixture();
+    let postWriteObservations = 0;
+    f.hooks.beforeComment = () => {
+      if (f.writes.length === 0 || ++postWriteObservations < 2) return;
+      if (change === 'edit') f.comment.body += '\nChanged at final observation';
+      else f.comment = null;
+    };
+    await assert.rejects(() => run(f), /spike-deliverable:/);
+    assert.equal(postWriteObservations, 2);
+    assert.equal(f.writes.length, 1);
+    assert.ok(f.body.includes('aitm-deliverable-posted'));
+  });
+}
+
+for (const missingMarker of [false, true]) {
+  test(`validated candidate cannot accept ${missingMarker ? 'nominal no-op missing marker' : 'unrelated returned body'}`, async () => {
+    const f = spikeProviderFixture();
+    const original = f.body;
+    let validated = false;
+    f.unitDeps.mutateIssueBody = async (options) => {
+      const result = await mutateIssueBody({
+        ...options,
+        validateFreshBase: (...args) => {
+          options.validateFreshBase(...args);
+          validated = true;
+        },
+      });
+      assert.equal(validated, true);
+      return {
+        ...result,
+        status: missingMarker ? 'no-op' : result.status,
+        body: missingMarker
+          ? stampBodyVersion(original, result.version)
+          : result.body.replace('One bounded investigation report.', 'Unrelated provider body.'),
+      };
+    };
+    await assert.rejects(() => run(f), /spike-deliverable:body-readback/);
+    assert.equal(validated, true);
+    assert.equal(f.writes.length, 1);
+    assert.ok(f.body.includes('aitm-deliverable-posted'));
+  });
+}
 function validate(value = comment(), overrides = {}) {
   return invoke('validateSpikeDeliverableComment', {
     repository: 'owner/repo',

@@ -476,18 +476,35 @@ if (_isMain)
     }
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
+    let commandArgv = foreignWorktree.argv;
     // Validate the closed grammar before comment IDs can be mistaken for issue targets.
     if (foreignWorktree.argv[0] === 'spike-deliverable') {
       const { parseSpikeDeliverableArgs } = await import('./lib/spike-deliverable.mjs');
       try {
-        parseSpikeDeliverableArgs(foreignWorktree.argv.slice(1));
+        const parsed = parseSpikeDeliverableArgs(commandArgv.slice(1));
+        commandArgv = [
+          'spike-deliverable',
+          String(parsed.issueNumber),
+          '--from-comment',
+          parsed.commentReference,
+        ];
       } catch (error) {
         process.stderr.write(`${error.message}\n`);
         process.exitCode = 2;
         return;
       }
     }
-    const ctx = buildContext(foreignWorktree.argv, { executionContext });
+    const ctx = buildContext(commandArgv, { executionContext });
+    if (ctx.verb === 'spike-deliverable') {
+      const { parseSpikeDeliverableArgs } = await import('./lib/spike-deliverable.mjs');
+      try {
+        parseSpikeDeliverableArgs(ctx.rest, { repository: ctx.cfg?.repo });
+      } catch (error) {
+        process.stderr.write(`${error.message}\n`);
+        process.exitCode = 2;
+        return;
+      }
+    }
     const shouldAnnotate =
       admission.trust === 'project-owned-diverged' &&
       !ctx.SKIP_NETWORK &&

@@ -230,6 +230,7 @@ test('public command grammar refuses malformed input with usage exit2 before eff
     ['--from-comment', '50'],
     ['2156', '--from-comment', '50', '--unknown'],
     ['2156', '--from-comment', '50', '--from-comment', '50'],
+    ['2156', '--from-comment', 'https://github.com/foreign/repo/issues/2156#issuecomment-50'],
   ]) {
     const result = publicCommand(f, ['spike-deliverable', ...args]);
     assert.equal(result.status, 2, result.stderr);
@@ -237,6 +238,46 @@ test('public command grammar refuses malformed input with usage exit2 before eff
     assert.equal(f.writes.length, 0);
   }
 });
+
+test('accepted option-first grammar preserves the parsed issue through actual target preflight', async (t) => {
+  const f = await fixture(t);
+  for (const args of [
+    ['--from-comment', '50', '2156'],
+    ['--from-comment=50', '2156'],
+    ['--from-comment', spikeUrl, '2156'],
+    ['--from-comment=' + spikeUrl, '2156'],
+  ]) {
+    const result = publicCommand(f, ['spike-deliverable', ...args]);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /spike-deliverable:ownership/);
+  }
+});
+
+for (const change of ['staged tracked file', 'staged new file', 'wrong branch']) {
+  for (const duringObservation of [false, true]) {
+    test(`real ${change} ${duringObservation ? 'during observation' : 'before invocation'} refuses without a write`, async (t) => {
+      const f = await fixture(t);
+      const head = f.git('rev-parse', 'HEAD');
+      let changed = false;
+      const mutateSource = () => {
+        if (changed) return;
+        changed = true;
+        if (change === 'wrong branch') f.git('switch', '-qc', 'fixture-other-branch');
+        else {
+          const file = change === 'staged new file' ? 'new-source.txt' : 'source.txt';
+          writeFileSync(path.join(f.root, file), 'staged changed source\n');
+          f.git('add', '-f', file);
+          assert.ok(f.git('diff', '--cached', '--name-only').includes(file));
+        }
+      };
+      if (duringObservation) f.hooks.beforeComment = mutateSource;
+      else mutateSource();
+      await assert.rejects(() => run(f), /spike-deliverable:/);
+      assert.equal(f.git('rev-parse', 'HEAD'), head);
+      assert.equal(f.writes.length, 0);
+    });
+  }
+}
 
 test('registered target-required preflight refuses a foreign issue before provider effects', async (t) => {
   const f = await fixture(t);
