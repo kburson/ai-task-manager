@@ -139,7 +139,8 @@ The required fragments include user-story.md for non-stub shapes.
   the current plan, scope and clean source. Immutable completed `not-required`
   history admits this lane; it never supplies approval. Human, ordinary and
   waiver approvals are preserved. Refusals require fresh evidence and retry;
-  see `docs/workflows/current-plan-approval.md` for eligibility and activation.
+  see the [operator guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/workflows/current-plan-approval.md)
+  for eligibility and activation.
 - **Splitting:** validate every task intent and rendered story before the first
   fragment, preflight, or GitHub create side effect. Enrich every task in a
   historical plan before retrying; never create a partial sibling set.

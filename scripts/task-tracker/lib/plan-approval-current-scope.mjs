@@ -101,9 +101,14 @@ export function evaluateCurrentScopeAdmission({ body = '', comments, repository,
   const auth = provenance(comment);
   if (!auth) return denied('current-scope-authority-provenance');
   const source = stripFencedCodeBlocks(body);
-  const entries = [...source.matchAll(/<!--\s*aitm-entered-develop(?:-\d+)?\b[^]*?-->/gi)]
+  // Inventory whole comments, then let the shared grammar own entry parsing.
+  // Candidate-shaped malformed comments remain collisions rather than disappearing.
+  const entries = [...source.matchAll(/<!--[^]*?(?:-->|$)/g)]
     .filter((x) => x[0].includes(record.transitionId))
-    .map((x) => ({ raw: x[0], entry: parseEntryMarker(x[0]) }));
+    .map((x) => ({ raw: x[0], entry: parseEntryMarker(x[0]) }))
+    .filter(
+      (x) => x.entry?.state === 'develop' || x.raw.toLowerCase().includes('aitm-entered-develop')
+    );
   if (
     entries.length !== 1 ||
     entries[0].entry?.state !== 'develop' ||

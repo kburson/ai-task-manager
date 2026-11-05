@@ -123,7 +123,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test
 - Modify: `scripts/task-tracker/lib/agent-review/review-gate.mjs`
 - Modify: `scripts/task-tracker/lib/resident-actions/review-agent-validation.mjs`
 - Extend: `scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs`
-- Create: `scripts/tests/unit/task-tracker/verbs/plan-approve-current-scope.test.mjs` for producer/parser coverage beyond the existing suite line cap.
+- Create: `scripts/tests/integration/task-tracker/verbs/plan-approve-current-scope.test.mjs` for producer/parser coverage beyond the existing suite line cap.
 - Create: `scripts/tests/unit/task-tracker/verbs/review-current-plan-approval.test.mjs` for new-digest resident Review/review-context coverage.
 - Create: `scripts/tests/integration/task-tracker/plan-approval-current-scope.test.mjs`
 - Create: `docs/workflows/current-plan-approval.md`
@@ -152,7 +152,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test
 **Verification Commands:**
 
 ```sh
-node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test.mjs scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve-current-scope.test.mjs scripts/tests/unit/task-tracker/verbs/review-current-plan-approval.test.mjs
+node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test.mjs scripts/tests/unit/task-tracker/lib/plan-transition-authority.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs scripts/tests/integration/task-tracker/verbs/plan-approve-current-scope.test.mjs scripts/tests/unit/task-tracker/verbs/review-current-plan-approval.test.mjs
 node --test scripts/tests/integration/task-tracker/plan-approval-current-scope.test.mjs
 node --test scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs
 ```

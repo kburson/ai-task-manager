@@ -1,4 +1,4 @@
-// @story #1011 #1023 #1872
+// @story #1011 #1023 #1872 #2153
 // @slow-parallel-safe (uses independent project-isolated temporary directories)
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -298,8 +298,12 @@ test('routed task wrappers propagate command return codes', () => {
         TT_SKIP_NETWORK: '1',
         AI_TASK_MANAGER_SESSION_ID: 'task-exit-fixture',
       });
-      assert.equal(missingTarget.status, 1, `${verb}: ${missingTarget.stderr}`);
-      assert.match(missingTarget.stderr, /Usage:/, verb);
+      assert.equal(
+        missingTarget.status,
+        verb === 'plan-approve' ? 2 : 1,
+        `${verb}: ${missingTarget.stderr}`
+      );
+      assert.match(missingTarget.stderr, /usage:/i, verb);
     }
   } finally {
     rmSync(temp, { recursive: true, force: true });

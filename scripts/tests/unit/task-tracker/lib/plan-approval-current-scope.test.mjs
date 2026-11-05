@@ -394,3 +394,9 @@ test('unterminated encoded candidate after unrelated completion cannot hide a co
   f.comments.push(observation('3', unrelated + '\n' + collision, '2026-11-04T01:52:06Z'));
   assert.equal(evaluate(f).status, 'unavailable');
 });
+
+test('unterminated duplicate historical entry remains a malformed candidate collision', () => {
+  const f = fixture();
+  f.body += '\n' + visitMarker.replace(/-->$/, '');
+  assert.equal(evaluate(f).status, 'unavailable');
+});
