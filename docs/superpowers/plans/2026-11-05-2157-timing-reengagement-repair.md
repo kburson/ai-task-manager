@@ -1,6 +1,6 @@
 # Guarded Timing Reengagement Repair Implementation Plan — #2157
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. This issue's coordinator assigned native inline execution in the existing checkout; do not spawn implementers or create another branch/worktree.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task after required governed decomposition. Steps use checkbox (`- [ ]`) syntax for tracking. This issue's coordinator assigned native inline execution in the existing checkout; do not spawn implementers or create another branch/worktree. Generated child issues require their own genuine binding, lifecycle and issue-tagged commits; the parent cannot supply their authority.
 
 **Goal:** Let the genuine Review operator remove only explicitly selected proven redundant zero-work returns, with preserved evidence and truthful recovery.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Issue #2157 only; actual branch codex/2156-draft in the assigned spike-deliverable-writer-3516 checkout; retain all #2156 ancestors and receipts. Reserved timing-repair-2157 checkout/codex/2157-draft are untouched.
+- Scope is the bounded #2157 operation. Native assessment requires governed child decomposition before code, with each child independently bound and approved; do not implement the whole parent as a 12h story. Actual branch codex/2156-draft in the assigned spike-deliverable-writer-3516 checkout remains authorized; retain all #2156 ancestors and receipts. Reserved timing-repair-2157 checkout/codex/2157-draft are untouched.
 - Public command is `npx aitm timing-reengagement-repair <issue>` with exactly one mode, explicit unique zero-based repeated `--row-index`, and required original `--source-digest sha256:<64 lowercase hex>` on apply. No foreign/artifact/file/script/relaxation selectors.
 - OPEN Review, genuine active session/timer/visit/ownership/physical binding and clean unchanged source; validated `receipt-v1` current-HEAD Test evidence only. No passed Agent Review prerequisite; complete prospective registry must pass with actual context.
 - Existing strict same-second predicate is mandatory for each selected row against original bytes. Delete only selected lines; preserve actor work, refs, Unknown totals and every other byte/history. No implicit sweep or partial success.
@@ -28,8 +28,8 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 ## Plan Metadata
 
 - Priority: P0
-- Size: M
-- Estimate: 6 hours (three focused two-hour tasks; revised from initial Refine4 for required bounded lock integrity, contention preservation and authority-mode checks)
+- Size: L
+- Estimate: 12 hours (bounded exclusion 2h; strict candidate and retained evidence 3h; native transaction and real authority/failure fixtures 4h; public command, installer, package and operator surface 3h). This supersedes the unsupported 6h draft after plan review.
 - Labels: bug
 
 ## Story Intent
@@ -42,10 +42,10 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 ## Review Focus
 
 1. A slow repair reaches its20,000ms hold deadline: refuse a new effect, retain uncertainty if a write may have happened, and never remove a replacement holder's directory; covered by Task1 bounded-owner tests.
-2. A second genuine source-integration visit adds another malformed triple: explicit selection may remove both, while an unselected malformed row blocks all writes; covered by Task2 prospective-gate integration.
-3. Valid-looking legacy/directory authority lacks a Test fingerprint: refuse before archival/remote effects; covered by Task2 real qualification-mode test.
-4. Unmigrated runtime and partial evidence publication: retain safely without creating activation records; partial/symlink/corrupt evidence must block mutation; covered by Task2 journal tests.
-5. A transport error followed by exact candidate readback: prove applied from correlated observation or report uncertainty, and never issue a speculative second write; covered by Task2 and Task3 public retry tests.
+2. A second genuine source-integration visit adds another malformed triple: explicit selection may remove both, while an unselected malformed row blocks all writes; covered by Task 3 prospective-gate integration.
+3. Valid-looking legacy/directory authority lacks a Test fingerprint: refuse before archival/remote effects; covered by Task 3 real qualification-mode test.
+4. Unmigrated runtime and partial evidence publication: retain safely without creating activation records; partial/symlink/corrupt evidence must block mutation; covered by Task 2 journal tests.
+5. A transport error followed by exact candidate readback: prove applied from correlated observation or report uncertainty, and never issue a speculative second write; covered by Task 3 and Task 4 public retry tests.
 
 ## File Map
 
@@ -65,6 +65,8 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 
 ## Implementation Tasks
 
+Native decomposition must preserve these four bounded sections and estimates. Tasks 1 and 2 have disjoint production/test ownership and can be planned independently; native inline execution remains sequential here. Task 3 depends on Tasks 1 and 2; Task 4 depends on Task 3. After child creation record real native dependencies before pickup; do not invent numeric IDs in advance. Every commit below uses the actual bound child issue ID after decomposition (the `[#2157]` examples name the parent provenance only and are not permission to misattribute child work). Each child needs current accepted selected-section authority, not a blind inheritance of parent approval. Use the accepted specification and ordered plan review as governing source and revalidate each child's native Plan approval.
+
 ### Task 1: Bound timing exclusion and preserve contending arrivals — 2h
 
 #### Story Intent
@@ -74,7 +76,9 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - **Need:** the current lock can be reclaimed after30 seconds despite a living holder and slow appends may time out
 - **Value or failure prevented:** repair never claims authority after its deadline and queued timing evidence is not lost
 
-**Interfaces:** Extend `withLock(lockPath, fn, options)` with `maxHoldMs` and callback capability `{assertOwned():void,remainingMs():number}` for opt-in callers. The repair passes exactly20,000ms and retries0; tests can inject a clock or use shortened budgets. Capture device/inode and wall-clock deadline after acquisition. No owner files, heartbeat, new lock format, PID scan or process rollout. Existing callbacks/callers remain valid.
+#### Implementation
+
+**Interfaces:** Extend `withLock(lockPath, fn, options)` with `maxHoldMs` and callback capability `{assertOwned():void,remainingMs():number}` for opt-in callers. The repair passes exactly 20,000ms and retries 0; tests can inject a clock or use shortened budgets. Capture device/inode and wall-clock deadline after acquisition. No owner files, heartbeat, new lock format, PID scan or process rollout. Existing callbacks/callers remain valid.
 
 - [ ] Step1: Add failing primitive tests for budget expiry before an effect, callback completion after expiry, replaced inode, original-directory-only release, legacy empty-directory recovery and bounded deadline/sleep when stale reclaim fails. Include an old-format contender; no leased directory exists for old code to spin on.
 - [ ] Step2: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs`; require new expiry/ownership assertions fail against current behavior.
@@ -82,14 +86,22 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - [ ] Step4: Add real competing-process integration proving successful exclusion before the deadline and no foreign release after replacement. Exercise production `postTimingSafely` and queue/drain: contending exact row times out, is durably queued with `ok:false,queued:true`, then after release ordinary drain publishes exactly once without changing original row bytes. Native repair never drains inside its lock. Test resolver byte equality with `postTimingEvent` at the exact same root/issue. No long wall-clock sleeps.
 - [ ] Step5: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs scripts/tests/integration/task-tracker/lib/timing-lock-budget.test.mjs` and inspect all pass. Commit exact task paths as `[#2157] Bound timing repair lock authority`.
 
-### Task 2: Qualify and execute a retained strict repair transaction — 2h
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs scripts/tests/integration/task-tracker/lib/timing-lock-budget.test.mjs
+```
+
+### Task 2: Build strict candidates and immutable retained evidence — 3h
 
 #### Story Intent
 
 - **Beneficiary:** task operator
-- **Capability:** remove selected redundant returns with retained original evidence and exact readback
-- **Need:** a write or lost response otherwise cannot establish safe current-source repair authority or truthful retry
-- **Value or failure prevented:** real work and verification history survive and uncertain transport never becomes fabricated success
+- **Capability:** derive only proven zero-work deletions and preserve their exact originals
+- **Need:** arbitrary selection or lossy recovery evidence can erase real work or misidentify a prior repair
+- **Value or failure prevented:** only strict candidates can reach publication and their source bytes remain independently recoverable
+
+#### Implementation
 
 **Interfaces:**
 
@@ -97,19 +109,44 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - `buildTimingReengagementCandidate({body,rowIndices}) -> {candidate,selectedRows}` calls the unchanged helper for each original row, enforces stricter removable metadata boundary, rejects conflicting neighborhoods, then deletes descending physical lines. It never selects implicitly.
 - `timingReengagementSourceDigest({repository,issueNumber,commentNodeId,body,sourceHead}) -> 'sha256:…'` uses canonical unambiguous encoding; operation key additionally includes sorted selection.
 - `retainTimingReengagementEvidence({projectDir,manifest,original,candidate}) -> retainedRecord` and `readTimingReengagementEvidence({projectDir,issueNumber,operationKey}) -> retainedRecord|null` own exclusive filesystem persistence and strict validated readback in fixed sharedRuntimeRoot/evidence/timing-reengagement-repair. No caller paths. Manifest schema `aitm.timing-reengagement-repair/v1`.
-- `runTimingReengagementRepair(ctx,deps={}) -> {status:'checked'|'applied'|'already-applied',issueNumber,commentNodeId,sourceHead,sourceDigest,candidateDigest,rowIndices,evidencePath?}`. Errors have stable `timing-reengagement-repair:<reason>` codes and indicate uncertain postwrite outcome distinctly. Dependencies are explicit test injection, never CLI/env bypasses. No body/lifecycle/evidence stamping occurs.
-- A compatible canonical census result may add `comments` while preserving existing `status/source/error`. Full census identities/bodies must correlate with the unique source. The native wrapper uses production gate bootstrap and resolveReviewVerificationEvidence in receipt-v1 mode only.
 
-- [ ] Step1: Write pure tests for observed2147 triple; two original-snapshot candidates; byte-identical other rows, refs, totals and non-table content; unknown mode/target/hash/selection; actor/ref/trailing-metadata/Unknown/positive-work/time/cursor/adjacency near misses. Assert each invalid case throws before candidate publication. Run new pure test and observe missing-module/API failure.
+- [ ] Step1: Write pure tests for the observed #2147 demotion triple, the authenticated develop:completed/resumed/test:started alternative, and a mixed original-snapshot selection with one of each. Assert byte-identical other rows, refs, totals and non-table content; reject unknown mode/target/hash/selection, selected neighbors, actor/ref/trailing-metadata/Unknown/positive-work/time/cursor/adjacency near misses. Specifically reject shared-transition move mismatch, non-whole-second time and extra aitm-transition marker. Run new pure test and observe missing-module/API failure.
 - [ ] Step2: Implement closed grammar and pure candidate/digest functions. Run new pure suite plus existing strict healer and maintenance CLI tests; all pass without modifying their predicate or fixtures to broaden admission.
 - [ ] Step3: Write filesystem tests for exclusive immutable original/candidate/manifest, exact digest/schema/identity revalidation, lost/partial/corrupt artifacts, symlink ancestors/files, collision, unmigrated runtime and existing invalid controls. Assert failure means zero writer calls; first run fails without evidence implementation.
 - [ ] Step4: Implement evidence leaf with registered physical-root/path checks, exclusive publication and exact readback. Keep immutable evidence separate from result observations. Recovery rederives candidate from retained original and selection, not trusting stored candidate alone.
-- [ ] Step5: Write native integration tests with real Git/session/binding/occupancy and explicit synthetic provider/qualification records. Exercise production authority, current fingerprint/receipt and whole gate; no fake `ready:true` shortcut. Cover actual Review entry then timing-only failure, both selected new-visit triples, unrelated/unselected failure, mode legacy-marker/directory refusal, owner/root/visit/source drift and dirty index. A second registered worktree's actual hook/repair must refuse foreign authority, and occupancy drift inside exclusion must refuse before write or report postwrite uncertainty. Initial new native path must fail before implementation.
-- [ ] Step6: Implement native wrapper: validate current open Review owner/frame/occupancy/timer; current clean HEAD; valid exact receipt/fingerprint; full comments/canonical identity; actual workflow policy and diff; strict candidate; full prospective gate. Any returned normalizedBody different from actual input refuses `timing-reengagement-repair:body-normalization-required`. Under Task1 bounded capability revalidate frame and all remote authority, retain evidence, reobserve exact source, update once, correlate exact readback and final authority. Assert occupancy immediately before/after update as cross-worktree barrier. Every provider timeout must fit remaining budget; reserve the final mutation's full configured timeout before sending, otherwise refuse. Check-only never archives or mutates. No callback retry, source rebase or late effect after lost budget/ownership.
-- [ ] Step7: Add failure-injection tests for source drift after check, archive failures, postwrite generation/owner/source drift, ambiguous update with exact candidate readback, unchanged-original retry, foreign candidate, wrong node ID, readback failure and repeated apply requiring zero further writes. Missing archive on candidate state cannot yield already-applied. Run new pure/evidence/integration suites and existing healer/CLI/activity tests; require all green.
-- [ ] Step8: Commit exact task paths as `[#2157] Retain and verify strict Review timing repairs`.
+- [ ] Step5: Run `node --test scripts/tests/unit/task-tracker/lib/timing-reengagement-repair.test.mjs scripts/tests/unit/task-tracker/lib/timing-reengagement-evidence.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs`; require all pass. Commit exact pure/evidence production and unit paths as `[#2157] Derive and retain strict timing repair candidates`.
 
-### Task 3: Expose and prove the guarded public operation — 2h
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/timing-reengagement-repair.test.mjs scripts/tests/unit/task-tracker/lib/timing-reengagement-evidence.test.mjs scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs
+```
+
+### Task 3: Qualify and execute the native retained transaction — 4h
+
+#### Story Intent
+
+- **Beneficiary:** task operator
+- **Capability:** publish a strict candidate only under genuine current Review and source authority
+- **Need:** a body write or lost response cannot by itself establish safe authority or truthful retry
+- **Value or failure prevented:** real work and verification history survive and uncertain transport never becomes fabricated success
+
+#### Implementation
+
+**Interfaces:** Consumes Task 1 bounded ownership and Task 2 parser/candidate/digest/evidence APIs exactly as defined above. Produces `runTimingReengagementRepair(ctx,deps={}) -> {status:'checked'|'applied'|'already-applied',issueNumber,commentNodeId,sourceHead,sourceDigest,candidateDigest,rowIndices,evidencePath?,observationElapsedMs,remainingBudgetMs}`. Errors carry stable `timing-reengagement-repair:<reason>` and a distinct postwrite-uncertainty status. Explicit test dependency injection never comes from CLI/env. No body/lifecycle/evidence stamping occurs. A compatible canonical census result may add `comments` while preserving existing status/source/error; identities/bodies must correlate with the unique source. Use production gate bootstrap and resolveReviewVerificationEvidence in receipt-v1 mode only.
+
+- [ ] Step1: Write native integration tests with real Git/session/binding/occupancy and explicit synthetic provider/qualification records. Exercise production authority, current fingerprint/receipt and whole gate; no fake `ready:true` shortcut. Cover actual Review entry then timing-only failure, both selected new-visit triples, unrelated/unselected failure, mode legacy-marker/directory refusal, owner/root/visit/source drift and dirty index. A second registered worktree's actual hook/repair must refuse foreign authority, and occupancy drift inside exclusion must refuse before write or report postwrite uncertainty. Run the new suite and observe the absent native-wrapper failure before implementation.
+- [ ] Step2: Implement native wrapper: validate current open Review owner/frame/occupancy/timer; current clean HEAD; valid exact receipt/fingerprint; full comments/canonical identity; actual workflow policy and diff; strict candidate; full prospective gate. Any returned normalizedBody different from actual input refuses `timing-reengagement-repair:body-normalization-required`. Under Task 1 bounded capability revalidate frame and all remote authority, retain evidence, reobserve exact source, update once, correlate exact readback and final authority. Assert occupancy immediately before/after update as cross-worktree barrier. Every provider timeout must fit remaining budget; reserve the final mutation's full configured timeout before sending, otherwise refuse. Check-only never archives or mutates. No callback retry, source rebase or late effect after lost budget/ownership. Return elapsed observation time and remaining budget from check-only as measured diagnostics, not an apply guarantee.
+- [ ] Step3: Add failure-injection tests for source drift after check, archive failures, postwrite generation/owner/source drift, ambiguous update with exact candidate readback, unchanged-original retry, foreign candidate, wrong node ID, readback failure and repeated apply requiring zero further writes. Missing archive on candidate state cannot yield already-applied. Run new pure/evidence/integration suites and existing healer/CLI/activity tests; require all green.
+- [ ] Step4: Commit exact native/census/fixture/integration paths as `[#2157] Qualify and verify Review timing repair transactions`.
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/integration/task-tracker/timing-reengagement-repair.test.mjs
+```
+
+### Task 4: Expose and prove the guarded public operation — 3h
 
 #### Story Intent
 
@@ -118,14 +155,22 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - **Need:** the current only carrier is refused arbitrary Node maintenance
 - **Value or failure prevented:** operators can complete legitimate Review repair without timing-only demotion or guard bypass
 
-**Interfaces:** `verbTimingReengagementRepair(ctx)` invokes Task2 native wrapper, prints its bounded result and exits2 for grammar,1 for authority/uncertainty. Register a target-required verb and run the same pure parser at the early public-entry grammar boundary; no opaque first-integer target inference. The public CLI must not admit foreign/artifact flags before rejecting them. CLI status is evidence only when native exact readback established it.
+#### Implementation
+
+**Interfaces:** `verbTimingReengagementRepair(ctx)` invokes Task 3 native wrapper, prints its bounded result and exits 2 for grammar, 1 for authority refusal, and 3 for postwrite uncertainty. Register a target-required verb and run Task 2's same pure parser at the early public-entry grammar boundary; no opaque first-integer target inference. The public CLI must not admit foreign/artifact flags before rejecting them. CLI status is evidence only when native exact readback established it.
 
 - [ ] Step1: Add real subprocess tests invoking `npx aitm timing-reengagement-repair`/package-owned bin in the disposable Review fixture. Assert initial failure is actual unknown-command or absent route; distinguish it from a valid refusal by prefix/code. Add help and malformed option-first target tests proving no timers/provider effects.
 - [ ] Step2: Register target-required catalogue/routing/preflight/help using Task2 parser. Preserve actual hook invocation for the literal `npx aitm` form; change classifier only if a failing production-path test requires a narrow command admission. Never whitelist arbitrary `node`, script basename, compound source effects or maintenance directory.
-- [ ] Step3: Exercise actual native activity hook in Review with valid check/apply and negative raw Node healer, unrelated script, compound source write and malformed public grammar. Assert public operation reaches native guards and negative activity stays refused. Prove API outcomes and retained evidence from the CLI, including same-original-digest retry after lost response and no duplicate remote update.
+- [ ] Step3: Exercise actual native activity hook in Review with valid check/apply and negative raw Node healer, unrelated script, compound source write and malformed public grammar. Assert public operation reaches native guards and negative activity stays refused. Prove API outcomes and retained evidence from the CLI, including exit 3 after lost response, same-original-digest retry recovery and no duplicate remote update. Assert check-only reports measured observation time/budget without retained evidence.
 - [ ] Step4: Run npm pack boundary check to expose exact new runtime delta. Update allowance by measured required leaves only and assert each new runtime file included, fixture/scratch/evidence/new repository guide excluded. Add ignore entry in repo and INSTALL_GITIGNORE_ENTRIES; test old consumer reports managed-gitignore drift, upgrade adds entry idempotently, actual evidence path is ignored before archive, and apply leaves operator/main Git porcelain unchanged. Validate generated guidance/catalogue through canonical tools; never fabricate a changed artifact if checks already pass.
 - [ ] Step5: Write operator guide with exact syntax, zero-based indices/digest semantics, strict eligibility, storage/recovery/uncertainty limits, normal re-review and separate qualified2147 activation. Explain slow-network budget expiry can leave a correctly retained uncertain outcome: repeat the same public original-digest request for exact recovery, never new guessed indices. State the residual remote race: a server-side update delayed beyond client timeout/stale reclamation can race a later native append because GitHub offers no CAS; exact readback is observation proof, not perpetual history exclusion. State consumer ignore drift/upgrade consequence. Update only terse shipped pointers and matching version sentinels where needed.
 - [ ] Step6: Run targeted integration, pure/evidence/locks, existing healer/CLI/activity, routing/help and package-boundary tests. Run lint/format appropriate to changed files; commit `[#2157] Expose guarded Review reengagement repair`.
+
+**Verification Commands:**
+
+```sh
+node --test scripts/tests/integration/task-tracker/timing-reengagement-repair.test.mjs scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs scripts/tests/unit/task-tracker/core/package-boundary.test.mjs scripts/tests/unit/package/install-content.test.mjs
+```
 
 ## Verification and completion sequence
 
@@ -137,4 +182,4 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 
 ## Self-review
 
-Every spec section maps to Task1 exclusion, Task2 native/strict/durable transaction or Task3 public/package/operator surface. The five review-focus cases each have an explicit owning test step. Interfaces share issueNumber/sourceHead/sourceDigest/rowIndices consistently. All tasks include their own failing test, production change, passing test and issue-tagged commit; no independent feature or generic maintenance framework is introduced. Initial6h is an author assessment, not published Plan authority until the native planned-estimate operation succeeds after review. Native Explain remains the next lifecycle authority.
+Every spec section maps to Task 1 exclusion, Task 2 strict candidates/evidence, Task 3 native transaction or Task 4 public/package/operator surface. The five review-focus cases each have an explicit owning test step. Interfaces share issueNumber/sourceHead/sourceDigest/rowIndices consistently. Each task has its own failing test, implementation, passing run and committed checkpoint. Re-derived total is 12h, Size L; the earlier 6h was not supportable and is superseded. This is not published Plan authority until native planned-estimate succeeds. Four tasks and the revised effort require a fresh native decomposition assessment before any implementation. Follow its governed decomposition result; do not compress headings, relabel tasks as steps or understate the estimate to evade thresholds. Coordinator must resolve the story/workstream split while preserving accepted specification and all source history. Native Explain remains lifecycle authority.
