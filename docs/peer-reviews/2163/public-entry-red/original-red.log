@@ -1,0 +1,37 @@
+Preparing worktree (new branch 'codex/4242-fixture')
+Preparing worktree (new branch 'codex/4242-fixture')
+✔ strict provider refuses unknown operations, variables and targets without applying writes (9125.219875ms)
+Preparing worktree (new branch 'codex/4242-fixture')
+✔ strict provider malformed and incomplete pages refuse through the real collector (12159.091541ms)
+Preparing worktree (new branch 'codex/4242-fixture')
+✔ fixture launch strips polluted authority and verifies its sole provider before spawning (9210.248958ms)
+✖ registered inflation seals its exact prepared audit authority (26080.478625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56652.872083
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs:190:1
+✖ registered inflation seals its exact prepared audit authority (26080.478625ms)
+  AssertionError [ERR_ASSERTION]:
+  inflate-estimate: partial: estimate-publication:final-authority-drift
+
+
+  1 !== 0
+
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/2163-inflation-intent/ai-task-manager/scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs:242:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
