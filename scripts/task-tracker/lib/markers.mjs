@@ -140,9 +140,18 @@ export function buildPlanApprovedMarker(
     storyDigest = null,
     storyIntentDigest = null,
     storyIntentSource = null,
+    currentApprovalDigest = null,
   } = {}
 ) {
   const properties = { ts };
+  if (currentApprovalDigest !== null) {
+    if (
+      typeof currentApprovalDigest !== 'string' ||
+      !/^sha256:[a-f0-9]{64}$/.test(currentApprovalDigest)
+    )
+      throw new TypeError('buildPlanApprovedMarker: invalid currentApprovalDigest');
+    properties['current-approval-digest'] = currentApprovalDigest;
+  }
   const binding = { storyDigest, storyIntentDigest, storyIntentSource };
   for (const [key, attribute] of Object.entries(STORY_BINDING_FIELDS)) {
     if (binding[key] === null) continue;
@@ -196,6 +205,7 @@ export function parsePlanApprovedMarker(body) {
       storyDigest: null,
       storyIntentDigest: null,
       storyIntentSource: null,
+      currentApprovalDigest: null,
     };
   }
 
@@ -221,7 +231,18 @@ export function parsePlanApprovedMarker(body) {
       validStoryBindingValue(key, props[attribute]) ? props[attribute] : null,
     ])
   );
-  return { ts: props.ts || '', forecastRecordId, mode, repairRecordId, trunkSha, ...binding };
+  const currentApprovalDigest = /^sha256:[a-f0-9]{64}$/.test(props['current-approval-digest'] || '')
+    ? props['current-approval-digest']
+    : null;
+  return {
+    ts: props.ts || '',
+    forecastRecordId,
+    mode,
+    repairRecordId,
+    trunkSha,
+    ...binding,
+    currentApprovalDigest,
+  };
 }
 
 export function readPlanApprovedMode(body) {
