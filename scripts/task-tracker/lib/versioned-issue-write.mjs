@@ -306,6 +306,7 @@ export async function versionedWriteBody({
   expectedVersion,
   validateMutation,
   validateFreshBaseAsync,
+  observeRemoteBody,
 } = {}) {
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
@@ -340,6 +341,7 @@ export async function versionedWriteBody({
   while (attempts < maxRetries) {
     attempts++;
     const remote = await fetchBody(repo, issueNumber);
+    observeRemoteBody?.(remote);
     const remoteVersion = parseBodyVersion(remote);
     if (expectedVersion !== undefined && remoteVersion !== expectedVersion) {
       throw new BodyWriteRefusalError(
@@ -413,6 +415,7 @@ export async function versionedWriteBody({
     // match could mask a lost write. Require byte-equality with our push —
     // modulo trailing whitespace, which `gh issue view -q .body` appends.
     const verifyRemote = await fetchBody(repo, issueNumber);
+    observeRemoteBody?.(verifyRemote);
     const norm = (s) => String(s ?? '').replace(/\s+$/, '');
     if (norm(verifyRemote) === norm(stamped)) {
       // Surface the post-write verify-fetch (#655) as the verified live body.

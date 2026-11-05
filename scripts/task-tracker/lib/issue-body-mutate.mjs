@@ -104,6 +104,7 @@ export async function mutateIssueBody({
   decompositionMutationCapability,
   validateFreshBase,
   validateFreshBaseAsync,
+  observeRemoteBody,
   expectedVersion,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
@@ -221,5 +222,6 @@ export async function mutateIssueBody({
     expectedVersion,
     validateMutation,
     validateFreshBaseAsync,
+    observeRemoteBody,
   });
 }
