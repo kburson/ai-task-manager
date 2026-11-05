@@ -1,13 +1,6 @@
 // @story #2165 — all renewal actions use the real public CLI and native writers.
 import assert from 'node:assert/strict';
-import {
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-  existsSync,
-  lstatSync,
-  readlinkSync,
-} from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, lstatSync, readlinkSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -18,19 +11,15 @@ import {
   parseCommitShas,
 } from '../../task-tracker/lib/code-complete-gate.mjs';
 import { canonicalRecordJson } from '../../task-tracker/lib/github-records/canonical-json.mjs';
+import { discoverFiles } from '../../task-tracker/lib/discover-test-files.mjs';
 import { qualifyCumulativeAdmission } from './close-cumulative-admission.mjs';
 
 const hash = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 function inventory(dir) {
-  const result = [];
-  if (!existsSync(dir)) return result;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const file = path.join(dir, entry.name);
-    if (entry.isDirectory())
-      for (const [name, digest] of inventory(file)) result.push([entry.name + '/' + name, digest]);
-    else if (entry.isFile()) result.push([entry.name, hash(file)]);
-  }
-  return result.sort(([a], [b]) => a.localeCompare(b));
+  if (!existsSync(dir)) return [];
+  return discoverFiles({ root: dir, projectRoot: dir, excludes: [], match: /./ })
+    .map((file) => [file, hash(path.join(dir, file))])
+    .sort(([a], [b]) => a.localeCompare(b));
 }
 function tracked(root) {
   return execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
