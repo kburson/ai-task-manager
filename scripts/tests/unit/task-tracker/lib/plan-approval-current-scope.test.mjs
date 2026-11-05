@@ -388,15 +388,19 @@ test('unterminated encoded candidate after unrelated completion cannot hide a co
   const f = fixture();
   const other = 'move:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   const unrelated = renderTransitionCommitComment({ ...commit, transitionId: other });
-  const collision = renderTransitionCommitComment(commit)
-    .replace(`id="${transitionId}"`, `id="${other}"`)
-    .replace(/-->$/, '');
+  const collisionMarker = renderTransitionCommitComment(commit).replace(
+    `id="${transitionId}"`,
+    `id="${other}"`
+  );
+  assert.ok(collisionMarker.endsWith('-->'));
+  const collision = collisionMarker.slice(0, -'-->'.length);
   f.comments.push(observation('3', unrelated + '\n' + collision, '2026-11-04T01:52:06Z'));
   assert.equal(evaluate(f).status, 'unavailable');
 });
 
 test('unterminated duplicate historical entry remains a malformed candidate collision', () => {
   const f = fixture();
-  f.body += '\n' + visitMarker.replace(/-->$/, '');
+  assert.ok(visitMarker.endsWith('-->'));
+  f.body += '\n' + visitMarker.slice(0, -'-->'.length);
   assert.equal(evaluate(f).status, 'unavailable');
 });
