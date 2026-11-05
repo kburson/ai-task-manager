@@ -1,0 +1,37 @@
+coverage-heal-entry-markers.test.mjs: ok
+✔ checkOnlyExitCode: error precedence, plan, clean (0.789791ms)
+✔ stripStageMarkers removes entry + legacy/new audit markers (1.040959ms)
+✔ #1206: stripStageMarkers does not rewrite historical second-stage audit bytes (0.400834ms)
+✔ detectIllegalArcs: <2 markers empty; legal chain empty; illegal flagged (1.705583ms)
+✔ outOfOrderHealableStages flags a stage newer than a later stage (0.148208ms)
+✔ backlogCreatedAtFallback: bumps refine when it collides; throws on bad createdAt (3.742167ms)
+✔ planStageHeal: backfill for missing entry with a later marker (0.427375ms)
+✔ planStageHeal: restamp for out-of-order entry (0.174791ms)
+✔ planStageHeal: audit-only for present-but-unaudited entry (0.453792ms)
+✔ planStageHeal: skip when unparseable entry ts (property-grammar form) (0.336209ms)
+✔ planStageHeal: backlog createdAt fallback when refine sits at createdAt (0.154834ms)
+✔ planStageHeal: non-backlog with no feasible interval rethrows (0.093041ms)
+✔ planStageHeal: skip when nothing to heal (0.103ms)
+✔ fetchOpenIssues maps numbers to strings via stub gh (0.234291ms)
+✔ fetchIssue returns parsed JSON via stub gh (0.093667ms)
+✔ writeBody writes a temp file, edits, and unlinks (unlink error swallowed) (0.14575ms)
+✔ postComment shells gh issue comment (0.070333ms)
+✔ healOne: skip when body is a clean audited chain (0.566792ms)
+✔ healOne: dry-run returns plan without writing (0.187666ms)
+✔ #1206: apply preserves an out-of-order historical second-stage marker byte-for-byte (0.114958ms)
+✔ healOne: apply writes body + posts comment (0.717917ms)
+✔ healOne: apply restamp path (out-of-order) rewrites body (0.254416ms)
+✔ healOne: illegal-arcs only (no heals) reported (0.174708ms)
+✔ main: --apply and --check-only are mutually exclusive → exit 2 (0.322917ms)
+✔ main: dry-run over explicit issues prints all result branches (0.157417ms)
+✔ main: apply prints applied, and healOne throw becomes error (0.126833ms)
+✔ main: no explicit issues scans open issues via fetchOpenIssues (0.075708ms)
+✔ main: --check-only exits with checkOnlyExitCode (0.071958ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22.278417

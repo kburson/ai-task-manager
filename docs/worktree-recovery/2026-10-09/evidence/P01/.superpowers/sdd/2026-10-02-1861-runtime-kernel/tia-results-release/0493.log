@@ -1,0 +1,10 @@
+✔ replaceDeepDiveSection preserves unrelated ## sections that sit between the deep-dive section and a distant aitm-* marker (#718 shape) (0.66475ms)
+✔ replaceDeepDiveSection still stops at an immediately-trailing aitm-* marker when no intervening ## sections exist (0.148625ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3.888458

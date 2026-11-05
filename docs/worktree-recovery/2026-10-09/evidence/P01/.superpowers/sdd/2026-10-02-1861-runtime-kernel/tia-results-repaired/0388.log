@@ -1,0 +1,15 @@
+✔ canonical project definitions add BLOCKED and stop provisioning Blocked By (1.624291ms)
+✔ repair reuses an existing complete Disposition field without mutation (0.424833ms)
+✔ repair creates a missing Disposition field with the canonical options (0.147791ms)
+✔ repair appends missing canonical options while preserving existing option ids (0.149084ms)
+✔ repair appends only BLOCKED when all terminal options are exact (0.183916ms)
+✔ repair refuses ambiguous fields and malformed canonical options without writing (0.540875ms)
+✔ persistDispositionField writes both compatibility and generic projections idempotently (0.090792ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.259875

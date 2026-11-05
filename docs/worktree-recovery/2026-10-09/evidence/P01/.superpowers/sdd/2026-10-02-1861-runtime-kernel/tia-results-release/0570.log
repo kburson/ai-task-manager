@@ -1,0 +1,20 @@
+✔ equivalent legacy and directory contracts produce the same immutable core model (6.815084ms)
+✔ normalized ACs preserve evidence declarations and the historic parser export (1.186583ms)
+✔ normalized DoD items preserve evidence declarations for both source kinds (0.842125ms)
+✔ evidence projections preserve equivalent logical evidence across source kinds (1.231167ms)
+✔ evidence adapter resolves once, honors directory authority, and fails closed (1.349333ms)
+✔ Functional DoD projections preserve canonical keys and unknown logical IDs (1.565792ms)
+✔ Functional DoD adapter resolves exactly once and propagates failures (0.340958ms)
+✔ directory authority failures never fall back to a valid legacy body (1.095834ms)
+✔ normalized record output preserves stable ordering, state, references, and immutability (8.919125ms)
+✔ legacy compatibility IDs and ordering are deterministic (0.207459ms)
+✔ body-gate adapter makes equivalent legacy and directory VC decisions (2.907375ms)
+✔ body-gate adapter resolves once and refuses directory failures without body fallback (1.633791ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.271875

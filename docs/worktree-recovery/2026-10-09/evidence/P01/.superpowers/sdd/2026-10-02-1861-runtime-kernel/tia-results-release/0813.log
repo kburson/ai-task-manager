@@ -1,0 +1,14 @@
+coverage-auto.test.mjs: defined
+✔ runAuto: invalid choice → status invalid (0.52225ms)
+✔ runAuto: missing sessionId → status no-session (0.075208ms)
+✔ runAuto: valid choice → load→apply→save, status ok (1.288833ms)
+✔ cli: no choice → usage on stderr, exit 2 (0.316791ms)
+✔ cli: invalid choice → error on stderr, exit 2 (0.199708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.848

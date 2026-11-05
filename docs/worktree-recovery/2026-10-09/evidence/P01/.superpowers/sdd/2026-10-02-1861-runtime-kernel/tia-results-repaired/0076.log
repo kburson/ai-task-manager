@@ -1,0 +1,19 @@
+✔ normalizeTitle strips a known kind/epic prefix and stopwords (1.379334ms)
+✔ titleSimilarity scores an exact-modulo-prefix pair at 1.0 (0.317584ms)
+✔ titleSimilarity scores an unrelated pair below the default threshold (0.336791ms)
+✔ containment catches a duplicate that only adds a qualifier word (0.112958ms)
+✔ evaluateDuplicateChild refuses by default and names the colliding sibling (0.375917ms)
+✔ evaluateDuplicateChild with overridden:true returns refuse:false but keeps matches (0.238167ms)
+✔ a CLOSED / NOT_PLANNED sibling with an identical title does NOT refuse (0.109459ms)
+✔ matches are sorted by descending score then ascending number (1.69875ms)
+✔ CLI: duplicating create is REFUSED by default with exit 7 naming the collision (505.629583ms)
+✔ CLI: --allow-duplicate-child OVERRIDES the guard (exit 0, body rendered) (449.780375ms)
+✔ CLI: a non-duplicating create passes the guard (exit 0) (436.589125ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1403.259166

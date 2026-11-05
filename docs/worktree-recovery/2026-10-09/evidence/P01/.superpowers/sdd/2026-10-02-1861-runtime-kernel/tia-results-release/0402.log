@@ -1,0 +1,37 @@
+▶ hasNoNewTestsDeclaration — fail-closed reader (#944)
+  ✔ true when the marker carries a non-empty reason (0.803125ms)
+  ✔ true with both reason and guarded-by present (0.167833ms)
+  ✔ false when the marker is absent (0.062291ms)
+  ✔ false when reason is empty (default-deny) (0.119667ms)
+  ✔ false when reason is whitespace-only (default-deny) (0.072ms)
+  ✔ false when the marker has no reason attribute (0.082625ms)
+  ✔ tolerates null/undefined bodies (0.052958ms)
+✔ hasNoNewTestsDeclaration — fail-closed reader (#944) (2.005958ms)
+▶ upsertNoNewTestsMarker — idempotent writer (#944)
+  ✔ throws when reason is empty or whitespace (0.315333ms)
+  ✔ inserts a marker the reader accepts (0.323917ms)
+  ✔ is idempotent — a second call leaves exactly one marker (0.188041ms)
+  ✔ places the marker under the AITM Progress Markers block when present (0.09975ms)
+  ✔ escapes an embedded double-quote in the reason (0.067667ms)
+✔ upsertNoNewTestsMarker — idempotent writer (#944) (1.170666ms)
+▶ declareNoNewTests — mutateIssueBody-routed (#944)
+  ✔ routes the write through the injected mutateIssueBody and stamps the marker (0.505834ms)
+  ✔ rejects a missing issueNumber / repo (0.14ms)
+✔ declareNoNewTests — mutateIssueBody-routed (#944) (0.703375ms)
+▶ required-comments V2 — NAT row escape integration (#944)
+  ✔ code body with no declaration still REQUIRES the NAT comment (0.483ms)
+  ✔ code body with a valid declaration SKIPS the NAT requirement (0.106625ms)
+  ✔ code body with an empty-reason declaration still REQUIRES the NAT comment (0.059667ms)
+  ✔ docs-only body with a proven docs-only diff skips NAT (#940 diff-aware) (0.128125ms)
+  ✔ docs-only body with no diff info now REQUIRES NAT (#940 default-deny) (0.047291ms)
+  ✔ epic body is unchanged — NAT already skipped (0.047167ms)
+  ✔ a present NAT comment satisfies the row regardless of declaration (0.219916ms)
+✔ required-comments V2 — NAT row escape integration (#944) (1.187417ms)
+ℹ tests 21
+ℹ suites 4
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.199791

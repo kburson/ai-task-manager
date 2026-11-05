@@ -1,0 +1,13 @@
+✔ task metadata matches high-risk verb parser surfaces (1.181583ms)
+✔ documented examples use parser-valid aliases and enumerated issue kinds (0.286625ms)
+✔ pull-next documents every reachable R4P-to-Plan delegated refusal (0.128875ms)
+✔ task metadata exposes parser-accurate exit statuses (0.276625ms)
+✔ maintenance and package metadata reject retired routes and expose parser defaults (0.643709ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.68375

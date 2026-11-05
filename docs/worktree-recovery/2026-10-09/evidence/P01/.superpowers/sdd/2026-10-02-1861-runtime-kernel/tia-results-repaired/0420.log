@@ -1,0 +1,22 @@
+✔ parseEnteredStages reads both marker grammars in body order (1.665666ms)
+✔ parseEnteredStages tolerates a non-string and returns [] (0.07975ms)
+✔ #1211: parseEnteredStages projects historical second-stage markers to R4P (0.081709ms)
+✔ buildReviewContext exposes body, comments, and parsed markers (0.267208ms)
+✔ buildReviewContext coerces a non-array comments to [] (0.138458ms)
+✔ runAgentReviewGate returns a vacuous pass with an empty registry (0.135791ms)
+✔ runAgentReviewGate surfaces a failing validator and its context (0.128ms)
+✔ buildReviewFailedBlock wraps failures between the marker sentinels (0.130583ms)
+✔ buildReviewFailedBlock renders a placeholder when there are no failures (0.065375ms)
+✔ stampReviewFailed appends the marker and is idempotent (0.287292ms)
+✔ clearReviewFailed removes the block and is idempotent when absent (0.076875ms)
+✔ hasReviewFailed reports presence (0.050959ms)
+✔ #1004 — a prose sentence quoting both delimiters inline does not strand or corrupt a genuine review-failed block (0.074834ms)
+✔ an unterminated standalone start is not reported or cleared as a complete failure block (0.058ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.148084

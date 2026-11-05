@@ -1,0 +1,32 @@
+✔ builds one deterministic child proposal per numbered task (4.1475ms)
+✔ bounds Scope and provenance to the exact source task section (0.622166ms)
+✔ records a root source as both parent and nested epic (0.51875ms)
+✔ refuses duplicate numbers, empty titles, and missing verifiers (0.185375ms)
+✔ writes canonical deterministic fragments for sanctioned creation (4.24325ms)
+✔ sanctioned dry-run body preserves exact task verifiers behind AC citations (791.755791ms)
+✔ sanctioned creator still refuses explicitly supplied administrative prose (717.9355ms)
+✔ historical tasks remain readable but cannot produce split proposals (0.340375ms)
+✔ aggregates rendered quality and malformed intent across all tasks (0.633667ms)
+✔ bad final task causes zero fragment, preflight, and create calls (11.040083ms)
+✔ production scripts contain no generic split-story renderer phrases (99.584583ms)
+✔ accepted plan previews six distinct stories with exact normalized selectors (54.643584ms)
+✔ dry-run preflights every child and performs no live create (6.081666ms)
+✔ reads proposal text from the pinned HEAD commit rather than the working tree (3.132333ms)
+✔ default plan reader ignores uncommitted working-tree plan changes (93.3245ms)
+✔ human dry-run output exposes complete proposals and future creator argv (4.04475ms)
+✔ hidden and placeholder Governing-spec metadata fall back to the sanctioned default (5.311209ms)
+✔ rejects a missing --plan value instead of consuming the next option (0.2905ms)
+✔ confirm validates all drafts before the first live creation (2.927709ms)
+✔ confirm performs no live creation when any draft preflight fails (4.074209ms)
+✔ refuses unresolved parent provenance before any creator call (0.668292ms)
+✔ refuses malformed resolved parent provenance (0.647167ms)
+✔ confirm stops on partial live failure and retains created issue numbers (3.445084ms)
+✔ new split children explicitly adopt reviewed Scope evidence policy (0.323833ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1814.243875

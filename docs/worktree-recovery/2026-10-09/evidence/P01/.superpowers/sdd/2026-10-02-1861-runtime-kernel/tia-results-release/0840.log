@@ -1,0 +1,16 @@
+✔ demote: test→develop happy path (3.383708ms)
+✔ demote: review→develop happy path (0.245958ms)
+✔ demote: refused from every non-{test,review} source (0.21025ms)
+✔ demote: drift refused when live ≠ recorded (0.087542ms)
+✔ demote: transition-failed when move-state exits non-zero (0.09125ms)
+✔ demote: bootstrap when lastKnownState absent — syncs to live, then refuses if live is not test/review (0.111709ms)
+✔ demote: bootstrap then demote from test succeeds (0.175833ms)
+✔ demote: test→develop landed write carries develop marker (#295 closure semantics) (0.113667ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.396542

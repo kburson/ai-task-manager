@@ -1,0 +1,23 @@
+✔ forward move with all prior markers → allow (1.679875ms)
+✔ first forward move (backlog→refine) with backlog marker → allow (0.460833ms)
+✔ forward move missing immediately-prior marker → refuse, names it (0.273958ms)
+✔ forward move with a two-back hole (refine missing on plan→develop) → refuse (0.102667ms)
+✔ forward move with multiple prior holes → refuse, lists all missing (0.081708ms)
+✔ rework develop→plan → skip (0.055083ms)
+✔ rework review→develop → skip (0.059ms)
+✔ rework plan→backlog → skip (0.068625ms)
+✔ re-entry develop after a test bounce (test→develop) → skip (0.069ms)
+✔ empty fromState (offline, no live Status) → skip (0.094542ms)
+✔ unknown target stage → skip (0.055834ms)
+✔ same-state move → skip (0.042667ms)
+✔ force override on a prefix hole → bypass, carries missing + message (0.079292ms)
+✔ force override is a no-op when there is no hole → allow (0.04825ms)
+✔ re-entry visit markers (aitm-entered-develop-2) count as present (0.056ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.005958

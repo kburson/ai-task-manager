@@ -1,0 +1,14 @@
+✔ captures the actual checked-out branch instead of an expected issue branch (130.02075ms)
+✔ captures a detached verification sandbox before it is removed (120.448375ms)
+✔ DoD and AC evidence markers include execution provenance (3.509625ms)
+✔ new receipts carry execution context while legacy receipts remain valid (1.866167ms)
+✔ legacy and provenance-bearing proof markers remain execution proofs (0.142834ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 259.586167
+Preparing worktree (detached HEAD d81fc4a)

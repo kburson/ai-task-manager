@@ -1,0 +1,21 @@
+✔ #1490: a multi-commit external squash whose head is a merge commit is proven (3.569041ms)
+✔ #1490: a multi-commit external squash of ordinary commits is proven (0.493083ms)
+✔ #1490: a multi-commit rebase is refused because its parent is a fresh rewrite (0.495334ms)
+✔ #1490: tree equality alone does not prove a squash (0.151958ms)
+✔ #1490: a merged tree differing from the accepted tree is refused (0.154708ms)
+✔ #1490: an incomplete or unbound source inventory is refused (0.202292ms)
+✔ #1490: an ordinary two-parent merge is classified as a merge, never a squash (0.148833ms)
+✔ #1490: a fast-forward is refused (0.140875ms)
+✔ #1490: an inventory and evidence of differing length are refused (0.216625ms)
+✔ #1490: a reordered inventory and evidence pairing is refused (0.198208ms)
+✔ #1490: a duplicated source OID is refused (0.133709ms)
+✔ #1490: an accepted head that does not terminate the inventory is refused (0.109209ms)
+✔ #1490: evidence missing required structure is refused (0.085167ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.50225

@@ -1,0 +1,33 @@
+✔ ready execution persists the current projection with proof-introduction authority and verified readback (4.344625ms)
+✔ the versioned mutation callback remains synchronous so proof guards inspect its body (0.733042ms)
+✔ the real versioned body boundary rejects the same proof-introducing edit without evidenceStamp (3.456584ms)
+✔ blocked fresh readiness preserves its envelope with pending normalization (0.376667ms)
+✔ blocked fresh readiness preserves its envelope without pending normalization (0.089292ms)
+✔ indeterminate fresh readiness preserves its envelope with pending normalization (0.15675ms)
+✔ indeterminate fresh readiness preserves its envelope without pending normalization (0.070416ms)
+✔ real registry completeness labels survive normalization (0.123667ms)
+✔ indeterminate readiness on a fresh versioned base is retained before persistence (0.456292ms)
+✔ malformed non-ready envelope is invalid with normalization (0.413333ms)
+✔ malformed non-ready envelope is invalid without normalization (0.100167ms)
+✔ successful normalization keeps persisted truth when readback becomes blocked (0.665625ms)
+✔ a thrown fresh authority evaluation is drift, not a write transport failure (0.605625ms)
+✔ post-write readback failure refuses while preserving the fact that a write occurred (0.580458ms)
+✔ write transport failure is named and stops before post-write authority or later effects (0.325917ms)
+✔ changed execution HEAD refuses even if projected decision intent would be identical (0.085417ms)
+✔ a changed HEAD during a versioned retry refuses before another push (0.737708ms)
+✔ an empty authority body is a failed readback, never an idempotent no-op (0.092459ms)
+✔ a version conflict re-evaluates the fresh body and refuses a now-blocked retry (2.20975ms)
+✔ a non-overlapping version conflict recomputes and preserves the concurrent edit (0.7335ms)
+✔ readback rejects a proof marker attributed to the wrong execution HEAD (0.3565ms)
+✔ test-to-review rescan preserves projected refusal before any derived write (1.275084ms)
+✔ a concurrent HEAD change wins over an otherwise valid blocked retry (0.360958ms)
+✔ remaining projection drift wins over a blocked post-write guard (0.389833ms)
+✔ normalization retains warnings and human requests separately from normalization warnings (0.987042ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.776875

@@ -1,0 +1,33 @@
+✔ aggregate parity matrix covers every lifecycle action and required scenario (1.82675ms)
+✔ aggregate parity executes the seven action suites, not only their metadata (16385.805417ms)
+✖ authority cost evidence matches fresh physical reads before A2 certification (1139.961834ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (2.093667ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17558.809625
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:114:1
+✖ authority cost evidence matches fresh physical reads before A2 certification (1139.961834ms)
+  AssertionError [ERR_ASSERTION]: scripts/tests/helpers/action-authority-cost.mjs
+  + actual - expected
+  
+  + 'sha256:91cc086f7bf8dd1cc296460b252b6afecde388244980b6c0ab53d3efe288aa0a'
+  - 'sha256:b23fe404ccbaba06a9a51f154582990eabc67efbcd8090873933226e914413c2'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:152:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'sha256:91cc086f7bf8dd1cc296460b252b6afecde388244980b6c0ab53d3efe288aa0a',
+    expected: 'sha256:b23fe404ccbaba06a9a51f154582990eabc67efbcd8090873933226e914413c2',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

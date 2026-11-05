@@ -1,0 +1,12 @@
+✔ production delivery reader resolves empty or omitted trunkRef for an attributed epic child (23.584584ms)
+✔ production delivery reader follows the shared local and configured-remote fallback authority (1.157125ms)
+✔ production child close resolves an omitted trunkRef and keeps parent attribution blockers (14.477542ms)
+✔ production child close projects the same gate outcome with explicit and default trunk refs (9.189583ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.096

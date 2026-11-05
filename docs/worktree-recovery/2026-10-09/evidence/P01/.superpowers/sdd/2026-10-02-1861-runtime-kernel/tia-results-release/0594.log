@@ -1,0 +1,29 @@
+✔ getHumanReviewer returns null when env unset or blank (0.546375ms)
+✔ buildAuditCommentBody contains stable HTML marker and env-var name (0.18025ms)
+✔ buildHumanReviewerMarker round-trips via HUMAN_REVIEWER_MARKER_RE (0.224333ms)
+✔ HUMAN_REVIEWER_MARKER_RE still matches the legacy colon form (0.103833ms)
+✔ Full-Auto path (env absent) posts audit comment with marker (0.44625ms)
+✔ Full-Auto path is idempotent — does not duplicate audit comment (0.203042ms)
+✔ Human-reviewer path (env set) stamps body marker, no comment (0.212916ms)
+✔ Human-reviewer path is idempotent — does not double-stamp marker (0.0885ms)
+✔ hasGenuineReviewApprovedMarker: true for non-full-auto marker, false for full-auto marker or absent (0.435167ms)
+▶ explicit review authority takes precedence over legacy reviewer environment detection
+  ✔ genuine marker wins over a bypass context (0.171458ms)
+  ✔ explicit bypass records Full-Auto even with a reviewer env (0.0685ms)
+  ✔ human gate does not become Full-Auto when reviewer env is absent (0.0675ms)
+✔ explicit review authority takes precedence over legacy reviewer environment detection (0.564166ms)
+✔ explicit bypass audit names the bypass without claiming a reviewer signal was absent (0.110208ms)
+✔ enforceFullAutoAudit rejects an unsupported explicit review authority (0.244209ms)
+✔ resolveReviewAuthority accepts only the internal authority union (0.06275ms)
+✔ body already carrying a genuine review-approved marker suppresses the Full-Auto audit even with env unset (0.081ms)
+✔ a full-auto-flagged review-approved marker does not suppress the audit (0.093875ms)
+✔ Full-Auto path tolerates listComments throwing — posts comment anyway (0.0905ms)
+✔ Full-Auto path returns error when postComment throws (0.085792ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.412709

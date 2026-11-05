@@ -1,0 +1,17 @@
+✔ ordinary #939 close discovers the exact owner and requires all four terminal rows (1.461291ms)
+✔ an explicit --of must exactly match the discovered owner (0.371834ms)
+✔ each incident child independently blocks #939 before mutation (0.401792ms)
+✔ terminal state must agree with the approved Incorporated outcome (0.1465ms)
+✔ terminal state must use GitHub completed semantics (0.149833ms)
+✔ missing, forked, or byte-conflicting owner authority refuses (0.18125ms)
+✔ a validated prior-ledger Incorporated record may prove an exact current-ledger carrier (0.117167ms)
+✔ an Incorporated record must exactly match every current-ledger carrier field (0.14575ms)
+✔ close --of parser normalizes one assertion and rejects repeats or missing values (0.18925ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.882541

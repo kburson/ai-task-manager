@@ -1,0 +1,29 @@
+✔ parseTestEntriesFromDiff: new test addition (1.001167ms)
+✔ parseTestEntriesFromDiff: modified existing test re-emits its declaration line as an addition (0.075625ms)
+✔ parseTestEntriesFromDiff: test.skip declaration (0.0665ms)
+✔ parseTestEntriesFromDiff: multiple files in one diff (0.0825ms)
+✔ parseTestEntriesFromDiff: empty/non-matching diff produces zero entries (0.057333ms)
+✔ collectTestDiffEntries: dedupes across SHAs and skips failing SHAs (0.15425ms)
+✔ buildNewAutomatedTestsComment: returns null on empty input (0.098375ms)
+✔ buildNewAutomatedTestsComment: groups entries by file under the heading (0.124708ms)
+✔ buildNewAutomatedTestsComment: appends the explanatory footer when entries exist (0.064459ms)
+✔ buildNewAutomatedTestsComment: empty input returns null with no footer (0.087083ms)
+✔ buildNewAutomatedTestsComment: body with footer still satisfies the dedupe startsWith predicate (0.061792ms)
+✔ postNewAutomatedTestsComment: posts a dedicated comment when entries are found (0.452417ms)
+✔ postNewAutomatedTestsComment: finds tests added by a non-tip attributed commit (0.284875ms)
+✔ postNewAutomatedTestsComment: falls back to trace SHAs when attribution fails (0.120959ms)
+✔ postNewAutomatedTestsComment: no test files changed means no comment posted (0.089166ms)
+✔ postNewAutomatedTestsComment: no commit trail comment is a no-op (0.057417ms)
+✔ postNewAutomatedTestsComment: skips if a New Automated Tests comment already exists (0.072417ms)
+✔ parseTestEntriesFromDiff: it() declaration is captured (#901) (0.036542ms)
+✔ parseTestEntriesFromDiff: it.skip/.only/.todo declarations are captured (#901) (0.037625ms)
+✔ parseTestEntriesFromDiff: describe-nested it() is captured (#901) (0.032875ms)
+✔ parseTestEntriesFromDiff: describe() and lookalike identifiers produce no phantom entries (#901) (0.028542ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.519375

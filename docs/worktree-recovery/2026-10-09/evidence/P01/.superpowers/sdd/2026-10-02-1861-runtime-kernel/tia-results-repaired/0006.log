@@ -1,0 +1,19 @@
+✔ audit rejects an untagged co-located test from the scripts tree (48.751458ms)
+✔ audit accepts a fully tagged scripts tree (142.840917ms)
+✔ audit module import does not run the audit or mutate its caller fixture (51.235875ms)
+✔ audit rejects a story tag after executable source content (46.398375ms)
+✔ audit rejects a cspell preamble before a story tag (46.6065ms)
+✔ audit accepts a story tag before a cspell preamble (59.621834ms)
+✔ audit rejects a shebang and cspell preamble before a story tag (54.832541ms)
+✔ audit accepts a shebang, story tag, then cspell preamble (52.873792ms)
+✔ audit accepts CRLF shebang, story tag, then cspell preamble (53.958875ms)
+✔ audit rejects a numeric prefix with trailing non-delimiter text (55.164333ms)
+✔ audit rejects a shebang after cspell and story header lines (54.39725ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 671.099292

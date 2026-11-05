@@ -1,0 +1,10 @@
+✔ close releases authoritative occupancy even when fleet cleanup fails (0.771708ms)
+✔ close cannot report success when authoritative occupancy release fails (0.216834ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.503792

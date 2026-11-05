@@ -1,0 +1,14 @@
+✔ isPickupDirectiveEligible: early states (AC1 — suppression) (0.577834ms)
+✔ isPickupDirectiveEligible: plan boundary is eligible (0.082333ms)
+✔ isPickupDirectiveEligible: late states (AC2 — pass-through) (0.062292ms)
+✔ isPickupDirectiveEligible: unknown/missing state fails closed (0.058375ms)
+✔ formatPickupDirectiveDeferredBanner: routes refine -> promote (0.129292ms)
+✔ formatPickupDirectiveDeferredBanner routes Backlog to Refine and R4P to Plan (0.183125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.032083

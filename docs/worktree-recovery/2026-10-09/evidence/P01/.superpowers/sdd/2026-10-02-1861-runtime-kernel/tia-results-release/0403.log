@@ -1,0 +1,42 @@
+✔ a body with no agent-review evidence is incomplete (1.36725ms)
+✔ a passing gate stamp completes the state action (0.117708ms)
+✔ a hand-ticked box with no run evidence is NOT complete (0.070458ms)
+✔ the evidence marker completes the action whether or not the box is ticked (0.136959ms)
+✔ an aitm-review-failed marker makes the action incomplete even alongside a pass stamp (0.233959ms)
+✔ clearing the failure marker restores completeness (0.29575ms)
+✔ empty and non-string bodies are incomplete, not crashes (0.148292ms)
+✔ approve refuses when the gate has not run, and writes nothing (71.383916ms)
+✔ approve refuses a live waiver without a matching terminal waived Review outcome (64.742542ms)
+✔ approve reports ambiguous timing authority instead of claiming review never ran (60.967583ms)
+✔ approve accepts exact terminal waived Review authority without fabricating pass evidence (82.319583ms)
+✔ approve default clock uses canonical millisecond ISO for waiver boundary checks (84.204125ms)
+✔ approve refuses legacy abbreviated Test evidence for exact-head waiver authority (61.376375ms)
+✔ approve rechecks waiver authority after driver collection before writing (62.283583ms)
+✔ approve rechecks waiver authority inside the fresh-base write attempt (62.380667ms)
+✔ approve refuses a waiver when HEAD changes during driver collection (65.247041ms)
+✔ approve binds waived authority to the Test receipt rather than local HEAD alone (69.680375ms)
+✔ approve refuses a waiver stamp when the fresh body scope changed after validation (63.260417ms)
+✔ approve refuses a waiver stamp when the fresh Test receipt changes without a scope change (65.331334ms)
+✔ approve still checks waiver scope when fresh pass evidence appears concurrently (62.360167ms)
+✔ approve refuses a waiver stamp when a fresh failure carrier appears after validation (64.2355ms)
+✔ approve refuses while an objection is unresolved (63.439458ms)
+✔ approve proceeds once the state action has passed (76.252583ms)
+✔ ordinary approval refuses when fresh pass evidence disappears before the write (61.374375ms)
+✔ the wrong-state check still precedes the completeness check (0.1675ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1154.823875
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD

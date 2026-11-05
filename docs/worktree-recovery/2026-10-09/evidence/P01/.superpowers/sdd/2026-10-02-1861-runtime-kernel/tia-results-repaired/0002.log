@@ -1,0 +1,16 @@
+✔ parseLanes accepts repeatable canonical lane flags (0.906542ms)
+✔ runLaneCensus reports zero and removes its project-local sentinel (23.289542ms)
+✔ runLaneCensus records and refuses every resolved gh argv (412.002625ms)
+✔ preload records an absorbed gh call even when the caller catches the refusal (69.975042ms)
+✔ preload records child-process overloads whose argv array is omitted (55.784333ms)
+✔ preload refuses an undeclared earlier PATH gh and permits an explicitly declared double (347.936166ms)
+✔ preload does not let an ambient declaration authorize a per-call PATH binary (74.974ms)
+✔ formatCensus is deterministic and the result fails closed (0.238292ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 988.1735

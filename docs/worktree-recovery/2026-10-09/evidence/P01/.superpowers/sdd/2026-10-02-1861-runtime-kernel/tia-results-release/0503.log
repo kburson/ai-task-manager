@@ -1,0 +1,13 @@
+✔ original #1784 squash preference yields observed merge receipt and Close replay (7.171959ms)
+✔ Close rejects changes to any observed receipt authority (3.042084ms)
+✔ observed receipt refuses incomplete source, changed content, and unreachable trunk (0.941583ms)
+✔ observed wording may vary but the issue claim cannot conflict (0.810167ms)
+✔ v5 intent and receipt project as one immutable operation (2.130583ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.630542
