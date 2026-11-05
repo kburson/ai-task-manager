@@ -1,7 +1,8 @@
 // @story #1878
+// @story #2165
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync, rmSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { mkdtempProjectIsolated } from '../../task-tracker/lib/scratch-dir.mjs';
@@ -22,8 +23,12 @@ export function fixture({
   shared = false,
   claim = null,
   historyDepth = 1,
+  cumulativePrefix = false,
+  directory = null,
+  baseFiles = {},
+  headFiles = {},
 } = {}) {
-  const dir = mkdtempProjectIsolated('close-v5-');
+  const dir = directory ?? mkdtempProjectIsolated('close-v5-');
   const git = (args, input) =>
     execFileSync('git', args, { cwd: dir, encoding: 'utf8', input }).trim();
   writeFileSync(path.join(dir, '.gitignore'), '.ai-task-manager/\n.tmp/\n');
@@ -31,18 +36,45 @@ export function fixture({
   git(['config', 'user.email', 'fixture@example.com']);
   writeFileSync(path.join(dir, 'package.json'), '{}');
   writeFileSync(path.join(dir, 'package-lock.json'), '{}');
-  writeFileSync(path.join(dir, 'file with space.txt'), 'base\n');
+  const cumulativeText = (prefix, suffix) =>
+    [prefix, ...Array.from({ length: 20 }, (_, i) => 'unchanged line ' + i), suffix, ''].join('\n');
+  writeFileSync(
+    path.join(dir, 'file with space.txt'),
+    cumulativePrefix ? cumulativeText('base prefix', 'base suffix') : 'base\n'
+  );
+  for (const [file, content] of Object.entries(baseFiles)) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    writeFileSync(path.join(dir, file), content);
+    git(['add', '-f', '--', file]);
+  }
   git(['add', '.']);
   git(['commit', '-qm', 'base']);
+  if (cumulativePrefix) {
+    // Enough genuine pre-base ancestry to prevent the 23-commit rebase probe.
+    for (let i = 0; i < 25; i += 1) {
+      writeFileSync(path.join(dir, 'ancestry.txt'), 'ancestor ' + i + '\n');
+      git(['add', '.']);
+      git(['commit', '-qm', 'pre-base ancestor ' + i]);
+    }
+  }
   const base = git(['rev-parse', 'HEAD']);
   git(['checkout', '-qb', 'feature/1878']);
   const evidence = [];
+  let prefixHead = null;
+  if (cumulativePrefix) historyDepth = 23;
   for (let i = 1; i < historyDepth; i += 1) {
     const parent = git(['rev-parse', 'HEAD']);
-    writeFileSync(path.join(dir, 'file with space.txt'), `intermediate${i}\n`);
+    if (cumulativePrefix) {
+      writeFileSync(path.join(dir, 'history-' + i + '.txt'), 'source ' + i + '\n');
+      writeFileSync(
+        path.join(dir, 'file with space.txt'),
+        cumulativeText(i >= 8 ? 'accepted prefix' : 'base prefix', 'base suffix')
+      );
+    } else writeFileSync(path.join(dir, 'file with space.txt'), `intermediate${i}\n`);
     git(['add', '.']);
     const message = `[#1878] intermediate ${i}`;
     git(['commit', '-qm', message]);
+    if (cumulativePrefix && i === 8) prefixHead = git(['rev-parse', 'HEAD']);
     evidence.push({
       oid: git(['rev-parse', 'HEAD']),
       parents: [parent],
@@ -51,7 +83,15 @@ export function fixture({
     });
   }
   const sourceParent = git(['rev-parse', 'HEAD']);
-  writeFileSync(path.join(dir, 'file with space.txt'), 'accepted\n');
+  writeFileSync(
+    path.join(dir, 'file with space.txt'),
+    cumulativePrefix ? cumulativeText('accepted prefix', 'accepted suffix') : 'accepted\n'
+  );
+  for (const [file, content] of Object.entries(headFiles)) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    writeFileSync(path.join(dir, file), content);
+    git(['add', '-f', '--', file]);
+  }
   git(['add', '.']);
   const sourceMessage = shared ? '[#1877] [#1878] accepted source' : '[#1878] accepted source';
   git(['commit', '-qm', sourceMessage]);
@@ -59,13 +99,21 @@ export function fixture({
   const sourceTree = git(['rev-parse', 'HEAD^{tree}']);
   evidence.push({ oid: head, parents: [sourceParent], tree: sourceTree, message: sourceMessage });
   git(['checkout', '-q', 'trunk']);
+  if (cumulativePrefix) {
+    git(['read-tree', prefixHead]);
+    git(['checkout-index', '-a', '-f']);
+    git(['commit', '-qm', 'squashed source prefix']);
+  }
   if (advanced) {
     writeFileSync(path.join(dir, overlap ? 'file with space.txt' : 'other.txt'), 'trunk advance\n');
     git(['add', '.']);
     git(['commit', '-qm', 'trunk advance']);
   }
   const integrationBase = git(['rev-parse', 'HEAD']);
-  git(['checkout', head, '--', 'file with space.txt']);
+  if (cumulativePrefix) {
+    git(['read-tree', head]);
+    git(['checkout-index', '-a', '-f']);
+  } else git(['checkout', head, '--', 'file with space.txt']);
   if (changed) writeFileSync(path.join(dir, 'file with space.txt'), 'contradictory\n');
   git(['add', '.']);
   const tree = git(['write-tree']);
@@ -238,5 +286,20 @@ export function fixture({
     walk(dir);
     return files.sort();
   }
-  return { dir, ports, context, authority, commands, snapshot, merged, cfg };
+  return {
+    dir,
+    ports,
+    context,
+    authority,
+    commands,
+    snapshot,
+    merged,
+    cfg,
+    sourceBase: base,
+    prefixHead,
+    prefixTree: prefixHead ? git(['rev-parse', prefixHead + '^{tree}']) : null,
+    integrationBase,
+    head,
+    sourceEvidence: evidence,
+  };
 }

@@ -1,4 +1,4 @@
-// @story #2153 #2148 #1986
+// @story #2165 #2153 #2148 #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -145,6 +145,20 @@ function repoRoot() {
 const ENTRY_CEILING = 800;
 
 let packedFileCache = null;
+// Shipping any diagnostic preload would expose a test-only observation seam.
+test('package-boundary: cumulative Close diagnostics remain outside the shipped runtime', () => {
+  const files = new Set(packedFiles());
+  for (const file of [
+    'fixtures/close-cumulative-provider.mjs',
+    'fixtures/close-cumulative-trace-loader.mjs',
+    'helpers/close-cumulative-observer.mjs',
+    'helpers/close-cumulative-native.mjs',
+    'helpers/close-cumulative-renewal.mjs',
+    'helpers/close-cumulative-admission.mjs',
+    'integration/task-tracker/lib/close-cumulative-recovery.test.mjs',
+  ])
+    assert.equal(files.has('scripts/tests/' + file), false, file);
+});
 function packedFiles() {
   if (packedFileCache) return packedFileCache;
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
