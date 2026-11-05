@@ -1,7 +1,12 @@
 // @story #1991 — shared current assessment; historical prose cannot grant admission.
 import path from 'node:path';
 import { getProjectDir } from '../paths.mjs';
-import { collectHookDecompositionSnapshot } from './decomposition-hook-authority.mjs';
+import {
+  collectHookDecompositionSnapshot,
+  collectEpicConvergenceSnapshot,
+} from './decomposition-hook-authority.mjs';
+import { classifyDecompositionKind } from './decomposition-kind.mjs';
+import { pexec } from '../../gh/lib/gh-client.mjs';
 import { decompositionRuntimeFor } from './action-decision/decomposition.mjs';
 import { classifyDecomposition } from './decomposition-policy.mjs';
 import { ownershipDecision } from './ownership-policy.mjs';
@@ -53,12 +58,16 @@ export async function evaluateIssueDecomposition({
       projectDir: root,
       deps: ports,
     }));
+  return describeSnapshot({ current, signals }, { body, root });
+}
+function describeSnapshot({ current, signals, ...extra }, { body, root }) {
   const freshBody = current.sourceObservations.readIssue.value?.body;
   if (body !== undefined && comparableSourceBody(body) !== comparableSourceBody(freshBody ?? ''))
     throw new Error('decomposition:source-body-changed');
   const input = current.input;
   return {
     ...current,
+    ...extra,
     signals,
     body: freshBody,
     projectDir: root,
@@ -116,6 +125,9 @@ export function decompositionRefusal(result, issue) {
 }
 export async function assertGovernedDecompositionRecovery({ requirePlan = true, ...options }) {
   const result = await evaluateIssueDecomposition(options);
+  return assertRecoveryResult(result, options, requirePlan);
+}
+function assertRecoveryResult(result, options, requirePlan) {
   const reasons = result.input.availability.reasons;
   // Recovery requires its own source/plan/ownership, not estimate publication convergence.
   const source = result.sourceObservations.readIssue;
@@ -134,6 +146,53 @@ export async function assertGovernedDecompositionRecovery({ requirePlan = true, 
   const owner = ownershipDecision(result.signals);
   if (!owner.ok) throw new Error('decomposition:recovery-' + owner.kind);
   return result;
+}
+export async function assertEpicConvergenceRecovery({ requirePlan = false, ...options }) {
+  const root = options.projectDir ?? getProjectDir();
+  const snapshot = await collectEpicConvergenceSnapshot({
+    issue: Number(options.issueNumber),
+    cfg: options.cfg,
+    projectDir: root,
+    deps: options.deps ?? {},
+  });
+  const result = describeSnapshot(snapshot, { body: options.body, root });
+  return assertRecoveryResult(result, options, requirePlan);
+}
+
+export async function assertProspectiveEpicParent({
+  parentIssueNumber,
+  cfg,
+  projectDir = getProjectDir(),
+  deps = {},
+}) {
+  const issue = Number(parentIssueNumber);
+  if (!Number.isSafeInteger(issue) || issue <= 0) throw new Error('convergence:parent-identity');
+  const read =
+    deps.readParentBody ??
+    (async () =>
+      JSON.parse(
+        (
+          await (deps.pexec ?? pexec)(
+            'gh',
+            ['issue', 'view', String(issue), '-R', cfg.repo, '--json', 'body'],
+            { timeout: 5000, maxBuffer: 4 * 1024 * 1024 }
+          )
+        ).stdout
+      ).body);
+  const body = await read({ issueNumber: issue, cfg });
+  if (typeof body !== 'string') throw new Error('convergence:parent-body-unavailable');
+  const kind = classifyDecompositionKind(body);
+  if (kind.reasons.length) throw new Error(kind.reasons.join(';'));
+  if (kind.kind === 'epic') return { status: 'not-required' };
+  const result = await assertEpicConvergenceRecovery({
+    issueNumber: issue,
+    cfg,
+    projectDir,
+    deps,
+    body,
+  });
+  if (result.childInventory.length) throw new Error('convergence:recover-kind-first');
+  return { status: 'admitted' };
 }
 export async function refreshGovernedDecomposition({ issueNumber, cfg, projectDir, deps = {} }) {
   try {

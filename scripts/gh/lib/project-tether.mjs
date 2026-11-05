@@ -6,6 +6,7 @@ import { gql } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
+import { assertProspectiveEpicParent } from '../../task-tracker/lib/decomposition-plan-exit-guard.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
@@ -554,9 +555,16 @@ async function tetherIssueToProjectOwned({
   throw new Error(failureMessage({ cfg, issueNumber, project: lastProject }));
 }
 
-export function tetherIssueToProject(args = {}) {
+export async function tetherIssueToProject(args = {}) {
   if (args.initialFrame) throw new Error('initial-project-fields:foreign-context');
   if (args.initialValues && args.context) throw new Error('initial-project-fields:foreign-context');
+  if (args.parentIssueNumber)
+    await assertProspectiveEpicParent({
+      parentIssueNumber: args.parentIssueNumber,
+      cfg: args.cfg,
+      projectDir: args.projectDir,
+      deps: args.deps,
+    });
   return args.initialValues
     ? withInitialProjectFields(args, (initialFrame) =>
         tetherIssueToProjectOwned({ ...args, initialFrame })

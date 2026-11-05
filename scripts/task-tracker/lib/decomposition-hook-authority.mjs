@@ -10,6 +10,86 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { canonicalDecompositionJson } from './decomposition-assessment.mjs';
 import { collectDecompositionAuthority } from './decomposition-authority.mjs';
 import { sessionNetworkSkipped } from './verb-preflight.mjs';
+import { captureArtifactOperator } from './artifact-execution.mjs';
+import { sessionIdEnvKeys, FALLBACK_SESSION_ID } from './session-id.mjs';
+import { getActiveTask } from '../session-state.mjs';
+import { loadState } from '../state.mjs';
+import { statePath } from '../paths.mjs';
+import { readLastKnownState } from '../gh-timing-comment.mjs';
+import { assertGovernedMutationSession } from './governed-mutation-session.mjs';
+
+const convergenceRead = Symbol('canonical-epic-convergence-read');
+const convergenceStates = new Set([
+  'backlog',
+  'refine',
+  'ready-for-plan',
+  'plan',
+  'develop',
+  'test',
+  'review',
+]);
+function captureConvergenceFrame({ issue, projectDir, deps = {} }) {
+  const env = deps.env ?? process.env;
+  const sessionId = sessionIdEnvKeys(env)
+    .map((key) => env[key])
+    .find((value) => typeof value === 'string' && value.trim());
+  if (!sessionId || sessionId === FALLBACK_SESSION_ID)
+    throw new Error('convergence:provider-session-required');
+  const operator = (deps.captureArtifactOperator ?? captureArtifactOperator)({
+    projectDir,
+    issueNumber: issue,
+  });
+  const binding = (deps.getActiveTask ?? getActiveTask)(sessionId, projectDir);
+  const state = (deps.loadState ?? loadState)(statePath(projectDir));
+  assertGovernedMutationSession(state, issue);
+  if (
+    operator.sessionId !== sessionId ||
+    operator.boundIssue !== issue ||
+    operator.worktreePath !== projectDir ||
+    !operator.bindingGenerationId ||
+    binding?.bindingGenerationId !== operator.bindingGenerationId ||
+    Number(binding?.issue) !== issue ||
+    binding.closedAt ||
+    !binding.entryStartTs ||
+    binding.pausedAtTs ||
+    binding.worktreePath !== operator.worktreePath ||
+    binding.worktreeBranch !== operator.branch
+  )
+    throw new Error('convergence:operator-binding-mismatch');
+  return {
+    ...operator,
+    kanbanState: normalizeStateId(binding.kanbanState),
+    entryStartTs: binding.entryStartTs,
+  };
+}
+
+export function collectHookDecompositionSnapshot(options) {
+  return collectSnapshot(options);
+}
+
+export async function collectEpicConvergenceSnapshot(options) {
+  const frame = captureConvergenceFrame(options);
+  const result = await collectSnapshot(options, convergenceRead);
+  const after = captureConvergenceFrame(options);
+  if (JSON.stringify(frame) !== JSON.stringify(after))
+    throw new Error('convergence:operator-drift');
+  const { signals } = result;
+  const recorded = readLastKnownState(signals.body);
+  if (
+    signals.remoteState !== 'OPEN' ||
+    !convergenceStates.has(signals.state) ||
+    signals.state !== frame.kanbanState ||
+    recorded.state !== signals.state
+  )
+    throw new Error('convergence:state-unavailable-or-drifted');
+  if (
+    !signals.currentUser ||
+    signals.assignees.length !== 1 ||
+    signals.assignees[0].toLowerCase() !== signals.currentUser.toLowerCase()
+  )
+    throw new Error('convergence:sole-owner-required');
+  return { ...result, operatorContext: frame };
+}
 
 const fieldIdentity = 'field{... on ProjectV2FieldCommon{id name}}';
 const computedFieldTypes = ['Label', 'Milestone', 'PullRequest', 'Repository', 'Reviewer', 'User']
@@ -40,7 +120,8 @@ const hash = (value) =>
     .digest('hex');
 const observed = (value) => ({ status: 'observed', value, revision: null, digest: hash(value) });
 
-export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir, deps = {} }) {
+async function collectSnapshot({ issue, cfg, projectDir, deps = {} }, permission) {
+  const convergence = permission === convergenceRead;
   if (sessionNetworkSkipped()) throw new Error('authority-read-skipped');
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(cfg.repo ?? '') || !cfg.projectId)
     throw new Error('configured authority missing');
@@ -56,7 +137,9 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     JSON.stringify(name) +
     '){issue(number:' +
     issue +
-    '){id number repository{nameWithOwner} body assignees(first:100){nodes{login}} ' +
+    '){id number repository{nameWithOwner} body ' +
+    (convergence ? 'state ' : '') +
+    'assignees(first:100){nodes{login}} ' +
     projectItems +
     ' ' +
     comments +
@@ -126,7 +209,8 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     JSON.stringify(name) +
     '){issue(number:' +
     issue +
-    '){id number repository{nameWithOwner} body ';
+    '){id number repository{nameWithOwner} body ' +
+    (convergence ? 'state ' : '');
   const issuePage = async (selection) => {
     const result = await remote({ query: 'query {' + repoPrefix + selection + '}}}' });
     assertRoot(result.data?.repository?.issue);
@@ -138,7 +222,8 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
       candidate?.id !== node?.id ||
       candidate?.number !== issue ||
       candidate?.repository?.nameWithOwner?.toLowerCase() !== cfg.repo.toLowerCase() ||
-      candidate?.body !== node?.body
+      candidate?.body !== node?.body ||
+      (convergence && candidate?.state !== node?.state)
     )
       throw new Error('mixed issue page');
   };
@@ -170,6 +255,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
   )
     throw new Error('child identity');
   if (
+    !convergence &&
     classification.kind !== 'epic' &&
     (initialChildren.length || node.subIssues.pageInfo.hasNextPage)
   )
@@ -222,7 +308,10 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
     'forecast-comments'
   );
   let children = [];
-  if (classification.kind === 'epic') {
+  if (
+    classification.kind === 'epic' ||
+    (convergence && (initialChildren.length || !initialInventoryComplete))
+  ) {
     node.subIssues = (await issuePage(subIssues)).subIssues;
     node.subIssues = await complete(
       node.subIssues,
@@ -243,7 +332,12 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
         canonicalDecompositionJson(node.subIssues.nodes.map((child) => child.id).sort())
     )
       throw new Error('initial child inventory drift');
+    const childNumbers = new Set();
     for (const child of node.subIssues.nodes) {
+      if (!Number.isSafeInteger(child.number) || child.number <= 0)
+        throw new Error('child issue identity');
+      if (childNumbers.has(child.number)) throw new Error('child issue identity duplicate');
+      childNumbers.add(child.number);
       const childPage = async (selection) => {
         const result = await remote({
           query:
@@ -267,6 +361,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
       );
       if (matches.length !== 1) throw new Error('child membership unavailable');
       const selected = matches[0];
+      if (typeof selected.id !== 'string' || !selected.id) throw new Error('child item identity');
       selected.fieldValues = await complete(
         selected.fieldValues,
         async (cursor) => {
@@ -459,6 +554,40 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
   if (!Array.isArray(node.assignees?.nodes) || typeof response.data?.viewer?.login !== 'string')
     throw new Error('ownership unavailable');
   return {
+    ...(convergence
+      ? {
+          childSourceDigest: hash(
+            node.subIssues.nodes
+              .map((child) => ({
+                ...child,
+                labels: { nodes: [...child.labels.nodes].sort((a, b) => a.id.localeCompare(b.id)) },
+                blockedBy: {
+                  nodes: [...child.blockedBy.nodes].sort((a, b) => a.id.localeCompare(b.id)),
+                },
+                projectItems: {
+                  nodes: child.projectItems.nodes
+                    .map((entry) => ({
+                      ...entry,
+                      fieldValues: {
+                        nodes: [...entry.fieldValues.nodes].sort((a, b) =>
+                          (a.id ?? a.field.id).localeCompare(b.id ?? b.field.id)
+                        ),
+                      },
+                    }))
+                    .sort((a, b) => a.id.localeCompare(b.id)),
+                },
+              }))
+              .sort((a, b) => a.id.localeCompare(b.id))
+          ),
+          childInventory: node.subIssues.nodes.map((child) => ({
+            id: child.id,
+            number: child.number,
+            projectItemId: child.projectItems.nodes.find(
+              (entry) => entry.project.id === cfg.projectId
+            ).id,
+          })),
+        }
+      : {}),
     subject,
     current,
     signals: {
@@ -469,6 +598,7 @@ export async function collectHookDecompositionSnapshot({ issue, cfg, projectDir,
       assignees: node.assignees.nodes.map((owner) => owner.login),
       currentUser: response.data.viewer.login,
       source: 'fresh-combined-snapshot',
+      ...(convergence ? { remoteState: node.state } : {}),
     },
   };
 }
