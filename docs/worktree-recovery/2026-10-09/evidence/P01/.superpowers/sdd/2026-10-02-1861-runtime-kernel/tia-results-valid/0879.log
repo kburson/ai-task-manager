@@ -1,0 +1,61 @@
+✖ the test delegate runs inside promote-held lock instead of deadlocking (180.909709ms)
+✖ the test delegate still acquires for real when promote is not holding (182.865709ms)
+✖ a promote frame on a different issue does not wave the delegate through (391.277541ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 762.680708
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:54:1
+✖ the test delegate runs inside promote-held lock instead of deadlocking (180.909709ms)
+  RuntimeRootError: Existing legacy operation lock requires explicit recovery
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:130:11)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:60:26
+      at withScrubbedEnv (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:47:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:55:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'RUNTIME_LOCK_RECOVERY_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:83:1
+✖ the test delegate still acquires for real when promote is not holding (182.865709ms)
+  RuntimeRootError: Existing legacy operation lock requires explicit recovery
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:130:11)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runTestWithEntryInterlock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/test.mjs:1545:10)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:91:11
+      at withScrubbedEnv (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:47:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:84:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18) {
+    code: 'RUNTIME_LOCK_RECOVERY_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:109:1
+✖ a promote frame on a different issue does not wave the delegate through (391.277541ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:114:11
+      at withScrubbedEnv (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:47:12)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs:110:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

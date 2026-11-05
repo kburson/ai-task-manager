@@ -1,0 +1,14 @@
+✔ default manifest creates and refreshes defect and plan templates (40.904667ms)
+✔ syncTemplates: a deliberately stale mirror is made byte-identical to its template (33.765208ms)
+✔ syncTemplates: an already-identical mirror reports unchanged (idempotent) (26.051166ms)
+✔ syncTemplates: creates the mirror file when absent (28.410333ms)
+✔ syncTemplates: stamps the pickup directive when a package version is supplied (44.637791ms)
+✔ syncTemplates: throws when required dirs are missing (0.374917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.661542

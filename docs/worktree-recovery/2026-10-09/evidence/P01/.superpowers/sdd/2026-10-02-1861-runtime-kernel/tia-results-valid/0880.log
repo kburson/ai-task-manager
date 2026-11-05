@@ -1,0 +1,13 @@
+✔ test → review delegates to the review verb (0.433584ms)
+✔ the other aliases are unchanged (0.073583ms)
+✔ only post-Develop transitions use alias verbs (0.394042ms)
+✔ promote reaches the canonical policy delegate branch whenever the source has one (0.379291ms)
+✔ the stale "test has no alias" comment is gone (0.228625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.493625

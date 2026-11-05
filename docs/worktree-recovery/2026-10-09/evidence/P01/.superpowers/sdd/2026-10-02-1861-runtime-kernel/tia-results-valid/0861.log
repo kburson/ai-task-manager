@@ -1,0 +1,11 @@
+✔ incident-ledger keeps record and approval as mutually exclusive explicit modes (0.995792ms)
+✔ incident-ledger help and provider rule publish exact verifier phase syntax (0.251167ms)
+✔ production runtime fetches and pins one fresh origin/trunk snapshot (0.282333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.596458

@@ -1,0 +1,15 @@
+✔ finalizes a completed closed child before selecting the next ranked child (279.464417ms)
+✔ leaves a dead-disposition child untouched and continues selection (117.272292ms)
+✔ an aberration recovery pauses without promoting another child (0.259708ms)
+✔ a failed convergence pauses selection and reports the child (0.15075ms)
+✔ a pending durable recovery is converged and pauses before promotion (0.213583ms)
+✔ a completed durable recovery is not pending and selection may continue (98.148166ms)
+✔ already-Done closed children and open children are not convergence candidates (102.367208ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 601.091166

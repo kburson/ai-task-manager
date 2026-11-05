@@ -1,0 +1,18 @@
+✔ global confirmation flag is stripped and requires an explicit occurrence (0.797291ms)
+✔ AC2/AC6: marker-free issue records live location even with no session id (0.701875ms)
+✔ AC1: numeric shorthand bind records the issue-resident location (0.138125ms)
+✔ AC3: mismatch refuses before mutation and names recorded and live locations (0.4265ms)
+✔ AC4: explicit confirmation appends relocation history before proceeding (0.170375ms)
+✔ AC5: same worktree root and branch, including subdirectory invocation, does not write (0.094125ms)
+✔ non-lifecycle commands and target-free invocations do not read the issue (0.101375ms)
+✔ repository no-network mode preserves offline dispatcher preflight behavior (0.074958ms)
+✔ legacy issue does not mutate before a non-bind verb semantic preflight (0.078375ms)
+✔ CLI entrypoint checks issue-resident location before local binding and verb preflight (0.308375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.878209

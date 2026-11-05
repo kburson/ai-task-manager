@@ -1,0 +1,17 @@
+✔ close consumes typed waived review authority without pass evidence (6.904917ms)
+✔ #1470 close loads source proof for an external recovery receipt (1.786709ms)
+✔ #1558 close reloads complete merged source evidence for a waived receipt (3.250708ms)
+✔ #1470 close inspects the merge tree needed by squash proof (0.1805ms)
+✔ #1381 close carries immutable accepted authority after the reused branch advances (1.052417ms)
+✔ #1397 projects delivery records under the unique accepted-head PR in either order (0.901583ms)
+✔ #1406 ignores valid delivery records from an earlier pull request (0.722583ms)
+✔ #1399 rejects an invalid GitHub comment timestamp before record projection (0.610959ms)
+✔ #1397 refuses zero or duplicate accepted-head candidates before projection (0.841167ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.961333

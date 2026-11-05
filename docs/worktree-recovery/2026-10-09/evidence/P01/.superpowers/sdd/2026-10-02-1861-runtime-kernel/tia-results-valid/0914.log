@@ -1,0 +1,11 @@
+✔ defaultExecInSandbox: binds AI_TASK_MANAGER_PROJECT_DIR to the sandbox path (48.965125ms)
+✔ defaultExecInSandbox: child inherits parent env alongside AI_TASK_MANAGER_PROJECT_DIR (76.630625ms)
+✔ defaultExecInSandbox: binds the governed Test issue for bare issue-aware verifiers (50.247083ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.077875
