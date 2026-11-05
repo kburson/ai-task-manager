@@ -24,6 +24,14 @@ import {
 import { parseVerificationCommands } from '../../../task-tracker/lib/verification-commands.mjs';
 import { resolveReviewVerificationEvidence } from '../../../task-tracker/verbs/review.mjs';
 
+import { loadForecastProjection } from '../../../task-tracker/lib/estimation/runtime-adapter.mjs';
+import { createBootstrapRubric } from '../../../task-tracker/lib/estimation/rubric-model.mjs';
+import { buildEstimationForecast } from '../../../task-tracker/lib/estimation/forecast-model.mjs';
+import {
+  createAitmRecordEnvelope,
+  renderAitmRecord,
+} from '../../../task-tracker/lib/github-records/record-envelope.mjs';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const providerUrl = new URL('../../fixtures/current-plan-approval-provider.mjs', import.meta.url)
   .href;
@@ -381,4 +389,123 @@ test('registered dispatcher exposes the delivered current-scope command', () => 
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /--current-scope/);
+});
+
+function attachRealForecast(f, remoteBody = () => f.body) {
+  const id = '01J00000000000000000000702';
+  const payload = buildEstimationForecast({
+    issue: 2153,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput: {
+      schema: 'aitm.plan-estimation-input/v1',
+      wbs: [
+        {
+          id: 'implementation',
+          description: 'Implement the planned change',
+          baseHumanHours: 39.15,
+          independentlyReviewable: true,
+          signals: { modules: ['estimation'], dependencies: ['github-records'] },
+        },
+      ],
+      testImpact: { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 0 },
+      risks: [],
+      comparableIssueIds: [],
+    },
+    rubric: {
+      recordId: '01J00000000000000000000703',
+      payload: createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' }),
+    },
+  });
+  const envelope = createAitmRecordEnvelope({
+    recordType: 'estimation-forecast',
+    repository: 'o/r',
+    issue: 2153,
+    payload,
+    actor: 'aitm/plan-estimate',
+    recordId: id,
+    grantId: '01J00000000000000000000704',
+    createdAt: '2026-08-02T14:00:00.000Z',
+  });
+  f.comments.push({
+    id: 'forecast',
+    body: renderAitmRecord({ envelope }),
+    createdAt: '2026-08-02T14:00:01Z',
+    updatedAt: '2026-08-02T14:00:01Z',
+    author: { login: 'owner' },
+    authorAssociation: 'OWNER',
+  });
+  f.body += `\n<!-- aitm-estimation-forecast-ready record-id="${id}" -->\n<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: payload.plan.size, estimate: payload.plan.humanHours } })} -->`;
+  const cfg = {
+    repo: 'o/r',
+    trunkRef: 'HEAD',
+    projectId: 'P',
+    estimationRubricIssue: 99,
+    fieldIds: { size: 'SIZE', estimate: 'HOURS' },
+  };
+  // Only GraphQL transport is replaced; real record parsing/projection runs.
+  f.deps.plannedEstimate = {
+    graphql: async () => ({
+      data: {
+        repository: {
+          issue: {
+            body: remoteBody(),
+            comments: {
+              nodes: f.comments.map((c) => ({
+                __typename: 'IssueComment',
+                id: c.id,
+                body: c.body,
+                updatedAt: c.updatedAt,
+                issue: { number: 2153, repository: { nameWithOwner: 'o/r' } },
+              })),
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+            projectItems: {
+              nodes: [
+                {
+                  id: 'ITEM',
+                  project: { id: 'P' },
+                  fieldValues: {
+                    nodes: [
+                      { number: payload.plan.humanHours, field: { id: 'HOURS' } },
+                      { name: payload.plan.size, field: { id: 'SIZE' } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  };
+  return cfg;
+}
+test('real forecast loader preserves current approval when a fenced example precedes the live ready marker', async (t) => {
+  const f = currentScopeFixture(t);
+  await installCurrentApprovalProvider(f);
+  const cfg = attachRealForecast(f);
+  const legacyProjection = await loadForecastProjection({
+    cfg,
+    issueNumber: 2153,
+    deps: f.deps.plannedEstimate,
+  });
+  assert.equal(legacyProjection.forecast.recordId, '01J00000000000000000000702');
+  assert.equal((await f.run({ cfg })).status, 'approved-current-scope');
+  f.body =
+    '```html\n<!-- aitm-estimation-forecast-ready record-id="01J00000000000000000000701" -->\n```\n' +
+    f.body;
+  const result = await f.run({ cfg });
+  assert.equal(result.status, 'already-approved-current-scope', JSON.stringify(result));
+});
+test('real forecast loader refuses malformed readiness in its fresh remote snapshot', async (t) => {
+  const f = currentScopeFixture(t);
+  await installCurrentApprovalProvider(f);
+  const cfg = attachRealForecast(
+    f,
+    () => f.body + '\n<!-- aitm-estimation-forecast-ready record-id="BROKEN" -->'
+  );
+  const result = await f.run({ cfg });
+  assert.equal(result.status, 'current-scope-refused');
+  assert.equal(f.calls.writes, 0);
+  assert.equal(f.calls.audits, 0);
 });

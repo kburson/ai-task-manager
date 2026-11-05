@@ -78,6 +78,7 @@ export async function observeCurrentPlanSource({
     const projection = await (deps.plannedEstimate?.forecastProjection ?? loadForecastProjection)({
       cfg,
       issueNumber: Number(issueNumber),
+      readReadyForecastRecordId: readCurrentForecastId,
       deps: deps.plannedEstimate,
     });
     const result = validateForecastProjection({
