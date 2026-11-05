@@ -1,0 +1,15 @@
+✔ tag helpers can be imported without mutating the caller worktree (123.192542ms)
+✔ insertTag preserves CRLF line endings (63.921875ms)
+✔ tagger preserves a valid header with a later template shebang line (129.49675ms)
+✔ non-git sandbox: fixes misplaced tags and discovers co-located tests (162.535ms)
+✔ tagger moves cspell after the exact story header and repairs numeric-prefix lookalikes (130.169208ms)
+✔ git sandbox: resolves creation issue from git log; empty log falls back (507.806958ms)
+✔ git sandbox: preserves a body story literal and uses creation attribution (454.117417ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1579.580458

@@ -1,0 +1,10 @@
+✔ draft bootstrap creates only the issue branch and verifies renewed binding (420.077708ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 426.714208
+Preparing worktree (detached HEAD 0579952)

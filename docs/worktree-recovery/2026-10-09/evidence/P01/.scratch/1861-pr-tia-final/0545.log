@@ -1,0 +1,13 @@
+✔ dev package, link absent → creates symlink to repo root (71.329166ms)
+✔ dev package, link present → idempotent no-op (73.044375ms)
+✔ non-dev package (no .git) → skipped, nothing created (67.668709ms)
+✔ dev package, real directory at target → refuses to clobber (68.921459ms)
+✔ dev package, stale symlink → replaced with correct link (105.182667ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 389.935875

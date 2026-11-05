@@ -1,0 +1,37 @@
+▶ verification fingerprint and receipt creation
+  ✔ records a canonical semantic Verification Commands projection (171.018833ms)
+  ✔ rejects duplicate semantic Verification Commands (77.255334ms)
+  ✔ captures a complete SHA, runtime, hashes, canonical sandbox, and clean tree (93.475292ms)
+  ✔ normalizes command identity and records canonical timestamps and durations (90.900125ms)
+  ✔ records optional provider identity, required classifications, and semantic command kind (#1218) (85.825875ms)
+✔ verification fingerprint and receipt creation (519.3905ms)
+▶ verification receipt validation refusals
+  ✔ returns reusable commands for a valid exact-fingerprint receipt (94.197541ms)
+  ✔ refuses a receipt copied from another issue (83.909791ms)
+  ✔ accepts cosmetic Verification Commands changes and declaration reordering (93.705291ms)
+  ✔ refuses a receipt when a Verification Command is added (100.490625ms)
+  ✔ refuses a receipt when a Verification Command is removed (116.452041ms)
+  ✔ refuses a receipt when a Verification Command is changed (111.136334ms)
+  ✔ default-denies a legacy receipt without Verification Commands authority (99.330209ms)
+  ✔ validates marker authority against live issue-body Verification Commands (106.743583ms)
+  ✔ refuses a green command whose classification impersonates a canonical command (88.7485ms)
+  ✔ refuses schema drift with receipt-malformed (85.293917ms)
+  ✔ refuses SHA drift with sha-mismatch (94.999458ms)
+  ✔ refuses Node major drift with node-major-mismatch (87.231417ms)
+  ✔ refuses platform drift with platform-mismatch (83.291709ms)
+  ✔ refuses lockfile drift with lockfile-mismatch (102.898625ms)
+  ✔ refuses config drift with config-mismatch (89.184ms)
+  ✔ refuses cleanliness drift with sandbox-dirty (90.608875ms)
+  ✔ refuses missing command drift with command-missing (86.709583ms)
+  ✔ refuses duplicate classification drift with command-duplicate (96.486458ms)
+  ✔ refuses nonzero exit drift with command-red (89.770459ms)
+  ✔ refuses invalid timestamps and negative duration as malformed (82.656625ms)
+✔ verification receipt validation refusals (1884.778459ms)
+ℹ tests 25
+ℹ suites 2
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2408.063292

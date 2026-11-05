@@ -1,0 +1,19 @@
+✔ AC1: a failed board write rolls the marker back to the prior stage and stays loud (1.174166ms)
+✔ AC3: rollback restores aitm-last-known-state to priorState (real code) (22.613292ms)
+✔ AC3: rollback is a no-op when the marker already reads priorState (0.26375ms)
+✔ AC2: success path runs the board==marker consistency assertion (0.582666ms)
+✔ AC2: a board/marker mismatch on success fails closed and never runs the tail (0.159417ms)
+✔ AC2: assertBoardMarkerConsistent reports consistent iff marker == expected (real code) (0.210541ms)
+✔ AC4: with no priorState (undefined stamp result) the #741 branches stay dormant (0.175334ms)
+✔ AC4: with no priorState a failed board write does NOT attempt a rollback (0.134958ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.046208
+[move-state:warn] #741: transition commit provenance missing: Cannot read properties of undefined (reading 'repo')
+⛔ #741 → test: board confirmed at target but aitm-last-known-state marker reads "develop". Board/marker consistency post-condition FAILED.
+[move-state:warn] #741: transition commit provenance missing: Cannot read properties of undefined (reading 'repo')

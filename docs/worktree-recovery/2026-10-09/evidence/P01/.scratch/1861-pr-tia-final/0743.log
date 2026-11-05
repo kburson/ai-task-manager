@@ -1,0 +1,11 @@
+✔ Done fan-out reconciles every native dependent without removing relationships (0.862292ms)
+✔ Done fan-out preserves all native relationships while surfacing per-dependent errors (0.149791ms)
+✔ Done fan-out reports graph failure and rejects invalid issue input without throwing (0.143125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.889375

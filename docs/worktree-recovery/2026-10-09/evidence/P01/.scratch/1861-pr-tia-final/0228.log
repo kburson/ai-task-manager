@@ -1,0 +1,12 @@
+✔ chore-mode OFF + no active task → WRITE_CODE edit is refused (baseline) (162.896584ms)
+✔ chore-mode ON → WRITE_CODE edit under scripts/ is allowed (silent pass) (161.438458ms)
+✔ chore-mode OFF + no active task → COMMIT_CODE bash is refused (baseline) (186.712666ms)
+✔ chore-mode ON → COMMIT_CODE bash is allowed (silent pass) (187.635375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 703.011125

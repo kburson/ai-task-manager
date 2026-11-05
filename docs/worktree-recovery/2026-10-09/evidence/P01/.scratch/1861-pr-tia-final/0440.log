@@ -1,0 +1,14 @@
+✔ NON_DEMONSTRABLE_TAG_RE matches the canonical marker (0.51125ms)
+✔ NON_DEMONSTRABLE_TAG_RE no longer matches bare prose (the #891 bug) (0.127917ms)
+✔ NON_DEMONSTRABLE_TAG_RE does not fire on prose that merely discusses the tag (0.055541ms)
+✔ findAcsWithoutVerifierOrInvalidTag flags a legacy-prose-only AC as an offender (0.996875ms)
+✔ findAcsWithoutVerifierOrInvalidTag honors the marker as a genuine opt-out (0.390916ms)
+✔ a real verifier declaration is still demonstrable regardless of the marker change (0.610708ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.795708

@@ -1,0 +1,29 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: verb "#42" should fail-closed with config-not-found or not initialized
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/cli.test.mjs:206:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/tt-norepo-SNW9Lo\n' +
+    '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)\n' +
+    '    at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:200:5)\n' +
+    '    at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/runtime.mjs:314:22)\n' +
+    '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:493:17 {\n' +
+    "  code: 'ROOT_OVERRIDE_UNSAFE'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n',
+  expected: /config-not-found|not initialized/i,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1

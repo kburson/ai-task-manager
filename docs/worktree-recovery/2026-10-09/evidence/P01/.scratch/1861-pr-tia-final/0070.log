@@ -1,0 +1,31 @@
+Started #1857.
+Paused #1857: +Unknown active min (wall 0), +0 words. Use "/task resume" to resume.
+Resumed #1857.
+✔ question hooks close only their own actor interval and resume without charging the wait (398.155375ms)
+✔ question reply ambiguity retains the original row and replays before resuming (409.5505ms)
+✔ question marker cannot substitute another event for the frozen resume (2039.8305ms)
+✔ question hook respects its own manual pause without creating a resume marker (208.807958ms)
+✔ flush preserves genuine own wall interval and unknown estimate despite another actor tail (181.521541ms)
+✔ first attributed interruption retains observed cursor delta without a fabricated opener (199.186458ms)
+✔ update preserves cumulative actor cursor and unknown total after an unavailable estimate (264.718416ms)
+✔ real start pause and resume retain one actor identity and explicit current boundaries (433.873166ms)
+✔ phase boundary flushes own actor interval and shared lifecycle rows do not duplicate actor work (190.417125ms)
+✔ Test interlock records actual verification engagement from a paused own binding (254.125542ms)
+✔ status distinguishes missing activity observation from zero work (413.406084ms)
+✔ failed Test execution retains both its failure and actual actor work (270.309958ms)
+✔ session tracking initializes a versioned own cursor and refuses corrupt existing authority (247.35725ms)
+✔ failed publication retains original row and cursor, then exact replay precedes new work (575.046125ms)
+✔ publication cannot overwrite a concurrently changed own timing boundary (156.615625ms)
+✔ Review human handoff flushes actual actor work before pausing its own binding (216.553917ms)
+✔ compaction hooks use the same actor journal and never resume a paused binding (352.199834ms)
+✔ session restart records unknown prior work without synthesizing historical active or idle time (315.321125ms)
+✔ actual hook entrypoint refuses a foreign payload actor before mutating timing state (238.244667ms)
+✔ actual idle SessionStart preserves cumulative actor word evidence (523.573708ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7893.917125

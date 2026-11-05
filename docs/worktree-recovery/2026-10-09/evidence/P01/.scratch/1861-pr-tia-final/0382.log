@@ -1,0 +1,13 @@
+✔ needsBacklogScaffold: true for a web-authored body with no entry markers (0.861ms)
+✔ needsBacklogScaffold: false once aitm-entered-backlog is present (0.846959ms)
+✔ scaffoldBody: stamps aitm-entered-backlog at the issue createdAt (0.262292ms)
+✔ scaffoldBody: no-op when aitm-entered-backlog already present (create-issue.mjs-authored) (0.101042ms)
+✔ scaffoldBody: falls back to now() when createdAt is not supplied (1.779625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.118334

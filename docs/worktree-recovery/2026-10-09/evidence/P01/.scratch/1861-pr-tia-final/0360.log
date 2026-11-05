@@ -1,0 +1,19 @@
+✔ projectDirForState: main checkout, modern .ai-task-manager path (0.668084ms)
+✔ projectDirForState: worktree, modern .ai-task-manager path (0.117375ms)
+✔ projectDirForState: worktree, legacy .claude path (regression #332) (0.06275ms)
+✔ projectDirForState: nested subdir inside worktree resolves to worktree root (0.053834ms)
+✔ projectDirForState: main checkout, modern .tmp/aitm/state path (#573) (0.361042ms)
+✔ projectDirForState: worktree, modern .tmp/aitm/state path (#573) (0.058125ms)
+✔ projectDirForState: nested .tmp/aitm/sessions path resolves to project root (#573) (0.055167ms)
+✔ projectDirForState: prefers .tmp/aitm over .ai-task-manager when both appear (#573) (0.045ms)
+✔ projectDirForState: main checkout, legacy .claude path (0.078375ms)
+✔ projectDirForState: prefers .ai-task-manager over .claude when both appear (0.105917ms)
+✔ projectDirForState: fallback to dirname when no marker present (0.056583ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.561333

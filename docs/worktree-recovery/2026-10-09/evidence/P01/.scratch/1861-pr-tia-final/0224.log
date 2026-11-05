@@ -1,0 +1,70 @@
+✔ Edit src/foo.ts in develop → pass (102.665459ms)
+✔ Edit docs/notes.md in plan without current-session binding → allow (91.877667ms)
+✔ Edit docs/notes.md in refine without an exact binding → allow (97.697125ms)
+✔ Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass (105.705ms)
+✔ Bash npm test in test → pass (109.829417ms)
+✔ Bash READ command (cat README.md) in done → pass (98.98625ms)
+✔ Write .scratch/gh/foo.txt in develop → pass (scratch carve-out) (95.438167ms)
+✔ Write .scratch/plan/draft.md in refine → pass (scratch carve-out) (108.9455ms)
+✔ Write absolute .scratch/ path → pass (scratch carve-out) (98.578083ms)
+✔ Write .tmp/aitm runtime path in refine → pass (109.981792ms)
+✔ Edit src/foo.ts in refine → block; suggests develop (108.495167ms)
+✔ Edit src/foo.ts in test → block; suggests develop (104.13525ms)
+✔ Bash heredoc to src/ in refine → block (104.371334ms)
+✔ Bash npm run build in refine → block (98.6765ms)
+✔ Bash git commit in refine → block (COMMIT_CODE) (133.664ms)
+✔ Edit src/foo.ts with active issue but no state field → block; suggest reconcile (125.710458ms)
+✔ Edit src/foo.ts with no state file at all → block (no-active-task) (178.816458ms)
+✔ Edit docs/notes.md with active issue but no state → allow (106.807458ms)
+✔ Read with no active task is universally allowed; no state file → pass (123.084791ms)
+✔ malformed stdin JSON → pass (don't deadlock) (107.008958ms)
+✔ unknown tool_name → pass-through (251.146875ms)
+✔ Edit with missing file_path → pass (avoid false-positive) (104.887125ms)
+✔ Edit with absolute path inside project root → normalized + blocked in refine (98.972416ms)
+✔ session kanbanState cache supplies state when global state field is absent (100.412625ms)
+✔ session kanbanState overrides legacy global state when both present (103.397958ms)
+✔ session cache for a different issue is ignored (96.732208ms)
+✔ session cache with invalid kanbanState is ignored; falls back (105.092625ms)
+✔ most-recently-modified session cache wins when multiple match (165.837166ms)
+✔ invalid state value in state file with active issue → block; suggest reconcile (120.826666ms)
+✔ linked backlog document commit uses payload worktree and exact owner (3971.956917ms)
+✔ linked refine document commit uses payload worktree and exact owner (4191.964792ms)
+✔ linked ready-for-plan document commit uses payload worktree and exact owner (4008.093084ms)
+✔ linked plan document commit uses payload worktree and exact owner (4020.973208ms)
+✔ native hook session selects its own state instead of an environment session (250.459041ms)
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (242.354208ms)
+✔ Bash scope guard does not execute quoted cat payload examples as issue commands (133.293917ms)
+✔ Plan runner does not bypass exact document binding (95.787583ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 36
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20280.69325
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:812:1
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (242.354208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:825:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

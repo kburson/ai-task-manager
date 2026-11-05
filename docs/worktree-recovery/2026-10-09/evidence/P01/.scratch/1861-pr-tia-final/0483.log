@@ -1,0 +1,16 @@
+coverage-block.test.mjs: defined
+✔ block helpers parse, sort, deduplicate, and resolve the active fallback (1.23375ms)
+✔ runBlock validates target, refs, config, self-reference, and existence (0.362708ms)
+[task-tracker] ✓ #5 blocked by #7
+✔ runBlock uses the default validator and accepts a closed issue (263.162875ms)
+[task-tracker] ✓ #5 native blockers already converged
+✔ runBlock returns an idempotent exact-set result (0.26775ms)
+✔ verbBlock covers usage, success, and core failure exits (91.576291ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 360.237625

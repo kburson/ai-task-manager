@@ -1,0 +1,14 @@
+gh-timing-comment-blank-zero.test.mjs: all passed
+✔ second-precision: zero Active/Idle render blank, row-sec marker preserved (#489) (14.347167ms)
+✔ second-precision: only the zero cell blanks; the non-zero sibling renders (#489) (0.343875ms)
+✔ null is NOT effective-zero — Active/Idle/ΔWords keep the — sentinel (#489) (0.096708ms)
+✔ legacy minute path: zero minutes blank, non-zero render (#489) (0.108ms)
+✔ buildFlushRow: effective-zero pause/flush cells blank, marker intact (#489 supersedes #484) (0.285083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.796375

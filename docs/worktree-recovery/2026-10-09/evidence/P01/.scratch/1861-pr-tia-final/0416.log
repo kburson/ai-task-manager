@@ -1,0 +1,16 @@
+✔ passes a well-formed body — every AC cited, every stampable DoD item verified (3.432708ms)
+✔ fails an un-cited AC and names it (0.395875ms)
+✔ fails a dangling vc:N citation and names the AC (0.218708ms)
+✔ fails a resolvable-but-legacy backtick-embedded-cmd AC (vc-list-only form enforced) (0.147625ms)
+✔ fails a stampable DoD item missing its verifier and names it (0.196542ms)
+✔ a derived DoD item (acs/checkboxes) without a verifier does NOT fail (0.51325ms)
+✔ absent Acceptance Criteria / Functional sections defer (vacuous pass) (0.092833ms)
+✔ bootstrap registers the validator on the shared singleton (15.4075ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.262459

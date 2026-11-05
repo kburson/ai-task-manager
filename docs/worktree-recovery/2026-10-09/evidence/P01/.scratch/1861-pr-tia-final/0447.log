@@ -1,0 +1,17 @@
+✔ repair retains highest precedence across every closed-issue signal (1.019584ms)
+✔ pending recovery outranks every non-repair close decision (0.14625ms)
+✔ repair remains above pending recovery and complete recovery is not pending (0.07475ms)
+✔ closed non-delivery dispositions are dead and untouched (0.182709ms)
+✔ completed issue already at Done is a noop regardless of integrity or mode (0.087292ms)
+✔ completed not-Done issue finalizes only when integrity is satisfied (0.084583ms)
+✔ open close-first and normal pipeline paths retain their actions (0.066166ms)
+✔ unknown issue state never assumes a terminal action (0.290834ms)
+✔ legacy callers without expanded signals retain the pre-925 closed behavior (0.238583ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.3575
