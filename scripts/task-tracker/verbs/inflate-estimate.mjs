@@ -8,7 +8,19 @@
 import {
   executeEstimateWriter,
   observedEstimateEffect,
+  readEstimateBeforeRecord,
 } from '../lib/estimate-writer-publication.mjs';
+import {
+  correlateInflationComment,
+  deriveInflationIntendedInput,
+  assertInflationRetryAuthority,
+} from '../lib/inflation-intent.mjs';
+import {
+  loadForecastProjection,
+  createGitHubEstimationRecordIo,
+} from '../lib/estimation/runtime-adapter.mjs';
+import { parsePreloadedIssueComments } from '../lib/github-records/github-comment-store.mjs';
+import { estimateEffectDigest } from '../lib/decomposition-publication.mjs';
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
@@ -143,7 +155,7 @@ async function defaultListComments({ issueNumber, repo }) {
       `repos/${repo}/issues/${issueNumber}/comments`,
       '--paginate',
       '--jq',
-      '[.[] | {id, body}]',
+      '[.[] | {id, node_id, body, issue_url}]',
     ],
     { timeout: GH_API_TIMEOUT_MS * 2 }
   );
@@ -152,14 +164,74 @@ async function defaultListComments({ issueNumber, repo }) {
     .trim()
     .split(/\n(?=\[)/);
   const comments = [];
+  const ids = new Set(),
+    nodes = new Set();
   for (const page of pages) {
     try {
-      comments.push(...JSON.parse(page));
+      const records = JSON.parse(page);
+      if (!Array.isArray(records)) throw Error('page');
+      for (const record of records) {
+        if (
+          !Number.isSafeInteger(record?.id) ||
+          record.id <= 0 ||
+          typeof record.node_id !== 'string' ||
+          !record.node_id.trim() ||
+          typeof record.body !== 'string' ||
+          ids.has(record.id) ||
+          nodes.has(record.node_id)
+        )
+          throw Error('identity');
+        const url = new URL(record.issue_url);
+        if (
+          url.protocol !== 'https:' ||
+          url.pathname.toLowerCase() !== `/repos/${repo.toLowerCase()}/issues/${issueNumber}` ||
+          url.search ||
+          url.hash ||
+          url.username ||
+          url.password
+        )
+          throw Error('subject');
+        ids.add(record.id);
+        nodes.add(record.node_id);
+        comments.push(record);
+      }
     } catch {
-      /* best-effort: optional read; fall back to default on parse/IO error */
+      throw new Error('inflate-estimate:comment-pages');
     }
   }
   return comments;
+}
+
+async function observeForecastEvidence({ cfg, issueNumber, deps }) {
+  const ports = deps.decomposition?.forecast ?? {};
+  const graphql =
+    ports.graphql ?? ports.recordIo?.graphql ?? createGitHubEstimationRecordIo().graphql;
+  const comments = [];
+  let body;
+  const projection = await loadForecastProjection({
+    cfg,
+    issueNumber,
+    deps: {
+      graphql: async (request) => {
+        const response = await graphql(request),
+          issue = response?.data?.repository?.issue;
+        if (typeof issue?.body === 'string') {
+          if (body !== undefined && body !== issue.body)
+            throw new Error('inflate-estimate:forecast-body-drift');
+          body = issue.body;
+        }
+        if (Array.isArray(issue?.comments?.nodes)) comments.push(...issue.comments.nodes);
+        return response;
+      },
+    },
+  });
+  if (typeof body !== 'string') throw new Error('inflate-estimate:forecast-body');
+  const records = parsePreloadedIssueComments({
+    nodes: comments,
+    repository: cfg.repo,
+    issue: issueNumber,
+  });
+  return { comments, body, projection, records };
 }
 
 async function defaultPatchComment({ repo, commentId, body }) {
@@ -233,6 +305,7 @@ export async function runInflateEstimate(
       size: parsed.values.size ?? null,
     });
   };
+  let prepared;
   return executeEstimateWriter({
     cfg,
     issueNumber,
@@ -240,23 +313,83 @@ export async function runInflateEstimate(
     key: { size, estimate: newEstimate, reason, items },
     proposal: { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size },
     deps,
-    effects: async ({ subject, operationId, createdAt }) => {
+    deriveIntendedInput: (initial, { effects }) =>
+      deriveInflationIntendedInput({
+        initial,
+        proposal: { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size },
+        commentIdentity: prepared.commentIdentity,
+        beforeBody: prepared.beforeBody,
+        intendedBody: effects.find((effect) => effect.id === 'audit').value,
+      }),
+    validatePendingInput: async (current, { subject, effects, publication, beforeRecord }) => {
+      const matches = (await listComments({ issueNumber, repo })).filter(
+        (c) => c.id === refine[0].id
+      );
+      if (matches.length !== 1) throw new Error('inflate-estimate:pending-source-drift:comment');
+      const forecastEvidence = await observeForecastEvidence({ cfg, issueNumber, deps });
+      const commentIdentity = correlateInflationComment({
+        subject,
+        restComment: matches[0],
+        graphqlComments: forecastEvidence.comments,
+      });
+      await assertInflationRetryAuthority({
+        current,
+        proposal: { estimate: { basis: 'published', hours: newEstimate, proposalId: null }, size },
+        commentIdentity,
+        beforeBody: matches[0].body,
+        intendedBody: effects.find((effect) => effect.id === 'audit').value,
+        publication,
+        beforeRecord,
+        forecastEvidence,
+      });
+    },
+    effects: async ({ subject, operationId, createdAt, initial }) => {
       const before = await fetchProjectValues({ cfg, fieldDefs, issueNumber });
-      const comment = (await readComment()).value,
+      const current = (await listComments({ issueNumber, repo })).filter(
+        (comment) => comment.id === refine[0].id
+      );
+      if (current.length !== 1) throw new Error('inflate-estimate:comment-readback');
+      const evidence = await observeForecastEvidence({ cfg, issueNumber, deps });
+      const commentIdentity = correlateInflationComment({
+        subject,
+        restComment: current[0],
+        graphqlComments: evidence.comments,
+      });
+      const comment = current[0].body,
         key = `Publication operation: ${operationId}`;
+      const prior = initial.publication?.operationId === operationId ? initial.publication : null;
+      const recordedAudit = prior?.effects.find((effect) => effect.id === 'audit');
+      const occurrences = comment.split(key).length - 1;
+      if (
+        occurrences &&
+        (!prior ||
+          occurrences !== 1 ||
+          !comment.endsWith(`\n${key}\n`) ||
+          recordedAudit?.targetIdentity !== `comment:${current[0].id}` ||
+          recordedAudit.intendedDigest !== estimateEffectDigest(comment))
+      )
+        throw new Error('inflate-estimate:audit-provenance');
+      const saved = prior
+        ? readEstimateBeforeRecord(initial.sourceObservations.readIssue.value.body)
+        : null;
+      const baseline = saved?.operationId === operationId ? saved.fieldBaseline : null;
+      // Captured nulls mean an absent project value, not permission to use a
+      // current field. Match projectValuesForIssue's original absent rendering.
+      const auditBaseline = baseline ?? before;
       const body = comment.includes(key)
         ? comment
         : comment +
           buildInflationSection({
             reason,
             items,
-            beforeSize: before.size,
-            beforeEstimate: before.estimate,
+            beforeSize: auditBaseline.size ?? undefined,
+            beforeEstimate: auditBaseline.estimate ?? undefined,
             newSize: size,
             newEstimate,
             date: createdAt.slice(0, 10),
           }) +
           `\n${key}\n`;
+      prepared = { commentIdentity, beforeBody: comment };
       const options = await (deps.fieldOptionMap ?? fieldOptionMap)(cfg.projectId);
       const boardEffect = (field, value, resource) => ({
         id: field,

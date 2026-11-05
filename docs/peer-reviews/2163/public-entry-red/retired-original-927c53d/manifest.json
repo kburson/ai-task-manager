@@ -1,0 +1,44 @@
+{
+  "evidenceClass": "automated-provider-isolated-public-entry",
+  "nativeHostAdmission": false,
+  "sha256": "583628f481bd6d64cdd31e2a394b50ef9a3b7847d09bbea5aaa99c075d88a371",
+  "bytes": 1171285,
+  "path": "evidence.json.gz",
+  "originCommit": "927c53d415102d75955cc66cc9ffc7a4774b9205",
+  "sourceDigest": "a5112831fb7b4c5dcfd6cf115ae79dd1d7e24c87e77d8a66e5cb0e1a47cf2325",
+  "attempts": [
+    {
+      "argv": [
+        "start",
+        "4242",
+        "--role",
+        "agent"
+      ],
+      "status": 0
+    },
+    {
+      "argv": [
+        "cancel-plan",
+        "4242",
+        "--reason",
+        "Restart fictional planning."
+      ],
+      "status": 0
+    },
+    {
+      "argv": [
+        "inflate-estimate",
+        "4242",
+        "--size",
+        "M",
+        "--estimate",
+        "6h",
+        "--reason",
+        "Discovered integration work.",
+        "--item",
+        "Integration validation (~4h)"
+      ],
+      "status": 0
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "worktreePath": "/Users/kpburson/.codex/worktrees/2163-inflation-intent/ai-task-manager/.ai-task-manager/runtime/test-fixtures/inflation-808ab358/worker",
+  "repository": "fixture/inflation",
+  "number": 4242,
+  "issueId": "I_fixture",
+  "projectId": "PVT_fixture",
+  "itemId": "ITEM_fixture",
+  "viewer": "operator",
+  "assignees": [
+    "operator"
+  ],
+  "status": "Plan",
+  "body": "<!-- aitm-last-known-state state=\"plan\" ts=\"2026-11-05T00:00:00.000Z\" -->\n\n## User Story\n\nAs a task operator I want an audited estimate revision so that planning reflects discovered work.\n\n## Scope\n\nPublish one audited estimate revision.\n\n## Plan Metadata\n\n- **Implementation-plan**: docs/superpowers/plans/2026-11-05-4242-inflation-fixture.md\n- **Plan-commit**: 3d9afbce52b89498a993261f921f27b81f5ce1fd\n\n## Acceptance Criteria\n\n- [ ] Publish exactly once. <!-- aitm-verified vc-list=\"vc:1\" -->\n\n## Verification Commands\n\n- [ ] `node --version` <!-- id=1 -->\n\n<!-- aitm-fields: {\"schema\":1,\"values\":{\"priority\":\"P1\",\"size\":\"S\",\"estimate\":2,\"rank\":4242,\"startTime\":null}} -->\n",
+  "board": {
+    "priority": "P1",
+    "size": "S",
+    "estimate": 2,
+    "rank": 4242,
+    "startTime": null
+  },
+  "comments": [
+    {
+      "id": 101,
+      "node_id": "IC_fixture_refine",
+      "issue_url": "https://api.github.com/repos/fixture/inflation/issues/4242",
+      "body": "<!-- aitm-refined-estimate: 4242 -->\n### 🛠 Refine estimate\n\n| Field | Value |\n|---|---|\n| Size | S |\n\n### Planned Estimate\n\n| Field | Refine | Planned |\n|---|---|---|\n| Size | S | S |\n| Estimate (h) | 2 | 2 |\n",
+      "created_at": "2026-11-05T00:00:00Z",
+      "updated_at": "2026-11-05T00:00:00Z"
+    }
+  ]
+}

@@ -19,8 +19,15 @@ import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+import { stampRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
+import {
+  withActiveInflationForecast,
+  applyInflationScenario,
+  inflationScenarioActions,
+} from './inflation-scenarios.mjs';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const providerSource = fileURLToPath(
@@ -32,6 +39,7 @@ const clone = (value) => structuredClone(value);
 const osKeys = ['LANG', 'LC_ALL', 'TZ', 'TMPDIR', 'TEMP', 'TMP', 'SYSTEMROOT', 'WINDIR'];
 const actor = '21630000-0000-4000-8000-000000004242';
 const issue = 4242;
+const ownedBundles = new Map();
 
 function trustedExecutable(name) {
   const locations = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin'];
@@ -94,9 +102,31 @@ function readJson(file) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
 }
 
-export async function createInflationPublicEntryFixture({ source, seed = {}, retainDir } = {}) {
+export async function createInflationPublicEntryFixture({
+  source,
+  seed = {},
+  retainDir,
+  scenario = 'plain',
+  sourceBundle,
+  policyVariant = false,
+  qualificationDir = process.env.INFLATION_FIXTURE_QUALIFICATION_DIR,
+} = {}) {
+  if (
+    !['plain', 'active-forecast', 'retirement-input', 'retired-snapshot', 'unpinned-plan'].includes(
+      scenario
+    ) ||
+    typeof policyVariant !== 'boolean'
+  )
+    throw new Error('inflation-fixture:scenario');
   if (!source || Object.keys(source).length !== 1 || (!source.commit && !source.root))
     throw new Error('inflation-fixture:source-selection');
+  if (
+    qualificationDir &&
+    !path
+      .resolve(qualificationDir)
+      .startsWith(path.resolve(projectScratchDir('test', repository)) + path.sep)
+  )
+    throw new Error('inflation-fixture:qualification-path');
   const token = `inflation-${randomUUID().slice(0, 8)}`;
   const bootstrapHome = path.join(projectScratchDir('test', repository), token);
   mkdirSync(bootstrapHome, { recursive: true });
@@ -134,6 +164,21 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
         encoding: 'utf8',
         maxBuffer: 64 * 1024 * 1024,
       });
+    let importedBundle = null;
+    if (sourceBundle) {
+      const bundlePath = path.resolve(sourceBundle.path);
+      if (
+        (!bundlePath.startsWith(
+          path.join(repository, 'docs/peer-reviews/2163/public-entry-red') + path.sep
+        ) &&
+          ownedBundles.get(bundlePath) !== sourceBundle.sha256) ||
+        hashFile(bundlePath) !== sourceBundle.sha256
+      )
+        throw new Error('inflation-fixture:source-bundle');
+      runGit(main, 'bundle', 'verify', bundlePath);
+      runGit(main, 'bundle', 'unbundle', bundlePath);
+      importedBundle = { path: path.relative(repository, bundlePath), sha256: sourceBundle.sha256 };
+    }
     const originCommit = source.commit
       ? runGit(repository, 'rev-parse', `${source.commit}^{commit}`).trim()
       : runGit(source.root, 'rev-parse', 'HEAD').trim();
@@ -167,6 +212,20 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
         copyFileSync(from, path.join(main, name));
       }
     }
+    if (policyVariant) {
+      const policyFile = path.join(main, 'scripts/task-tracker/lib/decomposition-policy.mjs');
+      const original = readFileSync(policyFile, 'utf8'),
+        declaration = "export const DECOMPOSITION_CLASSIFIER_VERSION = '1';";
+      if (original.split(declaration).length !== 2)
+        throw new Error('inflation-fixture:policy-source-shape');
+      writeFileSync(
+        policyFile,
+        original.replace(
+          declaration,
+          "export const DECOMPOSITION_CLASSIFIER_VERSION = '2163-fixture-alternative';"
+        )
+      );
+    }
     const capturedFiles = inventory(main);
     const planPath = 'docs/superpowers/plans/2026-11-05-4242-inflation-fixture.md';
     mkdirSync(path.dirname(path.join(main, planPath)), { recursive: true });
@@ -195,6 +254,21 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       },
       preferences: { gateAssigneeMatch: true },
       estimationRubricIssue: 0,
+      ...(['retirement-input', 'retired-snapshot'].includes(scenario)
+        ? {
+            sizeFieldId: 'F_SIZE',
+            sizeOptions: {
+              XS: 'F_SIZE_XS',
+              S: 'F_SIZE_S',
+              M: 'F_SIZE_M',
+              L: 'F_SIZE_L',
+              XL: 'F_SIZE_XL',
+            },
+            priorityOptionP1: 'F_PRIORITY_P1',
+            kanbanOptionPlan: 'F_STATUS_Plan',
+            kanbanOptionReadyForPlan: 'F_STATUS_Ready for Planning',
+          }
+        : {}),
     };
     mkdirSync(path.join(main, '.ai-task-manager'), { recursive: true });
     writeFileSync(
@@ -213,7 +287,7 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       'Capture immutable fixture source and planning inputs'
     );
     const fixtureCommit = runGit(main, 'rev-parse', 'HEAD').trim();
-    runGit(main, 'worktree', 'add', '-b', 'codex/4242-fixture', worker, fixtureCommit);
+    runGit(main, 'worktree', 'add', '--quiet', '-b', 'codex/4242-fixture', worker, fixtureCommit);
     const dependencies = copyDependencies(main);
     symlinkSync(path.join(main, 'node_modules'), path.join(worker, 'node_modules'), 'dir');
     mkdirSync(path.join(main, 'node_modules/@kburson'), { recursive: true });
@@ -237,9 +311,10 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
     const providerHash = hashFile(gh),
       dataFile = path.join(providerDir, 'state.json');
     const fields = { priority: 'P1', size: 'S', estimate: 2, rank: issue, startTime: null };
-    const state = {
+    let state = {
       worktreePath: worker,
       repository: cfg.repo,
+      repositoryLinked: true,
       number: issue,
       issueId: 'I_fixture',
       projectId: cfg.projectId,
@@ -261,6 +336,26 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       ],
       ...clone(seed),
     };
+    if (scenario === 'retirement-input') {
+      state.body = stampRefinementSnapshot(
+        state.body +
+          '\n<!-- aitm-refinement-rationale: ' +
+          JSON.stringify({
+            size: 'S',
+            estimate: '2',
+            priority: 'p1',
+            rank: issue,
+            rationale: 'Fictional refined scope.',
+          }) +
+          ' -->\n',
+        { labels: ['bug'], ts: '2026-11-05T00:00:00.000Z' }
+      );
+    }
+    if (['active-forecast', 'retirement-input'].includes(scenario))
+      state = withActiveInflationForecast(state);
+    if (scenario === 'unpinned-plan')
+      state.body = state.body.replace(/^- \*\*Plan-commit\*\*: [a-f0-9]{40}\n/m, '');
+    state.worktreePath = worker;
     writeFileSync(dataFile, JSON.stringify({ state, ledger: [], faults: [] }));
     const initialState = clone(state);
     const env = {
@@ -280,6 +375,8 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       originCommit,
       originTree: runGit(repository, 'rev-parse', `${originCommit}^{tree}`).trim(),
       fixtureCommit,
+      importedBundle,
+      sourceVariant: policyVariant ? 'actual-alternative-classifier-2163' : 'unmodified-source',
       files: capturedFiles,
       fixtureInputs: [planPath, '.ai-task-manager/task-tracker.json'].map((relative) => ({
         path: relative,
@@ -287,7 +384,11 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
         contents: readFileSync(path.join(worker, relative), 'utf8'),
       })),
       dependencies,
-      fixtureFiles: [providerSource, fileURLToPath(import.meta.url)].map((file) => ({
+      fixtureFiles: [
+        providerSource,
+        fileURLToPath(import.meta.url),
+        fileURLToPath(new URL('./inflation-scenarios.mjs', import.meta.url)),
+      ].map((file) => ({
         path: path.relative(repository, file),
         sha256: hashFile(file),
       })),
@@ -321,6 +422,25 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       if (!existsSync(gh) || realpathSync(gh) !== gh || hashFile(gh) !== providerHash)
         throw new Error('inflation-fixture:provider-identity');
       accessSync(gh, constants.X_OK);
+      const scenario = readJson(dataFile);
+      for (const fault of scenario.faults.filter(
+        (fault) => !fault.consumed && fault.checkpoint === 'before-invocation'
+      )) {
+        fault.seen = (fault.seen ?? 0) + 1;
+        if (fault.seen !== fault.occurrence) continue;
+        fault.consumed = true;
+        const delta = applyInflationScenario(scenario.state, fault.action, { worker, planPath });
+        scenario.ledger.push({
+          sequence: scenario.ledger.length + 1,
+          checkpoint: 'before-invocation',
+          applied: false,
+          externalMutation: true,
+          fault: clone(fault),
+          ...delta,
+          outcome: 'scenario-applied',
+        });
+      }
+      writeFileSync(dataFile, JSON.stringify(scenario));
       active = true;
       const result = await new Promise((resolve, reject) => {
         const child = spawn(node, [path.join(worker, 'bin/aitm.mjs'), ...argv], {
@@ -387,12 +507,19 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
           'duplicate-comment-id',
           'truncated-comments',
           'repeated-comment-cursor',
+          'rest-missing-node',
+          'rest-foreign-issue',
+          'rest-duplicate-id',
+          'rest-mismatched-body',
+          'rest-mismatched-node',
+          ...inflationScenarioActions,
         ].includes(spec.action)
       )
         throw new Error('inflation-fixture:fault-action');
       if (
         ![
           'viewer',
+          'before-invocation',
           'location-assignment',
           'assignment',
           'membership',
@@ -406,6 +533,10 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
           'fields',
           'publication',
           'before-record',
+          'metadata-initial',
+          'metadata-context',
+          'metadata-confirm',
+          'metadata-terminal',
           'assessment',
           'issue-body',
           'timing-read',
@@ -414,9 +545,19 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       )
         throw new Error('inflation-fixture:fault-checkpoint');
       const data = readJson(dataFile);
-      if (
+      if (inflationScenarioActions.includes(spec.action)) {
+        if (spec.checkpoint !== 'before-invocation' || spec.phase !== 'before-apply')
+          throw new Error('inflation-fixture:fault-scenario');
+      } else if (spec.action.startsWith('rest-')) {
+        if (spec.checkpoint !== 'rest-comments')
+          throw new Error('inflation-fixture:fault-response-target');
+      } else if (
         !['transport-failure'].includes(spec.action) &&
-        !['forecast-projection', 'forecast-page'].includes(spec.checkpoint)
+        ![
+          'forecast-projection',
+          'forecast-page',
+          ...(spec.action === 'malformed-response' ? ['rest-comments'] : []),
+        ].includes(spec.checkpoint)
       )
         throw new Error('inflation-fixture:fault-response-target');
       data.faults.push(clone(spec));
@@ -426,6 +567,43 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       if (active) throw new Error('inflation-fixture:active-close');
       if (closed) return;
       try {
+        if (qualificationDir) {
+          const destination = path.join(path.resolve(qualificationDir), token);
+          mkdirSync(destination, { recursive: true });
+          if (readdirSync(destination).length)
+            throw new Error('inflation-fixture:qualification-exists');
+          const bytes = gzipSync(
+            Buffer.from(
+              JSON.stringify({
+                evidenceClass: 'automated-provider-isolated-public-entry',
+                nativeHostAdmission: false,
+                sourceIdentity,
+                initialState,
+                finalState: readState(),
+                ledger: readJson(dataFile).ledger,
+                attempts,
+              })
+            )
+          );
+          writeFileSync(path.join(destination, 'evidence.json.gz'), bytes);
+          writeFileSync(
+            path.join(destination, 'manifest.json'),
+            JSON.stringify(
+              {
+                evidenceClass: 'automated-provider-isolated-public-entry',
+                nativeHostAdmission: false,
+                sha256: digest(bytes),
+                bytes: bytes.length,
+                path: 'evidence.json.gz',
+                originCommit: sourceIdentity.originCommit,
+                sourceDigest: digest(JSON.stringify(sourceIdentity.files)),
+                attempts: attempts.map(({ argv, status }) => ({ argv, status })),
+              },
+              null,
+              2
+            ) + '\n'
+          );
+        }
         if (retainDir) {
           const destination = path.resolve(retainDir),
             allowed = path.join(repository, 'docs/peer-reviews/2163/public-entry-red');
@@ -434,6 +612,13 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
           mkdirSync(destination, { recursive: true });
           if (readdirSync(destination).length)
             throw new Error('inflation-fixture:retention-exists');
+          runGit(
+            main,
+            'bundle',
+            'create',
+            path.join(destination, 'fixture-source.bundle'),
+            '--all'
+          );
           for (const [name, value] of Object.entries({
             sourceIdentity,
             initialState,
@@ -491,6 +676,14 @@ export async function createInflationPublicEntryFixture({ source, seed = {}, ret
       fault,
       close,
       sourceIdentity: clone(sourceIdentity),
+      exportSourceBundle() {
+        if (active || closed) throw new Error('inflation-fixture:bundle-state');
+        const file = path.join(container, 'source.bundle');
+        if (!existsSync(file)) runGit(main, 'bundle', 'create', file, '--all');
+        const sha256 = hashFile(file);
+        ownedBundles.set(file, sha256);
+        return { path: file, sha256 };
+      },
     };
   } catch (error) {
     if (container) rmSync(container, { recursive: true, force: true });

@@ -53,6 +53,11 @@ async function publishEstimateRevisionOwned({
     refuse('dependencies');
   const initial = await runtime.collect(subject);
   const stamp = new Date().toISOString();
+  if (
+    deps.createdAt !== undefined &&
+    (typeof deps.createdAt !== 'string' || !Number.isFinite(Date.parse(deps.createdAt)))
+  )
+    refuse('creation-time');
   const manifest = {
     schema: 'aitm.decomposition-publication/v1',
     subject,
@@ -64,7 +69,7 @@ async function publishEstimateRevisionOwned({
     effects: effects.map(descriptor),
     status: 'pending',
     supersedes: deps.supersedes ?? null,
-    createdAt: stamp,
+    createdAt: deps.createdAt ?? stamp,
     updatedAt: stamp,
   };
   const prior = initial.publication;

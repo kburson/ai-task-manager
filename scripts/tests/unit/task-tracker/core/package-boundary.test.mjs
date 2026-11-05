@@ -508,7 +508,9 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
     4 + // #2096: immutable subject, native source execution and stamp declaration validation.
-    1; // #2161: shared pure governed mutation-session assertion, exactly one runtime leaf.
+    1 + // #2161: shared pure governed mutation-session assertion, exactly one runtime leaf.
+    1; // #2163: pure inflation audit intent and bounded retry validation, one runtime leaf.
+  assert.ok(files.includes('scripts/task-tracker/lib/inflation-intent.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/governed-mutation-session.mjs'));
   assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-provider.mjs'));
   assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-cli-provider.mjs'));
