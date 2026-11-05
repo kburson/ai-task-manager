@@ -1,0 +1,11 @@
+✔ preparation binds one exact scope and returns a draft with no approval source (2.671375ms)
+✔ closed proposal and action grammar refuse drift and placeholder reasons (1.031583ms)
+✔ resolver distinguishes missing authority from ambiguous evidence (0.850875ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.601292

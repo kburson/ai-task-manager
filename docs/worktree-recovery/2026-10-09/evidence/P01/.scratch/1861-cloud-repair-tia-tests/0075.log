@@ -1,0 +1,17 @@
+✔ deriveDisposition gives superseded marker precedence over NOT_PLANNED (0.677ms)
+✔ deriveDisposition maps delivered, duplicate, and discarded terminal evidence (0.160542ms)
+✔ parseArgs supports dry-run default, apply, and explicit issue scope (0.927208ms)
+✔ dry-run reports classifications without reading or writing the board (0.352834ms)
+✔ apply skips unchanged values and writes only real classification deltas (0.177458ms)
+✔ apply records an isolated write failure and continues the sweep (0.177125ms)
+✔ main refuses a declined multi-issue apply before the backfill runner (0.233291ms)
+✔ main passes --yes to confirmation and preserves audit-by-default (0.191042ms)
+✔ main distinguishes isolated item failures from orchestration failures (0.176917ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.424334

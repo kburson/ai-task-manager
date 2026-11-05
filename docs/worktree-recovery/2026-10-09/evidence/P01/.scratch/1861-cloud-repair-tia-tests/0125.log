@@ -1,0 +1,11 @@
+✔ dispatch-prep.defaultRunMoveState calls the in-process host with the develop argv/env (no spawn) (0.919333ms)
+✔ dispatch-prep.defaultRunMoveState relays the host exit code verbatim (0.145584ms)
+✔ dispatch-prep.mjs no longer spawns a move-state child (0.332125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.801709

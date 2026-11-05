@@ -1,0 +1,16 @@
+✔ #1857 comparable ingress excludes all incomplete generations without inventing forecasts (1.642334ms)
+✔ process retry preserves the immutable Refine baseline after partial Plan writes (0.132792ms)
+✔ rubric corpus pairs each story outcome with its exact frozen forecast (0.190708ms)
+✔ project corpus batches only unique Done candidates and excludes open outcomes (0.381166ms)
+✔ project corpus fails closed on incomplete project, issue-batch, or comment pagination evidence (0.477166ms)
+✔ project corpus follows nested field-value pagination before deciding Done eligibility (0.405916ms)
+✔ project corpus fails closed when nested field-value pagination metadata is missing (0.143792ms)
+✔ incomplete legacy-none outcomes never demand a missing forecast for calibration (0.121583ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.609041

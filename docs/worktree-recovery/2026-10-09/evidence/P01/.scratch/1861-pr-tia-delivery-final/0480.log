@@ -1,0 +1,28 @@
+✔ throws when cfg is missing (0.799375ms)
+✔ throws when issueNumber is missing (0.092875ms)
+✔ TASK_TRACKER_SKIP_REEVAL=1 short-circuits to skipped + posts bypass note (1.221ms)
+✔ skip-env tolerates a postComment failure (0.132958ms)
+✔ epic with sub-issues is skipped (0.107167ms)
+✔ epic-skip tolerates a postComment failure (0.110084ms)
+✔ returns unchanged when size+estimate already match (0.637333ms)
+✔ falls back to project field values when field-DB lacks size/estimate (0.224292ms)
+✔ tolerates a projectValuesForIssue failure (0.560917ms)
+✔ ≥2-tier jump requires human attention and is not auto-applied (0.318541ms)
+✔ human-attention tolerates a postComment failure (0.160458ms)
+✔ applied path writes both fields, patches body, and posts audit (0.255709ms)
+✔ applied path warns when field ids are missing (no writes) (0.113833ms)
+✔ applied path tolerates a project-item write failure (0.312208ms)
+✔ applied path tolerates a body-patch failure (0.242459ms)
+✔ applied path with no projectId skips field writes but patches body (0.115542ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.522125
+[task-tracker] WARN: required project field "Estimate" (cfg.fieldEstimate) is not configured — re-eval estimate write skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+[task-tracker] WARN: required project field "fieldSize" (cfg.fieldSize) is not configured — re-eval size write skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+⚠ re-eval: project field write failed: item lookup failed
+⚠ re-eval: body patch failed: patch conflict

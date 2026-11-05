@@ -1,0 +1,16 @@
+✔ close verifies pinned v3/v4 receipt after grant expiry and journal advancement (13.791375ms)
+✔ close refuses a completed operation whose published receipt bytes differ (1.771875ms)
+✔ historical authority rejects a replaced burn OID or a missing burn operation (1.403583ms)
+✔ PR waiver evidence cannot authorize either no-PR close lane (0.498875ms)
+✔ reopened recovery admits a correlated v3/v4 current delivery pair (15.687916ms)
+✔ false-delivery recovery admits a correlated v3/v4 current delivery pair (2.949708ms)
+✔ deliver explanation projects a verified pinned waiver as v3 without effects (90.496333ms)
+✔ close explanation distinguishes a verified pinned waiver without effects (5.902541ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.944292

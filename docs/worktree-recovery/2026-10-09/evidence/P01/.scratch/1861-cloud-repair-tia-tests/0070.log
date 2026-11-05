@@ -1,0 +1,13 @@
+✔ read-only, failed, or published operations never query or annotate (1.019791ms)
+✔ first successful mutation posts one versioned annotation, retries and edits do not post again (0.471625ms)
+✔ concurrent attempts serialize lookup and post under the issue lock (0.166958ms)
+✔ lookup or post failure is a visible warning without rolling back the mutation (0.172542ms)
+✔ annotation lookup reaches later GitHub comment pages before deciding to post (0.3315ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.045917

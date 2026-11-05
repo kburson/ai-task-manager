@@ -1,0 +1,15 @@
+✔ AC1: buildContext decomposes into named capability objects (36.217709ms)
+✔ AC2: assembleCapabilities groups flat members by reference (0.170625ms)
+✔ strict sub-issue capability fetches project identity and Status name in one query (0.5215ms)
+✔ strict sub-issue capability reports a thrown GraphQL query as unknown (34.524042ms)
+✔ legacy fetchSubIssues delegates and preserves numeric issue numbers only for ok snapshots (34.304666ms)
+✔ AC2: verbClose is migrated to the narrow capability interface (0.551166ms)
+✔ AC3: verbClose runs against a narrow fixture (no active task path) (97.730083ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.700084

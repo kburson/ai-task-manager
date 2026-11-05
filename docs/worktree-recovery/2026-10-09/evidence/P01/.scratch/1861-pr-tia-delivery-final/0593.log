@@ -1,0 +1,11 @@
+✔ missing inode metadata requires a content-hash fallback (0.494291ms)
+✔ zero inode metadata requires a content-hash fallback (0.075292ms)
+✔ valid compilation makes a direct agent index without human prose (0.606125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.494875

@@ -1,0 +1,17 @@
+✔ authorizes only the audited same-SHA false-delivery shape (3.608208ms)
+✔ authorizes an exact protected-base integration head without changing historical authority (0.918333ms)
+✔ refuses a different delivery head without the exact approved integration topology (1.038625ms)
+✔ refuses alternate recovery categories and contradictory authority (1.465917ms)
+✔ writes a canonical durable record and rejects quoted or cross-issue evidence (1.476542ms)
+✔ records and closes against the delivered integration head (0.5575ms)
+✔ reuses durable identity before replacing the completed transaction (1.667125ms)
+✔ refuses duplicate durable evidence and stale body replacement (0.854375ms)
+✔ finds a durable recovery-backed replacement at any valid saga prefix (1.175083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.098834

@@ -1,0 +1,8 @@
+PASS: state arg "refine" accepted (exit 0)
+PASS: state arg "plan" accepted (exit 0)
+PASS: state arg "develop" accepted (exit 0)
+PASS: state arg "test" accepted (exit 0)
+PASS: state arg "review" accepted (exit 0)
+PASS: state arg "done" accepted (exit 0)
+PASS: unknown state arg rejected with usage
+All update-event-fields state-arg tests passed.

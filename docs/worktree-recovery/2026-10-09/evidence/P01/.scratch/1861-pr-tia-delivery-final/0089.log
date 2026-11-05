@@ -1,0 +1,22 @@
+✔ omitted creator story keeps body, fields and Refine completion gates intact (403.656125ms)
+▶ create-issue.mjs --dry-run body is gate-compliant
+  ✔ structural body gates (validateBody) (0.758042ms)
+  ✔ required body sections present (0.09425ms)
+  ✔ checkRequiredFields with seeded values + labels (0.075583ms)
+  ✔ gate 1 — Assigned → Refine entry (planPriorityGate) (0.285458ms)
+  ✔ gate 2 — Refine → Plan exit body half (planRefinementEstimate) (0.776583ms)
+  ✔ gate 3 — Refine → Plan exit board half (gateRefineToPlan) (0.569292ms)
+  ✔ gate 4 — Plan → Develop entry (planDeepDiveGate) (0.675167ms)
+  ✔ DoD functional lines carry dod:functional:* suffixes (0.150125ms)
+  ✔ body-version marker emitted (0.27925ms)
+  ✔ parent provenance field emitted exactly once in Story Origin (0.116458ms)
+  ✔ numbered ACs were normalized to checkbox form (0.221458ms)
+✔ create-issue.mjs --dry-run body is gate-compliant (543.773959ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 951.834834

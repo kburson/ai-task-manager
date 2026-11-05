@@ -1,0 +1,78 @@
+✖ each migrating obligation has source, authority, catalog binding, and shipped human guidance (117.635375ms)
+✔ coverage rejects a deleted row rather than trusting the remaining map (16.37775ms)
+✔ coverage rejects a removed catalog entry and an erased action binding (23.440833ms)
+✔ coverage rejects a broken shipped-document anchor (12.20425ms)
+✔ shipped guidance documents adoption, trust, recovery, receipts, and historical scope (2.803166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 180.998416
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs:86:1
+✖ each migrating obligation has source, authority, catalog binding, and shipped human guidance (117.635375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'catalog-documentation:session.timer',
+  +   'catalog-documentation:session.pause',
+  +   'catalog-documentation:session.preferences',
+  +   'catalog-documentation:session.compaction',
+  +   'catalog-documentation:binding.identity',
+  +   'catalog-documentation:binding.drift',
+  +   'catalog-documentation:binding.discussion',
+  +   'catalog-documentation:binding.workspace',
+  +   'catalog-documentation:binding.deferred-pickup',
+  +   'catalog-documentation:binding.session-recovery',
+  +   'catalog-documentation:pickup.deep-dive',
+  +   'catalog-documentation:pickup.per-ac',
+  +   'catalog-documentation:state.contiguous',
+  +   'catalog-documentation:state.exceptions',
+  +   'catalog-documentation:state.plan-approval',
+  +   'catalog-documentation:test.exact-receipt',
+  +   'catalog-documentation:review.reuse',
+  +   'catalog-documentation:review.approval',
+  +   'catalog-documentation:review.prompt',
+  +   'catalog-documentation:review.reject',
+  +   'catalog-documentation:review.dismiss',
+  +   'catalog-documentation:delivery.envelope',
+  +   'catalog-documentation:delivery.no-shell',
+  +   'catalog-documentation:delivery.reconcile',
+  +   'catalog-documentation:close.approval',
+  +   'catalog-documentation:close.human-instruction',
+  +   'catalog-documentation:close.dirty',
+  +   'catalog-documentation:commit.trace',
+  +   'catalog-documentation:session.track',
+  +   'catalog-documentation:session.issue-create',
+  +   'catalog-documentation:session.close-route',
+  +   'catalog-documentation:session.role',
+  +   'catalog-documentation:pickup.bootstrap',
+  +   'catalog-documentation:pickup.checkboxes',
+  +   'catalog-documentation:pickup.epic',
+  +   'catalog-documentation:pickup.checkpoint',
+  +   'catalog-documentation:pickup.mistake',
+  +   'catalog-documentation:pickup.body',
+  +   'catalog-documentation:pickup.agent-terminal',
+  +   'catalog-documentation:state.reconcile',
+  +   'catalog-documentation:review.no-verifier'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs:88:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

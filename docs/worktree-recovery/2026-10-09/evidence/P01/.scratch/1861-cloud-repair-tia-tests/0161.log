@@ -1,0 +1,12 @@
+✔ patchSettingsJson emits scoped-first managed hook commands (57.195167ms)
+✔ patchSettingsJson leaves worktree seed checks to repository hooks (61.162541ms)
+✔ Claude allowlist permits scoped installed operational scripts (0.081667ms)
+✔ memory-hook migration retains malformed event repair for Claude and Codex (58.075708ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 183.755375

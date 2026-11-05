@@ -1,0 +1,11 @@
+✔ POST-FIX: cursor advances → monotonic cumulative marker, per-segment Δ, no double-count (23.759416ms)
+✔ POST-FIX: a no-growth flush yields Δ Words=0 and a flat (non-regressing) marker (21.145667ms)
+✔ PRE-FIX reproduction: a frozen cursor double-counts earlier segments in Δ Words (20.945375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.665667

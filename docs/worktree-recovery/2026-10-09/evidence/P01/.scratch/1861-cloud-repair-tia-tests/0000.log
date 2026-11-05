@@ -1,0 +1,11 @@
+✔ historical capture bytes remain reproducible without any original Git objects (283.971625ms)
+✔ a missing Git object never permits changed archived bytes (80.018125ms)
+✔ a missing Git object never permits an undeclared archive entry (74.948792ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 442.203125

@@ -1,0 +1,1535 @@
+[
+  {
+    "file": "scripts/tests/integration/meta/captured-commit-bytes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 502,
+    "log": "0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/package-test-corpus.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 9684,
+    "log": "0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 616,
+    "log": "0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/package/doctor-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4268,
+    "log": "0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/package/install-manifest.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 218,
+    "log": "0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 468,
+    "log": "0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/gh/lib/eight-state-flow.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 198,
+    "log": "0006.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 460,
+    "log": "0007.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2517,
+    "log": "0008.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/action-test.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 958,
+    "log": "0009.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 5745,
+    "log": "0010.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/captured-commit-bytes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 261,
+    "log": "0011.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/coverage-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 14653,
+    "log": "0012.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1349,
+    "log": "0013.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 18867,
+    "log": "0014.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-actual-traffic.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 221,
+    "log": "0015.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-admission.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 62318,
+    "log": "0016.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-authority-cost.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 626,
+    "log": "0017.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-cache-process.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 13836,
+    "log": "0018.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-capture-lifecycle.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 14437,
+    "log": "0019.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2777,
+    "log": "0020.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 410,
+    "log": "0021.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-explain.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 174,
+    "log": "0022.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 2274,
+    "log": "0023.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-recertification-capture.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 36752,
+    "log": "0024.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 45665,
+    "log": "0025.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 2250,
+    "log": "0026.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/install-hooks.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1153,
+    "log": "0027.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 12460,
+    "log": "0028.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 10376,
+    "log": "0029.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 10968,
+    "log": "0030.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1884,
+    "log": "0031.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4871,
+    "log": "0032.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 36407,
+    "log": "0033.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2292,
+    "log": "0034.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1103,
+    "log": "0035.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 8118,
+    "log": "0036.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4279,
+    "log": "0037.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1955,
+    "log": "0038.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1713,
+    "log": "0039.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 722,
+    "log": "0040.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1535,
+    "log": "0041.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 21859,
+    "log": "0042.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2609,
+    "log": "0043.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 3388,
+    "log": "0044.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1127,
+    "log": "0045.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2382,
+    "log": "0046.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1609,
+    "log": "0047.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/shelve-blocked-r4p-state-exit.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 164,
+    "log": "0048.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/shelve-stale-refinement-recovery.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 178,
+    "log": "0049.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/shelve-transaction.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 212,
+    "log": "0050.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/stage-aware-verification.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 972,
+    "log": "0051.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/verification-provider.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 180,
+    "log": "0052.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1551,
+    "log": "0053.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1875,
+    "log": "0054.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 967,
+    "log": "0055.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/github-record-contract-writes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 153,
+    "log": "0056.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/github-record-test-review-gates.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 165,
+    "log": "0057.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/shelve.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 943,
+    "log": "0058.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/verbs/workflow-preflight.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 201,
+    "log": "0059.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/core/verify-develop.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1664,
+    "log": "0060.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 6196,
+    "log": "0061.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1175,
+    "log": "0062.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2566,
+    "log": "0063.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 443,
+    "log": "0064.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2679,
+    "log": "0065.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 838,
+    "log": "0066.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 968,
+    "log": "0067.log"
+  },
+  {
+    "file": "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 454,
+    "log": "0068.log"
+  },
+  {
+    "file": "scripts/tests/unit/gh/create-issue.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 142,
+    "log": "0069.log"
+  },
+  {
+    "file": "scripts/tests/unit/guidance/annotation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 141,
+    "log": "0070.log"
+  },
+  {
+    "file": "scripts/tests/unit/package/doctor.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 159,
+    "log": "0071.log"
+  },
+  {
+    "file": "scripts/tests/unit/providers/parity.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 182,
+    "log": "0072.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 941,
+    "log": "0073.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/aitm-ismain-symlink.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 143,
+    "log": "0074.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-disposition.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 136,
+    "log": "0075.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-plan-metadata.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 124,
+    "log": "0076.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-story-origin.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 131,
+    "log": "0077.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-timing-logs.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 129,
+    "log": "0078.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-vc-sections-help.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 144,
+    "log": "0079.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-vc-sections-strict-argv.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 144,
+    "log": "0080.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/backfill-vc-sections.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 135,
+    "log": "0081.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/cli-help-flag.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 144,
+    "log": "0082.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/command-manifest.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 192,
+    "log": "0083.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-backfill-plan-metadata.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 152,
+    "log": "0084.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-backfill-timing-logs.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 145,
+    "log": "0085.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-backfill-vc-sections.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 135,
+    "log": "0086.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-backlog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 142,
+    "log": "0087.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-entry-markers.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 149,
+    "log": "0088.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-functional-dod.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 138,
+    "log": "0089.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-refine-entry-marker.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 134,
+    "log": "0090.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 139,
+    "log": "0091.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-migrate-fields-encoding.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 144,
+    "log": "0092.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/coverage-migrate-plan-approved.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 137,
+    "log": "0093.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 927,
+    "log": "0094.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/handle-migrate-result.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 191,
+    "log": "0095.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-backlog-core.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 167,
+    "log": "0096.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-backlog-entry-marker.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 155,
+    "log": "0097.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-backlog-fields.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 135,
+    "log": "0098.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-backlog-schema-drift.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 131,
+    "log": "0099.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-entry-markers-backlog-fallback.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 159,
+    "log": "0100.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-entry-markers-monotonize.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 154,
+    "log": "0101.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-entry-markers-visit-aware.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 131,
+    "log": "0102.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-entry-markers-zero-marker-backlog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 124,
+    "log": "0103.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-functional-dod.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 123,
+    "log": "0104.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-refine-entry-marker.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 209,
+    "log": "0105.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 133,
+    "log": "0106.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/heal-timing-starts-command.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 193,
+    "log": "0107.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/lane-split-seed.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 157,
+    "log": "0108.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/measure-context.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1338,
+    "log": "0109.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/migrate-fields-encoding.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 113,
+    "log": "0110.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/migrate-plan-approved.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 120,
+    "log": "0111.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/mutate-issue-body-scripts-help-audit.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 129,
+    "log": "0112.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/skill-stub-seed-directive.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 143,
+    "log": "0113.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 186,
+    "log": "0114.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/timing-unknown-projection.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 165,
+    "log": "0115.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/core/verify-delivery-incident-reconciliation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 146,
+    "log": "0116.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/cut-child-worktree.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 150,
+    "log": "0117.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/cut-epic-branch.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 148,
+    "log": "0118.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/coverage-dispatch-prep.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 170,
+    "log": "0119.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/coverage-init-repair.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 170,
+    "log": "0120.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/coverage-set-priority.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 152,
+    "log": "0121.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/coverage-verify-open-issue-bodies.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 131,
+    "log": "0122.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/create-issue-kind-prefix.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 173,
+    "log": "0123.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/create-issue-resolve-assignee.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 162,
+    "log": "0124.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/dispatch-prep-inprocess.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 198,
+    "log": "0125.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/disposition-install-repair.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 148,
+    "log": "0126.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/entry-marker-scaffold.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 136,
+    "log": "0127.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/log-issue-time-labels.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 135,
+    "log": "0128.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/status-config-projections.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 163,
+    "log": "0129.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/gh/verify-open-issue-bodies.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 142,
+    "log": "0130.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1468,
+    "log": "0131.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/backfill-holes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 156,
+    "log": "0132.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1173,
+    "log": "0133.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-demote.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 564,
+    "log": "0134.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-heal-backlog-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 614,
+    "log": "0135.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-plan.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 903,
+    "log": "0136.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1763,
+    "log": "0137.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/current-schema-issue-authoring.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 6769,
+    "log": "0138.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/entry-marker-contiguity-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 203,
+    "log": "0139.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/epic-orchestration-plan.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 158,
+    "log": "0140.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 218,
+    "log": "0141.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-cache.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 120,
+    "log": "0142.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 368,
+    "log": "0143.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 499,
+    "log": "0144.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/heal-entry-markers-delegates.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 199,
+    "log": "0145.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/heal-lifecycle-dod.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 135,
+    "log": "0146.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/heal-timing-departure-repair.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 139,
+    "log": "0147.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/heal-vc-refs.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 140,
+    "log": "0148.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/lifecycle-history-actions.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 304,
+    "log": "0149.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/memory-index-hook.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 587,
+    "log": "0150.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/preflight-issue.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 10210,
+    "log": "0151.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/r4p-jit-boundaries.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 326,
+    "log": "0152.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 173,
+    "log": "0153.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 186,
+    "log": "0154.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 350,
+    "log": "0155.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 57,
+    "log": "0156.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 85,
+    "log": "0157.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 70,
+    "log": "0158.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 71,
+    "log": "0159.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 66,
+    "log": "0160.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/settings-hook-bootstrap.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 349,
+    "log": "0161.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/shelve-boundaries.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 173,
+    "log": "0162.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 309,
+    "log": "0163.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/story-origin-authoring.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2162,
+    "log": "0164.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-sha-drift-gate.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 191,
+    "log": "0165.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-receipt-refusal-audit.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 193,
+    "log": "0166.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-receipt-retirement.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 223,
+    "log": "0167.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 282,
+    "log": "0168.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-result.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 966,
+    "log": "0169.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-retry.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 331,
+    "log": "0170.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/test-verb-sandbox.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 694,
+    "log": "0171.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/verification-stage-ownership.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 146,
+    "log": "0172.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/writer-consolidated-declaration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 189,
+    "log": "0173.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/maintenance/heal-timing-departure-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 198,
+    "log": "0174.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 149,
+    "log": "0175.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/merge-back.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 155,
+    "log": "0176.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/sync-epic.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 139,
+    "log": "0177.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1506,
+    "log": "0178.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1419,
+    "log": "0179.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 395,
+    "log": "0180.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 461,
+    "log": "0181.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/assign.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 130,
+    "log": "0182.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/coverage-plan-approve.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 623,
+    "log": "0183.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 854,
+    "log": "0184.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/demote-inprocess.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 149,
+    "log": "0185.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/demote-verb.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 153,
+    "log": "0186.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/demote.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 148,
+    "log": "0187.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 315,
+    "log": "0188.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/park.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 152,
+    "log": "0189.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/plan-approve-collapse.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 256,
+    "log": "0190.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2479,
+    "log": "0191.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/plan-approve.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1033,
+    "log": "0192.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 321,
+    "log": "0193.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-inprocess.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 146,
+    "log": "0194.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 268,
+    "log": "0195.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-spawn-timeout.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 144,
+    "log": "0196.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 341,
+    "log": "0197.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-test-review-alias.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 179,
+    "log": "0198.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 644,
+    "log": "0199.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/pull-next-background-profile.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 206,
+    "log": "0200.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 629,
+    "log": "0201.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 356,
+    "log": "0202.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/reconcile-inprocess.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 186,
+    "log": "0203.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/reconcile-multistep-walk.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 486,
+    "log": "0204.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/reconcile-verb.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 337,
+    "log": "0205.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/refine-atomic-rollback.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 233,
+    "log": "0206.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/refine-fields-cache-refresh.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 162,
+    "log": "0207.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 637,
+    "log": "0208.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/refine-verb.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 234,
+    "log": "0209.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/sandbox-env-isolation.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 148,
+    "log": "0210.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/test-project-provider-npm-ci-args.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 178,
+    "log": "0211.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/test-rejected-vc-not-scored-as-failed.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 446,
+    "log": "0212.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/test-verb-kind-aware-lanes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 172,
+    "log": "0213.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/test-verb-lane-split-migration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 351,
+    "log": "0214.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/test-verb-sandbox-worktree-path.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 140,
+    "log": "0215.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/unassign.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 142,
+    "log": "0216.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/verb-plan-promote.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 204,
+    "log": "0217.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/verbs/verb-test-sandbox-env.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 276,
+    "log": "0218.log"
+  }
+]

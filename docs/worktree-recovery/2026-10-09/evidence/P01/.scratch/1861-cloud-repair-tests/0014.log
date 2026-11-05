@@ -1,0 +1,10 @@
+✔ kernel operation critical section retains its writer lease through awaited work (999.723875ms)
+✔ kernel operation locks preserve unknown old ownership rather than treating age as recovery authority (719.99325ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1722.823333

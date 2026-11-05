@@ -1,0 +1,16 @@
+✔ (a) --scope alongside --apply performs a filtered write (1.832542ms)
+✔ (b) --scope without --apply performs a filtered audit with no write (0.223125ms)
+✔ (c) an unmatched scope number hard-errors with zero writes (0.105834ms)
+✔ (d) a scope number matching an already-healed issue writes nothing but warns (0.19375ms)
+✔ buildVcBackfill is unaffected by --scope (pure-core sanity) (0.114375ms)
+✔ the thrown error carries the usage text for the direct-invocation footer (0.307834ms)
+✔ --help still short-circuits before any enumeration (0.073375ms)
+✔ declared flags still work — audit default enumerates but never writes (0.0815ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.449375

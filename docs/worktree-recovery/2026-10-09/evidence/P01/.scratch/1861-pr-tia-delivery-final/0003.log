@@ -1,0 +1,12 @@
+✔ a killed whole-operation writer needs exact confirmed-death lease recovery before fencing (580.041709ms)
+✔ malformed owner host and null writer leases produce typed refusals without erasing evidence (68.115625ms)
+✔ a genuinely SIGKILLed coordinator is observable and recoverable only from exact dead-owner evidence (482.607833ms)
+✔ foreign host and replacement coordinator evidence cannot authorize recovery (51.037ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1186.131834

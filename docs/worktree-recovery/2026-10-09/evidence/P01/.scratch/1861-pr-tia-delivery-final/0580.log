@@ -1,0 +1,13 @@
+✔ exports all seven deterministic Insights collections with validated record hashes (17.74725ms)
+✔ overlapping incremental pages retain corrections and new accepted records (6.276ms)
+✔ full rebuild and incremental materialization produce the same canonical read model (4.421625ms)
+✔ equal-time conflicts and duplicate record identities fail closed (3.154125ms)
+✔ the IndexedDB ingestion guide makes browser state explicitly non-authoritative (1.76725ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35.995375
