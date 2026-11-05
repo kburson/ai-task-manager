@@ -709,7 +709,7 @@
     "scripts/task-tracker/verbs/incident-ledger.mjs|165|uncovered|uncovered",
     "scripts/task-tracker/verbs/incident-ledger.mjs|202|uncovered|uncovered",
     "scripts/task-tracker/verbs/incident-ledger.mjs|82|gh-api-graphql|planned",
-    "scripts/task-tracker/verbs/plan-approve.mjs|91|gh-api-graphql|planned",
+    "scripts/task-tracker/verbs/plan-approve.mjs|92|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/promote.mjs|171|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/reconcile.mjs|85|gh-api-graphql|planned",
     "scripts/task-tracker/verbs/report.mjs|124|out-of-scope|out-of-scope",

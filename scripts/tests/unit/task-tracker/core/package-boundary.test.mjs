@@ -1,4 +1,4 @@
-// @story #2148 #1986
+// @story #2153 #2148 #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -417,7 +417,16 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2148 ships one shared location-mutation authority; its fixtures stay excluded.
   const locationAuthorityEntries = ['scripts/task-tracker/lib/location-mutation-authority.mjs'];
   for (const entry of locationAuthorityEntries) assert.ok(files.includes(entry));
+  // #2153: exactly four current-approval runtime leaves; all fixtures stay excluded.
+  const currentApprovalEntries = [
+    'plan-approval-current-scope',
+    'plan-approval-current-source',
+    'plan-approval-current-review',
+    'plan-approve-current-scope',
+  ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
+  for (const entry of currentApprovalEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    currentApprovalEntries.length +
     locationAuthorityEntries.length +
     retainedRecoveryEntries.length +
     bootstrapEntries.length +

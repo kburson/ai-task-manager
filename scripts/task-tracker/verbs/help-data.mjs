@@ -365,8 +365,12 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Record Plan approval with durable human or Full-Auto provenance, or reconstruct skipped Full-Auto provenance from strict later-stage evidence.',
-    usage: '/task plan-approve #N [--repair-from-evidence]',
+    usage: '/task plan-approve #N [--repair-from-evidence | --current-scope]',
     flags: [
+      {
+        flag: '--current-scope',
+        desc: 'Develop/Test/Review only: explicit TT_FULL_AUTO=1 approves current clean source and plan after authenticated policy-exempt development',
+      },
       {
         flag: '--repair-from-evidence',
         desc: 'Develop/Test/Review only: reconstruct Full-Auto approval after a revoked approval.plan exception',
@@ -374,11 +378,16 @@ export const VERB_REFERENCE = {
     ],
     exitCodes: [
       { code: 3, meaning: 'issue is not in Plan for ordinary approval' },
-      { code: 15, meaning: 'evidence-derived Full-Auto repair predicates were not satisfied' },
+      { code: 2, meaning: 'invalid, duplicate or conflicting arguments' },
+      {
+        code: 15,
+        meaning: 'current approval or evidence-derived repair predicates were not satisfied',
+      },
     ],
     examples: [
       '/task plan-approve 667',
       'TT_FULL_AUTO=1 /task plan-approve 667 --repair-from-evidence',
+      'TT_FULL_AUTO=1 /task plan-approve 667 --current-scope',
     ],
   },
   'plan-estimate': {

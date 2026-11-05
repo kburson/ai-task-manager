@@ -134,6 +134,13 @@ The required fragments include user-story.md for non-stub shapes.
 - **Approval:** missing or stale story bindings are repaired only by reviewing
   current evidence and rerunning `npx aitm plan-approve #N`. Approval never
   rewrites the story and remains JIT-bound to current trunk and source bytes.
+- **Current approval after exemption:** in Develop/Test/Review, explicitly use
+  `TT_FULL_AUTO=1 npx aitm plan-approve #N --current-scope` only after reviewing
+  the current plan, scope and clean source. Immutable completed `not-required`
+  history admits this lane; it never supplies approval. Human, ordinary and
+  waiver approvals are preserved. Refusals require fresh evidence and retry;
+  see the [operator guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/workflows/current-plan-approval.md)
+  for eligibility and activation.
 - **Splitting:** validate every task intent and rendered story before the first
   fragment, preflight, or GitHub create side effect. Enrich every task in a
   historical plan before retrying; never create a partial sibling set.
