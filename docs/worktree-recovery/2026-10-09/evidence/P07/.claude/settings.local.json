@@ -1,0 +1,8 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs" }] },
+      { "matcher": "Agent", "hooks": [{ "type": "command", "command": "node node_modules/ai-task-manager/scripts/task-tracker/agent-guard.mjs" }] }
+    ]
+  }
+}
