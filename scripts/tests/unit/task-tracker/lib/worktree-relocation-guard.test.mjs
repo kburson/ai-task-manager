@@ -25,13 +25,20 @@ const recordedBody = (location) =>
     ts: '2026-08-10T00:00:00.000Z',
   })}\n`;
 
-function depsFor({ body = '## Body\n', live = LIVE, sessionId = '' } = {}) {
+function depsFor({ body = '## Body\n', live = LIVE, sessionId = 'fixture-owner' } = {}) {
   const calls = { fetch: 0, mutate: 0, mutatedBody: null };
   return {
     calls,
     deps: {
       resolveIdentity: () => live,
-      sessionId: () => sessionId,
+      readActor: () => ({ provider: 'claude', sid: sessionId }),
+      readAuthority: async () => ({
+        live,
+        actor: { provider: 'claude', sid: sessionId },
+        bodyVersion: 0,
+      }),
+      withIssueLock: (_options, write) => write(),
+      currentIssueLockOwner: () => ({ sessionId }),
       now: () => '2026-08-10T01:00:00.000Z',
       fetchIssueBody: async () => {
         calls.fetch += 1;
@@ -57,7 +64,7 @@ test('global confirmation flag is stripped and requires an explicit occurrence',
   });
 });
 
-test('AC2/AC6: marker-free issue records live location even with no session id', async () => {
+test('AC2/AC6: marker-free issue records the authorized session and location', async () => {
   const fixture = depsFor();
   const result = await enforceIssueWorktreeLocation({
     verb: 'start',
@@ -70,7 +77,7 @@ test('AC2/AC6: marker-free issue records live location even with no session id',
   assert.equal(fixture.calls.mutate, 1);
   assert.deepEqual(parseIssueWorktreeLocations(fixture.calls.mutatedBody)[0], {
     ...LIVE,
-    sessionId: '',
+    sessionId: 'fixture-owner',
     ts: '2026-08-10T01:00:00.000Z',
   });
 });

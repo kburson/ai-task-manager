@@ -398,7 +398,12 @@ export function createGitHubEstimationRecordIo({ graphql = defaultGraphql, rest 
   };
 }
 
-export async function loadForecastProjection({ cfg, issueNumber, deps = {} } = {}) {
+export async function loadForecastProjection({
+  cfg,
+  issueNumber,
+  deps = {},
+  readReadyForecastRecordId,
+} = {}) {
   if (!cfg?.repo || !cfg?.projectId || !Number.isInteger(issueNumber) || issueNumber <= 0) {
     fail('projection-input');
   }
@@ -433,10 +438,14 @@ export async function loadForecastProjection({ cfg, issueNumber, deps = {} } = {
   const activeForecastRecordIds = forecasts
     .filter((record) => record.supersededBy === null)
     .map((record) => record.recordId);
+  // Keep legacy selection by default; stricter callers supply a reader for
+  // this same freshly observed body, rather than a separate body snapshot.
   const readyForecastRecordId =
-    String(issue.body ?? '').match(
-      /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
-    )?.[1] ?? null;
+    typeof readReadyForecastRecordId === 'function'
+      ? readReadyForecastRecordId(issue.body)
+      : (String(issue.body ?? '').match(
+          /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+        )?.[1] ?? null);
   const parsedFields = parseIssueFieldDb(issue.body);
   return {
     forecast: forecasts.find((record) => record.recordId === readyForecastRecordId) ?? null,

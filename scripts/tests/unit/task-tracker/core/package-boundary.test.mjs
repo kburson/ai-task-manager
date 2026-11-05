@@ -1,4 +1,4 @@
-// @story #1986
+// @story #2153 #2148 #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -414,7 +414,29 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2014/#2108 ships exactly one retained completed-child recovery module.
   const retainedRecoveryEntries = ['scripts/task-tracker/lib/epic-rank-wave-restore-worktree.mjs'];
   for (const entry of retainedRecoveryEntries) assert.ok(files.includes(entry));
+  // #2148 ships one shared location-mutation authority; its fixtures stay excluded.
+  const locationAuthorityEntries = ['scripts/task-tracker/lib/location-mutation-authority.mjs'];
+  for (const entry of locationAuthorityEntries) assert.ok(files.includes(entry));
+  // #2153: exactly four current-approval runtime leaves; all fixtures stay excluded.
+  const currentApprovalEntries = [
+    'plan-approval-current-scope',
+    'plan-approval-current-source',
+    'plan-approval-current-review',
+    'plan-approve-current-scope',
+  ].map((name) => 'scripts/task-tracker/lib/' + name + '.mjs');
+  for (const entry of currentApprovalEntries) assert.ok(files.includes(entry));
+  // #2156: exactly two spike publication runtime leaves; guide and fixtures stay excluded.
+  const spikeDeliverableEntries = [
+    'scripts/task-tracker/lib/spike-deliverable.mjs',
+    'scripts/task-tracker/verbs/spike-deliverable.mjs',
+  ];
+  for (const entry of spikeDeliverableEntries) assert.ok(files.includes(entry));
+  assert.ok(!files.includes('docs/workflows/spike-deliverable.md'));
+  assert.ok(!files.includes('scripts/tests/fixtures/spike-deliverable-provider.mjs'));
   const effectiveCeiling =
+    spikeDeliverableEntries.length +
+    currentApprovalEntries.length +
+    locationAuthorityEntries.length +
     retainedRecoveryEntries.length +
     bootstrapEntries.length +
     dateTransportEntries.length +
@@ -485,7 +507,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     2 + // #2022: audited rebaseline recovery and native execution proof reader.
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
-    4; // #2096: immutable subject, native source execution and stamp declaration validation.
+    4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    1; // #2161: shared pure governed mutation-session assertion, exactly one runtime leaf.
+  assert.ok(files.includes('scripts/task-tracker/lib/governed-mutation-session.mjs'));
+  assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-provider.mjs'));
+  assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-cli-provider.mjs'));
   for (const module of [
     'artifact-subject',
     'artifact-execution',

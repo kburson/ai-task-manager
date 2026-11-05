@@ -9,6 +9,7 @@
 // Refuses if the issue is not in `plan` state.
 
 import { enforceDirectGuidance } from '../lib/direct-guidance-admission.mjs';
+import { runCurrentScopePlanApprove } from '../lib/plan-approve-current-scope.mjs';
 enforceDirectGuidance(import.meta.url, 'plan-approve', { surface: 'direct-verb' });
 import { pexec } from '../../gh/lib/gh-client.mjs';
 import path from 'node:path';
@@ -102,8 +103,21 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — body writes use the governed writer; the validation hook also runs
 // on fresh retry bases when the writer rebases rather than rerunning mutate.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, validateFreshBase }) {
-  return mutateIssueBody({ issueNumber, repo, mutate, validateFreshBase, deps: { pexec } });
+async function defaultMutateIssueBody({
+  issueNumber,
+  repo,
+  mutate,
+  validateFreshBase,
+  validateFreshBaseAsync,
+}) {
+  return mutateIssueBody({
+    issueNumber,
+    repo,
+    mutate,
+    validateFreshBase,
+    validateFreshBaseAsync,
+    deps: { pexec },
+  });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
@@ -116,6 +130,7 @@ export async function runPlanApprove({
   cfg,
   projectDir,
   repairFromEvidence = false,
+  currentScope = false,
   deps = {},
 } = {}) {
   if (!issueNumber) throw new Error('plan-approve: issueNumber is required');
@@ -136,6 +151,23 @@ export async function runPlanApprove({
     Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
 
   const state = await getBoardState({ issueNumber, projectDir });
+  if (currentScope)
+    return runCurrentScopePlanApprove({
+      issueNumber,
+      cfg,
+      projectDir: projectDir || getProjectDir(),
+      state,
+      repairFromEvidence,
+      deps: {
+        ...deps,
+        env,
+        fetchIssueBody,
+        mutateIssueBody: mutateBody,
+        getBoardState,
+        nowIso,
+        ensureFullAutoPlanApprovalAudit: ensureAudit,
+      },
+    });
   const laterRepairState = ['develop', 'test', 'review'].includes(state);
   const automaticModernEligible =
     !repairFromEvidence && requestedMode === 'full-auto' && laterRepairState;
@@ -732,6 +764,10 @@ export function formatPlanApproveOutcome(issueNumber, result) {
   const audit = auditDisposition(result?.audit);
   const detail = `provenance=${provenance}; Full-Auto audit=${audit}`;
   switch (result?.status) {
+    case 'approved-current-scope':
+      return `Current-scope Plan approval recorded for #${issueNumber} at ${result.ts} (${detail}).`;
+    case 'already-approved-current-scope':
+      return `Current-scope Plan approval already matches #${issueNumber} (${detail}).`;
     case 'directory-approved':
       return `✓ Plan approved for #${issueNumber} at ${result.ts} via sealed Delivery Contract (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
     case 'approved':
@@ -753,25 +789,39 @@ export function formatPlanApproveOutcome(issueNumber, result) {
   }
 }
 
-function parseArgs(rest) {
-  const out = { issueNumber: null, repairFromEvidence: false };
+export function parsePlanApproveArgs(rest) {
+  const out = { issueNumber: null, currentScope: false, repairFromEvidence: false };
+  const seen = new Set();
+  const usage = () => {
+    throw new TypeError(
+      'plan-approve usage: /task plan-approve #N [--repair-from-evidence | --current-scope]'
+    );
+  };
   for (const a of rest) {
-    if (a === '--repair-from-evidence') {
-      out.repairFromEvidence = true;
+    if (a === '--repair-from-evidence' || a === '--current-scope') {
+      if (seen.has(a)) usage();
+      seen.add(a);
+      if (a === '--current-scope') out.currentScope = true;
+      else out.repairFromEvidence = true;
       continue;
     }
-    const m = String(a).match(/^#?(\d+)$/);
-    if (m && out.issueNumber === null) out.issueNumber = Number(m[1]);
+    const m = String(a).match(/^#?([1-9]\d*)$/);
+    if (!m || out.issueNumber !== null || !Number.isSafeInteger(Number(m[1]))) usage();
+    out.issueNumber = Number(m[1]);
   }
+  if (!out.issueNumber || (out.currentScope && out.repairFromEvidence)) usage();
   return out;
 }
 
 export async function verbPlanApprove(rest, cfg, deps = {}) {
-  const { issueNumber, repairFromEvidence } = parseArgs(rest);
-  if (!issueNumber) {
-    process.stderr.write('Usage: /task plan-approve #N [--repair-from-evidence]\n');
-    process.exit(1);
+  let args;
+  try {
+    args = parsePlanApproveArgs(rest);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(2);
   }
+  const { issueNumber, repairFromEvidence, currentScope } = args;
   if (process.env.TT_SKIP_NETWORK === '1') {
     process.stderr.write('plan-approve: TT_SKIP_NETWORK set — refusing to run gate offline\n');
     process.exit(1);
@@ -779,12 +829,21 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
   const projectDir = getProjectDir();
   let result;
   try {
-    result = await runPlanApprove({ issueNumber, cfg, projectDir, repairFromEvidence, deps });
+    result = await runPlanApprove({
+      issueNumber,
+      cfg,
+      projectDir,
+      repairFromEvidence,
+      currentScope,
+      deps,
+    });
   } catch (err) {
     process.stderr.write(`plan-approve: ${err.message}\n`);
     process.exit(1);
   }
   switch (result.status) {
+    case 'approved-current-scope':
+    case 'already-approved-current-scope':
     case 'directory-approved':
     case 'approved':
     case 'already-approved':
@@ -813,6 +872,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
       process.stderr.write(`${result.status}: ${result.message}\n`);
       process.exit(15);
     case 'evidence-repair-refused':
+    case 'current-scope-refused':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(15);
     default:

@@ -666,6 +666,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "spike-deliverable",
+      "canonical": "spike-deliverable",
+      "route": "verbs/spike-deliverable.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "split-plan",
       "canonical": "split-plan",
       "route": "verbs/split-plan.mjs",
@@ -2655,6 +2663,7 @@
       "command": "plan-approve",
       "staticImports": [
         "../lib/direct-guidance-admission.mjs",
+        "../lib/plan-approve-current-scope.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",

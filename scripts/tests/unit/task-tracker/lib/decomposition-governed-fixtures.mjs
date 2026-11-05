@@ -85,6 +85,85 @@ export async function governedFixture(hours = 25, options = {}) {
   return { ...f, ctx };
 }
 
+// @story #2161 — explicit unit-only frame/transport ports; never a ready-result stub.
+export function installEpicConvergenceFixturePorts(f) {
+  const conn = (nodes) => ({ nodes, pageInfo: { hasNextPage: false, endCursor: null } });
+  const sid = 'unit-epic-convergence';
+  const entryStartTs = '2026-11-05T00:00:00Z';
+  const operator = {
+    sessionId: sid,
+    boundIssue: f.subject.issue,
+    bindingGenerationId: 'unit-generation',
+    worktreePath: f.projectDir,
+    branch: 'codex/unit',
+    headSha: '1'.repeat(40),
+  };
+  f.authority.body = f.authority.body.replace(
+    '## AITM Progress Markers',
+    '## AITM Progress Markers\n<!-- aitm-last-known-state state="develop" ts="2026-11-05T00:00:00Z" -->'
+  );
+  f.cfg.kanbanFieldId = 'UNIT_STATUS';
+  f.cfg.fieldIds = { ...f.cfg.fieldIds, estimate: 'UNIT_ESTIMATE', size: 'UNIT_SIZE' };
+  Object.assign(f.ctx.deps, {
+    env: { AI_TASK_MANAGER_SESSION_ID: sid },
+    captureArtifactOperator: () => ({ ...operator }),
+    getActiveTask: () => ({
+      issue: String(f.subject.issue),
+      bindingGenerationId: operator.bindingGenerationId,
+      worktreePath: f.projectDir,
+      worktreeBranch: operator.branch,
+      kanbanState: 'develop',
+      entryStartTs,
+    }),
+    loadState: () => ({ active: String(f.subject.issue), entryStartTs }),
+    readPlanAtCommit: f.authority.deps.readPlanAtCommit,
+    graphql: async () => ({
+      data: {
+        viewer: { login: 'operator' },
+        repository: {
+          issue: {
+            id: 'UNIT_ISSUE',
+            number: f.subject.issue,
+            repository: { nameWithOwner: f.cfg.repo },
+            state: 'OPEN',
+            body: f.authority.body,
+            assignees: { nodes: [{ login: 'operator' }] },
+            comments: conn([]),
+            subIssues: conn([]),
+            projectItems: conn([
+              {
+                id: f.subject.projectItemId,
+                project: { id: f.cfg.projectId },
+                fieldValueByName: { name: 'Develop' },
+                fieldValues: conn([
+                  {
+                    id: 'STATUS',
+                    __typename: 'ProjectV2ItemFieldSingleSelectValue',
+                    name: 'Develop',
+                    field: { id: 'UNIT_STATUS', name: 'Status' },
+                  },
+                  {
+                    id: 'ESTIMATE',
+                    __typename: 'ProjectV2ItemFieldNumberValue',
+                    number: f.authority.values.project.estimate,
+                    field: { id: 'UNIT_ESTIMATE', name: 'Estimate' },
+                  },
+                  {
+                    id: 'SIZE',
+                    __typename: 'ProjectV2ItemFieldSingleSelectValue',
+                    name: f.authority.values.project.size,
+                    field: { id: 'UNIT_SIZE', name: 'Size' },
+                  },
+                ]),
+              },
+            ]),
+          },
+        },
+      },
+    }),
+  });
+}
+
 import { formatIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 export async function currentGuardContext(ctx) {
   let body = ctx.body.replace(
