@@ -12,7 +12,11 @@ import { collectDecompositionCommentProposals } from '../../task-tracker/lib/dec
 import { readDecompositionRecords } from '../../task-tracker/lib/decomposition-records.mjs';
 import { parseIssueFieldDb } from '../../task-tracker/issue-field-db.mjs';
 import { currentIssueLockOwner } from '../../task-tracker/issue-mutator-lock.mjs';
-import { estimationIssueBody, estimationObservation } from './estimation-publication.mjs';
+import {
+  estimationIssueBody,
+  estimationObservation,
+  estimationProjectionGraphql,
+} from './estimation-publication.mjs';
 export function initialProcessProviderState(mode) {
   const repair = ['migrate', 'bind'].includes(mode),
     initial = mode === 'initial';
@@ -28,6 +32,7 @@ export function initialProcessProviderState(mode) {
     comment: {
       id: 99,
       node_id: 'IC_refine',
+      issue_url: 'https://api.github.com/repos/o/r/issues/1987',
       body: '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n',
     },
     calls: [],
@@ -110,6 +115,20 @@ export function processPublicationHarness({ file, dir, mode }) {
     });
     return true;
   };
+  // @story #2163 — inflation reads real forecast authority through transport.
+  if (['inflation', 'kill-intent'].includes(mode)) {
+    delete decomposition.readForecast;
+    decomposition.forecast = {
+      graphql: estimationProjectionGraphql({
+        cfg,
+        issueNumber: 1987,
+        itemId: subject.projectItemId,
+        getBody: () => load().body,
+        getProject: () => load().board,
+        getComments: () => [load().comment],
+      }),
+    };
+  }
   const deps = {
     targetGraphql: createTargetFixtureGraphql({
       cfg,
