@@ -2655,6 +2655,7 @@
       "command": "plan-approve",
       "staticImports": [
         "../lib/direct-guidance-admission.mjs",
+        "../lib/plan-approve-current-scope.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",

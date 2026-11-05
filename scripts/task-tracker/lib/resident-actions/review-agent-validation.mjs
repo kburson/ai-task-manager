@@ -8,6 +8,11 @@ import {
   stampReviewFailed,
 } from '../agent-review/review-gate.mjs';
 import { parseProofMarker } from '../proof-marker.mjs';
+import { parsePlanApprovedMarker } from '../markers.mjs';
+import {
+  hasCurrentApprovalDigestSyntax,
+  validateCurrentScopeApproval,
+} from '../plan-approval-current-review.mjs';
 import { parseEntryMarkers } from '../stage-entry-markers.mjs';
 import { terminalReviewHandoffOutcome } from '../terminal-review-handoff.mjs';
 import {
@@ -17,6 +22,36 @@ import {
 
 function valueOf(record) {
   return record && typeof record === 'object' && 'value' in record ? record.value : record;
+}
+
+async function currentApprovalCheck(context, snapshot) {
+  const body = String(valueOf(snapshot?.body) || '');
+  const available = snapshot?.reviewComments;
+  if (
+    !hasCurrentApprovalDigestSyntax(body) &&
+    parsePlanApprovedMarker(body)?.mode !== 'full-auto' &&
+    !(
+      Array.isArray(available) &&
+      available.some((c) => /aitm-current-plan-approval/.test(c?.body || ''))
+    )
+  )
+    return { applicable: false, pass: true };
+  const issue = Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue);
+  let comments;
+  try {
+    comments = Array.isArray(available)
+      ? available
+      : await context?.review?.readComments?.({ issueNumber: issue, snapshot });
+  } catch {
+    return { applicable: true, pass: false };
+  }
+  return validateCurrentScopeApproval({
+    body,
+    comments,
+    repository: context?.review?.repo,
+    issue,
+    acceptedSourceHead: valueOf(snapshot?.headSha),
+  });
 }
 
 function reviewPassEvidence(body) {
@@ -110,6 +145,9 @@ export const reviewAgentValidationAction = Object.freeze({
 
   async verify(context, snapshot) {
     const body = String(valueOf(snapshot?.body) || '');
+    const currentApproval = await currentApprovalCheck(context, snapshot);
+    if (currentApproval.applicable && !currentApproval.pass)
+      return { status: 'incomplete', reason: 'current-plan-approval-invalid' };
     const reason = agentReviewIncompleteReason(body);
     if (reason) {
       if (currentEvent(snapshot)?.phase === 'waived') {
@@ -158,6 +196,25 @@ export const reviewAgentValidationAction = Object.freeze({
     if (!capabilities) {
       return { status: 'paused', reason: 'review-capabilities-unavailable' };
     }
+    const currentApproval = await currentApprovalCheck(context, snapshot);
+    if (currentApproval.applicable && !currentApproval.pass) {
+      const failures = [
+        'current Plan approval does not match its canonical audit, scope or accepted source',
+      ];
+      if (typeof capabilities.onFailure !== 'function')
+        return { status: 'paused', reason: 'review-capabilities-unavailable' };
+      const body = String(valueOf(snapshot?.body) || '');
+      const ts = isoNow(context);
+      await capabilities.onFailure({
+        issueNumber: Number(valueOf(snapshot?.issue) ?? snapshot?.invocation?.issue),
+        snapshot,
+        failures,
+        failedBody: stampReviewFailed(body, failures, { ts }),
+        ts,
+        correlation,
+      });
+      return { status: 'failed', reason: 'current-plan-approval-invalid', failures };
+    }
 
     const policy = await loadSemanticReviewPolicy(context, snapshot);
     if (policy?.isWaived(SEMANTIC_REVIEW_REQUIREMENT)) {
@@ -194,6 +251,7 @@ export const reviewAgentValidationAction = Object.freeze({
       repo: capabilities.repo,
       comments,
       changedPaths,
+      acceptedSourceHead: valueOf(snapshot?.headSha),
     };
     let gate = await gateFn(gateInput);
     const planningSectionFailure = (gate.failures || []).some(

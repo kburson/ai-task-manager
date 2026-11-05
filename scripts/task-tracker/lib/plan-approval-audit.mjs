@@ -9,6 +9,11 @@ import { createHash } from 'node:crypto';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { parsePlanApprovedMarker } from './markers.mjs';
 import { PLAN_TRANSITION_ID_RE } from './plan-transition-authority.mjs';
+import { encodeCanonical, decodeCanonical } from './resident-action-ledger-codec.mjs';
+import {
+  validateCurrentPlanApprovalEvidence,
+  currentPlanApprovalDigest,
+} from './plan-approval-current-scope.mjs';
 
 const pexec = promisify(execFile);
 
@@ -23,12 +28,41 @@ export function readPlanApprovedTimestamp(body) {
   return parsePlanApprovedMarker(body)?.ts || null;
 }
 
-export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence = null } = {}) {
+export function buildPlanApprovalAuditComment({
+  issueNumber,
+  ts,
+  repairEvidence = null,
+  currentEvidence = null,
+} = {}) {
   if (!issueNumber) {
     throw new Error('buildPlanApprovalAuditComment: issueNumber is required');
   }
   if (!ts) {
     throw new Error('buildPlanApprovalAuditComment: approval timestamp is required');
+  }
+  if (currentEvidence !== null) {
+    if (repairEvidence !== null)
+      throw new TypeError('current and repair evidence are mutually exclusive');
+    const evidence = validateCurrentPlanApprovalEvidence(currentEvidence);
+    if (evidence.issue !== Number(issueNumber))
+      throw new TypeError('current approval issue mismatch');
+    const digest = currentPlanApprovalDigest(evidence);
+    return [
+      `### ${PLAN_APPROVAL_AUDIT_HEADING} — #${issueNumber}`,
+      '',
+      `Plan approval was recorded at \`${ts}\` under explicit \`TT_FULL_AUTO=1\`.`,
+      '',
+      '- Approval actor: AI agent operating in Full-Auto mode',
+      '- Human reviewer: none — no human reviewer approved this plan',
+      `- Current scope identity: \`${evidence.scopeIdentity}\``,
+      `- Current source HEAD: \`${evidence.sourceHead}\``,
+      `- Current plan: \`${evidence.planPath}\` (SHA-256 \`${evidence.planContentSha256}\`)`,
+      `- Historical transition: \`${evidence.admission.transitionId}\` had outcome \`not-required\``,
+      '- The historical exemption is admission context only; this is present-time approval of current evidence.',
+      `<!-- aitm-current-plan-approval data="${encodeCanonical(evidence)}" digest="${digest}" -->`,
+      '',
+      'This audit records automated current Plan approval and must not be interpreted as historical or human approval.',
+    ].join('\n');
   }
   if (repairEvidence !== null) {
     const approvalPlanRecordId = repairEvidence?.approvalPlanRecordId;
@@ -103,9 +137,26 @@ export function buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence 
 
 export function isCanonicalPlanApprovalAuditComment(
   body,
-  { issueNumber, ts, repairEvidence = null } = {}
+  { issueNumber, ts, repairEvidence = null, currentEvidence = null } = {}
 ) {
   const src = typeof body === 'string' ? body.trim() : '';
+  if (currentEvidence !== null || /<!--\s*aitm-current-plan-approval\b/i.test(src)) {
+    if (repairEvidence !== null) return false;
+    const parsed = readCurrentPlanApprovalAuditComment(src);
+    if (
+      !parsed ||
+      (issueNumber != null && parsed.issueNumber !== Number(issueNumber)) ||
+      (ts != null && parsed.ts !== ts)
+    )
+      return false;
+    try {
+      return (
+        currentEvidence === null || currentPlanApprovalDigest(currentEvidence) === parsed.digest
+      );
+    } catch {
+      return false;
+    }
+  }
   const heading = src.match(PLAN_APPROVAL_AUDIT_RE);
   if (!heading) return false;
 
@@ -198,6 +249,34 @@ export function isCanonicalPlanApprovalAuditComment(
   );
 }
 
+export function readCurrentPlanApprovalAuditComment(body) {
+  const src = typeof body === 'string' ? body.trim() : '';
+  const wrappers = [
+    ...src.matchAll(
+      /<!--\s*aitm-current-plan-approval data="([A-Za-z0-9_-]+)" digest="(sha256:[a-f0-9]{64})" -->/g
+    ),
+  ];
+  if (wrappers.length !== 1) return null;
+  const heading = src.match(PLAN_APPROVAL_AUDIT_RE);
+  const ts = src.match(
+    /Plan approval was recorded at `([^`]+)` under explicit `TT_FULL_AUTO=1`\./
+  )?.[1];
+  if (!heading || !ts) return null;
+  try {
+    const evidence = validateCurrentPlanApprovalEvidence(decodeCanonical(wrappers[0][1]));
+    const digest = currentPlanApprovalDigest(evidence);
+    const issueNumber = Number(heading[1]);
+    if (
+      digest !== wrappers[0][2] ||
+      src !== buildPlanApprovalAuditComment({ issueNumber, ts, currentEvidence: evidence })
+    )
+      return null;
+    return Object.freeze({ issueNumber, ts, evidence, digest });
+  } catch {
+    return null;
+  }
+}
+
 async function defaultListComments({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
@@ -221,6 +300,7 @@ export async function ensureFullAutoPlanApprovalAudit({
   mode = null,
   env = process.env,
   repairEvidence = null,
+  currentEvidence = null,
   listComments = defaultListComments,
   postComment = defaultPostComment,
 } = {}) {
@@ -251,13 +331,18 @@ export async function ensureFullAutoPlanApprovalAudit({
 
   const comments = await listComments({ issueNumber, repo });
   const alreadyPresent = comments.some((comment) =>
-    isCanonicalPlanApprovalAuditComment(comment?.body, { issueNumber, ts, repairEvidence })
+    isCanonicalPlanApprovalAuditComment(comment?.body, {
+      issueNumber,
+      ts,
+      repairEvidence,
+      currentEvidence,
+    })
   );
   if (alreadyPresent) {
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: true };
   }
 
-  const body = buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence });
+  const body = buildPlanApprovalAuditComment({ issueNumber, ts, repairEvidence, currentEvidence });
   await postComment({ issueNumber, repo, body });
   return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };
 }
