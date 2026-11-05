@@ -3,11 +3,11 @@ name: task
 description: Bind GitHub issue work and route governed AITM lifecycle decisions.
 ---
 
-<!-- aitm-skill-version: 1.2.0 -->
+<!-- aitm-skill-version: 1.3.0 -->
 
 # Task router
 
-First read: emit `aitm-skill-loaded:router:1.1.0`. Resolve `rules/` beside this file. Installed package is authoritative; source checkout needs explicit dogfood setup. Design: `node_modules/@kburson/ai-task-manager/docs/DESIGN.md`. Install: `npx ai-task-manager install`; cloud check: `npm ci && npx aitm doctor && npm test` without repair.
+First read: emit `aitm-skill-loaded:router:1.3.0`. Resolve `rules/` beside this file. Installed package is authoritative; source checkout needs explicit dogfood setup. Design: `node_modules/@kburson/ai-task-manager/docs/DESIGN.md`. Install: `npx ai-task-manager install`; cloud check: `npm ci && npx aitm doctor && npm test` without repair.
 
 ## Hard cross-cutting rules
 
@@ -34,6 +34,7 @@ Run `npx aitm <verb> [args...]` from the project root; `npx aitm <name> help` is
 - Refine/Plan/approval/split/promote/demote/reconcile: `rules/state-walk.md`; `/task plan #N` enters Plan; `/task discover` is pre-issue.
 - Review/approve/reject: `rules/review.md`; deliver: `rules/deliver.md`; close/receipt: `rules/close.md`, `rules/evidence.md`.
 - `/task deliver #N` | `rules/deliver.md`.
+- `/task spike-deliverable #N --from-comment <id|url>` | `rules/evidence.md`; Develop-only current-comment publication for an open spike.
 - `/task incident-ledger #1381` | `rules/incident-ledger.md`.
 - `manual plan review`, `manual code review`, and `manual task review` use `rules/full-auto.md`; parallel/blocked: `rules/parallel.md`, `rules/block.md`.
 - First commit: `rules/commit-trail.md`; hook block: `rules/hooks.md`; Plan-mode creation: `rules/plan-mode-backlog.md`.
