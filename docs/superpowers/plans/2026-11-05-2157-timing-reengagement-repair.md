@@ -4,7 +4,7 @@
 
 **Goal:** Let the genuine Review operator remove only explicitly selected proven redundant zero-work returns, with preserved evidence and truthful recovery.
 
-**Architecture:** A pure closed parser and candidate builder reuse the unchanged strict healer. A native verb qualifies current authority, holds the same timing exclusion with a live-owner lease, archives exact evidence and performs one correlated canonical update/readback. Public routing admits this specific operation while arbitrary interpreter activity stays blocked.
+**Architecture:** A pure closed parser and candidate builder reuse the unchanged strict healer. A native verb qualifies current authority, holds the same empty-directory timing exclusion with a bounded20,000ms observation/effect budget, archives exact evidence and performs one correlated canonical update/readback. Public routing admits this specific operation while arbitrary interpreter activity stays blocked.
 
 **Tech Stack:** Existing Node ESM, node:test, built-in fs/crypto/child_process, existing AITM native session/ownership/Review helpers and GitHub transport; no new dependency.
 
@@ -16,7 +16,7 @@
 - Public command is `npx aitm timing-reengagement-repair <issue>` with exactly one mode, explicit unique zero-based repeated `--row-index`, and required original `--source-digest sha256:<64 lowercase hex>` on apply. No foreign/artifact/file/script/relaxation selectors.
 - OPEN Review, genuine active session/timer/visit/ownership/physical binding and clean unchanged source; validated `receipt-v1` current-HEAD Test evidence only. No passed Agent Review prerequisite; complete prospective registry must pass with actual context.
 - Existing strict same-second predicate is mandatory for each selected row against original bytes. Delete only selected lines; preserve actor work, refs, Unknown totals and every other byte/history. No implicit sweep or partial success.
-- Native timing lock exclusion includes live-owner protection; no retries of the whole callback. Retain immutable original/candidate/manifest before remote effects in fixed sharedRuntimeRoot/evidence namespace, supporting the current unmigrated runtime.
+- Native timing lock exclusion has a20,000ms hold budget below the existing30,000ms stale threshold, acquired device/inode/deadline assertions and original-directory-only release; no new lease format or callback retry. Retain immutable original/candidate/manifest before remote effects in fixed sharedRuntimeRoot/evidence namespace, supporting the current unmigrated runtime.
 - No source implementation until genuine ordered Claude spec/plan acceptance, native planned estimate/approval and posted/mirrored/completed deep dive. Later live #2147 activation is separate and requires genuine delivered source integration and wholly fresh qualification.
 
 ## Scope and Context
@@ -29,7 +29,7 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 
 - Priority: P0
 - Size: M
-- Estimate: 6 hours (three focused two-hour tasks; revised from initial Refine4 after builder exposed required lock integrity and authority-mode checks)
+- Estimate: 6 hours (three focused two-hour tasks; revised from initial Refine4 for required bounded lock integrity, contention preservation and authority-mode checks)
 - Labels: bug
 
 ## Story Intent
@@ -41,7 +41,7 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 
 ## Review Focus
 
-1. A live timing owner exceeds the old30-second threshold: a competing native writer must wait or time out, never steal the lock; covered by Task1 competing-process test.
+1. A slow repair reaches its20,000ms hold deadline: refuse a new effect, retain uncertainty if a write may have happened, and never remove a replacement holder's directory; covered by Task1 bounded-owner tests.
 2. A second genuine source-integration visit adds another malformed triple: explicit selection may remove both, while an unselected malformed row blocks all writes; covered by Task2 prospective-gate integration.
 3. Valid-looking legacy/directory authority lacks a Test fingerprint: refuse before archival/remote effects; covered by Task2 real qualification-mode test.
 4. Unmigrated runtime and partial evidence publication: retain safely without creating activation records; partial/symlink/corrupt evidence must block mutation; covered by Task2 journal tests.
@@ -49,8 +49,8 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 
 ## File Map
 
-- Modify scripts/task-tracker/locks.mjs: optional leased acquisition supported by all lock contenders, preserving old caller API and unleased semantics.
-- Modify scripts/tests/unit/task-tracker/lib/locks.test.mjs and create scripts/tests/integration/task-tracker/lib/timing-lock-lease.test.mjs: deterministic primitive cases and real holder/contender/dead-process behavior.
+- Modify scripts/task-tracker/locks.mjs: optional bounded ownership assertions and safe release, preserving existing empty-directory format and old caller API; unsuccessful stale reclaim honors deadline/sleep.
+- Modify scripts/tests/unit/task-tracker/lib/locks.test.mjs and create scripts/tests/integration/task-tracker/lib/timing-lock-budget.test.mjs: deterministic primitive cases and real holder/contender/budget/queue-drain behavior.
 - Create scripts/task-tracker/lib/timing-reengagement-repair.mjs: pure grammar, source/operation digest, strict finite selection and evidence validation; no Git or provider I/O.
 - Create scripts/task-tracker/lib/timing-reengagement-evidence.mjs: durable package-owned path, exclusive exact immutable artifacts and append-only observation; no authority decisions.
 - Create scripts/task-tracker/verbs/timing-reengagement-repair.mjs: live native admission/qualification, full-census context, exclusion, transaction and truthful result.
@@ -60,26 +60,27 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - Modify scripts/task-tracker/task-tracker.mjs, scripts/task-tracker/verbs/help-data.mjs, scripts/task-tracker/lib/command-surface/catalog.mjs: targeted closed public routing/preflight/help; adjust actual catalogue/runtime admission inventory only when its canonical generator shows required change.
 - Modify scripts/tests/unit/task-tracker/lib/activity-policy-classify-bash.test.mjs and scripts/tests/unit/task-tracker/core/task-tracker-preflight-target.test.mjs: exact literal public command and malformed target admission; raw/compound interpreter regression stays blocked.
 - Modify scripts/tests/unit/task-tracker/core/package-boundary.test.mjs for measured runtime-file allowance and exact inclusion/exclusion.
+- Modify .gitignore and scripts/package/install-content.mjs::INSTALL_GITIGNORE_ENTRIES for `/.ai-task-manager/runtime/evidence/`; update scripts/tests/unit/package/install-content.test.mjs and actual installer/observer integration coverage to prove existing install drift then idempotent upgrade.
 - Create docs/workflows/timing-reengagement-repair.md; modify existing shipped skill/shared/router.md and skill/shared/rules/evidence.md to link the guide with terse operation boundary. Do not ship private evidence or entire new guide by convenience.
 
 ## Implementation Tasks
 
-### Task 1: Preserve timing exclusion for a live repair owner — 2h
+### Task 1: Bound timing exclusion and preserve contending arrivals — 2h
 
 #### Story Intent
 
 - **Beneficiary:** task operator
-- **Capability:** keep cooperating timing writers excluded during a live repair
-- **Need:** the current lock can be reclaimed after30 seconds despite a living holder
-- **Value or failure prevented:** repair qualification and publication cannot silently overlap another native timing write
+- **Capability:** keep repair effects inside a valid timing exclusion window and preserve contending arrivals
+- **Need:** the current lock can be reclaimed after30 seconds despite a living holder and slow appends may time out
+- **Value or failure prevented:** repair never claims authority after its deadline and queued timing evidence is not lost
 
-**Interfaces:** Extend `withLock(lockPath, fn, options)` with `lease:true` and callback capability `{assertOwned():void}`. Existing callbacks and callers remain valid. Leased fn executes once with retries0. All acquire paths honor leased directories, even when the contender did not request a lease. Internal process observation may use existing process helpers if they establish the required safe liveness semantics. Permission errors/unknown/PID reuse are alive-or-ambiguous, never dead.
+**Interfaces:** Extend `withLock(lockPath, fn, options)` with `maxHoldMs` and callback capability `{assertOwned():void,remainingMs():number}` for opt-in callers. The repair passes exactly20,000ms and retries0; tests can inject a clock or use shortened budgets. Capture device/inode and wall-clock deadline after acquisition. No owner files, heartbeat, new lock format, PID scan or process rollout. Existing callbacks/callers remain valid.
 
-- [ ] Step1: Add failing primitive tests for valid leased owner beyond stale age, an unleased contender honoring the lease, missing/corrupt owner after discriminator, dead owner recovery, replaced inode/token, and foreign release. Existing legacy unleased tests must remain unchanged and passing.
-- [ ] Step2: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs`; require new assertions fail against age-only reclamation.
-- [ ] Step3: Implement exclusive lease-mode discriminator before owner publication/callback, process identity/token owner record, liveness-aware reclamation and token/inode-checked cleanup. If acquisition stops between discriminator and owner publication, preserve/refuse the partial lease. Missing discriminator with unexpected entries is ambiguous, not an empty old lock. Assertions fail before/after effects when metadata changes. Keep stale/unleased retry waiting bounded; never tight-loop forever on an unremovable lease directory.
-- [ ] Step4: Add real competing-process integration using a controlled old directory mtime or injected stale threshold; assert contender cannot enter while owner lives, dead complete owner is recovered and a replaced directory is not released by the prior owner. No long wall-clock sleeps.
-- [ ] Step5: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs scripts/tests/integration/task-tracker/lib/timing-lock-lease.test.mjs` and inspect all pass. Commit exact task paths as `[#2157] Keep live timing repair locks exclusive`.
+- [ ] Step1: Add failing primitive tests for budget expiry before an effect, callback completion after expiry, replaced inode, original-directory-only release, legacy empty-directory recovery and bounded deadline/sleep when stale reclaim fails. Include an old-format contender; no leased directory exists for old code to spin on.
+- [ ] Step2: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs`; require new expiry/ownership assertions fail against current behavior.
+- [ ] Step3: Implement opt-in capability and safe release. `assertOwned` checks exact acquisition identity plus deadline and throws typed loss/expiry. Do not pretend rejecting the returned promise cancels already-sent remote work; callers own remaining-budget transport timeouts. An expired callback cannot start another effect. Acquisition retries that cannot reclaim a directory must still reach the wait timeout and async sleep.
+- [ ] Step4: Add real competing-process integration proving successful exclusion before the deadline and no foreign release after replacement. Exercise production `postTimingSafely` and queue/drain: contending exact row times out, is durably queued with `ok:false,queued:true`, then after release ordinary drain publishes exactly once without changing original row bytes. Native repair never drains inside its lock. Test resolver byte equality with `postTimingEvent` at the exact same root/issue. No long wall-clock sleeps.
+- [ ] Step5: Run `node --test scripts/tests/unit/task-tracker/lib/locks.test.mjs scripts/tests/integration/task-tracker/lib/timing-lock-budget.test.mjs` and inspect all pass. Commit exact task paths as `[#2157] Bound timing repair lock authority`.
 
 ### Task 2: Qualify and execute a retained strict repair transaction — 2h
 
@@ -103,8 +104,8 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - [ ] Step2: Implement closed grammar and pure candidate/digest functions. Run new pure suite plus existing strict healer and maintenance CLI tests; all pass without modifying their predicate or fixtures to broaden admission.
 - [ ] Step3: Write filesystem tests for exclusive immutable original/candidate/manifest, exact digest/schema/identity revalidation, lost/partial/corrupt artifacts, symlink ancestors/files, collision, unmigrated runtime and existing invalid controls. Assert failure means zero writer calls; first run fails without evidence implementation.
 - [ ] Step4: Implement evidence leaf with registered physical-root/path checks, exclusive publication and exact readback. Keep immutable evidence separate from result observations. Recovery rederives candidate from retained original and selection, not trusting stored candidate alone.
-- [ ] Step5: Write native integration tests with real Git/session/binding/occupancy and explicit synthetic provider/qualification records. Exercise production authority, current fingerprint/receipt and whole gate; no fake `ready:true` shortcut. Cover actual Review entry then timing-only failure, both selected new-visit triples, unrelated/unselected failure, mode legacy-marker/directory refusal, owner/root/visit/source drift and dirty index. Initial new native path must fail before implementation.
-- [ ] Step6: Implement native wrapper: validate current open Review owner/frame/occupancy/timer; current clean HEAD; valid exact receipt/fingerprint; full comments/canonical identity; actual workflow policy and diff; strict candidate; full prospective gate no normalization. Under Task1 lease revalidate frame and all remote authority, retain evidence, reobserve exact source, update once, correlate exact readback and final authority. Check-only never archives or mutates. No whole-callback retry. Use bounded native API timeouts and actual locked ownership assertions.
+- [ ] Step5: Write native integration tests with real Git/session/binding/occupancy and explicit synthetic provider/qualification records. Exercise production authority, current fingerprint/receipt and whole gate; no fake `ready:true` shortcut. Cover actual Review entry then timing-only failure, both selected new-visit triples, unrelated/unselected failure, mode legacy-marker/directory refusal, owner/root/visit/source drift and dirty index. A second registered worktree's actual hook/repair must refuse foreign authority, and occupancy drift inside exclusion must refuse before write or report postwrite uncertainty. Initial new native path must fail before implementation.
+- [ ] Step6: Implement native wrapper: validate current open Review owner/frame/occupancy/timer; current clean HEAD; valid exact receipt/fingerprint; full comments/canonical identity; actual workflow policy and diff; strict candidate; full prospective gate. Any returned normalizedBody different from actual input refuses `timing-reengagement-repair:body-normalization-required`. Under Task1 bounded capability revalidate frame and all remote authority, retain evidence, reobserve exact source, update once, correlate exact readback and final authority. Assert occupancy immediately before/after update as cross-worktree barrier. Every provider timeout must fit remaining budget; reserve the final mutation's full configured timeout before sending, otherwise refuse. Check-only never archives or mutates. No callback retry, source rebase or late effect after lost budget/ownership.
 - [ ] Step7: Add failure-injection tests for source drift after check, archive failures, postwrite generation/owner/source drift, ambiguous update with exact candidate readback, unchanged-original retry, foreign candidate, wrong node ID, readback failure and repeated apply requiring zero further writes. Missing archive on candidate state cannot yield already-applied. Run new pure/evidence/integration suites and existing healer/CLI/activity tests; require all green.
 - [ ] Step8: Commit exact task paths as `[#2157] Retain and verify strict Review timing repairs`.
 
@@ -122,8 +123,8 @@ Source anchors: scripts/task-tracker/lib/heal-timing-departure.mjs::recoverRedun
 - [ ] Step1: Add real subprocess tests invoking `npx aitm timing-reengagement-repair`/package-owned bin in the disposable Review fixture. Assert initial failure is actual unknown-command or absent route; distinguish it from a valid refusal by prefix/code. Add help and malformed option-first target tests proving no timers/provider effects.
 - [ ] Step2: Register target-required catalogue/routing/preflight/help using Task2 parser. Preserve actual hook invocation for the literal `npx aitm` form; change classifier only if a failing production-path test requires a narrow command admission. Never whitelist arbitrary `node`, script basename, compound source effects or maintenance directory.
 - [ ] Step3: Exercise actual native activity hook in Review with valid check/apply and negative raw Node healer, unrelated script, compound source write and malformed public grammar. Assert public operation reaches native guards and negative activity stays refused. Prove API outcomes and retained evidence from the CLI, including same-original-digest retry after lost response and no duplicate remote update.
-- [ ] Step4: Run npm pack boundary check to expose exact new runtime delta. Update allowance by measured required leaves only and assert each new runtime file included, fixture/scratch/evidence/new repository guide excluded. Validate generated guidance/catalogue through canonical tools; never fabricate a changed artifact if checks already pass.
-- [ ] Step5: Write operator guide with exact syntax, zero-based indices/digest semantics, strict eligibility, storage/recovery/uncertainty limits, normal re-review and separate qualified2147 activation. Update only terse shipped pointers and matching version sentinels where needed.
+- [ ] Step4: Run npm pack boundary check to expose exact new runtime delta. Update allowance by measured required leaves only and assert each new runtime file included, fixture/scratch/evidence/new repository guide excluded. Add ignore entry in repo and INSTALL_GITIGNORE_ENTRIES; test old consumer reports managed-gitignore drift, upgrade adds entry idempotently, actual evidence path is ignored before archive, and apply leaves operator/main Git porcelain unchanged. Validate generated guidance/catalogue through canonical tools; never fabricate a changed artifact if checks already pass.
+- [ ] Step5: Write operator guide with exact syntax, zero-based indices/digest semantics, strict eligibility, storage/recovery/uncertainty limits, normal re-review and separate qualified2147 activation. Explain slow-network budget expiry can leave a correctly retained uncertain outcome: repeat the same public original-digest request for exact recovery, never new guessed indices. State the residual remote race: a server-side update delayed beyond client timeout/stale reclamation can race a later native append because GitHub offers no CAS; exact readback is observation proof, not perpetual history exclusion. State consumer ignore drift/upgrade consequence. Update only terse shipped pointers and matching version sentinels where needed.
 - [ ] Step6: Run targeted integration, pure/evidence/locks, existing healer/CLI/activity, routing/help and package-boundary tests. Run lint/format appropriate to changed files; commit `[#2157] Expose guarded Review reengagement repair`.
 
 ## Verification and completion sequence
