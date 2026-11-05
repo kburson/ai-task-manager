@@ -1,9 +1,176 @@
 // @story #2165
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { observeComparator } from '../../../helpers/close-cumulative-observer.mjs';
+import { runCumulativeProvider } from '../../../fixtures/close-cumulative-provider.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+
+// An unsupported request must not obtain good evidence or partially mutate state.
+for (const [label, request] of [
+  [
+    'duplicate GraphQL argument',
+    'query { repository(owner:"example",name:"project") { pullRequest(number:99) { commits(first:1,first:100) { totalCount } } } }',
+  ],
+  [
+    'duplicate mutation input',
+    'mutation { updateIssue(input:{id:"I_fixture",body:"one",body:"two"}) { issue { number } } }',
+  ],
+  [
+    'duplicate variable declaration',
+    'query($x:Int,$x:Int) { repository(owner:"example",name:"project") { issue(number:1878) { number } } }',
+  ],
+  [
+    'duplicate REST target',
+    [
+      'api',
+      'repos/example/project/git/ref/heads/feature/1878',
+      'repos/example/project/git/ref/heads/feature/1878',
+    ],
+  ],
+  [
+    'REST creation payload',
+    {
+      args: [
+        'api',
+        'repos/example/project/issues/1878/comments',
+        '--method',
+        'POST',
+        '--input',
+        '-',
+      ],
+      input: { body: 'changed', unknown: true },
+    },
+  ],
+  [
+    'REST update payload',
+    {
+      args: ['api', 'repos/example/project/issues/comments/1', '--method', 'PATCH', '--input', '-'],
+      input: { body: 'changed', unknown: true },
+    },
+  ],
+  [
+    'wrong PR filters',
+    [
+      'pr',
+      'list',
+      '--repo',
+      'example/project',
+      '--head',
+      'foreign',
+      '--base',
+      'wrong',
+      '--state',
+      'open',
+      '--json',
+      'number',
+    ],
+  ],
+  [
+    'extra issue flag',
+    ['issue', 'view', '1878', '-R', 'example/project', '--json', 'number', '--unknown', 'x'],
+  ],
+  [
+    'duplicate PR selector',
+    ['pr', 'view', '99', '-R', 'example/project', '--json', 'number', '--json', 'number'],
+  ],
+  ['REST DELETE', ['api', 'repos/example/project/issues/comments/1', '--method', 'DELETE']],
+  [
+    'REST extra flag',
+    ['api', 'repos/example/project/git/ref/heads/feature/1878', '--unknown', 'x'],
+  ],
+  ['REST pulls filter', ['api', 'repos/example/project/pulls', '--slurp', '-f', 'head=foreign']],
+  [
+    'unknown commits argument',
+    'query { repository(owner:"example",name:"project") { pullRequest(number:99) { commits(first:100,nonsense:"x") { totalCount } } } }',
+  ],
+  [
+    'unsupported commits cursor',
+    'query { repository(owner:"example",name:"project") { pullRequest(number:99) { commits(first:100,after:"foreign") { totalCount } } } }',
+  ],
+  [
+    'truncated commits page',
+    'query { repository(owner:"example",name:"project") { pullRequest(number:99) { commits(first:1) { totalCount } } } }',
+  ],
+  [
+    'extra issue argument',
+    'query { repository(owner:"example",name:"project") { issue(number:1878,nonsense:1) { number } } }',
+  ],
+  [
+    'mutation response field',
+    'mutation { updateIssue(input:{id:"I_fixture",body:"changed"}) { issue { unavailable } } }',
+  ],
+  [
+    'mutation extra argument',
+    'mutation { updateIssue(input:{id:"I_fixture",body:"changed"},nonsense:1) { issue { number } } }',
+  ],
+]) {
+  test('strict cumulative provider refuses ' + label + ' without state effects', () => {
+    const dir = mkdtempSync(
+      path.join(projectScratchDir('test', process.cwd()), '2165-provider-strict-')
+    );
+    const file = path.join(dir, 'state.json');
+    const target = {
+      id: 'I_fixture',
+      number: 1878,
+      body: 'original',
+      comments: { nodes: [{ id: 'IC_fixture', databaseId: 1, body: 'original comment' }] },
+      projectItems: { nodes: [] },
+    };
+    const state = {
+      repo: 'example/project',
+      effects: [],
+      nextComment: 1,
+      project: { id: 'P_fixture', fields: { nodes: [] } },
+      issues: { 1878: target },
+      pr: {
+        number: 99,
+        headRefName: 'feature/1878',
+        headRefOid: 'a'.repeat(40),
+        baseRefName: 'trunk',
+        state: 'MERGED',
+      },
+      evidence: [
+        { oid: 'a'.repeat(40), parents: [], tree: 'b'.repeat(40), message: 'one' },
+        { oid: 'c'.repeat(40), parents: [], tree: 'd'.repeat(40), message: 'two' },
+      ],
+    };
+    const bytes = JSON.stringify(state);
+    writeFileSync(file, bytes);
+    try {
+      const valid = JSON.parse(
+        runCumulativeProvider(file, ['pr', 'view', '99', '-R', state.repo, '--json', 'number'])
+      );
+      assert.equal(valid.number, 99);
+      const args =
+        typeof request === 'string' ? ['api', 'graphql', '-f', 'query=' + request] : request;
+      if (request.input) {
+        const module = new URL('../../../fixtures/close-cumulative-provider.mjs', import.meta.url)
+          .href;
+        const script = `import{runCumulativeProvider}from${JSON.stringify(module)};try{runCumulativeProvider(process.argv[1],JSON.parse(process.argv[2]));}catch(error){console.error(error.message);process.exitCode=90;}`;
+        const result = spawnSync(
+          process.execPath,
+          ['--input-type=module', '-e', script, file, JSON.stringify(request.args)],
+          { input: JSON.stringify(request.input), encoding: 'utf8' }
+        );
+        assert.equal(result.status, 90, result.stderr);
+      } else
+        assert.throws(
+          () => runCumulativeProvider(file, args),
+          /cumulative-provider:|unavailable selected field|duplicate/
+        );
+      assert.equal(
+        readFileSync(file, 'utf8'),
+        bytes,
+        'refused request must preserve all provider state'
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
 
 test('trace refuses missing or ambiguous comparator entry instead of observing another function', () => {
   const source = readFileSync(
