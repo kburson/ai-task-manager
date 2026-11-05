@@ -1,0 +1,510 @@
+﻿2026-10-03T16:00:40.2682616Z Current runner version: '2.337.0'
+2026-10-03T16:00:40.2708019Z ##[group]Runner Image Provisioner
+2026-10-03T16:00:40.2709219Z Hosted Compute Agent
+2026-10-03T16:00:40.2709916Z Version: 20260901.588
+2026-10-03T16:00:40.2710743Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-03T16:00:40.2711566Z Build Date: 2026-09-01T19:56:44Z
+2026-10-03T16:00:40.2712307Z Worker ID: {5ca22460-b45b-40dd-8bb5-9970aaa0c7b5}
+2026-10-03T16:00:40.2713164Z Azure Region: westus
+2026-10-03T16:00:40.2713799Z ##[endgroup]
+2026-10-03T16:00:40.2716058Z ##[group]Operating System
+2026-10-03T16:00:40.2716854Z Ubuntu
+2026-10-03T16:00:40.2717471Z 24.04.5
+2026-10-03T16:00:40.2718136Z LTS
+2026-10-03T16:00:40.2718725Z ##[endgroup]
+2026-10-03T16:00:40.2719784Z ##[group]Runner Image
+2026-10-03T16:00:40.2720839Z Image: ubuntu-24.04
+2026-10-03T16:00:40.2721586Z Version: 20260927.320.1
+2026-10-03T16:00:40.2723048Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-03T16:00:40.2724775Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-03T16:00:40.2725831Z ##[endgroup]
+2026-10-03T16:00:40.2727107Z ##[group]GITHUB_TOKEN Permissions
+2026-10-03T16:00:40.2729416Z Contents: read
+2026-10-03T16:00:40.2730147Z Metadata: read
+2026-10-03T16:00:40.2730920Z ##[endgroup]
+2026-10-03T16:00:40.2733146Z Secret source: Actions
+2026-10-03T16:00:40.2734391Z Cache mode: write
+2026-10-03T16:00:40.2735191Z Prepare workflow directory
+2026-10-03T16:00:40.4434416Z Prepare all required actions
+2026-10-03T16:00:40.4486485Z Getting action download info
+2026-10-03T16:00:40.7842486Z Download action repository 'actions/checkout@v5' (SHA:fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+2026-10-03T16:00:40.8886494Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-10-03T16:00:41.2654327Z Complete job name: Slow lane (slow tests only)
+2026-10-03T16:00:41.7260248Z ##[group]Run actions/checkout@v5
+2026-10-03T16:00:41.7261335Z with:
+2026-10-03T16:00:41.7261879Z   repository: kburson/ai-task-manager
+2026-10-03T16:00:41.7266086Z   token: ***
+2026-10-03T16:00:41.7266582Z   ssh-strict: true
+2026-10-03T16:00:41.7267082Z   ssh-user: git
+2026-10-03T16:00:41.7267587Z   persist-credentials: true
+2026-10-03T16:00:41.7268137Z   clean: true
+2026-10-03T16:00:41.7268645Z   sparse-checkout-cone-mode: true
+2026-10-03T16:00:41.7269487Z   fetch-depth: 1
+2026-10-03T16:00:41.7269981Z   fetch-tags: false
+2026-10-03T16:00:41.7270486Z   show-progress: true
+2026-10-03T16:00:41.7270989Z   lfs: false
+2026-10-03T16:00:41.7271458Z   submodules: false
+2026-10-03T16:00:41.7271972Z   set-safe-directory: true
+2026-10-03T16:00:41.7272576Z   allow-unsafe-pr-checkout: false
+2026-10-03T16:00:41.7273444Z env:
+2026-10-03T16:00:41.7273939Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-03T16:00:41.7274543Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-03T16:00:41.7275204Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-03T16:00:41.7275833Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-03T16:00:41.7276433Z ##[endgroup]
+2026-10-03T16:00:41.8314018Z Syncing repository: kburson/ai-task-manager
+2026-10-03T16:00:41.8316376Z ##[group]Getting Git version info
+2026-10-03T16:00:41.8317503Z Working directory is '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-03T16:00:41.8318812Z [command]/usr/bin/git version
+2026-10-03T16:00:41.8383872Z git version 2.55.0
+2026-10-03T16:00:41.8408807Z ##[endgroup]
+2026-10-03T16:00:41.8437485Z Temporarily overriding HOME='/home/runner/work/_temp/565370a7-b21a-4f1d-b3df-d667a44688ad' before making global git config changes
+2026-10-03T16:00:41.8440483Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-03T16:00:41.8444978Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-03T16:00:41.8505229Z Deleting the contents of '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-03T16:00:41.8509515Z ##[group]Initializing the repository
+2026-10-03T16:00:41.8513799Z [command]/usr/bin/git init /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-03T16:00:41.8626102Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-03T16:00:41.8630636Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-03T16:00:41.8632406Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-03T16:00:41.8633862Z hint: call:
+2026-10-03T16:00:41.8634616Z hint:
+2026-10-03T16:00:41.8635650Z hint: 	git config --global init.defaultBranch <name>
+2026-10-03T16:00:41.8636774Z hint:
+2026-10-03T16:00:41.8637944Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-03T16:00:41.8639957Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-03T16:00:41.8641342Z hint:
+2026-10-03T16:00:41.8642105Z hint: 	git branch -m <name>
+2026-10-03T16:00:41.8643062Z hint:
+2026-10-03T16:00:41.8644384Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-03T16:00:41.8645821Z Initialized empty Git repository in /home/runner/work/ai-task-manager/ai-task-manager/.git/
+2026-10-03T16:00:41.8648636Z [command]/usr/bin/git remote add origin https://github.com/kburson/ai-task-manager
+2026-10-03T16:00:41.8696103Z ##[endgroup]
+2026-10-03T16:00:41.8697618Z ##[group]Disabling automatic garbage collection
+2026-10-03T16:00:41.8699727Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-03T16:00:41.8744040Z ##[endgroup]
+2026-10-03T16:00:41.8745518Z ##[group]Setting up auth
+2026-10-03T16:00:41.8752811Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-03T16:00:41.8799051Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-03T16:00:41.9201698Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-03T16:00:41.9245125Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-03T16:00:41.9482898Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-03T16:00:41.9523770Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-03T16:00:41.9762592Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-03T16:00:41.9805902Z ##[endgroup]
+2026-10-03T16:00:41.9806872Z ##[group]Fetching the repository
+2026-10-03T16:00:41.9816424Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +cc64141102f812f5750527178599315ae8c8dfcb:refs/remotes/pull/1871/merge
+2026-10-03T16:00:43.8278333Z From https://github.com/kburson/ai-task-manager
+2026-10-03T16:00:43.8280839Z  * [new ref]         cc64141102f812f5750527178599315ae8c8dfcb -> pull/1871/merge
+2026-10-03T16:00:43.8283936Z ##[endgroup]
+2026-10-03T16:00:43.8284832Z ##[group]Determining the checkout info
+2026-10-03T16:00:43.8286910Z ##[endgroup]
+2026-10-03T16:00:43.8294868Z [command]/usr/bin/git sparse-checkout disable
+2026-10-03T16:00:43.8387213Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-03T16:00:43.8423212Z ##[group]Checking out the ref
+2026-10-03T16:00:43.8429809Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1871/merge
+2026-10-03T16:00:44.1459487Z Note: switching to 'refs/remotes/pull/1871/merge'.
+2026-10-03T16:00:44.1460214Z 
+2026-10-03T16:00:44.1460740Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-03T16:00:44.1461810Z changes and commit them, and you can discard any commits you make in this
+2026-10-03T16:00:44.1462813Z state without impacting any branches by switching back to a branch.
+2026-10-03T16:00:44.1463900Z 
+2026-10-03T16:00:44.1464347Z If you want to create a new branch to retain commits you create, you may
+2026-10-03T16:00:44.1465299Z do so (now or later) by using -c with the switch command. Example:
+2026-10-03T16:00:44.1465849Z 
+2026-10-03T16:00:44.1466082Z   git switch -c <new-branch-name>
+2026-10-03T16:00:44.1466404Z 
+2026-10-03T16:00:44.1466602Z Or undo this operation with:
+2026-10-03T16:00:44.1466934Z 
+2026-10-03T16:00:44.1467141Z   git switch -
+2026-10-03T16:00:44.1467419Z 
+2026-10-03T16:00:44.1467855Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-03T16:00:44.1468544Z 
+2026-10-03T16:00:44.1469652Z HEAD is now at cc64141 Merge f60fc1e18537af84c87fb34c51a38ae72cc64325 into 171c7d93866f67b58effa635be5ae737f54ef9eb
+2026-10-03T16:00:44.1479202Z ##[endgroup]
+2026-10-03T16:00:44.1529871Z [command]/usr/bin/git log -1 --format=%H
+2026-10-03T16:00:44.1559932Z cc64141102f812f5750527178599315ae8c8dfcb
+2026-10-03T16:00:44.2986490Z ##[group]Run git fetch --no-tags origin trunk:trunk
+2026-10-03T16:00:44.2987092Z [36;1mgit fetch --no-tags origin trunk:trunk[0m
+2026-10-03T16:00:44.3279464Z shell: /usr/bin/bash -e {0}
+2026-10-03T16:00:44.3279884Z env:
+2026-10-03T16:00:44.3280194Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-03T16:00:44.3280564Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-03T16:00:44.3280928Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-03T16:00:44.3281333Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-03T16:00:44.3281700Z ##[endgroup]
+2026-10-03T16:00:47.3879885Z From https://github.com/kburson/ai-task-manager
+2026-10-03T16:00:47.3880955Z  * [new branch]        trunk      -> trunk
+2026-10-03T16:00:47.3881706Z  * [new branch]        trunk      -> origin/trunk
+2026-10-03T16:00:47.4669046Z ##[group]Run actions/setup-node@v5
+2026-10-03T16:00:47.4669354Z with:
+2026-10-03T16:00:47.4669547Z   node-version: 24
+2026-10-03T16:00:47.4669748Z   cache: npm
+2026-10-03T16:00:47.4669936Z   always-auth: false
+2026-10-03T16:00:47.4670143Z   check-latest: false
+2026-10-03T16:00:47.4672769Z   token: ***
+2026-10-03T16:00:47.4672987Z   package-manager-cache: true
+2026-10-03T16:00:47.4673224Z env:
+2026-10-03T16:00:47.4673410Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-03T16:00:47.4673666Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-03T16:00:47.4673923Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-03T16:00:47.4674187Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-03T16:00:47.4674433Z ##[endgroup]
+2026-10-03T16:00:47.6245755Z Found in cache @ /opt/hostedtoolcache/node/24.21.0/x64
+2026-10-03T16:00:47.6251454Z (node:2332) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-03T16:00:47.6252875Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-03T16:00:47.6255622Z ##[group]Environment details
+2026-10-03T16:00:48.0415088Z node: v24.21.0
+2026-10-03T16:00:48.0415518Z npm: 11.19.0
+2026-10-03T16:00:48.0415880Z yarn: 1.22.22
+2026-10-03T16:00:48.0417250Z ##[endgroup]
+2026-10-03T16:00:48.0439421Z [command]/opt/hostedtoolcache/node/24.21.0/x64/bin/npm config get cache
+2026-10-03T16:00:48.1548627Z /home/runner/.npm
+2026-10-03T16:00:48.4159673Z Cache hit for: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-03T16:00:48.4268568Z (node:2332) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-03T16:00:49.6992601Z Received 4194304 of 33193731 (12.6%), 4.0 MBs/sec
+2026-10-03T16:00:50.0449834Z Received 33193731 of 33193731 (100.0%), 23.5 MBs/sec
+2026-10-03T16:00:50.0450951Z Cache Size: ~32 MB (33193731 B)
+2026-10-03T16:00:50.0484738Z [command]/usr/bin/tar -xf /home/runner/work/_temp/53723c35-107a-4f93-be50-9020ceb3c3f0/cache.tzst -P -C /home/runner/work/ai-task-manager/ai-task-manager --use-compress-program unzstd
+2026-10-03T16:00:50.2035048Z Cache restored successfully
+2026-10-03T16:00:50.2053610Z Cache restored from key: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-03T16:00:50.2415769Z ##[group]Run npm ci
+2026-10-03T16:00:50.2416061Z [36;1mnpm ci[0m
+2026-10-03T16:00:50.2492434Z shell: /usr/bin/bash -e {0}
+2026-10-03T16:00:50.2492713Z env:
+2026-10-03T16:00:50.2492940Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-03T16:00:50.2493230Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-03T16:00:50.2493500Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-03T16:00:50.2493775Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-03T16:00:50.2494031Z ##[endgroup]
+2026-10-03T16:00:58.4627972Z 
+2026-10-03T16:00:58.4637390Z added 318 packages, and audited 319 packages in 8s
+2026-10-03T16:00:58.4637880Z 
+2026-10-03T16:00:58.4638186Z 101 packages are looking for funding
+2026-10-03T16:00:58.4638726Z   run `npm fund` for details
+2026-10-03T16:00:58.4683604Z 
+2026-10-03T16:00:58.4684598Z 8 vulnerabilities (2 moderate, 6 high)
+2026-10-03T16:00:58.4685370Z 
+2026-10-03T16:00:58.4687201Z To address all issues, run:
+2026-10-03T16:00:58.4687722Z   npm audit fix
+2026-10-03T16:00:58.4687944Z 
+2026-10-03T16:00:58.4689522Z Run `npm audit` for details.
+2026-10-03T16:00:58.4699272Z npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+2026-10-03T16:00:58.4700621Z npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+2026-10-03T16:00:58.4701542Z npm warn install-scripts
+2026-10-03T16:00:58.4702728Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+2026-10-03T16:00:58.5488487Z ##[group]Run npm run test:slow
+2026-10-03T16:00:58.5489023Z [36;1mnpm run test:slow[0m
+2026-10-03T16:00:58.5554916Z shell: /usr/bin/bash -e {0}
+2026-10-03T16:00:58.5555181Z env:
+2026-10-03T16:00:58.5555399Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-03T16:00:58.5555691Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-03T16:00:58.5555964Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-03T16:00:58.5556255Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-03T16:00:58.5556508Z ##[endgroup]
+2026-10-03T16:00:58.6672995Z 
+2026-10-03T16:00:58.6713824Z > @kburson/ai-task-manager@0.1.0 test:slow
+2026-10-03T16:00:58.6714599Z > node scripts/run-tests.mjs --lane slow
+2026-10-03T16:00:58.6749796Z 
+2026-10-03T16:00:58.7765270Z ▶ lane=slow (55 files)
+2026-10-03T16:00:58.7765812Z 
+2026-10-03T16:06:37.9607854Z ▶ scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs ... ok (64ms)
+2026-10-03T16:06:37.9609862Z ▶ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs ... ok (5.0s)
+2026-10-03T16:06:37.9611656Z ▶ scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs ... ok (95ms)
+2026-10-03T16:06:37.9613338Z ▶ scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs ... ok (3.7s)
+2026-10-03T16:06:37.9615009Z ▶ scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs ... ok (6.0s)
+2026-10-03T16:06:37.9616726Z ▶ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs ... ok (3.0s)
+2026-10-03T16:06:37.9620337Z ▶ scripts/tests/slow/task-tracker/core/verify-develop.test.mjs ... ok (846ms)
+2026-10-03T16:06:37.9621691Z ▶ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs ... ok (1.1s)
+2026-10-03T16:06:37.9623115Z ▶ scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs ... ok (1.1s)
+2026-10-03T16:06:37.9624552Z ▶ scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ... ok (17.8s)
+2026-10-03T16:06:37.9625826Z ▶ scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs ... ok (684ms)
+2026-10-03T16:06:37.9627202Z ▶ scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ... ok (180.8s)
+2026-10-03T16:06:37.9628529Z ▶ scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs ... ok (7.8s)
+2026-10-03T16:06:37.9630165Z ▶ scripts/tests/slow/task-tracker/lib/body-write-roundtrip.test.mjs ... ok (52ms)
+2026-10-03T16:06:37.9631709Z ▶ scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs ... ok (541ms)
+2026-10-03T16:06:37.9633651Z ▶ scripts/tests/slow/task-tracker/lib/cli.test.mjs ... ok (11.9s)
+2026-10-03T16:06:37.9634988Z ▶ scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs ... ok (1.5s)
+2026-10-03T16:06:37.9636588Z ▶ scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs ... ok (321ms)
+2026-10-03T16:06:37.9638395Z ▶ scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs ... ok (1.7s)
+2026-10-03T16:06:37.9641094Z ▶ scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ... ok (4.8s)
+2026-10-03T16:06:37.9642584Z ▶ scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs ... ok (971ms)
+2026-10-03T16:06:37.9643966Z ▶ scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ... ok (2.7s)
+2026-10-03T16:06:37.9645397Z ▶ scripts/tests/slow/task-tracker/lib/demonstrable-ac-gate.test.mjs ... ok (90ms)
+2026-10-03T16:06:37.9647036Z ▶ scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs ... ok (890ms)
+2026-10-03T16:06:37.9648684Z ▶ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs ... ok (4.8s)
+2026-10-03T16:06:37.9650458Z ▶ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ... ok (109ms)
+2026-10-03T16:06:37.9651842Z ▶ scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs ... ok (350ms)
+2026-10-03T16:06:37.9653206Z ▶ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs ... ok (4.7s)
+2026-10-03T16:06:37.9654779Z ▶ scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs ... ok (260ms)
+2026-10-03T16:06:37.9656622Z ▶ scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs ... ok (810ms)
+2026-10-03T16:06:37.9658272Z ▶ scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ... FAIL (exit 1)
+2026-10-03T16:06:37.9660742Z ▶ scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs ... ok (221ms)
+2026-10-03T16:06:37.9662304Z ▶ scripts/tests/slow/task-tracker/lib/gates.test.mjs ... ok (4.4s)
+2026-10-03T16:06:37.9663927Z ▶ scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs ... ok (5.3s)
+2026-10-03T16:06:37.9665603Z ▶ scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs ... ok (2.7s)
+2026-10-03T16:06:37.9667024Z ▶ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs ... ok (3.3s)
+2026-10-03T16:06:37.9668641Z ▶ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ... ok (1.6s)
+2026-10-03T16:06:37.9670053Z ▶ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ... ok (7.4s)
+2026-10-03T16:06:37.9671003Z ▶ scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ... ok (5.3s)
+2026-10-03T16:06:37.9671810Z ▶ scripts/tests/slow/task-tracker/lib/move-state.test.mjs ... ok (4.0s)
+2026-10-03T16:06:37.9672680Z ▶ scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs ... ok (2.9s)
+2026-10-03T16:06:37.9673616Z ▶ scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs ... ok (662ms)
+2026-10-03T16:06:37.9674533Z ▶ scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs ... ok (508ms)
+2026-10-03T16:06:37.9675488Z ▶ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ... ok (19.7s)
+2026-10-03T16:06:37.9676752Z ▶ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs ... ok (3.5s)
+2026-10-03T16:06:37.9678435Z ▶ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ... ok (3.4s)
+2026-10-03T16:06:37.9680123Z ▶ scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs ... ok (929ms)
+2026-10-03T16:06:37.9681812Z ▶ scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs ... ok (210ms)
+2026-10-03T16:06:37.9682831Z ▶ scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ... ok (2.6s)
+2026-10-03T16:06:37.9683651Z ▶ scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs ... ok (278ms)
+2026-10-03T16:06:37.9684536Z ▶ scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ... ok (1.0s)
+2026-10-03T16:06:37.9685421Z ▶ scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ... ok (430ms)
+2026-10-03T16:06:37.9687170Z ▶ scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs ... ok (347ms)
+2026-10-03T16:06:37.9689350Z ▶ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs ... ok (291ms)
+2026-10-03T16:06:37.9691160Z ▶ scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs ... ok (119ms)
+2026-10-03T16:06:37.9692090Z 
+2026-10-03T16:06:37.9694431Z ▶ scheduling: 0 pure unit file(s) at pool concurrency 3 (peak 0); 0 direct-subprocess file(s) at pool concurrency 2 (peak 0); 1 explicit-safe slow file(s) at pool concurrency 2 (peak 1); 54 explicit-unsafe/integration/unmarked-slow file(s) serial
+2026-10-03T16:06:37.9696430Z 
+2026-10-03T16:06:37.9696747Z 1 of 55 test file(s) failed:
+2026-10-03T16:06:37.9697279Z 
+2026-10-03T16:06:37.9711595Z ── scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ──
+2026-10-03T16:06:37.9713734Z ✖ frozen histories use independent object storage and protection checks detect change (1680.636325ms)
+2026-10-03T16:06:37.9714648Z ✖ capture refuses dirty sources and disposal refuses escapes or unreported work (1488.680888ms)
+2026-10-03T16:06:37.9715397Z ℹ tests 2
+2026-10-03T16:06:37.9715795Z ℹ suites 0
+2026-10-03T16:06:37.9716163Z ℹ pass 0
+2026-10-03T16:06:37.9716502Z ℹ fail 2
+2026-10-03T16:06:37.9716777Z ℹ cancelled 0
+2026-10-03T16:06:37.9717050Z ℹ skipped 0
+2026-10-03T16:06:37.9717308Z ℹ todo 0
+2026-10-03T16:06:37.9717550Z ℹ duration_ms 3176.256548
+2026-10-03T16:06:37.9717711Z 
+2026-10-03T16:06:37.9717827Z ✖ failing tests:
+2026-10-03T16:06:37.9718185Z 
+2026-10-03T16:06:37.9718627Z test at scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs:38:1
+2026-10-03T16:06:37.9720486Z ✖ frozen histories use independent object storage and protection checks detect change (1680.636325ms)
+2026-10-03T16:06:37.9721553Z   Error: evidence-v2-rehearsal:matrix-command:✔ new claims get fresh generations while heartbeat preserves the active generation (38.601478ms)
+2026-10-03T16:06:37.9722564Z   ✔ generation release preserves same-session newer and foreign claims under the authority lock (2.169449ms)
+2026-10-03T16:06:37.9723307Z   ✔ absent and paused bindings remain explicit cleanup observations (0.603124ms)
+2026-10-03T16:06:37.9723882Z   ✔ cold retry converges timing after before-effect (5.854996ms)
+2026-10-03T16:06:37.9724450Z   ✔ cold retry converges timing after after-effect-before-response (1.872991ms)
+2026-10-03T16:06:37.9725099Z   ✔ cold retry converges timing after after-response-before-checkpoint (0.954464ms)
+2026-10-03T16:06:37.9725700Z   ✔ cold retry converges estimation after before-effect (1.019907ms)
+2026-10-03T16:06:37.9726299Z   ✔ cold retry converges estimation after after-effect-before-response (1.464082ms)
+2026-10-03T16:06:37.9726976Z   ✔ cold retry converges estimation after after-response-before-checkpoint (0.975093ms)
+2026-10-03T16:06:37.9727633Z   ✔ cold retry converges lifecycle after before-effect (0.745271ms)
+2026-10-03T16:06:37.9728239Z   ✔ cold retry converges lifecycle after after-effect-before-response (0.702451ms)
+2026-10-03T16:06:37.9729701Z   ✔ cold retry converges lifecycle after after-response-before-checkpoint (1.029615ms)
+2026-10-03T16:06:37.9730308Z   ✔ cold retry converges board after before-effect (0.900092ms)
+2026-10-03T16:06:37.9730877Z   ✔ cold retry converges board after after-effect-before-response (0.955466ms)
+2026-10-03T16:06:37.9731505Z   ✔ cold retry converges board after after-response-before-checkpoint (0.78228ms)
+2026-10-03T16:06:37.9732103Z   ✔ cold retry converges disposition after before-effect (0.636457ms)
+2026-10-03T16:06:37.9732723Z   ✔ cold retry converges disposition after after-effect-before-response (0.645524ms)
+2026-10-03T16:06:37.9733402Z   ✔ cold retry converges disposition after after-response-before-checkpoint (0.604917ms)
+2026-10-03T16:06:37.9733988Z   ✔ cold retry converges issue after before-effect (0.612702ms)
+2026-10-03T16:06:37.9734543Z   ✔ cold retry converges issue after after-effect-before-response (0.612732ms)
+2026-10-03T16:06:37.9735458Z   ✔ cold retry converges issue after after-response-before-checkpoint (0.578077ms)
+2026-10-03T16:06:37.9736022Z   ✔ cold retry converges labels after before-effect (0.764366ms)
+2026-10-03T16:06:37.9736589Z   ✔ cold retry converges labels after after-effect-before-response (0.815233ms)
+2026-10-03T16:06:37.9737225Z   ✔ cold retry converges labels after after-response-before-checkpoint (0.860077ms)
+2026-10-03T16:06:37.9737811Z   ✔ cold retry converges cleanup after before-effect (1.008375ms)
+2026-10-03T16:06:37.9738389Z   ✔ cold retry converges cleanup after after-effect-before-response (3.718991ms)
+2026-10-03T16:06:37.9739606Z   ✔ cold retry converges cleanup after after-response-before-checkpoint (0.716657ms)
+2026-10-03T16:06:37.9741046Z   ✔ pre-close contention refuses effects while a post-completion race is cleanup pending (1.009026ms)
+2026-10-03T16:06:37.9742253Z   ✔ public close dispatcher selects marked synthetic v2 and ignores unmarked v1 (105.850637ms)
+2026-10-03T16:06:37.9743023Z   ✔ recorded runtime context refuses production source before context construction (295.931923ms)
+2026-10-03T16:06:37.9743818Z   ✔ recorded context rejects storage links, alternates, executable config and remote escape (79.821169ms)
+2026-10-03T16:06:37.9744631Z   ✔ cold process denies network, arbitrary subprocesses and production filesystem access (154.078013ms)
+2026-10-03T16:06:37.9745368Z   ✔ Git executable options and remote hooks refuse before native execution (201.083507ms)
+2026-10-03T16:06:37.9746315Z   ✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (446.339323ms)
+2026-10-03T16:06:37.9747137Z   ✔ inspects #1490 complete then reopened without manufacturing missing evidence (5.340118ms)
+2026-10-03T16:06:37.9747865Z   ✔ inspects #1490 later successful close without manufacturing missing evidence (1.06425ms)
+2026-10-03T16:06:37.9748587Z   ✔ inspects #1488 delivered without receipts without manufacturing missing evidence (0.707129ms)
+2026-10-03T16:06:37.9749826Z   ✔ inspects #1485 incomplete verification without manufacturing missing evidence (0.995281ms)
+2026-10-03T16:06:37.9750607Z   ✔ missing source objects and malformed v2 history refuse during read-only inspection (1.775217ms)
+2026-10-03T16:06:37.9751092Z   ℹ tests 39
+2026-10-03T16:06:37.9751311Z   ℹ suites 0
+2026-10-03T16:06:37.9751528Z   ℹ pass 38
+2026-10-03T16:06:37.9751734Z   ℹ fail 1
+2026-10-03T16:06:37.9751945Z   ℹ cancelled 0
+2026-10-03T16:06:37.9752172Z   ℹ skipped 0
+2026-10-03T16:06:37.9752382Z   ℹ todo 0
+2026-10-03T16:06:37.9752613Z   ℹ duration_ms 1381.600986
+2026-10-03T16:06:37.9752855Z   
+2026-10-03T16:06:37.9753078Z   ✖ failing tests:
+2026-10-03T16:06:37.9753275Z   
+2026-10-03T16:06:37.9753712Z   test at scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:155:1
+2026-10-03T16:06:37.9754539Z   ✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (446.339323ms)
+2026-10-03T16:06:37.9755631Z     AssertionError [ERR_ASSERTION]: (node:16665) [PERM0002] SecurityWarning: The flag --allow-child-process must be used with extreme caution. It could invalidate the permission model.
+2026-10-03T16:06:37.9757761Z     (Use `node --trace-warnings ...` to show where the warning was created)
+2026-10-03T16:06:37.9758441Z     node:fs:1794
+2026-10-03T16:06:37.9759074Z       const stats = binding.stat(
+2026-10-03T16:06:37.9759513Z                             ^
+2026-10-03T16:06:37.9759882Z     
+2026-10-03T16:06:37.9760315Z     Error: Access to this API has been restricted. Use --allow-fs-read to manage permissions.
+2026-10-03T16:06:37.9760823Z         at statSync (node:fs:1794:25)
+2026-10-03T16:06:37.9761496Z         at resolveDocumentationReference (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/documentation.mjs:98:54)
+2026-10-03T16:06:37.9762319Z         at file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:186:24
+2026-10-03T16:06:37.9762800Z         at Array.forEach (<anonymous>)
+2026-10-03T16:06:37.9763579Z         at checkHumanLists (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:179:27)
+2026-10-03T16:06:37.9764358Z         at checkEntry (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:302:5)
+2026-10-03T16:06:37.9765104Z         at file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:427:9
+2026-10-03T16:06:37.9765583Z         at Array.forEach (<anonymous>)
+2026-10-03T16:06:37.9766146Z         at validateGuidance (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:426:21)
+2026-10-03T16:06:37.9766970Z         at loadSelectedGuidance (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/source.mjs:316:22) {
+2026-10-03T16:06:37.9767517Z       code: 'ERR_ACCESS_DENIED',
+2026-10-03T16:06:37.9767808Z       permission: 'FileSystemRead',
+2026-10-03T16:06:37.9768233Z       resource: '/home/runner/work/ai-task-manager/ai-task-manager/README.md'
+2026-10-03T16:06:37.9768615Z     }
+2026-10-03T16:06:37.9768791Z     
+2026-10-03T16:06:37.9769300Z     Node.js v24.21.0
+2026-10-03T16:06:37.9769527Z     
+2026-10-03T16:06:37.9769698Z     
+2026-10-03T16:06:37.9769873Z     1 !== 0
+2026-10-03T16:06:37.9770055Z     
+2026-10-03T16:06:37.9771282Z         at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:159:12)
+2026-10-03T16:06:37.9772834Z         at Test.runInAsyncScope (node:async_hooks:227:14)
+2026-10-03T16:06:37.9773781Z         at Test.run (node:internal/test_runner/test:1402:25)
+2026-10-03T16:06:37.9774318Z         at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+2026-10-03T16:06:37.9774823Z         at Test.postRun (node:internal/test_runner/test:1542:19)
+2026-10-03T16:06:37.9775248Z         at Test.run (node:internal/test_runner/test:1467:12)
+2026-10-03T16:06:37.9775753Z         at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+2026-10-03T16:06:37.9776211Z       generatedMessage: false,
+2026-10-03T16:06:37.9776477Z       code: 'ERR_ASSERTION',
+2026-10-03T16:06:37.9776717Z       actual: 1,
+2026-10-03T16:06:37.9776926Z       expected: 0,
+2026-10-03T16:06:37.9777162Z       operator: 'strictEqual',
+2026-10-03T16:06:37.9777408Z       diff: 'simple'
+2026-10-03T16:06:37.9777615Z     }
+2026-10-03T16:06:37.9777795Z   
+2026-10-03T16:06:37.9778393Z       at fail (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/evidence-v2/rehearsal-manifest.mjs:23:9)
+2026-10-03T16:06:37.9779775Z       at runRehearsal (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/evidence-v2/rehearsal-manifest.mjs:177:29)
+2026-10-03T16:06:37.9780990Z       at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs:53:15)
+2026-10-03T16:06:37.9781830Z       at Test.runInAsyncScope (node:async_hooks:227:14)
+2026-10-03T16:06:37.9782236Z       at Test.run (node:internal/test_runner/test:1402:25)
+2026-10-03T16:06:37.9782638Z       at Test.start (node:internal/test_runner/test:1262:17)
+2026-10-03T16:06:37.9783131Z       at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+2026-10-03T16:06:37.9783442Z 
+2026-10-03T16:06:37.9783854Z test at scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs:59:1
+2026-10-03T16:06:37.9784745Z ✖ capture refuses dirty sources and disposal refuses escapes or unreported work (1488.680888ms)
+2026-10-03T16:06:37.9785753Z   Error: evidence-v2-rehearsal:matrix-command:✔ new claims get fresh generations while heartbeat preserves the active generation (39.540355ms)
+2026-10-03T16:06:37.9786743Z   ✔ generation release preserves same-session newer and foreign claims under the authority lock (2.036358ms)
+2026-10-03T16:06:37.9787482Z   ✔ absent and paused bindings remain explicit cleanup observations (0.721707ms)
+2026-10-03T16:06:37.9788043Z   ✔ cold retry converges timing after before-effect (5.657084ms)
+2026-10-03T16:06:37.9788787Z   ✔ cold retry converges timing after after-effect-before-response (1.62788ms)
+2026-10-03T16:06:37.9789707Z   ✔ cold retry converges timing after after-response-before-checkpoint (1.214704ms)
+2026-10-03T16:06:37.9790782Z   ✔ cold retry converges estimation after before-effect (1.134643ms)
+2026-10-03T16:06:37.9791666Z   ✔ cold retry converges estimation after after-effect-before-response (1.343726ms)
+2026-10-03T16:06:37.9792435Z   ✔ cold retry converges estimation after after-response-before-checkpoint (1.020659ms)
+2026-10-03T16:06:37.9793126Z   ✔ cold retry converges lifecycle after before-effect (0.732337ms)
+2026-10-03T16:06:37.9793762Z   ✔ cold retry converges lifecycle after after-effect-before-response (0.661755ms)
+2026-10-03T16:06:37.9794423Z   ✔ cold retry converges lifecycle after after-response-before-checkpoint (0.907586ms)
+2026-10-03T16:06:37.9794998Z   ✔ cold retry converges board after before-effect (0.868692ms)
+2026-10-03T16:06:37.9795568Z   ✔ cold retry converges board after after-effect-before-response (1.050445ms)
+2026-10-03T16:06:37.9796190Z   ✔ cold retry converges board after after-response-before-checkpoint (0.770719ms)
+2026-10-03T16:06:37.9796770Z   ✔ cold retry converges disposition after before-effect (0.630295ms)
+2026-10-03T16:06:37.9797379Z   ✔ cold retry converges disposition after after-effect-before-response (0.733158ms)
+2026-10-03T16:06:37.9798053Z   ✔ cold retry converges disposition after after-response-before-checkpoint (0.676281ms)
+2026-10-03T16:06:37.9799046Z   ✔ cold retry converges issue after before-effect (0.632449ms)
+2026-10-03T16:06:37.9799799Z   ✔ cold retry converges issue after after-effect-before-response (0.615938ms)
+2026-10-03T16:06:37.9800461Z   ✔ cold retry converges issue after after-response-before-checkpoint (0.595268ms)
+2026-10-03T16:06:37.9801040Z   ✔ cold retry converges labels after before-effect (0.715275ms)
+2026-10-03T16:06:37.9801608Z   ✔ cold retry converges labels after after-effect-before-response (0.831032ms)
+2026-10-03T16:06:37.9802273Z   ✔ cold retry converges labels after after-response-before-checkpoint (0.896094ms)
+2026-10-03T16:06:37.9802847Z   ✔ cold retry converges cleanup after before-effect (1.065854ms)
+2026-10-03T16:06:37.9804123Z   ✔ cold retry converges cleanup after after-effect-before-response (6.406222ms)
+2026-10-03T16:06:37.9805349Z   ✔ cold retry converges cleanup after after-response-before-checkpoint (1.034665ms)
+2026-10-03T16:06:37.9806709Z   ✔ pre-close contention refuses effects while a post-completion race is cleanup pending (1.101291ms)
+2026-10-03T16:06:37.9808097Z   ✔ public close dispatcher selects marked synthetic v2 and ignores unmarked v1 (84.614007ms)
+2026-10-03T16:06:37.9809703Z   ✔ recorded runtime context refuses production source before context construction (288.759276ms)
+2026-10-03T16:06:37.9811164Z   ✔ recorded context rejects storage links, alternates, executable config and remote escape (92.582578ms)
+2026-10-03T16:06:37.9812653Z   ✔ cold process denies network, arbitrary subprocesses and production filesystem access (156.4124ms)
+2026-10-03T16:06:37.9814023Z   ✔ Git executable options and remote hooks refuse before native execution (194.141219ms)
+2026-10-03T16:06:37.9815434Z   ✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (434.433027ms)
+2026-10-03T16:06:37.9816796Z   ✔ inspects #1490 complete then reopened without manufacturing missing evidence (2.358995ms)
+2026-10-03T16:06:37.9818106Z   ✔ inspects #1490 later successful close without manufacturing missing evidence (0.963284ms)
+2026-10-03T16:06:37.9819681Z   ✔ inspects #1488 delivered without receipts without manufacturing missing evidence (0.392157ms)
+2026-10-03T16:06:37.9821113Z   ✔ inspects #1485 incomplete verification without manufacturing missing evidence (0.503587ms)
+2026-10-03T16:06:37.9822479Z   ✔ missing source objects and malformed v2 history refuse during read-only inspection (1.216897ms)
+2026-10-03T16:06:37.9823325Z   ℹ tests 39
+2026-10-03T16:06:37.9823941Z   ℹ suites 0
+2026-10-03T16:06:37.9824305Z   ℹ pass 38
+2026-10-03T16:06:37.9824654Z   ℹ fail 1
+2026-10-03T16:06:37.9825008Z   ℹ cancelled 0
+2026-10-03T16:06:37.9825447Z   ℹ skipped 0
+2026-10-03T16:06:37.9825808Z   ℹ todo 0
+2026-10-03T16:06:37.9826198Z   ℹ duration_ms 1341.185672
+2026-10-03T16:06:37.9826584Z   
+2026-10-03T16:06:37.9826941Z   ✖ failing tests:
+2026-10-03T16:06:37.9827274Z   
+2026-10-03T16:06:37.9828000Z   test at scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:155:1
+2026-10-03T16:06:37.9829675Z   ✖ real dispatcher runs in a fresh recorded context and refuses production issue preflight (434.433027ms)
+2026-10-03T16:06:37.9831634Z     AssertionError [ERR_ASSERTION]: (node:17010) [PERM0002] SecurityWarning: The flag --allow-child-process must be used with extreme caution. It could invalidate the permission model.
+2026-10-03T16:06:37.9833340Z     (Use `node --trace-warnings ...` to show where the warning was created)
+2026-10-03T16:06:37.9834016Z     node:fs:1794
+2026-10-03T16:06:37.9834425Z       const stats = binding.stat(
+2026-10-03T16:06:37.9834891Z                             ^
+2026-10-03T16:06:37.9835271Z     
+2026-10-03T16:06:37.9835989Z     Error: Access to this API has been restricted. Use --allow-fs-read to manage permissions.
+2026-10-03T16:06:37.9836860Z         at statSync (node:fs:1794:25)
+2026-10-03T16:06:37.9837798Z         at resolveDocumentationReference (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/documentation.mjs:98:54)
+2026-10-03T16:06:37.9839719Z         at file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:186:24
+2026-10-03T16:06:37.9840289Z         at Array.forEach (<anonymous>)
+2026-10-03T16:06:37.9840878Z         at checkHumanLists (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:179:27)
+2026-10-03T16:06:37.9841653Z         at checkEntry (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:302:5)
+2026-10-03T16:06:37.9842356Z         at file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:427:9
+2026-10-03T16:06:37.9842827Z         at Array.forEach (<anonymous>)
+2026-10-03T16:06:37.9843405Z         at validateGuidance (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/validate.mjs:426:21)
+2026-10-03T16:06:37.9844233Z         at loadSelectedGuidance (file:///home/runner/work/ai-task-manager/ai-task-manager/guidance/source.mjs:316:22) {
+2026-10-03T16:06:37.9844783Z       code: 'ERR_ACCESS_DENIED',
+2026-10-03T16:06:37.9845077Z       permission: 'FileSystemRead',
+2026-10-03T16:06:37.9845507Z       resource: '/home/runner/work/ai-task-manager/ai-task-manager/README.md'
+2026-10-03T16:06:37.9845884Z     }
+2026-10-03T16:06:37.9846059Z     
+2026-10-03T16:06:37.9846250Z     Node.js v24.21.0
+2026-10-03T16:06:37.9846453Z     
+2026-10-03T16:06:37.9846622Z     
+2026-10-03T16:06:37.9846794Z     1 !== 0
+2026-10-03T16:06:37.9846976Z     
+2026-10-03T16:06:37.9847707Z         at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs:159:12)
+2026-10-03T16:06:37.9848521Z         at Test.runInAsyncScope (node:async_hooks:227:14)
+2026-10-03T16:06:37.9849209Z         at Test.run (node:internal/test_runner/test:1402:25)
+2026-10-03T16:06:37.9849725Z         at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+2026-10-03T16:06:37.9850220Z         at Test.postRun (node:internal/test_runner/test:1542:19)
+2026-10-03T16:06:37.9850637Z         at Test.run (node:internal/test_runner/test:1467:12)
+2026-10-03T16:06:37.9851140Z         at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+2026-10-03T16:06:37.9851588Z       generatedMessage: false,
+2026-10-03T16:06:37.9851856Z       code: 'ERR_ASSERTION',
+2026-10-03T16:06:37.9852089Z       actual: 1,
+2026-10-03T16:06:37.9852294Z       expected: 0,
+2026-10-03T16:06:37.9852534Z       operator: 'strictEqual',
+2026-10-03T16:06:37.9852943Z       diff: 'simple'
+2026-10-03T16:06:37.9853151Z     }
+2026-10-03T16:06:37.9853329Z   
+2026-10-03T16:06:37.9853932Z       at fail (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/evidence-v2/rehearsal-manifest.mjs:23:9)
+2026-10-03T16:06:37.9854964Z       at runRehearsal (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/evidence-v2/rehearsal-manifest.mjs:177:29)
+2026-10-03T16:06:37.9856174Z       at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs:76:15)
+2026-10-03T16:06:37.9857007Z       at Test.runInAsyncScope (node:async_hooks:227:14)
+2026-10-03T16:06:37.9857401Z       at Test.run (node:internal/test_runner/test:1402:25)
+2026-10-03T16:06:37.9857874Z       at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+2026-10-03T16:06:37.9858358Z       at Test.postRun (node:internal/test_runner/test:1542:19)
+2026-10-03T16:06:37.9858765Z       at Test.run (node:internal/test_runner/test:1467:12)
+2026-10-03T16:06:37.9859400Z       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+2026-10-03T16:06:37.9859726Z 
+2026-10-03T16:06:37.9870259Z ##[error]Process completed with exit code 1.
+2026-10-03T16:06:38.1157656Z Post job cleanup.
+2026-10-03T16:06:38.2053640Z [command]/usr/bin/git version
+2026-10-03T16:06:38.2097537Z git version 2.55.0
+2026-10-03T16:06:38.2141573Z Temporarily overriding HOME='/home/runner/work/_temp/4da006ec-b10d-4a6e-aefb-505b1b67600a' before making global git config changes
+2026-10-03T16:06:38.2143193Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-03T16:06:38.2147708Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-03T16:06:38.2195196Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-03T16:06:38.2245636Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-03T16:06:38.2499538Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-03T16:06:38.2527896Z http.https://github.com/.extraheader
+2026-10-03T16:06:38.2541572Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-03T16:06:38.2579488Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-03T16:06:38.2889847Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-03T16:06:38.2960736Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-03T16:06:38.3608355Z Cleaning up orphan processes

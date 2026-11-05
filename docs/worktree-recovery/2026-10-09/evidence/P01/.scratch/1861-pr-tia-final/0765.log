@@ -1,0 +1,13 @@
+✔ catalog is finite, versioned, unique, and deeply immutable (1.22375ms)
+✔ planning and review bundles are explicit and do not absorb approvals (0.521417ms)
+✔ unknown bundles and requirements fail closed (0.128084ms)
+✔ delivery invariants are non-waivable (0.0885ms)
+✔ consumer coverage rejects missing and unknown mappings (0.433167ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.452291

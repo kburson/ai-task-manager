@@ -1,0 +1,13 @@
+✔ a fresh registered worktree initializes empty local authority without changing the original migration or inheriting volatile bytes (3722.226833ms)
+✔ empty linked initialization refuses existing durable evidence at .db/aitm/ready-for-plan-migration.json (892.36675ms)
+✔ empty linked initialization refuses existing durable evidence at .claude/task-tracker-state.json (929.720875ms)
+✔ empty linked initialization refuses existing durable evidence at .ai-task-manager/task-tracker-state.json (1783.072041ms)
+✔ empty linked initialization rechecks durable absence before applying an approved plan (1238.795ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8570.275875

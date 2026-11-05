@@ -1,0 +1,61 @@
+✖ historical capture bytes remain reproducible without any original Git objects (19.794208ms)
+✖ a missing Git object never permits changed archived bytes (22.02025ms)
+✖ a missing Git object never permits an undeclared archive entry (26.95275ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 73.5915
+
+✖ failing tests:
+
+test at scripts/tests/integration/meta/captured-commit-bytes.test.mjs:21:1
+✖ historical capture bytes remain reproducible without any original Git objects (19.794208ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at isolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:15:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:22:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/meta/captured-commit-bytes.test.mjs:38:1
+✖ a missing Git object never permits changed archived bytes (22.02025ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at isolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:15:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:39:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/meta/captured-commit-bytes.test.mjs:44:1
+✖ a missing Git object never permits an undeclared archive entry (26.95275ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at isolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:15:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/meta/captured-commit-bytes.test.mjs:45:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

@@ -1,0 +1,522 @@
+﻿2026-10-04T00:54:03.6502174Z Current runner version: '2.337.0'
+2026-10-04T00:54:03.6518817Z ##[group]Runner Image Provisioner
+2026-10-04T00:54:03.6519312Z Hosted Compute Agent
+2026-10-04T00:54:03.6519771Z Version: 20260901.588
+2026-10-04T00:54:03.6520128Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-04T00:54:03.6520568Z Build Date: 2026-09-01T19:56:44Z
+2026-10-04T00:54:03.6520993Z Worker ID: {96b908f1-958e-4c4a-a433-ed9c743710d1}
+2026-10-04T00:54:03.6521383Z Azure Region: centralus
+2026-10-04T00:54:03.6521791Z ##[endgroup]
+2026-10-04T00:54:03.6522749Z ##[group]Operating System
+2026-10-04T00:54:03.6523125Z Ubuntu
+2026-10-04T00:54:03.6523431Z 24.04.5
+2026-10-04T00:54:03.6523722Z LTS
+2026-10-04T00:54:03.6524083Z ##[endgroup]
+2026-10-04T00:54:03.6524392Z ##[group]Runner Image
+2026-10-04T00:54:03.6524790Z Image: ubuntu-24.04
+2026-10-04T00:54:03.6525122Z Version: 20260927.320.1
+2026-10-04T00:54:03.6525830Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-04T00:54:03.6526776Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-04T00:54:03.6527378Z ##[endgroup]
+2026-10-04T00:54:03.6527988Z ##[group]GITHUB_TOKEN Permissions
+2026-10-04T00:54:03.6529171Z Contents: read
+2026-10-04T00:54:03.6529551Z Metadata: read
+2026-10-04T00:54:03.6529867Z ##[endgroup]
+2026-10-04T00:54:03.6531345Z Secret source: Actions
+2026-10-04T00:54:03.6531913Z Cache mode: write
+2026-10-04T00:54:03.6532551Z Prepare workflow directory
+2026-10-04T00:54:03.6770686Z Prepare all required actions
+2026-10-04T00:54:03.6800511Z Getting action download info
+2026-10-04T00:54:03.8982449Z Download action repository 'actions/checkout@v5' (SHA:fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+2026-10-04T00:54:03.9816178Z Download action repository 'actions/setup-node@v5' (SHA:a0853c24544627f65ddf259abe73b1d18a591444)
+2026-10-04T00:54:04.1475304Z Complete job name: Fast lane (format, lint, unit + integration)
+2026-10-04T00:54:04.1935328Z ##[group]Run actions/checkout@v5
+2026-10-04T00:54:04.1935753Z with:
+2026-10-04T00:54:04.1935975Z   fetch-depth: 0
+2026-10-04T00:54:04.1936224Z   repository: kburson/ai-task-manager
+2026-10-04T00:54:04.1938172Z   token: ***
+2026-10-04T00:54:04.1938397Z   ssh-strict: true
+2026-10-04T00:54:04.1938626Z   ssh-user: git
+2026-10-04T00:54:04.1938859Z   persist-credentials: true
+2026-10-04T00:54:04.1939109Z   clean: true
+2026-10-04T00:54:04.1939345Z   sparse-checkout-cone-mode: true
+2026-10-04T00:54:04.1939617Z   fetch-tags: false
+2026-10-04T00:54:04.1939844Z   show-progress: true
+2026-10-04T00:54:04.1940074Z   lfs: false
+2026-10-04T00:54:04.1940288Z   submodules: false
+2026-10-04T00:54:04.1940521Z   set-safe-directory: true
+2026-10-04T00:54:04.1940783Z   allow-unsafe-pr-checkout: false
+2026-10-04T00:54:04.1941110Z env:
+2026-10-04T00:54:04.1941332Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:04.1941608Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:04.1941936Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:04.1942341Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:04.1942621Z ##[endgroup]
+2026-10-04T00:54:04.2617693Z Syncing repository: kburson/ai-task-manager
+2026-10-04T00:54:04.2619334Z ##[group]Getting Git version info
+2026-10-04T00:54:04.2619842Z Working directory is '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-04T00:54:04.2620490Z [command]/usr/bin/git version
+2026-10-04T00:54:04.2683194Z git version 2.55.0
+2026-10-04T00:54:04.2695883Z ##[endgroup]
+2026-10-04T00:54:04.2708954Z Temporarily overriding HOME='/home/runner/work/_temp/106a28da-228c-40db-9c33-35356f067b15' before making global git config changes
+2026-10-04T00:54:04.2710417Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T00:54:04.2713625Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T00:54:04.2758322Z Deleting the contents of '/home/runner/work/ai-task-manager/ai-task-manager'
+2026-10-04T00:54:04.2761119Z ##[group]Initializing the repository
+2026-10-04T00:54:04.2763925Z [command]/usr/bin/git init /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T00:54:04.2900412Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-04T00:54:04.2901289Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-04T00:54:04.2902173Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-04T00:54:04.2902761Z hint: call:
+2026-10-04T00:54:04.2903172Z hint:
+2026-10-04T00:54:04.2903827Z hint: 	git config --global init.defaultBranch <name>
+2026-10-04T00:54:04.2904787Z hint:
+2026-10-04T00:54:04.2905615Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-04T00:54:04.2906389Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-04T00:54:04.2906873Z hint:
+2026-10-04T00:54:04.2907135Z hint: 	git branch -m <name>
+2026-10-04T00:54:04.2907503Z hint:
+2026-10-04T00:54:04.2907915Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-04T00:54:04.2908658Z Initialized empty Git repository in /home/runner/work/ai-task-manager/ai-task-manager/.git/
+2026-10-04T00:54:04.2918261Z [command]/usr/bin/git remote add origin https://github.com/kburson/ai-task-manager
+2026-10-04T00:54:04.2971255Z ##[endgroup]
+2026-10-04T00:54:04.2971954Z ##[group]Disabling automatic garbage collection
+2026-10-04T00:54:04.2974499Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-04T00:54:04.3005769Z ##[endgroup]
+2026-10-04T00:54:04.3006465Z ##[group]Setting up auth
+2026-10-04T00:54:04.3011741Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T00:54:04.3043069Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T00:54:04.3336567Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T00:54:04.3363470Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T00:54:04.3536238Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T00:54:04.3563366Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T00:54:04.3730483Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-04T00:54:04.3763639Z ##[endgroup]
+2026-10-04T00:54:04.3764130Z ##[group]Fetching the repository
+2026-10-04T00:54:04.3769886Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +ec186ec8d75b5de4d6111b3ae2db121685a4ac6f:refs/remotes/pull/1871/merge
+2026-10-04T00:54:06.4783668Z From https://github.com/kburson/ai-task-manager
+2026-10-04T00:54:06.4785228Z  * [new branch]        1356-review-receipt-reuse -> origin/1356-review-receipt-reuse
+2026-10-04T00:54:06.4786651Z  * [new branch]        ai-memory               -> origin/ai-memory
+2026-10-04T00:54:06.4787876Z  * [new branch]        aipr-setup              -> origin/aipr-setup
+2026-10-04T00:54:06.4789292Z  * [new branch]        archive/XPR-SPR-SAR-experiment -> origin/archive/XPR-SPR-SAR-experiment
+2026-10-04T00:54:06.4790977Z  * [new branch]        back-set-package-version -> origin/back-set-package-version
+2026-10-04T00:54:06.4793179Z  * [new branch]        chore/db-ignore-and-codex-token-burn-guide -> origin/chore/db-ignore-and-codex-token-burn-guide
+2026-10-04T00:54:06.4795432Z  * [new branch]        claude/1187-heal-departure-at -> origin/claude/1187-heal-departure-at
+2026-10-04T00:54:06.4797494Z  * [new branch]        claude/1562-merge-method-reconcile -> origin/claude/1562-merge-method-reconcile
+2026-10-04T00:54:06.4800027Z  * [new branch]        claude/1755-final-acceptance-ad486a -> origin/claude/1755-final-acceptance-ad486a
+2026-10-04T00:54:06.4802491Z  * [new branch]        claude/aad-yml-config-exploration-6d0cf6 -> origin/claude/aad-yml-config-exploration-6d0cf6
+2026-10-04T00:54:06.4805132Z  * [new branch]        claude/articles-book-publication-6a7dfe -> origin/claude/articles-book-publication-6a7dfe
+2026-10-04T00:54:06.4807752Z  * [new branch]        claude/pull-branch-trunk-origin-c647e3 -> origin/claude/pull-branch-trunk-origin-c647e3
+2026-10-04T00:54:06.4809877Z  * [new branch]        claude/readme-update-current-state-5d1f2c -> origin/claude/readme-update-current-state-5d1f2c
+2026-10-04T00:54:06.4811964Z  * [new branch]        claude/resume-session-837-bf8599 -> origin/claude/resume-session-837-bf8599
+2026-10-04T00:54:06.4813646Z  * [new branch]        claude/task-912-13506a  -> origin/claude/task-912-13506a
+2026-10-04T00:54:06.4815156Z  * [new branch]        claude/task-923-bb70a6  -> origin/claude/task-923-bb70a6
+2026-10-04T00:54:06.4816888Z  * [new branch]        claude/task-935-demote-guard -> origin/claude/task-935-demote-guard
+2026-10-04T00:54:06.4818302Z  * [new branch]        claude/task-978-e174fb  -> origin/claude/task-978-e174fb
+2026-10-04T00:54:06.4819560Z  * [new branch]        claude/task-979-17fbdf  -> origin/claude/task-979-17fbdf
+2026-10-04T00:54:06.4821089Z  * [new branch]        claude/trunk-drift-reverify-3ff5d2 -> origin/claude/trunk-drift-reverify-3ff5d2
+2026-10-04T00:54:06.4822716Z  * [new branch]        cleanup-memory          -> origin/cleanup-memory
+2026-10-04T00:54:06.4824184Z  * [new branch]        codex/1117-state-components -> origin/codex/1117-state-components
+2026-10-04T00:54:06.4825834Z  * [new branch]        codex/1208-weighted-test-pool -> origin/codex/1208-weighted-test-pool
+2026-10-04T00:54:06.4827460Z  * [new branch]        codex/1219-tiered-test-spec -> origin/codex/1219-tiered-test-spec
+2026-10-04T00:54:06.4829335Z  * [new branch]        codex/1254-test-receipt-reuse -> origin/codex/1254-test-receipt-reuse
+2026-10-04T00:54:06.4831048Z  * [new branch]        codex/1260-pull-next-guidance -> origin/codex/1260-pull-next-guidance
+2026-10-04T00:54:06.4832860Z  * [new branch]        codex/1262-reference-mode-repin -> origin/codex/1262-reference-mode-repin
+2026-10-04T00:54:06.4834515Z  * [new branch]        codex/1262-tia-design-plan -> origin/codex/1262-tia-design-plan
+2026-10-04T00:54:06.4836224Z  * [new branch]        codex/1263-test-corpus-registry -> origin/codex/1263-test-corpus-registry
+2026-10-04T00:54:06.4838201Z  * [new branch]        codex/1268-implementation-plan -> origin/codex/1268-implementation-plan
+2026-10-04T00:54:06.4840286Z  * [new branch]        codex/1269-guided-co-review-start-spec -> origin/codex/1269-guided-co-review-start-spec
+2026-10-04T00:54:06.4843032Z  * [new branch]        codex/1272-spec-plan-archive -> origin/codex/1272-spec-plan-archive
+2026-10-04T00:54:06.4845592Z  * [new branch]        codex/1273-active-budget-control -> origin/codex/1273-active-budget-control
+2026-10-04T00:54:06.4848255Z  * [new branch]        codex/1279-post-split-wbs-admission -> origin/codex/1279-post-split-wbs-admission
+2026-10-04T00:54:06.4850946Z  * [new branch]        codex/1281-child-decomposition-scope -> origin/codex/1281-child-decomposition-scope
+2026-10-04T00:54:06.4854356Z  * [new branch]        codex/1284-legacy-epic-branch-resolution -> origin/codex/1284-legacy-epic-branch-resolution
+2026-10-04T00:54:06.4856819Z  * [new branch]        codex/1287-wbs-readiness -> origin/codex/1287-wbs-readiness
+2026-10-04T00:54:06.4859039Z  * [new branch]        codex/1292-co-review-fixture-cost -> origin/codex/1292-co-review-fixture-cost
+2026-10-04T00:54:06.4861525Z  * [new branch]        codex/1293-test-import-wave -> origin/codex/1293-test-import-wave
+2026-10-04T00:54:06.4863373Z  * [new branch]        codex/1294-serial-classification -> origin/codex/1294-serial-classification
+2026-10-04T00:54:06.4865163Z  * [new branch]        codex/1295-github-action-capture -> origin/codex/1295-github-action-capture
+2026-10-04T00:54:06.4867068Z  * [new branch]        codex/1296-packaging-canary -> origin/codex/1296-packaging-canary
+2026-10-04T00:54:06.4869045Z  * [new branch]        codex/1297-release-closed-binding -> origin/codex/1297-release-closed-binding
+2026-10-04T00:54:06.4870988Z  * [new branch]        codex/1304-slow-lane-partition -> origin/codex/1304-slow-lane-partition
+2026-10-04T00:54:06.4872898Z  * [new branch]        codex/1314-co-review-reference-archive -> origin/codex/1314-co-review-reference-archive
+2026-10-04T00:54:06.4874687Z  * [new branch]        codex/1317-docs-only-lane-skip -> origin/codex/1317-docs-only-lane-skip
+2026-10-04T00:54:06.4876278Z  * [new branch]        codex/1319-derived-checkbox -> origin/codex/1319-derived-checkbox
+2026-10-04T00:54:06.4878582Z  * [new branch]        codex/1322-co-review-consistent-snapshot -> origin/codex/1322-co-review-consistent-snapshot
+2026-10-04T00:54:06.4880495Z  * [new branch]        codex/1331-coreview-wave -> origin/codex/1331-coreview-wave
+2026-10-04T00:54:06.4882497Z  * [new branch]        codex/1356-receipt-reuse-hardening -> origin/codex/1356-receipt-reuse-hardening
+2026-10-04T00:54:06.4884425Z  * [new branch]        codex/1359-co-review-session-fixture -> origin/codex/1359-co-review-session-fixture
+2026-10-04T00:54:06.4886323Z  * [new branch]        codex/1365-reviewer-bash-guard -> origin/codex/1365-reviewer-bash-guard
+2026-10-04T00:54:06.4888003Z  * [new branch]        codex/1367-reviewer-handoff-prose -> origin/codex/1367-reviewer-handoff-prose
+2026-10-04T00:54:06.4889891Z  * [new branch]        codex/1369-co-review-claude-handoff -> origin/codex/1369-co-review-claude-handoff
+2026-10-04T00:54:06.4891557Z  * [new branch]        codex/1372-stale-review-grant -> origin/codex/1372-stale-review-grant
+2026-10-04T00:54:06.4893411Z  * [new branch]        codex/1374-co-review-archive-recovery -> origin/codex/1374-co-review-archive-recovery
+2026-10-04T00:54:06.4895605Z  * [new branch]        codex/1381-governed-delivery-convergence-spec -> origin/codex/1381-governed-delivery-convergence-spec
+2026-10-04T00:54:06.4897653Z  * [new branch]        codex/1406-reviewer-full-permissions -> origin/codex/1406-reviewer-full-permissions
+2026-10-04T00:54:06.4899520Z  * [new branch]        codex/1408-offline-gh-reconciliation -> origin/codex/1408-offline-gh-reconciliation
+2026-10-04T00:54:06.4901441Z  * [new branch]        codex/1411-residue-audit-reconciliation -> origin/codex/1411-residue-audit-reconciliation
+2026-10-04T00:54:06.4903382Z  * [new branch]        codex/1412-stale-sandbox-reaper -> origin/codex/1412-stale-sandbox-reaper
+2026-10-04T00:54:06.4905006Z  * [new branch]        codex/1421-resume-review-timer -> origin/codex/1421-resume-review-timer
+2026-10-04T00:54:06.4962904Z  * [new branch]        codex/1442-same-second-timing-repair -> origin/codex/1442-same-second-timing-repair
+2026-10-04T00:54:06.4964727Z  * [new branch]        codex/1464-close-lineage -> origin/codex/1464-close-lineage
+2026-10-04T00:54:06.4966212Z  * [new branch]        codex/1468-delivery-recovery -> origin/codex/1468-delivery-recovery
+2026-10-04T00:54:06.4967794Z  * [new branch]        codex/1470-legacy-attribution -> origin/codex/1470-legacy-attribution
+2026-10-04T00:54:06.4969380Z  * [new branch]        codex/1558-ask-the-script-spec -> origin/codex/1558-ask-the-script-spec
+2026-10-04T00:54:06.4971118Z  * [new branch]        codex/1558-guidance-replacement-plan -> origin/codex/1558-guidance-replacement-plan
+2026-10-04T00:54:06.4972900Z  * [new branch]        codex/1558-guidance-review -> origin/codex/1558-guidance-review
+2026-10-04T00:54:06.4974431Z  * [new branch]        codex/1558-guidance-spec-review -> origin/codex/1558-guidance-spec-review
+2026-10-04T00:54:06.4976086Z  * [new branch]        codex/1558-hydration-wbs-review -> origin/codex/1558-hydration-wbs-review
+2026-10-04T00:54:06.4977698Z  * [new branch]        codex/1558-waived-close-repair -> origin/codex/1558-waived-close-repair
+2026-10-04T00:54:06.4979408Z  * [new branch]        codex/1615-node24-npm-pack-reports -> origin/codex/1615-node24-npm-pack-reports
+2026-10-04T00:54:06.4981480Z  * [new branch]        codex/1618-detect-incompatible-workflows -> origin/codex/1618-detect-incompatible-workflows
+2026-10-04T00:54:06.4983553Z  * [new branch]        codex/1619-receipt-attribution-recovery -> origin/codex/1619-receipt-attribution-recovery
+2026-10-04T00:54:06.4985256Z  * [new branch]        codex/1631-package-boundary -> origin/codex/1631-package-boundary
+2026-10-04T00:54:06.4986825Z  * [new branch]        codex/1683-review-waiver-delivery -> origin/codex/1683-review-waiver-delivery
+2026-10-04T00:54:06.4988346Z  * [new branch]        codex/1685-ci-stacked-pr -> origin/codex/1685-ci-stacked-pr
+2026-10-04T00:54:06.4989862Z  * [new branch]        codex/1690-review-waiver-authority -> origin/codex/1690-review-waiver-authority
+2026-10-04T00:54:06.4991668Z  * [new branch]        codex/1691-lifecycle-authority-research -> origin/codex/1691-lifecycle-authority-research
+2026-10-04T00:54:06.4993655Z  * [new branch]        codex/1692-install-contract-manifest -> origin/codex/1692-install-contract-manifest
+2026-10-04T00:54:06.4995293Z  * [new branch]        codex/1693-doctor-engine-cli -> origin/codex/1693-doctor-engine-cli
+2026-10-04T00:54:06.4996761Z  * [new branch]        codex/1696-full-auto-default -> origin/codex/1696-full-auto-default
+2026-10-04T00:54:06.4998518Z  * [new branch]        codex/1702-workflow-waiver-canonical-instant -> origin/codex/1702-workflow-waiver-canonical-instant
+2026-10-04T00:54:06.5000396Z  * [new branch]        codex/1703-user-story-value-quality -> origin/codex/1703-user-story-value-quality
+2026-10-04T00:54:06.5002484Z  * [new branch]        codex/1706-remove-extracted-review-coupling -> origin/codex/1706-remove-extracted-review-coupling
+2026-10-04T00:54:06.5004405Z  * [new branch]        codex/1716-plan-approval-evidence-repair -> origin/codex/1716-plan-approval-evidence-repair
+2026-10-04T00:54:06.5006116Z  * [new branch]        codex/1719-story-cost-plan -> origin/codex/1719-story-cost-plan
+2026-10-04T00:54:06.5007578Z  * [new branch]        codex/1719-story-cost-spec-review -> origin/codex/1719-story-cost-spec-review
+2026-10-04T00:54:06.5009160Z  * [new branch]        codex/1719-story-intent-amendment -> origin/codex/1719-story-intent-amendment
+2026-10-04T00:54:06.5010806Z  * [new branch]        codex/1720-plan-transition-authority -> origin/codex/1720-plan-transition-authority
+2026-10-04T00:54:06.5012404Z  * [new branch]        codex/1725-mcp-plan-xpr -> origin/codex/1725-mcp-plan-xpr
+2026-10-04T00:54:06.5013751Z  * [new branch]        codex/1764-approval-triad-spec -> origin/codex/1764-approval-triad-spec
+2026-10-04T00:54:06.5015278Z  * [new branch]        codex/1768-review-lifecycle-spec -> origin/codex/1768-review-lifecycle-spec
+2026-10-04T00:54:06.5016909Z  * [new branch]        codex/1779-project-provider-receipts -> origin/codex/1779-project-provider-receipts
+2026-10-04T00:54:06.5018645Z  * [new branch]        codex/1781-actionable-refusal-explain -> origin/codex/1781-actionable-refusal-explain
+2026-10-04T00:54:06.5020242Z  * [new branch]        codex/1782-project-npm-ci-args -> origin/codex/1782-project-npm-ci-args
+2026-10-04T00:54:06.5021833Z  * [new branch]        codex/1783-one-issue-local-trunk-close -> origin/codex/1783-one-issue-local-trunk-close
+2026-10-04T00:54:06.5023587Z  * [new branch]        codex/1787-delivery-waiver-design -> origin/codex/1787-delivery-waiver-design
+2026-10-04T00:54:06.5025063Z  * [new branch]        codex/1806-hook-launcher-spec -> origin/codex/1806-hook-launcher-spec
+2026-10-04T00:54:06.5026562Z  * [new branch]        codex/1809-method-neutral-delivery -> origin/codex/1809-method-neutral-delivery
+2026-10-04T00:54:06.5028054Z  * [new branch]        codex/1818-graphql-usage-plan -> origin/codex/1818-graphql-usage-plan
+2026-10-04T00:54:06.5029527Z  * [new branch]        codex/1830-mutation-guard-context -> origin/codex/1830-mutation-guard-context
+2026-10-04T00:54:06.5031087Z  * [new branch]        codex/1831-codex-skills-read-scope -> origin/codex/1831-codex-skills-read-scope
+2026-10-04T00:54:06.5032649Z  * [new branch]        codex/1841-guard-audit  -> origin/codex/1841-guard-audit
+2026-10-04T00:54:06.5033773Z  * [new branch]        codex/1847-draft        -> origin/codex/1847-draft
+2026-10-04T00:54:06.5035049Z  * [new branch]        codex/1848-backlog-design-drafts -> origin/codex/1848-backlog-design-drafts
+2026-10-04T00:54:06.5036399Z  * [new branch]        codex/1857-continuation -> origin/codex/1857-continuation
+2026-10-04T00:54:06.5037871Z  * [new branch]        codex/1859-consolidated-safety-5076a2ab -> origin/codex/1859-consolidated-safety-5076a2ab
+2026-10-04T00:54:06.5039565Z  * [new branch]        codex/1859-delivery-history-d3a92172 -> origin/codex/1859-delivery-history-d3a92172
+2026-10-04T00:54:06.5041142Z  * [new branch]        codex/876-centralize-test-corpus -> origin/codex/876-centralize-test-corpus
+2026-10-04T00:54:06.5042700Z  * [new branch]        codex/937-promote-test-parity -> origin/codex/937-promote-test-parity
+2026-10-04T00:54:06.5044047Z  * [new branch]        codex/939-full-auto-merge -> origin/codex/939-full-auto-merge
+2026-10-04T00:54:06.5045410Z  * [new branch]        codex/977-duration-field-labels -> origin/codex/977-duration-field-labels
+2026-10-04T00:54:06.5046853Z  * [new branch]        codex/agentic-diagram-gallery -> origin/codex/agentic-diagram-gallery
+2026-10-04T00:54:06.5048233Z  * [new branch]        codex/ai-peer-review-design -> origin/codex/ai-peer-review-design
+2026-10-04T00:54:06.5049731Z  * [new branch]        codex/aitm-mcp-adapter-architecture -> origin/codex/aitm-mcp-adapter-architecture
+2026-10-04T00:54:06.5051498Z  * [new branch]        codex/archive-1053-pre-github-native-pivot -> origin/codex/archive-1053-pre-github-native-pivot
+2026-10-04T00:54:06.5053438Z  * [new branch]        codex/archive-1054-pre-github-native-pivot -> origin/codex/archive-1054-pre-github-native-pivot
+2026-10-04T00:54:06.5055316Z  * [new branch]        codex/audit-1633-done-delivery-survey -> origin/codex/audit-1633-done-delivery-survey
+2026-10-04T00:54:06.5057015Z  * [new branch]        codex/audit-1635-1624-delivery-recovery -> origin/codex/audit-1635-1624-delivery-recovery
+2026-10-04T00:54:06.5058521Z  * [new branch]        codex/backlog-history-epic -> origin/codex/backlog-history-epic
+2026-10-04T00:54:06.5059965Z  * [new branch]        codex/chore-1512-full-auto-default -> origin/codex/chore-1512-full-auto-default
+2026-10-04T00:54:06.5061515Z  * [new branch]        codex/chore-github-native-records -> origin/codex/chore-github-native-records
+2026-10-04T00:54:06.5063166Z  * [new branch]        codex/chore-latest-dependencies -> origin/codex/chore-latest-dependencies
+2026-10-04T00:54:06.5064534Z  * [new branch]        codex/claude-hook-cleanup -> origin/codex/claude-hook-cleanup
+2026-10-04T00:54:06.5065967Z  * [new branch]        codex/defect-1481-receipt-integrity -> origin/codex/defect-1481-receipt-integrity
+2026-10-04T00:54:06.5067619Z  * [new branch]        codex/defect-1485-merge-back-authority -> origin/codex/defect-1485-merge-back-authority
+2026-10-04T00:54:06.5069253Z  * [new branch]        codex/defect-1488-review-bind-timer -> origin/codex/defect-1488-review-bind-timer
+2026-10-04T00:54:06.5070898Z  * [new branch]        codex/defect-1490-squash-delivery-proof -> origin/codex/defect-1490-squash-delivery-proof
+2026-10-04T00:54:06.5072615Z  * [new branch]        codex/defect-1574-historical-intent -> origin/codex/defect-1574-historical-intent
+2026-10-04T00:54:06.5074333Z  * [new branch]        codex/defect-1583-secondary-squash-recovery -> origin/codex/defect-1583-secondary-squash-recovery
+2026-10-04T00:54:06.5075919Z  * [new branch]        codex/defect-1595-vc-citation -> origin/codex/defect-1595-vc-citation
+2026-10-04T00:54:06.5077390Z  * [new branch]        codex/defect-1597-tombstone-recovery -> origin/codex/defect-1597-tombstone-recovery
+2026-10-04T00:54:06.5079012Z  * [new branch]        codex/defect-1599-test-receipt-ac-tick -> origin/codex/defect-1599-test-receipt-ac-tick
+2026-10-04T00:54:06.5080793Z  * [new branch]        codex/defect-1601-merge-back-child-authority -> origin/codex/defect-1601-merge-back-child-authority
+2026-10-04T00:54:06.5082670Z  * [new branch]        codex/defect-1603-epic-test-deferral -> origin/codex/defect-1603-epic-test-deferral
+2026-10-04T00:54:06.5084302Z  * [new branch]        codex/defect-1632-trunk-delivery-gate -> origin/codex/defect-1632-trunk-delivery-gate
+2026-10-04T00:54:06.5086117Z  * [new branch]        codex/defect-1755-delivery-attribution-exception -> origin/codex/defect-1755-delivery-attribution-exception
+2026-10-04T00:54:06.5088107Z  * [new branch]        codex/defect-1802-close-readiness-trunk-default -> origin/codex/defect-1802-close-readiness-trunk-default
+2026-10-04T00:54:06.5089742Z  * [new branch]        codex/estimation-rubric-spec -> origin/codex/estimation-rubric-spec
+2026-10-04T00:54:06.5091461Z  * [new branch]        codex/feature-1514-externalize-forecast-comparables -> origin/codex/feature-1514-externalize-forecast-comparables
+2026-10-04T00:54:06.5093621Z  * [new branch]        codex/feature-1557-blocked-disposition-dependencies -> origin/codex/feature-1557-blocked-disposition-dependencies
+2026-10-04T00:54:06.5095488Z  * [new branch]        codex/graphql-usage-and-backlog-specs -> origin/codex/graphql-usage-and-backlog-specs
+2026-10-04T00:54:06.5097007Z  * [new branch]        codex/graphql-usage-spike-story -> origin/codex/graphql-usage-spike-story
+2026-10-04T00:54:06.5098526Z  * [new branch]        codex/issue-1486-graph-node-authority -> origin/codex/issue-1486-graph-node-authority
+2026-10-04T00:54:06.5100256Z  * [new branch]        codex/issue-1516-author-finalization-contract -> origin/codex/issue-1516-author-finalization-contract
+2026-10-04T00:54:06.5101940Z  * [new branch]        codex/issue-1573-merge-method-help -> origin/codex/issue-1573-merge-method-help
+2026-10-04T00:54:06.5103617Z  * [new branch]        codex/issue-1579-governed-plan-policy -> origin/codex/issue-1579-governed-plan-policy
+2026-10-04T00:54:06.5105324Z  * [new branch]        codex/issue-1581-reviewer-lint-policy -> origin/codex/issue-1581-reviewer-lint-policy
+2026-10-04T00:54:06.5107026Z  * [new branch]        codex/issue-1591-legacy-index-reconciliation -> origin/codex/issue-1591-legacy-index-reconciliation
+2026-10-04T00:54:06.5108790Z  * [new branch]        codex/issue-1592-remove-co-review-runtime -> origin/codex/issue-1592-remove-co-review-runtime
+2026-10-04T00:54:06.5110407Z  * [new branch]        codex/issue-1609-finalize-cli-result -> origin/codex/issue-1609-finalize-cli-result
+2026-10-04T00:54:06.5111797Z  * [new branch]        codex/node-24-runtime-floor -> origin/codex/node-24-runtime-floor
+2026-10-04T00:54:06.5113165Z  * [new branch]        codex/pages-evidence-diagrams -> origin/codex/pages-evidence-diagrams
+2026-10-04T00:54:06.5114453Z  * [new branch]        codex/parallel-chore-mode -> origin/codex/parallel-chore-mode
+2026-10-04T00:54:06.5115871Z  * [new branch]        codex/stabilization-authority-design -> origin/codex/stabilization-authority-design
+2026-10-04T00:54:06.5117244Z  * [new branch]        codex/uninstall-cleanup -> origin/codex/uninstall-cleanup
+2026-10-04T00:54:06.5118349Z  * [new branch]        delivered-plans         -> origin/delivered-plans
+2026-10-04T00:54:06.5119502Z  * [new branch]        docs/article-series-updates -> origin/docs/article-series-updates
+2026-10-04T00:54:06.5120717Z  * [new branch]        docs/linkedin-articles  -> origin/docs/linkedin-articles
+2026-10-04T00:54:06.5121940Z  * [new branch]        feature/1099-publish-articles -> origin/feature/1099-publish-articles
+2026-10-04T00:54:06.5123361Z  * [new branch]        feature/1101-bibliography-links -> origin/feature/1101-bibliography-links
+2026-10-04T00:54:06.5124658Z  * [new branch]        feature/1102-diagram-drift -> origin/feature/1102-diagram-drift
+2026-10-04T00:54:06.5126000Z  * [new branch]        feature/1158-kind-aware-test-lanes -> origin/feature/1158-kind-aware-test-lanes
+2026-10-04T00:54:06.5127456Z  * [new branch]        feature/1218-verification-plugins -> origin/feature/1218-verification-plugins
+2026-10-04T00:54:06.5128940Z  * [new branch]        feature/1250-declarable-verify -> origin/feature/1250-declarable-verify
+2026-10-04T00:54:06.5130124Z  * [new branch]        feature/1869            -> origin/feature/1869
+2026-10-04T00:54:06.5131324Z  * [new branch]        feature/854-assert-file-excludes -> origin/feature/854-assert-file-excludes
+2026-10-04T00:54:06.5132706Z  * [new branch]        feature/922-sandbox-flake -> origin/feature/922-sandbox-flake
+2026-10-04T00:54:06.5134039Z  * [new branch]        feature/952-testall-lane-migration -> origin/feature/952-testall-lane-migration
+2026-10-04T00:54:06.5135468Z  * [new branch]        feature/964-strict-argv-manifest -> origin/feature/964-strict-argv-manifest
+2026-10-04T00:54:06.5136837Z  * [new branch]        feature/968-movestate-trunkref -> origin/feature/968-movestate-trunkref
+2026-10-04T00:54:06.5138032Z  * [new branch]        feature/child/1006      -> origin/feature/child/1006
+2026-10-04T00:54:06.5139176Z  * [new branch]        feature/child/1006-finalize -> origin/feature/child/1006-finalize
+2026-10-04T00:54:06.5140319Z  * [new branch]        feature/child/1037      -> origin/feature/child/1037
+2026-10-04T00:54:06.5141356Z  * [new branch]        feature/child/1038      -> origin/feature/child/1038
+2026-10-04T00:54:06.5142543Z  * [new branch]        feature/child/1039      -> origin/feature/child/1039
+2026-10-04T00:54:06.5143581Z  * [new branch]        feature/child/1040      -> origin/feature/child/1040
+2026-10-04T00:54:06.5144617Z  * [new branch]        feature/child/1274      -> origin/feature/child/1274
+2026-10-04T00:54:06.5145658Z  * [new branch]        feature/child/1275      -> origin/feature/child/1275
+2026-10-04T00:54:06.5146701Z  * [new branch]        feature/child/1276      -> origin/feature/child/1276
+2026-10-04T00:54:06.5147777Z  * [new branch]        feature/child/1277      -> origin/feature/child/1277
+2026-10-04T00:54:06.5149053Z  * [new branch]        feature/child/1278      -> origin/feature/child/1278
+2026-10-04T00:54:06.5150225Z  * [new branch]        feature/child/1324      -> origin/feature/child/1324
+2026-10-04T00:54:06.5151268Z  * [new branch]        feature/child/1325      -> origin/feature/child/1325
+2026-10-04T00:54:06.5152368Z  * [new branch]        feature/child/1658      -> origin/feature/child/1658
+2026-10-04T00:54:06.5153401Z  * [new branch]        feature/child/1659      -> origin/feature/child/1659
+2026-10-04T00:54:06.5154447Z  * [new branch]        feature/child/1660      -> origin/feature/child/1660
+2026-10-04T00:54:06.5155485Z  * [new branch]        feature/child/1661      -> origin/feature/child/1661
+2026-10-04T00:54:06.5156522Z  * [new branch]        feature/child/1674      -> origin/feature/child/1674
+2026-10-04T00:54:06.5157564Z  * [new branch]        feature/child/1678      -> origin/feature/child/1678
+2026-10-04T00:54:06.5158618Z  * [new branch]        feature/child/1837      -> origin/feature/child/1837
+2026-10-04T00:54:06.5159658Z  * [new branch]        feature/epic/1005       -> origin/feature/epic/1005
+2026-10-04T00:54:06.5160706Z  * [new branch]        feature/epic/1006       -> origin/feature/epic/1006
+2026-10-04T00:54:06.5161726Z  * [new branch]        feature/epic/1048       -> origin/feature/epic/1048
+2026-10-04T00:54:06.5162792Z  * [new branch]        feature/epic/1067       -> origin/feature/epic/1067
+2026-10-04T00:54:06.5163796Z  * [new branch]        feature/epic/1118       -> origin/feature/epic/1118
+2026-10-04T00:54:06.5164804Z  * [new branch]        feature/epic/1122       -> origin/feature/epic/1122
+2026-10-04T00:54:06.5165812Z  * [new branch]        feature/epic/1178       -> origin/feature/epic/1178
+2026-10-04T00:54:06.5166814Z  * [new branch]        feature/epic/1558       -> origin/feature/epic/1558
+2026-10-04T00:54:06.5167814Z  * [new branch]        feature/epic/1624       -> origin/feature/epic/1624
+2026-10-04T00:54:06.5168818Z  * [new branch]        feature/epic/1818       -> origin/feature/epic/1818
+2026-10-04T00:54:06.5169888Z  * [new branch]        feature/epic/1857/parent -> origin/feature/epic/1857/parent
+2026-10-04T00:54:06.5171058Z  * [new branch]        feature/epic/859        -> origin/feature/epic/859
+2026-10-04T00:54:06.5172109Z  * [new branch]        feature/epic/987        -> origin/feature/epic/987
+2026-10-04T00:54:06.5173106Z  * [new branch]        fix-old-hooks           -> origin/fix-old-hooks
+2026-10-04T00:54:06.5174220Z  * [new branch]        fix/1104-timezone-timing-row -> origin/fix/1104-timezone-timing-row
+2026-10-04T00:54:06.5175426Z  * [new branch]        fix/947-closed-child-gate -> origin/fix/947-closed-child-gate
+2026-10-04T00:54:06.5176650Z  * [new branch]        fix/949-ci-shallow-provenance -> origin/fix/949-ci-shallow-provenance
+2026-10-04T00:54:06.5177792Z  * [new branch]        ignore-vscode           -> origin/ignore-vscode
+2026-10-04T00:54:06.5178883Z  * [new branch]        scheduled-archive-trimmer -> origin/scheduled-archive-trimmer
+2026-10-04T00:54:06.5179974Z  * [new branch]        setup-aipr              -> origin/setup-aipr
+2026-10-04T00:54:06.5180933Z  * [new branch]        setup/config            -> origin/setup/config
+2026-10-04T00:54:06.5182148Z  * [new branch]        spec/grok-provider-adapter -> origin/spec/grok-provider-adapter
+2026-10-04T00:54:06.5183341Z  * [new branch]        tarball-management      -> origin/tarball-management
+2026-10-04T00:54:06.5184310Z  * [new branch]        trunk                   -> origin/trunk
+2026-10-04T00:54:06.5185266Z  * [new branch]        update-aipr-setup       -> origin/update-aipr-setup
+2026-10-04T00:54:06.5186494Z  * [new branch]        worktree-agent-a0c46a2ad403e0420 -> origin/worktree-agent-a0c46a2ad403e0420
+2026-10-04T00:54:06.5187912Z  * [new branch]        worktree-agent-a3404f6127ec70d95 -> origin/worktree-agent-a3404f6127ec70d95
+2026-10-04T00:54:06.5189323Z  * [new branch]        worktree-agent-a5f5f4656cd9e586d -> origin/worktree-agent-a5f5f4656cd9e586d
+2026-10-04T00:54:06.5190834Z  * [new branch]        worktree-agent-a6584b7cdfde5a3cb -> origin/worktree-agent-a6584b7cdfde5a3cb
+2026-10-04T00:54:06.5192314Z  * [new branch]        worktree-agent-a9fbb044d83216a08 -> origin/worktree-agent-a9fbb044d83216a08
+2026-10-04T00:54:06.5193736Z  * [new branch]        worktree-agent-abe694a686a870374 -> origin/worktree-agent-abe694a686a870374
+2026-10-04T00:54:06.5195011Z  * [new ref]           ec186ec8d75b5de4d6111b3ae2db121685a4ac6f -> pull/1871/merge
+2026-10-04T00:54:06.5197500Z ##[endgroup]
+2026-10-04T00:54:06.5198383Z ##[group]Determining the checkout info
+2026-10-04T00:54:06.5199351Z ##[endgroup]
+2026-10-04T00:54:06.5199930Z [command]/usr/bin/git sparse-checkout disable
+2026-10-04T00:54:06.5201553Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-04T00:54:06.5203541Z ##[group]Checking out the ref
+2026-10-04T00:54:06.5204409Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1871/merge
+2026-10-04T00:54:06.7099985Z Note: switching to 'refs/remotes/pull/1871/merge'.
+2026-10-04T00:54:06.7100338Z 
+2026-10-04T00:54:06.7100611Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-04T00:54:06.7101096Z changes and commit them, and you can discard any commits you make in this
+2026-10-04T00:54:06.7101548Z state without impacting any branches by switching back to a branch.
+2026-10-04T00:54:06.7101811Z 
+2026-10-04T00:54:06.7101998Z If you want to create a new branch to retain commits you create, you may
+2026-10-04T00:54:06.7102644Z do so (now or later) by using -c with the switch command. Example:
+2026-10-04T00:54:06.7102898Z 
+2026-10-04T00:54:06.7103012Z   git switch -c <new-branch-name>
+2026-10-04T00:54:06.7103192Z 
+2026-10-04T00:54:06.7103302Z Or undo this operation with:
+2026-10-04T00:54:06.7103466Z 
+2026-10-04T00:54:06.7103566Z   git switch -
+2026-10-04T00:54:06.7103690Z 
+2026-10-04T00:54:06.7103913Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-04T00:54:06.7104202Z 
+2026-10-04T00:54:06.7104542Z HEAD is now at ec186ec8 Merge 09755817baad2fd141114e64d4fab125c28f8588 into 171c7d93866f67b58effa635be5ae737f54ef9eb
+2026-10-04T00:54:06.7118538Z ##[endgroup]
+2026-10-04T00:54:06.7157757Z [command]/usr/bin/git log -1 --format=%H
+2026-10-04T00:54:06.7179036Z ec186ec8d75b5de4d6111b3ae2db121685a4ac6f
+2026-10-04T00:54:06.7343060Z ##[group]Run git fetch --no-tags origin trunk:trunk
+2026-10-04T00:54:06.7343359Z [36;1mgit fetch --no-tags origin trunk:trunk[0m
+2026-10-04T00:54:06.7561917Z shell: /usr/bin/bash -e {0}
+2026-10-04T00:54:06.7562237Z env:
+2026-10-04T00:54:06.7562385Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:06.7562560Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:06.7562736Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:06.7562911Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:06.7563078Z ##[endgroup]
+2026-10-04T00:54:06.9959993Z From https://github.com/kburson/ai-task-manager
+2026-10-04T00:54:06.9960376Z  * [new branch]        trunk      -> trunk
+2026-10-04T00:54:07.0037789Z ##[group]Run actions/setup-node@v5
+2026-10-04T00:54:07.0037971Z with:
+2026-10-04T00:54:07.0038107Z   node-version: 24
+2026-10-04T00:54:07.0038261Z   cache: npm
+2026-10-04T00:54:07.0038395Z   always-auth: false
+2026-10-04T00:54:07.0038539Z   check-latest: false
+2026-10-04T00:54:07.0039786Z   token: ***
+2026-10-04T00:54:07.0039927Z   package-manager-cache: true
+2026-10-04T00:54:07.0040085Z env:
+2026-10-04T00:54:07.0040225Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:07.0040398Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:07.0040569Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:07.0040748Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:07.0040913Z ##[endgroup]
+2026-10-04T00:54:07.0888591Z Found in cache @ /opt/hostedtoolcache/node/24.21.0/x64
+2026-10-04T00:54:07.0891129Z (node:2095) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-04T00:54:07.0891803Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-04T00:54:07.0893324Z ##[group]Environment details
+2026-10-04T00:54:07.3943829Z node: v24.21.0
+2026-10-04T00:54:07.3944111Z npm: 11.19.0
+2026-10-04T00:54:07.3944228Z yarn: 1.22.22
+2026-10-04T00:54:07.3944877Z ##[endgroup]
+2026-10-04T00:54:07.3957717Z [command]/opt/hostedtoolcache/node/24.21.0/x64/bin/npm config get cache
+2026-10-04T00:54:07.4652579Z /home/runner/.npm
+2026-10-04T00:54:07.5904847Z Cache hit for: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-04T00:54:07.5965181Z (node:2095) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-04T00:54:08.3698237Z Received 33193731 of 33193731 (100.0%), 48.3 MBs/sec
+2026-10-04T00:54:08.3698653Z Cache Size: ~32 MB (33193731 B)
+2026-10-04T00:54:08.3715299Z [command]/usr/bin/tar -xf /home/runner/work/_temp/f009803b-f41a-4a3c-9518-2f25dc044153/cache.tzst -P -C /home/runner/work/ai-task-manager/ai-task-manager --use-compress-program unzstd
+2026-10-04T00:54:08.4674695Z Cache restored successfully
+2026-10-04T00:54:08.4691204Z Cache restored from key: node-cache-Linux-x64-npm-bd03a24e4fb6ea9135263ddfda5f6f14aceea5c97773b78dfd4f842230cc9a5f
+2026-10-04T00:54:08.4815880Z ##[group]Run npm ci
+2026-10-04T00:54:08.4816041Z [36;1mnpm ci[0m
+2026-10-04T00:54:08.4873924Z shell: /usr/bin/bash -e {0}
+2026-10-04T00:54:08.4874139Z env:
+2026-10-04T00:54:08.4874292Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:08.4874445Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:08.4874597Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:08.4874753Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:08.4874903Z ##[endgroup]
+2026-10-04T00:54:14.2306289Z 
+2026-10-04T00:54:14.2313309Z added 318 packages, and audited 319 packages in 6s
+2026-10-04T00:54:14.2313621Z 
+2026-10-04T00:54:14.2313763Z 101 packages are looking for funding
+2026-10-04T00:54:14.2313948Z   run `npm fund` for details
+2026-10-04T00:54:14.2328075Z 
+2026-10-04T00:54:14.2328311Z 8 vulnerabilities (2 moderate, 6 high)
+2026-10-04T00:54:14.2328879Z 
+2026-10-04T00:54:14.2328997Z To address all issues, run:
+2026-10-04T00:54:14.2329152Z   npm audit fix
+2026-10-04T00:54:14.2329226Z 
+2026-10-04T00:54:14.2329350Z Run `npm audit` for details.
+2026-10-04T00:54:14.2334496Z npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+2026-10-04T00:54:14.2335225Z npm warn install-scripts   puppeteer@25.11.0 (postinstall: node install.mjs)
+2026-10-04T00:54:14.2335610Z npm warn install-scripts
+2026-10-04T00:54:14.2336185Z npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+2026-10-04T00:54:14.2843342Z ##[group]Run node --input-type=module <<'NODE'
+2026-10-04T00:54:14.2843580Z [36;1mnode --input-type=module <<'NODE'[0m
+2026-10-04T00:54:14.2843752Z [36;1mimport { readFileSync } from 'node:fs';[0m
+2026-10-04T00:54:14.2843969Z [36;1mimport { execFileSync } from 'node:child_process';[0m
+2026-10-04T00:54:14.2844211Z [36;1mconst lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));[0m
+2026-10-04T00:54:14.2844475Z [36;1mfor (const [location, pkg] of Object.entries(lock.packages)) {[0m
+2026-10-04T00:54:14.2844701Z [36;1m  if (!location || pkg.dev || pkg.link) continue;[0m
+2026-10-04T00:54:14.2844928Z [36;1m  const name = pkg.name ?? location.split('node_modules/').at(-1);[0m
+2026-10-04T00:54:14.2845200Z [36;1m  execFileSync('npm', ['cache', 'add', `${name}@${pkg.version}`], { stdio: 'inherit' });[0m
+2026-10-04T00:54:14.2845417Z [36;1m}[0m
+2026-10-04T00:54:14.2845519Z [36;1mNODE[0m
+2026-10-04T00:54:14.2896552Z shell: /usr/bin/bash -e {0}
+2026-10-04T00:54:14.2896743Z env:
+2026-10-04T00:54:14.2896862Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:14.2897009Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:14.2897153Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:14.2897307Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:14.2897447Z ##[endgroup]
+2026-10-04T00:54:15.8870527Z ##[group]Run npm run format:check
+2026-10-04T00:54:15.8870725Z [36;1mnpm run format:check[0m
+2026-10-04T00:54:15.8921449Z shell: /usr/bin/bash -e {0}
+2026-10-04T00:54:15.8921594Z env:
+2026-10-04T00:54:15.8921712Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:15.8921860Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:15.8922005Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:15.8922296Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:15.8922442Z ##[endgroup]
+2026-10-04T00:54:15.9569731Z 
+2026-10-04T00:54:15.9570318Z > @kburson/ai-task-manager@0.1.0 format:check
+2026-10-04T00:54:15.9570605Z > prettier --check .
+2026-10-04T00:54:15.9570696Z 
+2026-10-04T00:54:16.0093987Z Checking formatting...
+2026-10-04T00:54:38.6334947Z All matched files use Prettier code style!
+2026-10-04T00:54:38.6860009Z ##[group]Run npm run lint
+2026-10-04T00:54:38.6860272Z [36;1mnpm run lint[0m
+2026-10-04T00:54:38.6927885Z shell: /usr/bin/bash -e {0}
+2026-10-04T00:54:38.6928060Z env:
+2026-10-04T00:54:38.6928194Z   GIT_AUTHOR_NAME: kendrick burson
+2026-10-04T00:54:38.6928373Z   GIT_AUTHOR_EMAIL: kpburson@pm.me
+2026-10-04T00:54:38.6928529Z   GIT_COMMITTER_NAME: kendrick burson
+2026-10-04T00:54:38.6928826Z   GIT_COMMITTER_EMAIL: kpburson@pm.me
+2026-10-04T00:54:38.6929069Z ##[endgroup]
+2026-10-04T00:54:38.7644009Z 
+2026-10-04T00:54:38.7644526Z > @kburson/ai-task-manager@0.1.0 lint
+2026-10-04T00:54:38.7646228Z > npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:action-refusals && npm run lint:guidance-release
+2026-10-04T00:54:38.7647402Z 
+2026-10-04T00:54:38.8286702Z 
+2026-10-04T00:54:38.8287456Z > @kburson/ai-task-manager@0.1.0 lint:js
+2026-10-04T00:54:38.8287913Z > eslint .
+2026-10-04T00:54:38.8288023Z 
+2026-10-04T00:54:48.4455646Z 
+2026-10-04T00:54:48.4458506Z > @kburson/ai-task-manager@0.1.0 lint:md
+2026-10-04T00:54:48.4459278Z > markdownlint-cli2 "**/*.md"
+2026-10-04T00:54:48.4459474Z 
+2026-10-04T00:54:48.5757474Z markdownlint-cli2 v0.23.2 (markdownlint v0.41.1)
+2026-10-04T00:54:48.5764480Z Finding: **/*.md **/*.md !.tmp/** !.scratch/** !node_modules/** !.git/** !.worktrees/** !.claude/worktrees/** !reports/** !coverage/** !output/** !docs/postmortems/** !docs/ai-memory/** !docs/peer-reviews/** !docs/reviews/1857-expanded/**/review-*-author-response-*.md !docs/reviews/1857-expanded/**/review-*-reviewer-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-author-response-*.md !docs/reviews/1857-revised-plan-xpr/**/review-*-reviewer-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-author-response-*.md !docs/reviews/1857-remaining-work-xpr-admitted/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-reviewer-*-review.md !docs/superpowers/reviews/**/*-review-*-author-response-*.md !docs/superpowers/reviews/**/*-review-*-reviewer-response-*.md !docs/superpowers/reviews/**/review-*-author-response-*.md !docs/superpowers/reviews/**/review-*-reviewer-response-*.md !docs/superpowers/reviews/**/*-xpr-author-response-r[0-9]*.md !docs/superpowers/reviews/**/*-xpr-reviewer-response-r[0-9]*.md !docs/superpowers/reviews/1219/**/protocol-runs/** !.ai-task-manager/memory/** !.superpowers/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/** !docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/** !.ai-task-manager/runtime/test-fixtures/**
+2026-10-04T00:54:48.6361736Z Linting: 828 files
+2026-10-04T00:54:53.4450453Z Summary: 0 issues in 0 files
+2026-10-04T00:54:53.5544012Z 
+2026-10-04T00:54:53.5544895Z > @kburson/ai-task-manager@0.1.0 lint:spell
+2026-10-04T00:54:53.5545438Z > cspell --no-progress "**/*.{md,mjs,js,json}"
+2026-10-04T00:54:53.5545690Z 
+2026-10-04T00:55:05.4983579Z CSpell: Files checked: 3059, Issues found: 0 in 0 files.
+2026-10-04T00:55:05.6292301Z 
+2026-10-04T00:55:05.6293036Z > @kburson/ai-task-manager@0.1.0 lint:tmp
+2026-10-04T00:55:05.6293494Z > node scripts/maintenance/lint-no-system-tmp.mjs
+2026-10-04T00:55:05.6293697Z 
+2026-10-04T00:55:05.7603574Z lint:tmp — 2060 file(s) clean
+2026-10-04T00:55:05.8310989Z 
+2026-10-04T00:55:05.8311691Z > @kburson/ai-task-manager@0.1.0 lint:fleet-sandbox
+2026-10-04T00:55:05.8312155Z > node scripts/maintenance/lint-fleet-sandbox-isolation.mjs
+2026-10-04T00:55:05.8312380Z 
+2026-10-04T00:55:05.9033666Z lint:fleet-sandbox — 1343 test file(s) clean
+2026-10-04T00:55:05.9703566Z 
+2026-10-04T00:55:05.9704541Z > @kburson/ai-task-manager@0.1.0 lint:test-layout
+2026-10-04T00:55:05.9704830Z > node scripts/tests/tools/audit-test-layout.mjs
+2026-10-04T00:55:05.9704952Z 
+2026-10-04T00:55:05.9976432Z audit-test-layout: all 1247 test files declare a canonical scripts/tests/<unit|integration|slow>/ lane.
+2026-10-04T00:55:06.0611906Z 
+2026-10-04T00:55:06.0612788Z > @kburson/ai-task-manager@0.1.0 lint:test-entrypoint-imports
+2026-10-04T00:55:06.0613125Z > node scripts/tests/tools/audit-test-entrypoint-imports.mjs
+2026-10-04T00:55:06.0613274Z 
+2026-10-04T00:55:06.8813741Z audit-test-entrypoint-imports: no discovered test entrypoint imports among 1247 files.
+2026-10-04T00:55:06.9531298Z 
+2026-10-04T00:55:06.9532267Z > @kburson/ai-task-manager@0.1.0 lint:story-tags
+2026-10-04T00:55:06.9532589Z > node scripts/tests/tools/audit-story-tags.mjs
+2026-10-04T00:55:06.9532716Z 
+2026-10-04T00:55:07.0026020Z audit-story-tags: 1 file(s) missing @story tag:
+2026-10-04T00:55:07.0026629Z   scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs
+2026-10-04T00:55:07.0183015Z ##[error]Process completed with exit code 1.
+2026-10-04T00:55:07.0288490Z Post job cleanup.
+2026-10-04T00:55:07.0816587Z [command]/usr/bin/git version
+2026-10-04T00:55:07.0852488Z git version 2.55.0
+2026-10-04T00:55:07.0879505Z Temporarily overriding HOME='/home/runner/work/_temp/6acdb993-edfb-46e2-9e02-b40d546f2a40' before making global git config changes
+2026-10-04T00:55:07.0880290Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T00:55:07.0883305Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/ai-task-manager/ai-task-manager
+2026-10-04T00:55:07.0916897Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T00:55:07.0945553Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-04T00:55:07.1161812Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T00:55:07.1193665Z http.https://github.com/.extraheader
+2026-10-04T00:55:07.1206359Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-04T00:55:07.1238611Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-04T00:55:07.1437954Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T00:55:07.1469506Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-04T00:55:07.1767317Z Cleaning up orphan processes

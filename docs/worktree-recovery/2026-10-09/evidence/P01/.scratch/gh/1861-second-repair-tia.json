@@ -1,0 +1,125 @@
+{
+  "tests": [
+    "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/acceptance.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/eligibility.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/journal.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-shapes.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/provider-contract.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/subject.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs"
+  ],
+  "lanes": [],
+  "reasons": [
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/acceptance.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/close-flow.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/delivery-flow.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/eligibility.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/isolation.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/journal.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/legacy-shapes.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/provider-contract.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/evidence-v2/sandbox.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/evidence-v2/subject.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/guidance-context.test.mjs",
+      "signal": "import-transitive",
+      "reason": "test transitively imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "test": "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/helpers/guidance-capture-provenance.mjs",
+      "test": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "signal": "import-direct",
+      "reason": "test statically imports changed path"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "signal": "manifest",
+      "reason": "current test tree authority change"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "test": "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+      "signal": "changed-test",
+      "reason": "changed or newly discovered test"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+      "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "signal": "manifest",
+      "reason": "current test tree authority change"
+    },
+    {
+      "changedPath": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+      "test": "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs",
+      "signal": "changed-test",
+      "reason": "changed or newly discovered test"
+    }
+  ],
+  "escalated": false
+}

@@ -1,0 +1,23 @@
+✔ resolveBoardTarget: explicit #N wins over active issue (0.696458ms)
+✔ resolveBoardTarget: falls back to the active issue (0.410375ms)
+✔ resolveBoardTarget: null when neither is present (0.081375ms)
+✔ verbBoard: prints "#N board Status: <state>" from the pinned reader (39.061167ms)
+✔ verbBoard: reports not-on-board when the pinned reader returns null (52.941416ms)
+✔ verbBoard: usage error and non-zero exit when no target resolvable (48.208667ms)
+✔ evaluateGhProject: blocks `gh project item-list <n> --owner` (0.31275ms)
+✔ evaluateGhProject: blocks other gh project forms (view, item-add) (0.154125ms)
+✔ evaluateGhProject: a bare mention of "gh project" in prose does not trip (0.10225ms)
+✔ evaluateGhProject: blocks a ProjectV2 query pinning a non-bound id (0.2135ms)
+✔ evaluateGhProject: allows a ProjectV2 query pinning only the bound id (0.105375ms)
+✔ evaluateGhProject: blocks a ProjectV2 query with no pinned id (client filter) (0.076333ms)
+✔ evaluateGhProject: fails closed when boundProjectId is unreadable (null) (0.124292ms)
+✔ evaluateGhProject: ignores non-project gh api graphql (issues, sub-issues) (0.070166ms)
+✔ evaluateGhProject: ignores unrelated commands (0.092875ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.87525

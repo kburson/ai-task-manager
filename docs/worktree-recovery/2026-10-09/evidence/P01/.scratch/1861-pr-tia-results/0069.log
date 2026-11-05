@@ -1,0 +1,250 @@
+✔ rebind remains a cursor trigger, not a session action (1.721625ms)
+✔ read-only bind reports skipped required authority as indeterminate (17.422875ms)
+✔ the execution TT_SKIP_NETWORK setting skips required explanation reads (8.541125ms)
+✔ disabled assignee match remains ready only with complete matching board and marker (7.087791ms)
+✔ disabled assignee match does not conceal a missing board read (1.152584ms)
+✔ a body without a last-known-state marker is indeterminate (16.347458ms)
+✔ a board and body-marker disagreement blocks bind readiness (5.910875ms)
+✔ a mismatched worktree blocks bind readiness (1.042667ms)
+✔ an unreadable worktree match is indeterminate, not ready (0.471333ms)
+✔ a conflicting occupancy blocks bind before any claim (0.486875ms)
+✔ an implicit resume cannot target a different active issue (1.083709ms)
+✔ no-argument resume is not ready without a paused session (2.54475ms)
+✔ no-argument resume is ready for its paused last issue (0.61425ms)
+✔ migration freeze blocks a complete session decision without a side effect (0.540792ms)
+✔ enabled ownership check blocks a foreign owner (2.289666ms)
+✔ enabled ownership check blocks multiple owners and treats unknown identity as indeterminate (1.730958ms)
+✔ a conflicting local configuration observation cannot yield a ready decision (0.515292ms)
+✔ missing repository configuration is indeterminate even with a complete board fixture (0.523208ms)
+✔ observed state drift and migration freeze agree with the execution preflight (1.1995ms)
+✔ production session reads and execution refresh the same changed board authority (0.78475ms)
+✔ cold numeric bind, switch, and explicit resume select the same fresh target (2.688291ms)
+✔ foreign ownership blocks both production explanation and execution preflight (0.903ms)
+✖ another issue occupying the target worktree blocks readiness and the real claim (24.570375ms)
+✔ a body changing between scope selection and observation is indeterminate (1.230875ms)
+✔ a readable stub body without scope sections is an issue-body authority failure (0.627167ms)
+✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (22.250458ms)
+✖ early promotion readiness retains an unmapped complete-guard refusal (42.219292ms)
+✖ typed plan approval remediation survives complete guard projection (20.923542ms)
+✔ unknown and conflicting early state authority never yields a target grant (0.538125ms)
+✖ early promotion readiness follows all four canonical forward edges (24.513958ms)
+✔ a migration freeze discovered after explanation blocks early promotion readiness (0.573417ms)
+✔ terminal Done has no executable early promotion target (0.259541ms)
+✔ later promotion delegate stays pending with a valid navigation blocker (0.138333ms)
+✔ skipped remote authority cannot yield ready early promotion (0.095583ms)
+✔ TT_SKIP_NETWORK also skips early promotion authority without a caller flag (0.094541ms)
+✖ read-only dependency readiness does not reconcile disposition (23.357333ms)
+✖ a ready early explanation is not a grant after dependency readiness changes (21.519875ms)
+✔ a migration freeze activated before locked execution refuses without reading or moving (0.452458ms)
+✔ early readiness shares execution session policy and story-intent resolver (0.356875ms)
+✔ a real plan-approval guard refuses the same missing marker in explanation and execution (3.717125ms)
+✔ complete production early registry retains field, parent, dependency, contiguity, and plan refusals (1145.523417ms)
+✔ production evaluator routes a complete bind collector and finishes one v2 attempt (2.456042ms)
+✖ production evaluator routes complete early promotion without an effect (17.363666ms)
+✔ production evaluator routes explicit resume through complete session authority (1.013125ms)
+✔ v2 navigation rejects rebind and unresolved state while keeping Done terminal (4.85175ms)
+✔ terminal Done refuses an effect, stale authority, and rebind without a false grant (2.3295ms)
+✖ a ready v2 explanation never authorizes stale promotion execution (17.733208ms)
+✖ v2 early promotion preserves typed plan-approval remediation and human request (17.607708ms)
+✖ matching recorded and live state selects one canonical early edge (17.297541ms)
+✔ missing effect ledger does not erase unknown navigation authority (0.979417ms)
+✔ session navigation refuses a stale proposed state despite internally matching board and marker (1.021583ms)
+✔ network-skipped early promotion emits valid v2 uncertainty without remote reads (0.689333ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 41
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1506.899166
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:693:1
+✖ another issue occupying the target worktree blocks readiness and the real claim (24.570375ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:694:22)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:804:1
+✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (22.250458ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:806:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:12:3
+✖ early promotion readiness retains an unmapped complete-guard refusal (42.219292ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at gatesDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:212:36)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/session-store.mjs:53:61)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-early-promote-cases.mjs:38:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:76:3
+✖ typed plan approval remediation survives complete guard projection (20.923542ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at gatesDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:212:36)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/session-store.mjs:53:61)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-early-promote-cases.mjs:93:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:173:3
+✖ early promotion readiness follows all four canonical forward edges (24.513958ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at gatesDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:212:36)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/session-store.mjs:53:61)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-early-promote-cases.mjs:201:22)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:338:3
+✖ read-only dependency readiness does not reconcile disposition (23.357333ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at gatesDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:212:36)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/session-store.mjs:53:61)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-early-promote-cases.mjs:359:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:389:3
+✖ a ready early explanation is not a grant after dependency readiness changes (21.519875ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at gatesDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:212:36)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/session-store.mjs:53:61)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-early-promote-cases.mjs:428:25)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:71:3
+✖ production evaluator routes complete early promotion without an effect (17.363666ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-navigation-cases.mjs:104:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:266:3
+✖ a ready v2 explanation never authorizes stale promotion execution (17.733208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-navigation-cases.mjs:306:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:328:3
+✖ v2 early promotion preserves typed plan-approval remediation and human request (17.607708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'blocked'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-navigation-cases.mjs:375:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:386:3
+✖ matching recorded and live state selects one canonical early edge (17.297541ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/action-navigation-cases.mjs:423:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

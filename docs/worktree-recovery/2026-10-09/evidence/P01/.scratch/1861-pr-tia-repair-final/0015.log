@@ -1,0 +1,20 @@
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/aitm-dirty-gate-1MlfgM for the active issue
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Workspace is dirty \(1 path/. Input:
+
+''
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:274:14
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:23:1 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '',
+  expected: /Workspace is dirty \(1 path/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1

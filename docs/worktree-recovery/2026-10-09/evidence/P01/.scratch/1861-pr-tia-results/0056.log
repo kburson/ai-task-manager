@@ -1,0 +1,27 @@
+✖ packed consumer resolves omitted trunkRef for close-readiness child lineage (18.346875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22.256542
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs:14:1
+✖ packed consumer resolves omitted trunkRef for close-readiness child lineage (18.346875ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at projectScratchDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:43:16)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/action-close-package.test.mjs:15:36)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

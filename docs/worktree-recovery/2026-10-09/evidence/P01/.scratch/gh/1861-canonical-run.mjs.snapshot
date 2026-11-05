@@ -1,0 +1,23 @@
+import { readFileSync, writeFileSync, createWriteStream } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+const cfg=JSON.parse(readFileSync('.scratch/gh/1861-empty-candidate-root.json'));
+const [label, pathsFile]=process.argv.slice(2);
+if(!/^[a-z0-9-]+$/.test(label))throw Error('invalid label');
+const changedPaths=JSON.parse(readFileSync(pathsFile));
+const {selectAffectedTests}=await import(pathToFileURL(path.join(cfg.root,'scripts/task-tracker/lib/test-impact-selector.mjs')));
+const selection=selectAffectedTests({projectDir:cfg.root,changedPaths});
+const prefix='.scratch/gh/1861-'+label;
+writeFileSync(prefix+'-selection.json',JSON.stringify({base:cfg.nativeHead,changedPaths,selection},null,2)+'\n');
+const hash=f=>createHash('sha256').update(readFileSync(f)).digest('hex');
+writeFileSync(prefix+'-manifest.json',JSON.stringify({profileSha256:hash(path.join(cfg.root,'profile.sb')),sourcePaths:changedPaths.map(p=>({path:p,sha256:hash(path.join(cfg.root,p))})),tests:selection.tests},null,2)+'\n');
+console.log({label,selected:selection.tests.length,escalated:selection.escalated,reason:selection.reason});
+if(selection.escalated){console.log('Full lane escalation: local execution not launched');process.exit(3);}
+const child=spawn('/usr/bin/sandbox-exec',['-f',path.join(cfg.root,'profile.sb'),cfg.node,'--test',...selection.tests],{cwd:cfg.root,env:{PATH:path.dirname(cfg.git)+':'+path.dirname(cfg.node)+':/usr/bin:/bin',TMPDIR:path.join(cfg.root,'output'),LANG:'en_US.UTF-8'},stdio:['ignore','pipe','pipe']});
+const out=createWriteStream(prefix+'.stdout.log'),err=createWriteStream(prefix+'.stderr.log');
+child.stdout.pipe(out);child.stderr.pipe(err);
+const interval=setInterval(()=>console.log('Canonical '+label+' selection running'),30000);
+child.on('error',e=>{clearInterval(interval);console.log(e);process.exitCode=1;});
+child.on('close',async(status,signal)=>{clearInterval(interval);await Promise.all([new Promise(r=>out.end(r)),new Promise(r=>err.end(r))]);writeFileSync(prefix+'-result.json',JSON.stringify({status,signal,stdoutHash:hash(prefix+'.stdout.log'),stderrHash:hash(prefix+'.stderr.log')},null,2)+'\n');const s=readFileSync(prefix+'.stdout.log','utf8');console.log(s.split('\n').filter(l=>l.startsWith('ℹ')).slice(-10).join('\n'));console.log({status,signal});process.exitCode=status||0;});

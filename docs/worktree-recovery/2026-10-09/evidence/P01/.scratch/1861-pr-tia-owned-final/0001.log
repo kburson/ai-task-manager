@@ -1,0 +1,26 @@
+✔ a supported batch publishes a complete durable receipt and preserves synchronous return (1529.926834ms)
+✔ the complete validation set and expected-before assertion refuse before any member changes (1575.955542ms)
+✔ deletion remains journaled and completed retry cannot restore an older outcome over later writes (2625.4675ms)
+✔ unfinished batch fences even its lease holder and exact resume completes the original outcome (1608.963542ms)
+✔ SIGKILL at after-batch-journal preserves read refusal and exact confirmed-death replay (3925.407ms)
+✔ SIGKILL at after-batch-member-0 preserves read refusal and exact confirmed-death replay (3870.027375ms)
+✔ SIGKILL at after-batch-member-1 preserves read refusal and exact confirmed-death replay (3013.76125ms)
+✔ SIGKILL at after-batch-member-stage-0 preserves read refusal and exact confirmed-death replay (3253.479959ms)
+✔ SIGKILL at after-batch-journal-stage-publishing preserves read refusal and exact confirmed-death replay (2730.831292ms)
+✔ SIGKILL at after-batch-journal-stage-prepared preserves read refusal and exact confirmed-death replay (2957.226834ms)
+✔ SIGKILL at after-batch-journal-stage-complete preserves read refusal and exact confirmed-death replay (4024.139125ms)
+✔ unsupported caller identities and nonabsolute targets refuse without creating an unreadable journal (738.845875ms)
+✔ a live publisher cannot be taken over and a changed journal observation preserves every member (1538.170333ms)
+✔ binary capture validates proposed metadata and deletes the complete recorded bundle (2571.8545ms)
+✔ a killed resumer retains its genuine owner and excludes a competing recovery until confirmed death (2125.7785ms)
+✔ ordinary reading rechecks batch admission for record after its initial check (1046.365833ms)
+✔ ordinary reading rechecks batch admission for optional-absence after its initial check (1083.07175ms)
+✔ one batch joins main global state with linked binding and actor timing authority (3212.155291ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43439.276208

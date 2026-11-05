@@ -1,0 +1,28 @@
+{
+  "base": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+  "changedPaths": [
+    "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  }
+}

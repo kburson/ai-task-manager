@@ -1,0 +1,1789 @@
+{
+  "schema": "aitm.manual-review-preservation/v1",
+  "cwd": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager",
+  "head": "daf91641b41cd2eae0ee91f2ba2b5b01fd917306",
+  "branch": "codex/1857-continuation",
+  "index": "d1d7a101f10fad00a628442bab10fe1d88e150806e43e7d641a5aaad591946f5",
+  "staged": "R100\tscripts/tests/unit/task-tracker/lib/actor-flush-journal.test.mjs\tscripts/tests/integration/task-tracker/lib/actor-flush-journal.test.mjs\n",
+  "refs": {
+    "refs/codex/snapshots/232c87b2fd75d966c874bf2b4db40e126d3826ce": "65e6887426307247770a9ce08e7642abc50c73e8",
+    "codex/1857-draft": "d4c42d7809c22acc9576d51da8938952588c207e"
+  },
+  "paths": {
+    ".ai-peer-review.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e7073e177f33b360351719e4c1131bd6f11b0cf3d876253fa523f0d9ebf78692"
+    },
+    ".ai-peer-review.json.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a379bcf8d830a53e7497c35c8d800058db14f48f514a0e545f51004cf3ca10ad"
+    },
+    ".ai-task-manager/runtime/store/locks/issue-1261.lock/holder.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c92511089dadd3cba9e75fc5295481b46bcaf602fd1823e6241aba695cd107e8"
+    },
+    ".ai-task-manager/runtime/store/locks/issue-6561169.lock/holder.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "19a1b1409d243f41672a0256775e8339631b52e343e94b2ee308dc349586bce5"
+    },
+    ".ai-task-manager/runtime/store/sessions/caller-sid/pending-pause.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "825a95fda499eb613558d5c898c54cfbbc2a79d212ac4ae8b45feda5ed1d3444"
+    },
+    ".ai-task-manager/runtime/store/sessions/corrupt/pending-pause.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "194e7b064ddb269a8a1088e80bf01b947cc11da445afc0135e524b96a2a3f30f"
+    },
+    ".ai-task-manager/runtime/store/sessions/fresh/pending-pause.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "91fec2019e7460ea46fe466656e78d78f8818dc8b5aa07e9926ca845c9518a64"
+    },
+    ".ai-task-manager/runtime/store/sessions/mine/pending-pause.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "36372e2a0350b880f324566ad00b3c206e4908ffc3e292c799e3e7a3f5bf1743"
+    },
+    ".claude/config.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1594b16455a1a6215d021f8995ba209bd910659da1b0e671f3eee34e772eeb95"
+    },
+    ".claude/config.json.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b"
+    },
+    ".claude/settings.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "98deaf2b341e3b91e339c1b2e86840cd742ff45de2550ef5221e23b3b143dca8"
+    },
+    ".claude/settings.json.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d4ce3dca24d36cf01a24b2b32bc8c984ea72bb89da07810c541cdbc52daa5848"
+    },
+    ".claude/skills/peer-review/SKILL.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2fde526ed55a718b17cc6fcefaf2e700af01b42448f41e4aa20fe414cc9f1875"
+    },
+    ".claude/skills/peer-review/SKILL.md.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265"
+    },
+    ".codex/config.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1594b16455a1a6215d021f8995ba209bd910659da1b0e671f3eee34e772eeb95"
+    },
+    ".codex/config.json.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "06f3f2508c4ee72f18ce1fa4a4514fb7d51887db3e1e1a4444e76dca9324682b"
+    },
+    ".codex/hooks.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "689f5b2557eb2b71710a3e906e8083997d5675637456f0c48a3bd1f25d299124"
+    },
+    ".codex/hooks.json.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "913575a4801e3b1df32b4382d11af72458e9a0f595c49e9afdc54259c2328a50"
+    },
+    ".codex/skills/peer-review/SKILL.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2fde526ed55a718b17cc6fcefaf2e700af01b42448f41e4aa20fe414cc9f1875"
+    },
+    ".codex/skills/peer-review/SKILL.md.bak": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "96fe5a4991fd4119f617cef4d3bc7e6c85657273ec4e5d4c26736fc1bccb2265"
+    },
+    "=": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "README.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f66baf168b214608a10733acb96632f5e5258b7cb3c33a57786c1b9509fab8a5"
+    },
+    "bin/aitm.mjs": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "29d49bd9d7d12fd4b1e8ba76e3f617c570b937fbce9f4dc15b3a3d408a582b87"
+    },
+    "cspell-dictionary.txt": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "52325b3643bf65a583743c8a866f2a347cd43518771920a7b344fbdc8296f13d"
+    },
+    "docs/reviews/1857-remaining-work/1861-kernel-verification.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "95c43d5f1b71cb7280f7f077520f2b500d1ffc2871fb78266e9d792f525f7392"
+    },
+    "docs/reviews/1857-remaining-work/1861-plan-review.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4287dcd72fd502b4ebf7caba13bd5163866ec0b800e8fc38a96c483f9c0632d4"
+    },
+    "docs/reviews/1857-remaining-work/2026-10-03-1861-delivery-snapshot.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "523362f5d110b617569c5e15d13dab4b6c087b2c9d4353c2882538299bb25b89"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-manual-review/README.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e88b5c146bb32caeb00fc0482a7ec667961cace9ed9c7757e53c15dd38762108"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-manual-review/author-response-r1.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fcd594a54ede1ec295f7e9c7f4182abbbd841fb63d26212dd2457b21a3300134"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-manual-review/review-response.r-1.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "34da85d6e37f08c11e6e8be40d16f2bd97d996760b8b8c98f04533ba5178fb8a"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-manual-review/review-response.r-2.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "be94b6403b65f37910a70e580c978eb62ae4060ecbb4695097026fba8e203094"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-manual-review/verification-integrity-r1.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "bb553ef3e0cfd304f6a07aecbbe42fb41c1b55a9dc8a5677f9250f9208d10f06"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-author-startup.md": {
+      "mode": 33152,
+      "kind": "file",
+      "hash": "7540c457c09adb461b2369298613793fb2d8234be9319d5381842d9e42179797"
+    },
+    "docs/superpowers/reviews/1861-empty-runtime-amendment-xpr/spec/2026-10-03-2026-10-02-1861-explicit-empty-runtime-design-review-f977a983ac4c88bc6d28ace380504db4/review-f977a983ac4c88bc6d28ace380504db4-reviewer-invitation.md": {
+      "mode": 33152,
+      "kind": "file",
+      "hash": "8d8f770f340ff5c59a4baf90de253b3b65126a61a1280b937f116e14d0763730"
+    },
+    "docs/superpowers/specs/2026-10-02-1861-explicit-empty-runtime-design.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0e0b2bd447b5e3fb301cccbed620bbac5554ac476a4e1740c9836a59d00dcd8d"
+    },
+    "docs/superpowers/specs/2026-10-02-1861-runtime-kernel-design.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f18463bfc4de17d30402230047dd77a5c2947a13941dd4a7336c191b4dca2480"
+    },
+    "guidance/admission.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c33a15a8fcfbc878758ae010568ea53a5dd392a6b105a23848289ba915d2c746"
+    },
+    "guidance/documentation.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2f08845f4c685b3169f9f2c31d04029f3de53f510220729f346522d04d4dba97"
+    },
+    "instructions/aitm-guidance.release.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c733607fbeaa286999f5d0e4aeef9d19cc21377e221d010fc12f15aff2815230"
+    },
+    "instructions/aitm-guidance.yml": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "9259bd36cb7802d3bf2bcfdc3563ebc7185c99b3e2bd187b07435619b3bf5e4a"
+    },
+    "package.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c9ef4764441db3272c63ae3e61eb59d468b328090b39d44d72b2381056873ccc"
+    },
+    "scripts/gh/move-state.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "bd85f0c491efc97fd7506c6c4f419b975d6253e301e52161e121ea5f5f1393b3"
+    },
+    "scripts/maintenance/capture-guidance-lifecycle.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e26fdc4ca671d84fe156fbf9980dac90315e8c24b9177a09d01b7d6521e89464"
+    },
+    "scripts/providers/claude.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "181609e1599f8e44aed03bfd5568b10194776db34e21fbd40649d3cd770ddfa1"
+    },
+    "scripts/providers/codex.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b3a7bb7ec76b482043364174b50d057365f603fbffd344337eff9f2ac40dadbb"
+    },
+    "scripts/providers/grok.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "06d7507e432386d313a6fd4a6fccfd1bdc3c4b8b81ccc8bf9014cf8ed156630d"
+    },
+    "scripts/task-tracker/action-capture-bin/gh": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "d90a946503be18fae222e56d6729c259b3d01290a1f1e62c44fbc644f9c3f751"
+    },
+    "scripts/task-tracker/activity-guard.mjs": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "4baa3ce610f186b3bda0792690b5778bc05b8961878355450eb6de4ec7eedf1a"
+    },
+    "scripts/task-tracker/agent-guard.mjs": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "a3c3926337f692ca9fbd91acd6894809c5901d29f723174038594aeccbd06340"
+    },
+    "scripts/task-tracker/commit-trail-handler.mjs": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "5dbe29bfaa8b201028ab759e7ab30b3602ba9174e91eed8effae99bbc12b340c"
+    },
+    "scripts/task-tracker/draft-branch.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0005f39534ce4706954a82e5a65808e0e1ed7a5f67a958842e553eda3ed516a0"
+    },
+    "scripts/task-tracker/fleet-registry.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c0182ce6b6566b206f5ef9218754ac8c65aeb4d7cee1061f754ff9f2105ce595"
+    },
+    "scripts/task-tracker/hooks/on-ask.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "488cbc7752d97f2c71489e5ea73a242eb1dad3c2d8810a9c50e5dc12e26db39b"
+    },
+    "scripts/task-tracker/issue-mutator-lock.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "93cbab0a851a86d762b729d72756ed5244085752dbfb2c687736691acf86c241"
+    },
+    "scripts/task-tracker/lib/action-capture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "979ff1a43eb86a064f71f1073c34ec82fc3d8331aa88d852a6a256395adc6bf3"
+    },
+    "scripts/task-tracker/lib/action-decision/legacy-refusals.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3cac42f43e364827ab77f6747d7ac356ec29f77231f9a4476767b662b967e3be"
+    },
+    "scripts/task-tracker/lib/actor-flush-journal.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6189b9df69b5639d7693fa5f40029e841aad89922f4cf4b8ed06ce811bbecf60"
+    },
+    "scripts/task-tracker/lib/actor-timing-state.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "309c953b58bc74e0081df9e4d8af5169c731ad790418f7360a365f517adda633"
+    },
+    "scripts/task-tracker/lib/artifact-write-policy.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "afe207236ca7b4354b12d769c7ee67f5cffe8a67063efe53e2e8637b66e45248"
+    },
+    "scripts/task-tracker/lib/command-surface/catalog.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ca8d6cf7861af8b34c824b7fbec9f793fff568ca5beadb53f141864821d89c94"
+    },
+    "scripts/task-tracker/lib/evidence-runner.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a7fcd0d5421de331cb811c14d2632b69f76e8bed43f01fd195b357df6a40e3ef"
+    },
+    "scripts/task-tracker/lib/evidence-v2/runtime-adapter.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "443ee7c24bbc35962d2dadcc264b899d37568073fae130a1eee7f8952827d751"
+    },
+    "scripts/task-tracker/lib/hook-idempotency.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d6b0a2ec127bb36006496ccc5a96d322db52e7edd3d1e4a9b0f293afe8a3586f"
+    },
+    "scripts/task-tracker/lib/occupancy.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "913e21685dd0f2e83393808c0be955d43fd4439700998e1a9e87435d3670aa14"
+    },
+    "scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c4dec95d1040fc6a9baad6a60daabb823e5d8cb7051989782383aea5681ee45e"
+    },
+    "scripts/task-tracker/lib/ready-for-plan-migration.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fdedb01f0ccfd22b58a0a20a93a134b1ffab3ceb2b765e1406b2ed8a1cc422a8"
+    },
+    "scripts/task-tracker/lib/runtime-batch.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "aec006e296e9aefe57946fea6a44ecc75340edceb85108d91cbe125d67b36aa1"
+    },
+    "scripts/task-tracker/lib/runtime-initialize.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f5b2ba6c7d1f80173cc0dd78a8ee9720aba1a5f860f276c9d933e7a8c0413487"
+    },
+    "scripts/task-tracker/lib/runtime-migration-apply.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3ed8841b3defea59b549285f3dad42fab0a7da47412fe2ab8388212c9f86a701"
+    },
+    "scripts/task-tracker/lib/runtime-migration-plan.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1c501c1c92f30e30c65655bed48f730fc077fed2f438c1312a271b7d8516825f"
+    },
+    "scripts/task-tracker/lib/runtime-migration-timing.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fabec995ee5cf0a32be55e0d976619fc6244adcaa9cc41a203a75587329f9773"
+    },
+    "scripts/task-tracker/lib/runtime-process-census.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "afb541de6137acd3e7ab834a3701da57997d3c144cf0aed8e3bfd4285393842a"
+    },
+    "scripts/task-tracker/lib/runtime-record-catalog.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3692aa0b6bec04424c74f223e14db6eb8357e4d1ae7393daf1869c876bb937e9"
+    },
+    "scripts/task-tracker/lib/runtime-writer-census.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1196cb18e187df29ecfde949e8f1d5fa223ef03296f991b4d56eef450fbd3318"
+    },
+    "scripts/task-tracker/lib/scratch-dir.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "858bde5a7331213ce0cf6d17f4305896c22c7bfde42ee746e9d9f5415e7b4d86"
+    },
+    "scripts/task-tracker/lib/session-store.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4b99a65c70a0c3245baf4bddc507721e673eb4eec1e4c3e3a3dce1fb06cd1344"
+    },
+    "scripts/task-tracker/lib/test-sandbox-reaper.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "66a83fc009ff27b6f0e767dfaeda7118606b228dc082ecd4b64a102eb3ea7a84"
+    },
+    "scripts/task-tracker/lib/verifier-cache.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "843cebe151695f5ba75aabbb53ba7dab064562c6e01a227f49b4b3ca4d44f1fa"
+    },
+    "scripts/task-tracker/lib/worktree-binding-lifecycle.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fd7f1002896c45ddf63ef045212a1d85047ddc2b39694e09d373d664d1b6a73a"
+    },
+    "scripts/task-tracker/locks.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5ebab3f7588f13eec1ba0fff928fc7d37956947d31d90fa90cda96ad004abdd8"
+    },
+    "scripts/task-tracker/orchestrator-lock.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7d5dbdf2751a3250ba5e2655a40a8cbb715514eb36a0458da0548b990c951f48"
+    },
+    "scripts/task-tracker/paths.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6eb7373d2ce65da2b6cbb74a728741761722fbb7e343dfb53a504c8211d0da70"
+    },
+    "scripts/task-tracker/queue.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "06f737d058e6f89c1452b65dba9eef2c62ce172541062c1b232a0e38ff789677"
+    },
+    "scripts/task-tracker/session-state.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a4970c9c215530b2defb2340a2abc89e897250374be55f27656e5148b3a0ae5c"
+    },
+    "scripts/task-tracker/source-edit-gate.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ce5bd1ccb647a111befeb5cc2e75844d5c6139ddedcfd86df3fb3b099f6f9fa7"
+    },
+    "scripts/task-tracker/state.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "518bdf88d6e7082d3ac30fcba9cacfc306de437a71bb9c5910683e578c4db8a0"
+    },
+    "scripts/task-tracker/task-tracker.mjs": {
+      "mode": 33261,
+      "kind": "file",
+      "hash": "a8dfd7e00afd32d79536987572acf78afe6ed3b16e3302d4c4a4da253da5aab6"
+    },
+    "scripts/task-tracker/verbs/help-data.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "439c4cecb9b3086ab084c54d6510178b50fb5c4e58c7f0c305059a02d82b58d9"
+    },
+    "scripts/task-tracker/verbs/migrate-runtime.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d588963ce555ba13e05615d6f2f580a65f649304acb6c5c5dbeade3227d8ee7b"
+    },
+    "scripts/task-tracker/verbs/test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "935396f10321ca2f25bed95adc8b8c942c93b7809a2f01ea105f8968dbfd18b0"
+    },
+    "scripts/task-tracker/word-counter.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1c67de214aa3b2cc551651a90c75960a3ce2583e75b529582ad73a164a938d50"
+    },
+    "scripts/tests/fixtures/1558/admission-surface.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d2dbbab35a926ddb67ddc47825255c0307ac5e35eea6c0a3ff17acf06881a549"
+    },
+    "scripts/tests/fixtures/1558/rule-guidance-map.json": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fc103b05488244900ec6866f01eb4474b01c171da4eb153ca8118561c515ff10"
+    },
+    "scripts/tests/fixtures/chore-mode/chore-mode-fixture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4a4d578ca2d9e73d82db060b782b90fe560bd7282a1d376e3f092d3c0cf40e51"
+    },
+    "scripts/tests/helpers/action-authority-cost.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b23fe404ccbaba06a9a51f154582990eabc67efbcd8090873933226e914413c2"
+    },
+    "scripts/tests/helpers/action-early-promote-cases.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "90959570e3aefdd05edd9dc779cb81b9beb6d26a28e572b4c2e212d74b8cf26e"
+    },
+    "scripts/tests/helpers/action-explanation-authority-cost.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b67317a5d0dcc1d62f378143e9ffdd55f11581ed101fb2d5e201309b9ef4e9ed"
+    },
+    "scripts/tests/helpers/action-navigation-cases.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "51e2e0e972e48f8c0dc03c06abd2cd85d4f661da68de9bf8e68d9cc66a9b0faf"
+    },
+    "scripts/tests/helpers/action-session-executor-fixture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "04d7d91bc237edf5264fbd9422fc781506f52781359e776495b1ce36f286f92c"
+    },
+    "scripts/tests/helpers/activity-guard-fixture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3e9ce0e9740d30e6b96d2be82e8ec9df25f07ed13e184a2ac06fab1bb5bf0fa8"
+    },
+    "scripts/tests/helpers/capture-guidance-release.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5dc5207470d07cc94eb4fc086a5c7daeeca3404123d179f480123adf9a57e38a"
+    },
+    "scripts/tests/helpers/captured-commit-bytes.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "eea4d201037f08a7cbe8a657bb5ad105b99f52359147361a2206f4f043155bfa"
+    },
+    "scripts/tests/helpers/chore-mode-state.cases.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "83c605a8eb868e7f98e1517f0000e333fd0780cf9549d1cd42a51c1d75c37196"
+    },
+    "scripts/tests/helpers/close-convergence-wiring-helpers.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "949755cf2e9b3688694f39b62c673687d974076d24dac8a26fb2a5ad635a5784"
+    },
+    "scripts/tests/helpers/close-state-fixture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ed7971f37f066ca3068150af342441f3fa60c8daf9c4c70e027a517fb3297dcc"
+    },
+    "scripts/tests/helpers/evidence-v2/process-bootstrap.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ecf8ed99b7a79093f84b7aed397094edaafff7b3ddcb229a8f0be641da1b7d31"
+    },
+    "scripts/tests/helpers/evidence-v2/sandbox.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c6ba342d6ba66a3957a4a0be026e77d3ba91d721672f09ed47cb97bfe5d327fb"
+    },
+    "scripts/tests/helpers/fleet-registry-concurrent-helper.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "56f50b08d19252c1ea26f4a6644f23983cb59e92456f66ac6412f101077040a1"
+    },
+    "scripts/tests/helpers/guidance-capture-provenance.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ad55852ea7d0d03936eb91163ee4be6991377274e22166dfab3ae3cccf3cf7b6"
+    },
+    "scripts/tests/helpers/guidance-paired-context.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f4f835d125428abf413cfd58a170f633661af27eac8c987579d2941557ce5d37"
+    },
+    "scripts/tests/helpers/runtime-root-fixture.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e7032e1b37d38f6409e47bc9e1f3719478f042feec82c1f0bc549f242aa8eacd"
+    },
+    "scripts/tests/helpers/worker.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2ead3a51a23fb0ab47141fcaac7d0adc2f3e7a2bf1bc238fc8117c8e79273907"
+    },
+    "scripts/tests/integration/meta/package-test-corpus.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3f034fb8adc9687db1d35730a958bf26cf907232bf3e24e1fb5c56312059c2fb"
+    },
+    "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "727f7da1978f3a6f220c047d42f1784c28a06d5b438e03bb397fc55f8391e44c"
+    },
+    "scripts/tests/integration/task-tracker/lib/absolute-word-markers.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c7c43a0320c24a2ffcb85a5b4c1e7285e6ff412caa9ffea527f9b3f6b23c0f12"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-capture.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a03c749834b25c7dea2c0ac78b1fa6bdd0d560a6639fdeda2942b0d8daae0502"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-close-normalization.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "60c3c8f391c2686690aad4e3fe67ec4bf583cbd5eee5d27d56f8bb76266f2bb1"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-parity.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "729dd058fd98f7288f22f6f6f4108904ba9b24f772474b4768cf6588e6305466"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "69f9b9e2c50f01eb250c57f6ec539a62971ec452d9c7101c9c7a8bcca38b20ae"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-review-reviewed-scope.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "85ef28e39d2b48f5ce9ff32b9c9a010ef3caf35003f92f20adfade9228067912"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-review.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "db6c73012a9bf5ee55ec116df9de77d3d8f48fea174934a69f5f5c4089cf03fd"
+    },
+    "scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "cc666c87a5a212f5b80e3f6671c7c5e3ed9e3e3138bf0dfa4b87afe4e8f2377c"
+    },
+    "scripts/tests/integration/task-tracker/lib/actor-flush-isolation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "96e1faa38c655dbb664bc478a42ccffca563a5ddf0a27938e4186410c04b95dc"
+    },
+    "scripts/tests/integration/task-tracker/lib/actor-flush-journal.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1e9e8e322b2a4ea03db131e3143d3e3473c6742ad081a98e989bd5f5c082cc50"
+    },
+    "scripts/tests/integration/task-tracker/lib/artifact-write-policy.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f5b62d2f7cb2d60981acae2c956b1bea539192d3709c34a5e0bebf2fea907be5"
+    },
+    "scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "95846df2b1cfae5329629535dce846be6c13fcc58558cd3d69cc8fe9f061a4f2"
+    },
+    "scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "abd9f239525bbb6ffc9f79549e155aa493f022677dba6f3056bdcf51ef1af0dd"
+    },
+    "scripts/tests/integration/task-tracker/lib/bound-worktree-state.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e755d5dd4747a40a9a39b06eb5f7d8aeaca151b12c0edfcf1d45371625646a22"
+    },
+    "scripts/tests/integration/task-tracker/lib/chore-mode-verb.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5370e6ac0667389780e6523b024e1abe5bc30b2689b76d69a766d26e73e374b4"
+    },
+    "scripts/tests/integration/task-tracker/lib/codex-word-marker-lifecycle.integration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0e4c0e1f55a964d3c7fc9795190db5e7558f2fb24403b86ab26861829c36453b"
+    },
+    "scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "672db5d5e2aed2f6c19fdce01d554eef4773209117ab9d9039a7eacae386f5a3"
+    },
+    "scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "dc18ca203ce24b31a97b1dda54fe8f45767272b5b96397f1220d29ac71c71da2"
+    },
+    "scripts/tests/integration/task-tracker/lib/coverage-source-edit-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d0440b87ccb7196c986f69ffa95c3e5deaaca402ca25313df7a960ff8d2d4d03"
+    },
+    "scripts/tests/integration/task-tracker/lib/cross-worktree-bind-resume.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "15ac7ad46d3830d4e759f005514030b1b1fbbb063b5eb3410e43f6b5ff33be46"
+    },
+    "scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0beb259b49536009b733932a849aa0244df2cb8351b6717dcc279c3c26bfe26c"
+    },
+    "scripts/tests/integration/task-tracker/lib/downstream-package-boundary.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "21cbb32dee988db7c35f80fb3e8153002498af98bc2535a0dae12b24fe175d7a"
+    },
+    "scripts/tests/integration/task-tracker/lib/estimation/record-claim.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ed90fbb86a5ed508167ea817009b428c208cabe62723cf690d203b6e6c1a9233"
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/binding-generation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "be244918f156d327bb2ceede263a979ff7cac40740e481ee6040bcd8f9b51931"
+    },
+    "scripts/tests/integration/task-tracker/lib/evidence-v2/cli-contract.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c6990c2860d33249e1b57e5e7a3968812ea33ae9267765a33935ff7e2856397d"
+    },
+    "scripts/tests/integration/task-tracker/lib/fleet-registry-gc.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "27d0c68d647508c949d9b78c515bb750a2d4547ec9ef37cd2fa35b57bb8e873e"
+    },
+    "scripts/tests/integration/task-tracker/lib/fleet-registry.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b237a98b15d7d3b08984b6bd42deda670dcc70127ccddb1c643c3dd14b1d9799"
+    },
+    "scripts/tests/integration/task-tracker/lib/gh-command-policy.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f37b014838eb72593392eac50da278ce89da537b82f3bb4298a6063bf22e4610"
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-documentation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0369ad6b41fcc8f5c047fd3e4a009c114c5f1a9caa423781b69394915bf8ef47"
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "61bd463c57ad455f5216fc75b833e83063221764c2f797d095668682483ff0ce"
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-recertification.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "32899b6a3c866f243e186609be065a7c5c272f6301bffe840582118ae6f54bde"
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1514685b5d723c020cb589bf7baf8007b45b042a0d1305e961a2093fcd669041"
+    },
+    "scripts/tests/integration/task-tracker/lib/guidance-source-trust.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ec754393cfc4a905f510f9922b6b21b8caf4845bd99fc76c97424464dc1274f8"
+    },
+    "scripts/tests/integration/task-tracker/lib/hook-session-start.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3ec363b689d91481f430fc43a2dacbd80fdf9b29d68553d624269b5bec402c2f"
+    },
+    "scripts/tests/integration/task-tracker/lib/interruption-word-markers.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d9bfc9e6b9e7778d78f45873c510e54551f8717cc5b904f010e247797ffd5190"
+    },
+    "scripts/tests/integration/task-tracker/lib/issue-lock-pid-liveness.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fd292cfc0b3e49aeb8acff3a8404ca332fbcc73da371d5df971d13d15766a021"
+    },
+    "scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "27f5b97ddc610880dd1c99bef489641ad7998b79d85dc260cb1da4b9fa3f6c58"
+    },
+    "scripts/tests/integration/task-tracker/lib/move-state-lock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "906abc133e66d50385aa5f2fbcf4023921f0e238ab4016b83fdb90f01760de3e"
+    },
+    "scripts/tests/integration/task-tracker/lib/new-switch-marker-order.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6250c69c931114ba805a59609f51b66d590ad48a333fd5a18c3831278aa38771"
+    },
+    "scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1c7e2cc24dd8bb5994c1c432c84463733d779cb905c82670cd1903757f93ec44"
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b57979d42b2c7d6ab7ae5858bbd9272d372cec1ba6d0fced5983869b44116436"
+    },
+    "scripts/tests/integration/task-tracker/lib/package-delivery-waiver-smoke.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "10ac5848cb880dd109b3301709d2e9b05c8fb22647a252306a70782125d9a35c"
+    },
+    "scripts/tests/integration/task-tracker/lib/package-workflow-exception-smoke.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "02b7afd447b391e4921ed19bfa0344a63104620fe03376759f8535b76832f196"
+    },
+    "scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c1ddf71344f8d29a0d42035c4e840f3ff85f80d1f2157122e1e28358414b2785"
+    },
+    "scripts/tests/integration/task-tracker/lib/reopened-close-binding-ownership.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "13ad965e3f7de7f532b936768d950254706d75ff44b950e9b63aa0f05eedf18b"
+    },
+    "scripts/tests/integration/task-tracker/lib/resume-auto-gap-activity.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2e7f9930f584fc76dd8f98745cd11aabdab3df1d50bc2401d029076c50266218"
+    },
+    "scripts/tests/integration/task-tracker/lib/resume-fleet-refresh.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ae3ddf87986a681dbc134342d1f7db756e93713754612b30a5eb69464e11007c"
+    },
+    "scripts/tests/integration/task-tracker/lib/resume-fresh-bind-no-switch.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3a62ea03040c9c818119709455749cdb8b60401a3f73df8921284c429c2ebbce"
+    },
+    "scripts/tests/integration/task-tracker/lib/resume-seed.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "bb9a1528caceb9d6122f730a5aa385009dc3406ba8b1d99a467283def67a8643"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5429cd0a542a0150517ebfc409e30f52c7c34bd387f333da0f49cf0e65eedebe"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-actor-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f3e14d6ef9a5b5aacd6a16f0f84fd061aee8548116e7ca2cd429fdbc8c042ea0"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "35b3312b45776e5c41e47db6fef7ae2ad4b5fc44876bf6e29fc39c5db99bb9cb"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "8a4b1db39f1ab48e17bd27e95e98a5e30ad7bafff627395a3c835d2cc0a42920"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "583ebeb6e0e561e0f2d6573b67355615f2d64cb0437a26dd628ff92b37ab9ed5"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-capture-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0285967154d9265f38f34ded36802f8f4a4abdf585add82f48bd39aa1345f90e"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "cb5511def62a99c355ae956b1124d64a8f3fcfc3ff6e2319a8d0aa0a299ba72b"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-evidence-authority.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0d6eeeab135396c880c0f5f7a6548b8deef18331fea07c2e7bcf36e8b92638fa"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-hook-stamp.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "04dce4d1eda80555bd3b793e85cb9153df9f507501ebbf212560a533cd70d0b8"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "46aa4913e8f407c5da125ba33a6b589bcdae301ea2ed3cad5bd2cdfaa9514006"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "91efb4ab020d55d37b22a2d4df3a816bbca77c512ee554b0fdc30343a28f29bf"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "82400110a4fa387f7eb6990b089a0a187615323bb6bb1e24b6a3b1a510472e1b"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "23d164e04c1cd63f78ed1a728d4c1e22b17c765be849af400dedd35a41c58bdb"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0dd29141e1d7a348780b695d853d2835f1bcd6ce78ac04d157805d7e00ea9f8e"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d290a7fe708ec0b8e606905e7b00fbd50e48a468c594e4224c79dac10c84648e"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d0d49997a8af9da55f2cb436531780f7ec850554058bf29094b34be1663f6d3e"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "288720e5365fc6b60082dcd87a2c78989ce8eac90aff7355714c4fec74125f8b"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-operation-lock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "8099a178995c1ecbf0a0ff0a3bb9211170d99ed9bd4ce0c2f1adb99d06416ed0"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c9af1a16cbf1b43376a1c95a11177b0d72cf5a0bbf402dca34ccdd39d61dc074"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-orchestrator-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "04cc5f80a5ea550b3e1ee34ba174fdeeef0cedd5e77a93a8007e6e526bebf820"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1b6bf5fd14f46f9b3e1cfa876bc38ac81d6040ca4e6fcaa78d83b2f9555012de"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-question-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "120b8fa1e9bf270a7281e7f6c21073f64f5a8d2786f4cef499d53fa7c7133fe0"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-queue-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "85383446db4318080cfb964767efb3d3b5ecaf5dd4dc19aa07477764ade3a8eb"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-ready-journal.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "180e6012e156c72709d423f345ea2a1daecaaf01b568fd807cf6b2906b2c63fe"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f807268f5c778d83a2f39cb67a27ae4df2397c833a6c5b755cd73f6c91890637"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-terminal-ledger.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "de04bc8f4adebe321f7f7047f437473ff485601369a86c6a214a4aa3ff8a143f"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-test-worktree.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "eee16f9774104bb937aa7f2d04c334705a2bd2d9642de0d0a0ed0a0a65425e17"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-transcript-provenance.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "181aa9c86f2597f7e8b18bd70d71565db049eca260ee654fc72c3df97a19c672"
+    },
+    "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2a88809f2f4afaf996ecbd5a45d521a92245fdf6ddf46625a767b045492bace0"
+    },
+    "scripts/tests/integration/task-tracker/lib/source-edit-gate-workflow-policy.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f69feb38dd44be7111973d4f3724999298d2a38993239dd2c80d9fad76f42883"
+    },
+    "scripts/tests/integration/task-tracker/lib/source-edit-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "cba9e876d10489135ecc71e06835db5881b1c79030fdf65e72b92c469005127e"
+    },
+    "scripts/tests/integration/task-tracker/lib/state-mutator-concurrency.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "74a1ff5f12ebb2f664f4aa8d9d96fc78ac220b41e84be922dfb148ac36e7b20c"
+    },
+    "scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6e653a32f00e4995c927f99f0175d34868762a4f620843ea8dd448325f436657"
+    },
+    "scripts/tests/integration/task-tracker/lib/terminal-review-handoff.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "35c3547d6cc36b24129ad666d1becdcca22bb76a74b0092fcaf2fd128e0fd20a"
+    },
+    "scripts/tests/integration/task-tracker/lib/test-verb-entry-interlock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4b8c140da294d85ba639a05c32bf2abf675c3f7aea41e239839b9483856551f2"
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "029fb382819724c6a1c735d6132da6a32543ae55470b9b1b2f40278cbdf45170"
+    },
+    "scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ca05de2388d0d8c92d39cca23a1daa9cad29a1691130019142f1657f75b62f08"
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-different-issues.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d6ad0ce3103d44c58d39a4344b89059c832aed89019fa55bd81c2a26a9592263"
+    },
+    "scripts/tests/integration/task-tracker/lib/two-sessions-same-issue.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "942d593b5c6d87f23496b2f840eaa0d8d55b3af4744a2b5deb4f4ab814b29c75"
+    },
+    "scripts/tests/integration/task-tracker/lib/verb-start-resume-stop.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "68b161671be14ff24bbed6085cfd6683376f67860685b2905dc0e2944cc17d7f"
+    },
+    "scripts/tests/integration/task-tracker/lib/verifier-cache-durable-head.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ad8930737a2f85c82aea0b04a70b47e7b2e248841b96085c7f3cf76a6f2c1b86"
+    },
+    "scripts/tests/integration/task-tracker/lib/worktree-binding-lifecycle.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "12def1c84abcd963ec38605b5c15a081625d118f691b04f25f22ee76b00259a6"
+    },
+    "scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "eeb15bd5687de6df46ca4a3e1ea74b78d02936b7d7736cbe6db8a5233ba023dc"
+    },
+    "scripts/tests/integration/task-tracker/verbs/bind.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3d312d0b80ef462b6ce153f6c5b22b52152a80cd8f538fcc916a38d9b5e015c8"
+    },
+    "scripts/tests/integration/task-tracker/verbs/github-record-approval-close-gates.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "abf32b2b317da5758368ed40309a88db62f0f10a372846b465fd5f4399edb7af"
+    },
+    "scripts/tests/integration/task-tracker/verbs/new-from-plan.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ca4bcf6fa748a464be1648f199e879da27031490fb45f615f768044744fe6201"
+    },
+    "scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6354768d294b4766589c60c62d5d807441975ae0bc9579b8b7e6e5caf817b38a"
+    },
+    "scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "cfa572ed2a403bb660b2387917ac7113e1cfa24a4124ce131e061ebe95b962c8"
+    },
+    "scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2bdbc375c130a025987db8f85f7a9ab84410afcec578b2b1bb063e6a9f0c0796"
+    },
+    "scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "777e1e69abf3f7cb83838d3d5b415c9c780e3945f5290315951a576980039bc0"
+    },
+    "scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "79c286d1043992233d0f98aca61d34230613be99a6f4a37ecc1e1dedb976820f"
+    },
+    "scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "415b01ab29fab05c16346f3134fd565e772e4d54e86964ffa943cb5349f1eb6b"
+    },
+    "scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d1aeadbd01f444a04d8e3e53f91696a13bcb410f47f7594f1717af5c5010022b"
+    },
+    "scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "84e71bf5407fb8efff204e5b1b36788935aea42bc8831822736b9eed17d46158"
+    },
+    "scripts/tests/slow/task-tracker/lib/cli.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "87aa12f63c9ab65f9696c7aadea2508c610d2aaaf7bfafdb199e03cd5ce61680"
+    },
+    "scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1c72fc251b3de5348ca1686de53aea060a44ff34a4cc44408352e369626e3c3c"
+    },
+    "scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ddc536e4c65f2a632001339bde2e1d81643a904c21f4fd5c85bebbb6ee959158"
+    },
+    "scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "de6395b0c6b92bd5e9e514fb2efc9485eda1572a96412e9eaff0a7577ec181c7"
+    },
+    "scripts/tests/slow/task-tracker/lib/create-issue.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b915aeb44f59d8903996678c9f0ffa488132252239bd424a7017d344d5359778"
+    },
+    "scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a6519fc304fa574781cf6ca58baa2a80bed8c5b78bfe35ba4533039c68369811"
+    },
+    "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "39af7dde7cf664ab26729b056590ae3f0ca92f7618ba7576acccd0895e8c9a3e"
+    },
+    "scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "8b223560155d589f1496bff8dfb66dd5697a7deb37b1b99375e05b5554ddd21d"
+    },
+    "scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f78425caa0ff496fcc80b140f7a84677e6b32e3cdc1b879d2d04462648dee68b"
+    },
+    "scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "27843dddfa22dc21de467fb33b99da35b74136d3032da50cee6e11e1c2e7839c"
+    },
+    "scripts/tests/slow/task-tracker/lib/gates.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "33f7d6382b3b93e761aad64e685549c4fa1a03710b8385e7f54d7221ce761f12"
+    },
+    "scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "761ee8352b3a56f8fd3de23361ee253c22532f2c3e3da744b77f3696d906aa64"
+    },
+    "scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "49502d2b1a380d4acb6f9bcc1fbd9e5b902ab4fede24bcb2e613bcc6723abee4"
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "81d02c3dc01fb81d29b01863953d4656c306676ef6b5e215166267865863a5e3"
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0c3eed610af0bbd268c5976503ee0d15e21c27ad4e39bfb18c8982c20ca41b00"
+    },
+    "scripts/tests/slow/task-tracker/lib/move-state.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f30857f332e72953154d3b9936389a2df127edbf0e7eb5b3dd299c47a0494ffb"
+    },
+    "scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "31dbe78feadf71d6893abcf5fa6ca8be31e8ad3743e6a8db57566d9e9bd0443a"
+    },
+    "scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "721c9f3cdf2f91d1f4e415255f1b9755a9c80700ad7ad2aa2696c7a10a7e64e6"
+    },
+    "scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "37c4c3ddeb419da0098313b69875b304f0ae479784e9d53600835df7ee7462f9"
+    },
+    "scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "520e4e9d00a53b72bec7faebb74b2ca08fc12e4de7ad13bdb4190ad8c43e2034"
+    },
+    "scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2b18cb1c93db5c1e44277e3931c568b81f58697100830ea7a3d2bba8eab543fa"
+    },
+    "scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d11cda3f94faee232ccf7e6d67f61ee38ddaa4ee7bf9d492e96d1b1bc1820506"
+    },
+    "scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6b841fd2f2427555c19308546911e7ac33d1aeaa336aeb36912924144781be01"
+    },
+    "scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7a40eb347a649e26f4e64a136f9421b0b4888e55ffc222396ecb42f2e2df7635"
+    },
+    "scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "482d14a9ac23db93d9bfd39fa76b692b50ddf7d6d3ec5280c01d8c3edff5c8c5"
+    },
+    "scripts/tests/unit/providers/parity.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b72ac5e6c923e4b05211180be87e1d59ecc778946032dc6405b07dfdcc2b3b77"
+    },
+    "scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "42f81b44142d86686ad65d4885455ccf7d33f2f5c9375fbe62f1be38ee9dc085"
+    },
+    "scripts/tests/unit/task-tracker/core/actor-word-cursor.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "bddfa58f41c83f43d2b6dedd5bcd566b6a68a7b36aecb300af1b4cf2b157dc3e"
+    },
+    "scripts/tests/unit/task-tracker/core/close-emission-order.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "8b8348a448b19b74380cbe6e69439c26d5838afaeb9f934ee1528f74273aea2d"
+    },
+    "scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "df2264c68f4c02a29c4307e71c366610b210fe19b7b5db906577d2c703e68ad7"
+    },
+    "scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "989ff89342954c2deb434b668c4140a7269bbf2c85fafe2f95bee3252a3341c6"
+    },
+    "scripts/tests/unit/task-tracker/core/heal-timing-log-command.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "63f0c3a2d1b86a2f9ca1413a0bfa7de3ac8e88d3b58d620e8c33b89c79fb0b4d"
+    },
+    "scripts/tests/unit/task-tracker/core/memory-seed-packaged.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "28ff6dcb6bb0a24c2dd2de91f55a1db3c461af655fbe6e460f44571b0b43c316"
+    },
+    "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "028caa97efb7069617fca1bfe593d632d8171c27329dd27997fc8a1b0a5dcc31"
+    },
+    "scripts/tests/unit/task-tracker/core/state-project-dir.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "94b8dabfcf0c10e5bf121d4ffc656a7aa16a8e3ae131b7aad630430a93ed023a"
+    },
+    "scripts/tests/unit/task-tracker/core/word-marker-advance.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5f1feb0709a87f55a03268fb58626774744499e7400772894039bb359211e12d"
+    },
+    "scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "43127c94996dd647876e75fd4f96cd310841cfaec6cb0af3a776e73b724652f3"
+    },
+    "scripts/tests/unit/task-tracker/gh/review-in-place.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "76876ba69aa34873ac33c5a8f47ea47f2ea36d0da0af4ce32fdd66c4f22a4b99"
+    },
+    "scripts/tests/unit/task-tracker/lib/action-authority-cost.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "19e774c32385a6417bccbfc00980e5811e386df43a1ec0bf8753254a18a433a7"
+    },
+    "scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6ccb273c7b349f9d71684b478ce167976e987b0b641e40f20b45174582fdb112"
+    },
+    "scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c11a1c2193f139385e75093b5ecb73c724f6a874c1f3564caceb5badd7ec6e05"
+    },
+    "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2d4ebd3c1859df3be870cf773d2ed06f70b0b1276b3a58ec299ceb87eab0ac26"
+    },
+    "scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b4d09949959aecaf5b1a79b1e587c42ad414349ea5096b92d4024daee44969b1"
+    },
+    "scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f98b68e6ffa5472e204b8d34ed524c89f51eabc8c0e31c5becd7098e6954d81c"
+    },
+    "scripts/tests/unit/task-tracker/lib/bind-context.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "797fb67bf4c2b3713f20bd82d00abb6b17f353a9f1dddc88f9abba8d73777bda"
+    },
+    "scripts/tests/unit/task-tracker/lib/bind-reseed-e2e.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "81a38831e85bcb94600d92f64b96644ae703042e6f1ded4e69364ff40bb40939"
+    },
+    "scripts/tests/unit/task-tracker/lib/bound-state-session-authoritative.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e71b8305ae397a0f7f0989d56dec911457de525bcffcc6027d1f2d571091964e"
+    },
+    "scripts/tests/unit/task-tracker/lib/bound-worktree-project-dir.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "9a55b00a51a0ae7201cb0f70c0118605c7a7f55172dab44e168e07e8b9d2a078"
+    },
+    "scripts/tests/unit/task-tracker/lib/close-cross-close.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e84339bc65c8de033ce44c31acc677bb67007737eb46977fcf85e0b809bc0f83"
+    },
+    "scripts/tests/unit/task-tracker/lib/close-drain.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "3a2b0a91419d7800d3e2f5672bdcb5bcd814b21c3657dd5d5e287bbc83ba1014"
+    },
+    "scripts/tests/unit/task-tracker/lib/close-repair.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7444a4807b8a11e725a2f78d53655dd8b8f34f03f99d1dc69e1703f3f90aef15"
+    },
+    "scripts/tests/unit/task-tracker/lib/consecutive-promotes-no-reconcile.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "87ba3bfef575e970a23656d3a6c21973277fffc7e4ea1e3daa6bd76866450566"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-approve.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "9d23566a5e0ad11eba75ad938ceed29e1d924d52d9a348898feb924ce1a121b1"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-block.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "37e57911a314f430e3101931597b09ac7f1436a8bb5fcde3552841bc970ea997"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e672353ab2dce18041263963f17b7369b44b066f426882825a0eff86ed0963c5"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-review.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "8aa2a2389b2c5e8d8199dcf77e12c5bd44a7da4290fab37cbae06ca24eeaa1a1"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-supersede.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "306d417ad32d70133af7ffc9b7a2c52bfde08ab82de65fd14f226f07e563b25a"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-unblock.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ceb631dec3c29ffbb9c7fce9f0aa9912a5ce9e3abb1fbccbdc236f4c237f714d"
+    },
+    "scripts/tests/unit/task-tracker/lib/coverage-verb-preflight.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b85b923a98210256015547397ef16033356b3a56958191b93911b8377979d02a"
+    },
+    "scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2fbcb2c81e1b95fb549b271f452783a282488797452f99a5f8f49ecb192530d4"
+    },
+    "scripts/tests/unit/task-tracker/lib/flock-contention.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e783379b1cb3d1be3eff7d66174cf91e11afbb81cfdf4857425a7f71ae7c29d3"
+    },
+    "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "52e632e33bb0ee77c2ea4c7d60e687aa5e6c8790131802166697c3cefd8ccce1"
+    },
+    "scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "87d3926d2ff5cc0aeb55f62c0a929f8e8d958e0509cebe39ac61c8418d3bbc16"
+    },
+    "scripts/tests/unit/task-tracker/lib/guidance-rule-coverage.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "696ab9d0a681849bdb060ef0330756bd0338dd3c310f41ea159a72250d94cb29"
+    },
+    "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0095e08ba37fbb4af0a46df2ddfac0308c063b5058f53c095a49863052e02a76"
+    },
+    "scripts/tests/unit/task-tracker/lib/locks.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ac8f2dc7abb58a9e242ab290d04cbf1b933fbbe5c80739970bf6fe98f10667f0"
+    },
+    "scripts/tests/unit/task-tracker/lib/move-state-internal-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4a86fd985a711eb3532c98ba266bde4705cadbb8047a75d874c0f8954b39bbd7"
+    },
+    "scripts/tests/unit/task-tracker/lib/move-state/move-state-core.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d17195351eacc8480258987147ca5246a86759db2baf19ee1c988807625380ce"
+    },
+    "scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1635d90ce7c716a971d69965879e250a00b87c583d205deb78936e539f547a76"
+    },
+    "scripts/tests/unit/task-tracker/lib/occupancy.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "730064a211a43a23070770e8bb8a0ee9edea8359ad2f6c0624127740e4b1097c"
+    },
+    "scripts/tests/unit/task-tracker/lib/on-ask.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d517c552df0da1019f891fe74910db0c3319590a41dd465764abee2dffffe526"
+    },
+    "scripts/tests/unit/task-tracker/lib/on-stop.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ae9fbb58f57ed3bac4329325ff21385612a13c4830872d338524793e4b7e2aa6"
+    },
+    "scripts/tests/unit/task-tracker/lib/paths.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6673afec206d430befc1622cbcefc30902d7f4cee966241fa6c3c5358ada67ba"
+    },
+    "scripts/tests/unit/task-tracker/lib/queue.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fc89935cc7b9af4c401af5a65f6cb515fc298c829d9115a90332c9d5f089f7e1"
+    },
+    "scripts/tests/unit/task-tracker/lib/ready-for-plan-migration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7683073bd7f281709b19bc7b63bdb7072ecf88a6c04b6277c6032aa455e68553"
+    },
+    "scripts/tests/unit/task-tracker/lib/reconcile-no-drift-seed.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "db49505448e0646959e1cb3612f643bd678c5f34a0d296d8e9818edf3bad7797"
+    },
+    "scripts/tests/unit/task-tracker/lib/reconcile-sentinel-drift.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6f4b141413efb63b6ae436f9dbb17750b428b329d0e196483cd587298f29a526"
+    },
+    "scripts/tests/unit/task-tracker/lib/refine-tbd-placeholder.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "9b863d056040cc81ad31775dee43fca330f2128ebbe3010cc13256488b222bb3"
+    },
+    "scripts/tests/unit/task-tracker/lib/review-verb-timing-order.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e1af54423fbecb9860897bcd7d9473577904595e60b871d79dace4bdb469bc53"
+    },
+    "scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "9d2067df8c4635f986e2185953b7d16dac4b945dc3e10210b7499b044b437c38"
+    },
+    "scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4660a6197082cb0642ffc231d8cb37fdc626ec76f64e9aba64efee3aa5c147b0"
+    },
+    "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "322ce9abd5294ef16c1188a9aba9cbecd44c9e564fe747e0deadfc45cb1b75e6"
+    },
+    "scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "450dcd693b3af4c9c235f83c10b73e5ebb843ba51df8f79761ed9ca0378ec06b"
+    },
+    "scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f9ab6c1dbea05f86abe1e0a0c3429614befc60a0ba6aff692b5d28baa2f123bf"
+    },
+    "scripts/tests/unit/task-tracker/lib/save-plan.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "5d57a58edcd05a663a04536aa39c8ce01b0d2a5028ffecbaf99e948819886ebd"
+    },
+    "scripts/tests/unit/task-tracker/lib/scratch-dir.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7eb9d02c87828348299d4c4a6d76ef4fe12bd2e5609ad0036fa092dcbca643c2"
+    },
+    "scripts/tests/unit/task-tracker/lib/seed-kanban-cache.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c956cb2f88043d8aa504f97382f7df803f392f705158d6ed0729b7ea1b171337"
+    },
+    "scripts/tests/unit/task-tracker/lib/session-state.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d84201c39969bbe77737c149dce625d98cfe39ec48e8e2a7cf849f5a4f8fa66d"
+    },
+    "scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "958bf4f67431de886260f24bfd3c6748581a9995b849a74619b6644bdb5c3601"
+    },
+    "scripts/tests/unit/task-tracker/lib/state.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c38933907c8192e514b08e8f09f55d41b8834ed122619ecddb92d8ce987b11f5"
+    },
+    "scripts/tests/unit/task-tracker/lib/test-407-binding-survives.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ace136fe14a34cba59ab83ffe98171ee1f1bf698919a52a8b65df8c60317c056"
+    },
+    "scripts/tests/unit/task-tracker/lib/test-sandbox-reaper.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d2f8c791b1295d0f7c91264e8fd6855bdfc222c89267ccfa99e7d6ae699abe2e"
+    },
+    "scripts/tests/unit/task-tracker/lib/test-verb-injection.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7a3795abafd01dc633badc5c20d92da706f685dfa4050e3296565abcd62ec505"
+    },
+    "scripts/tests/unit/task-tracker/lib/timing-queue-retention.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "6e9f800d6456da87e09f0293406c67796360810d21d1289d2db8d0c0b2dbd015"
+    },
+    "scripts/tests/unit/task-tracker/lib/verb-pipeline-enforcement.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f871f01ace30f36dcc2d46f75ec114d37f043b81a23f6e67efaac190300210c5"
+    },
+    "scripts/tests/unit/task-tracker/lib/verb-preflight.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "220d409559c0e27d79d8dda6934ee0bd721669b5cfd605c5b4597d7786eb3548"
+    },
+    "scripts/tests/unit/task-tracker/lib/verifier-cache.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "31054354a05b92e46ab36f6cddf28f5e95fa50de75c7784b6a9169137a009962"
+    },
+    "scripts/tests/unit/task-tracker/lib/word-counter-full-expansion.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "773d199e83fe0f4152e928f506fcf5f099bd5218cf2d1a565106351de22956f5"
+    },
+    "scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1003b49464856d4c5c48cb31f427de10f404cb5d324e6fa8a038283def333196"
+    },
+    "scripts/tests/unit/task-tracker/lib/word-counter.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "498e3bb246a929ecb78b29860a2786c8e3ad6e2ba12e1e85bdd91ae296e18e5c"
+    },
+    "scripts/tests/unit/task-tracker/lib/word-marker-compaction.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "62d246930bbd216b46b9a0449f39c059c2c5b5b066dfe186164e1eafed3a4b89"
+    },
+    "scripts/tests/unit/task-tracker/maintenance/heal-timing-interval-cli.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b69ea368dbaa12cfd45d43dca9bff5ece1bcdcdfcf1d76ef5781987b9000bd4f"
+    },
+    "scripts/tests/unit/task-tracker/verbs/approve-core.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "166c7de8dcd3b0b13892c20261d51de918300899397ebea6ecc83357f5f48d45"
+    },
+    "scripts/tests/unit/task-tracker/verbs/approve-full-auto-detect.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1a46ea5863e5ea24bd070aa70088daebda5caa82ea371fb62f4a8198ded848f4"
+    },
+    "scripts/tests/unit/task-tracker/verbs/approve-review-notes.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "ad9aa94f317f2263a7b263bf4d87d7e74d0b3110c0ea2ce41945be5f04c0ddc4"
+    },
+    "scripts/tests/unit/task-tracker/verbs/approve-timing-boundary.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f3f4f5913709508181b6a3694a0436f8acf1f8f55c48deb0f815d865d4520483"
+    },
+    "scripts/tests/unit/task-tracker/verbs/check-verb-migration.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "e0a03a53c3b092e6e7210974d4ed663507500649d8dca7d38b6ed4a05b2b3328"
+    },
+    "scripts/tests/unit/task-tracker/verbs/close-converge-audit-emission.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4b8df5293416a74ee6dafcfb6a66715b6127f5116c9ab073342dd19b36129f5e"
+    },
+    "scripts/tests/unit/task-tracker/verbs/close-incorporated.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f214db5978415017bcf5d770cc2d29e25355e394c6cda2aa1496368a211ada7e"
+    },
+    "scripts/tests/unit/task-tracker/verbs/close-reconcile-lifecycle.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "f1279b023dbe2981ce03de95242f014003c0dc869f537140cae881093a8572ae"
+    },
+    "scripts/tests/unit/task-tracker/verbs/close-review-authority-wiring.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "798ef27d0e6053a56c3912ea27f21544d680a9255226ded7667ad8d7eb757db3"
+    },
+    "scripts/tests/unit/task-tracker/verbs/close-strip-labels.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "af9b5097c657a4b3fdc9b550c3e7b585aa01ec000fa14acbb500bafb932966db"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-ac-stamp.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2492645cdb6fe8a18ff7392c6fbdf89438770e1182bc0656a2b74fa55e59909b"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-check-verb.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "7e0ece6f3ef4b6147c2c703f12866f8375bf254b88c04a804686ee37f3a04bf6"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-commit-trace.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "13f288333ee7cc80854c4ea6949c974abf18dc7d0e22965483c4c7fd22d7886e"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-dod-stamp.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "4242f5fe68a594b763b9c67f3165335094fc47aba0da6c368a943b5850513900"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-fleet.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b55f952ee436619f823c049ec6da10ddb751e103c85076deed47f963bac15eec"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-kind.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "44e842cce870252c3fb28e79264f4180a94ce27d2a9954958d3cd631554fd126"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-mirror-deep-dive.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "980ff0fe0a4ae5a36099148dff3f3924691905a757601cd677823104a5cb96d6"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "68ae57084a152737dd82eaaabf88f9f76d2963797b811b37bb5ed9c2b8ae0bf9"
+    },
+    "scripts/tests/unit/task-tracker/verbs/coverage-update.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "b2947302a056b9d00942a70401ee145ffdd1b3c502e2aac4d9b53e5a10503189"
+    },
+    "scripts/tests/unit/task-tracker/verbs/dod-stamp-state-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2c933002b97fdaf3b85737bc2ae2ea1b52bee2f0c4a10c314540df7d0d9eef4e"
+    },
+    "scripts/tests/unit/task-tracker/verbs/ensure-checked.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "1f9bbb112d8676131fc6dac3430f037256d5038958dfdb833a8a9bc82f62a6a1"
+    },
+    "scripts/tests/unit/task-tracker/verbs/ensure-unchecked.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "de3925127368ace023af2b5d42826aadb5be0082ca3ad275a25486bb09b92d59"
+    },
+    "scripts/tests/unit/task-tracker/verbs/move-inprocess-parity.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "0fc6f75d238427276cf1af2f0ad506434b0cce864bf71f3fbf5cc752e4154cb2"
+    },
+    "scripts/tests/unit/task-tracker/verbs/promote-discuss-refusal.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "927fe5a09cef5196c76f5d213e6fcca484626e826e6d116008542fa39a955b4a"
+    },
+    "scripts/tests/unit/task-tracker/verbs/promote-review-close-agent-review-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "58edbc553be90ae3996b47fdb3be9a247e1cd51f63bfbfc075225064e347a046"
+    },
+    "scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fd21003c6799a241a08209a5648cc23d188ad96add76dc206471e44d7a58c5dc"
+    },
+    "scripts/tests/unit/task-tracker/verbs/promote-test-to-review-gate.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "fea4a0f1e457959ea240593398614d070eab391bb2d62c11f95f21fe1acab0fa"
+    },
+    "scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "09094b88ac8a63f59cee53ef5bf0bb558b270bdd72acff178b64e9f897990d34"
+    },
+    "scripts/tests/unit/task-tracker/verbs/refine-stage-completion.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "32b992789729a2d305c9e067a6a244e68606c6c323169f49c1974cd37510f6e6"
+    },
+    "scripts/tests/unit/task-tracker/verbs/reject.test.mjs": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "a678079c3c931564d70a93d9c8762e483a83ee996251c6432833c7e6d9fd56c5"
+    },
+    "skill/SKILL.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d213477161ed0c4d81b8c92bc1fdf2cf38f3bfa01d9f93a5f614bc6f427c384a"
+    },
+    "skill/shared/references/state-walk-detail.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "118a9a5be1a7e41b549677200648fcdd8660deb47ebafdfab4adcf511c166779"
+    },
+    "skill/shared/router.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "2a09860784a87eeed7f41b028655c18e061d8b5564e3d648b1f29899c1f6b8a0"
+    },
+    "skill/shared/rules/deliver.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "d219f848d3b4c374631eaec97d484d74da5409515415041b8e22d5085bc30a8d"
+    },
+    "skill/shared/rules/plan-mode-backlog.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "42a8bff941e031346871b0cb74af8cb6061ef180bcd63c105a2cdaaad1a6b13a"
+    },
+    "templates/worker-report.md": {
+      "mode": 33188,
+      "kind": "file",
+      "hash": "c843a4cf122bfd6e62734d0a8befcc802946d3a26078664e8175af3ee55649e1"
+    }
+  }
+}

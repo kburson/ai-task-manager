@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "{\"blockers\":[{\"code\":\"writer-census-unknown\",\"target\":\"/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/genuine-host-TVJfBw\"}],\"writers\":{\"complete\":false},\"invoker\":{\"provider\":\"codex\",\"sid\":\"01a10321-abd4-7982-b7ce-73cb6f603283\",\"pid\":56567,\"processToken\":\"17f78528-6d9c-4567-b408-5d3e39602126\",\"host\":\"Kendricks-MacBook-Pro.local\"}}\n",
+    ""
+  ],
+  "pid": 56567,
+  "stdout": "{\"blockers\":[{\"code\":\"writer-census-unknown\",\"target\":\"/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0/.ai-task-manager/runtime/test-fixtures/genuine-host-TVJfBw\"}],\"writers\":{\"complete\":false},\"invoker\":{\"provider\":\"codex\",\"sid\":\"01a10321-abd4-7982-b7ce-73cb6f603283\",\"pid\":56567,\"processToken\":\"17f78528-6d9c-4567-b408-5d3e39602126\",\"host\":\"Kendricks-MacBook-Pro.local\"}}\n",
+  "stderr": ""
+}

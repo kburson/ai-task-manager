@@ -1,0 +1,6 @@
+[
+  "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/guidance-release.test.mjs",
+  "scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs",
+  "scripts/tests/unit/meta/unit-lane-purity.test.mjs"
+]

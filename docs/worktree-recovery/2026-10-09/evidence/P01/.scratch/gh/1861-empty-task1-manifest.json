@@ -1,0 +1,14 @@
+{
+  "base": "df0a8d61aae471f5dced11501586a3dbf0c2f157",
+  "candidate": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-empty-candidate-eab4bffe-4b89-41c2-89ec-701e7f4fe1f0",
+  "profile": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e",
+  "paths": {
+    "scripts/tests/helpers/runtime-empty-contract-fixture.mjs": "a20040e04802c498d79983b78f343ab42e130b2078643d1418278898276b03e4",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs": "659833b1b25a0c76911c92134acc8b7b438ebb30138e1cf65807d93b33abf18e",
+    "scripts/task-tracker/lib/runtime-empty-record.mjs": "51bf150a021232a5ebdc5af5bfc46c4db644389f64c3f1fe5edd20b429e3c40e",
+    "scripts/task-tracker/lib/runtime-authority-census.mjs": "e29323805bd2f6c47979e7046effd418f2962622b6ecad10efbd1092a713d4b2",
+    "scripts/task-tracker/lib/runtime-empty-initialize.mjs": "4a0c90acfb011f831c1784a18a36a77f4925b32d31766047550dca18fe079f3c",
+    "scripts/task-tracker/lib/runtime-migration-plan.mjs": "cf69f8abc90d45f595c5e8eabf6e1343b75b45c26b7828471339ce333f023968"
+  },
+  "migrationGolden": "46fdecfe161ff9e9b7103689c84fa676909d37e96a485745899bd0c4ad6693d2"
+}

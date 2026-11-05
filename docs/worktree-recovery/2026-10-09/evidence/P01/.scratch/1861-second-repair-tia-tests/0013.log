@@ -1,0 +1,17 @@
+✔ static files round separately while aggregate traffic rounds exactly once (3.063875ms)
+✔ candidate workflow retains every lane and required query boundary without executing refusals (6.882291ms)
+✔ paired artifacts reconcile exact identities, context categories, sensitivity and cardinality (9.440834ms)
+✔ artifact validation rejects incomplete, shortened, relabeled or latency-guessed evidence (282.794917ms)
+✔ committed candidate transcripts and reports exactly match historical regeneration (39.229625ms)
+✔ archived recertification binds every obligation and its recorded public CLI lifecycle (4.239084ms)
+✔ recertification refuses a relabeled or altered lifecycle capture (16766.606209ms)
+✔ current release gate refuses budget relaxation (1.074375ms)
+✔ retained obligation coverage binds each reviewed sentence to its required file (11.014334ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17131.953875

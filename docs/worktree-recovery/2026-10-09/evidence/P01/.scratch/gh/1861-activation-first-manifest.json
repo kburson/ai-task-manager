@@ -1,0 +1,30 @@
+{
+  "base": "e30a8a70a5e3780325e705af8eaf244990c95ba2",
+  "files": [
+    {
+      "path": "scripts/task-tracker/lib/runtime-activation-admission.mjs",
+      "sha256": "f43d66085d783f9bb7e124a15eaa8523a9370ee0ebc09dcf6c8c444a2faa9946"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-storage.mjs",
+      "sha256": "f9664205d8d6e40b51349cb71b2c1ea278238dbc9c474771458d9c03b4b9c2d6"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+      "sha256": "4057f47fdf0cc9cb44bdda01ad9d3f806fed1e8a445262cd98b69974e40093db"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-initialization-record.mjs",
+      "sha256": "d05b94844848bf423de830c9af1e7c3f730a28858117761c286e778254a2f115"
+    },
+    {
+      "path": "scripts/task-tracker/lib/runtime-initialize.mjs",
+      "sha256": "ef0961db17b8d87e3a55abb0f4da61f248e65bddf78652e80d76347f0a2ba708"
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/lib/runtime-activation-admission.test.mjs",
+      "sha256": "c833731b16df5074fec877fb072d4bbf4ed60d2e2c5a8ef02ca12d658075653b"
+    }
+  ],
+  "profile": "5676343427c331da8904372453092c6b3ed8dcc8c20cfaca2c51b87cc8418e2e"
+}
