@@ -1,4 +1,4 @@
-// @story #1986
+// @story #2148 #1986
 // @story #1926
 // @story #1904
 // @story #1838 #1882 #1837 #1836 #551 #1279 #1497 #1501 #1578 #1486 #1615 #1625 #1630 #1661 #1662 #1714 #1716 #1720 #1728 #1787 #1793 #1794 #1795 #1796 #1797
@@ -414,7 +414,11 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   // #2014/#2108 ships exactly one retained completed-child recovery module.
   const retainedRecoveryEntries = ['scripts/task-tracker/lib/epic-rank-wave-restore-worktree.mjs'];
   for (const entry of retainedRecoveryEntries) assert.ok(files.includes(entry));
+  // #2148 ships one shared location-mutation authority; its fixtures stay excluded.
+  const locationAuthorityEntries = ['scripts/task-tracker/lib/location-mutation-authority.mjs'];
+  for (const entry of locationAuthorityEntries) assert.ok(files.includes(entry));
   const effectiveCeiling =
+    locationAuthorityEntries.length +
     retainedRecoveryEntries.length +
     bootstrapEntries.length +
     dateTransportEntries.length +

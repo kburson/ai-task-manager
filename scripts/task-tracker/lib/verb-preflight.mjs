@@ -300,7 +300,10 @@ export async function preflightVerb({
     if (verdict.changed) saveState(verdict.stateAfter, statePath);
     return verdict.stateAfter;
   }
+  return refuseVerbPreflight(verb, verdict);
+}
 
+export function refuseVerbPreflight(verb, verdict) {
   switch (verdict.kind) {
     case 'migration-freeze': {
       process.stdout.write('PROMPT_REQUIRED: ready-for-plan-migration-freeze\n');
