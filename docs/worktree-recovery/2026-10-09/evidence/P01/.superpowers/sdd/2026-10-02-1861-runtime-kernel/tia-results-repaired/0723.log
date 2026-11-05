@@ -1,0 +1,26 @@
+✔ npm test is covered only when unit and integration are green (1.158042ms)
+✔ npm test is not covered when a required lane is red (0.179917ms)
+✔ focused command coverage uses shell-aware argument tokenization (0.226625ms)
+✔ focused command matching preserves whitespace inside quoted arguments (0.118125ms)
+✔ Review + valid receipt covering standard lanes → reuse (2.052125ms)
+✔ Review + sha-mismatch receipt → refuse, do not run (0.649541ms)
+✔ Review + missing receipt → refuse, do not run (0.205625ms)
+✔ Test + valid receipt covering standard lanes → reuse (0.333208ms)
+✔ stamp reuse refuses when live Verification Commands changed (1.426291ms)
+✔ Test + no covering receipt → run (0.14825ms)
+✔ Develop + test:slow → refuse without treating it as Review (0.132541ms)
+✔ Review refuses a receipt whose issue or canonical command identity is invalid (0.243833ms)
+✔ Review refuses malformed and fingerprint-invalid receipts independently (0.215625ms)
+✔ Review refuses uncovered lint and focused commands instead of executing them (0.075833ms)
+✔ unknown live state refuses verifier execution (0.475916ms)
+✔ Develop does not reuse a Test receipt (0.335208ms)
+✔ Done refuses uncovered execution without suggesting an unavailable demotion (0.131042ms)
+✔ skill and pickup docs no longer order Review-stage standard-lane reruns (2.183792ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.303875

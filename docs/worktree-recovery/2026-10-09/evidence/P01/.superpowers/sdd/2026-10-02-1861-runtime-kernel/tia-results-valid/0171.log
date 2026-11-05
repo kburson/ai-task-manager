@@ -1,0 +1,16 @@
+✔ generated child records six final-HEAD targets, blocks artifact drift, recovers, and bounds twenty refresh rounds (1820.693834ms)
+✔ recording an ineligible Acceptance Criteria target refuses before comment or body writes (231.447ms)
+✔ recording an ineligible Definition of Done target refuses before comment or body writes (220.267542ms)
+✔ recording an ineligible Verification Commands target refuses before comment or body writes (228.537375ms)
+✔ recording a directory-backed target refuses before comment or body writes (213.893916ms)
+✔ wrong session binding refuses before comment or body writes (203.591792ms)
+✔ a missing physical artifact refuses before comment or body writes (207.455542ms)
+✔ stale raw manifest bytes refuse before comment or body writes (205.754167ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3334.963208

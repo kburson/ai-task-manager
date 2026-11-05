@@ -1,0 +1,23 @@
+✔ defect shape applies bug taxonomy exactly once and leaves legacy shapes unchanged (1.395875ms)
+✔ defect shape forwards the governed solo inputs plus defect-specific renderer inputs (0.427584ms)
+✔ defect dry-run renders a real User Story, diagnostic sections, and governed lifecycle tail (366.404375ms)
+✔ creator and preflight public help advertise the defect shape (218.084042ms)
+✔ generated bug form and label workflow use the canonical prefix authority (0.688958ms)
+✔ label workflow normalizes internal bug forms through the defect intake adapter (0.158833ms)
+✔ web form parser returns normalized named sections (0.309833ms)
+✔ web defect normalization maps form fields through the same renderer and stamps Backlog (1.259583ms)
+✔ web defect normalization refuses default ACs without honest verifier evidence (187.02375ms)
+✔ web normalization is a fixed point and excludes non-bug and beta-report issues (0.17075ms)
+✔ shared creation rule maps conversational defect intent to the defect shape (1.385625ms)
+✔ full-auto local defects are created before the parent blocker protocol (0.608542ms)
+✔ all sanctioned-shape instruction and guard surfaces include defect (1.285ms)
+✔ workflow guide documents defect as a sanctioned local shape (0.352958ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 787.772541
+preflight-issue: --user-story-file story-shape-invalid: Use exactly three lines without bullets: As a/an, I want to, So that

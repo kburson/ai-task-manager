@@ -1,0 +1,37 @@
+✔ parses visible WBS child provenance without trusting Generated-by (2.138625ms)
+✔ reconciles complete WBS coverage against content-equivalent pinned plans (1.971583ms)
+✔ rejects duplicate accepted task identities instead of reusing one child claim (0.303417ms)
+✔ reports missing, duplicate, unknown, title, path, and content contradictions (1.61125ms)
+✔ unrelated children coexist but cannot satisfy a missing WBS task (0.375833ms)
+✔ evaluator preserves the underlying must-split classification and valid waiver (28.007959ms)
+✔ plan exit refuses must-split without a valid visible waiver (35.344958ms)
+✔ plan exit admits must-split with a complete waiver and preserves warning (25.451625ms)
+✔ plan exit admits a must-split epic with complete linked WBS coverage (24.752042ms)
+✔ plan exit consumes live WBS planning evidence rather than coverage alone (29.306541ms)
+✔ plan exit reconciles the exact accepted-plan snapshot used for classification (22.809583ms)
+✔ plan exit reports exact incomplete epic WBS blockers (23.803ms)
+✔ plan exit keeps a non-epic must-split issue blocked even if child-shaped data exists (21.68625ms)
+✔ evaluator and Plan exit classify a generated child from its bounded source section (20.580792ms)
+✔ evaluator preserves whole-plan WBS classification for an epic with source-section metadata (22.893708ms)
+✔ nested epic checks its own decomposition plan while retaining the outer source claim (21.733667ms)
+✔ Plan exit and decompose-check fail closed for an invalid requested source section (24.409417ms)
+✔ Plan exit and decompose-check reject source-section fields split across metadata sections (31.017375ms)
+✔ decompose-check reports one task for a valid bounded source child (33.047834ms)
+✔ decompose-check keeps whole-plan overrides and applies exact Plan metadata selectors (49.231708ms)
+✔ plan exit fails closed when epic WBS evidence cannot be read (23.601167ms)
+✔ plan exit reports review-only signals without blocking (27.695667ms)
+✔ plan exit is a quiet no-op for an atomic story (21.720875ms)
+✔ known board inputs still refuse when the linked plan is unavailable (29.92725ms)
+✔ Plan exit still refuses known must-split board fields when the plan link is absent (54.24425ms)
+✔ registers the decomposition guard before the epic children guard (0.154875ms)
+✔ read-only command returns structured classification without mutation (36.74225ms)
+✔ decompose-check reports must-split plans as decomposition-ready, not delivery-ready (28.001084ms)
+✔ decompose-check rejects a missing --plan value instead of consuming another option (0.396959ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 651.48625

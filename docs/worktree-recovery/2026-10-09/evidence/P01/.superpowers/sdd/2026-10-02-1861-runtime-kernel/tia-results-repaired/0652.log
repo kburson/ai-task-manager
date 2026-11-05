@@ -1,0 +1,13 @@
+✔ AC1/AC3: a concrete-mismatch write never confirms and fails closed (exit 7) (1205.06075ms)
+✔ AC3/AC4: a persistently EMPTY read-back fails closed — no soft-proceed (#747) (1204.605291ms)
+✔ AC1/AC2: an empty read-back that RECOVERS on retry proceeds with success (402.362833ms)
+✔ AC2: a healthy write that confirms immediately proceeds normally (0.167083ms)
+✔ AC1/AC2/AC3: the saga core gates on the exit BEFORE running the post-commit tail (0.324166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2815.902125

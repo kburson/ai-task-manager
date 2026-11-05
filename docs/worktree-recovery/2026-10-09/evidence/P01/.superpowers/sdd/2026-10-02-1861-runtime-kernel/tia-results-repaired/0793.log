@@ -1,0 +1,13 @@
+✔ ac-stamp seam: a cited AC resolves to its literal verifier command (AC3) (2.121625ms)
+✔ ac-stamp seam: stamping a cited AC writes a readable evidence proof (AC3) (0.834417ms)
+✔ ac-stamp seam: cited stamp reconciliation is idempotent for an already-listed command (AC3) (0.212208ms)
+✔ ac-stamp seam: cited and legacy ACs share one key and both stamp readable proofs (AC3/AC5) (0.376ms)
+✔ verbAcStamp is exported as an async function (0.05925ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.717875

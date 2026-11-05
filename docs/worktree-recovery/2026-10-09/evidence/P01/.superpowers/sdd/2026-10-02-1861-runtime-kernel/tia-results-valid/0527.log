@@ -1,0 +1,21 @@
+✔ reserves intent before one POST and resumes exact confirmed transaction (2.062292ms)
+✔ one operation cannot change intent or burn after consumption (2.574584ms)
+✔ unresolved receipt request is indeterminate and never posts again (2.41ms)
+✔ lost intent POST response permits exact readback but never a second POST (0.493417ms)
+✔ unresolved intent request blocks all later POSTs and burn (0.357917ms)
+✔ different operation cannot reserve an already owned original intent (0.377833ms)
+✔ unrelated operation advances tip without changing the first burn OID (2.842958ms)
+✔ a later exact receipt readback resolves the original pending request (2.0785ms)
+✔ first burn refuses without a current authority and full verification port (0.327375ms)
+✔ v3 readback refuses a divergent comment with the same intent and operation (0.192916ms)
+✔ v4 readback refuses a divergent receipt for the same operation (0.985958ms)
+✔ first burn rejects stale grant or failed non-waived verification without CAS (1.721791ms)
+✔ completed operation still reconciles its exact intent beside the v4 receipt (1.834ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.337834

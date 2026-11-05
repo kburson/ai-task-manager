@@ -1,0 +1,52 @@
+✔ re-run of a complete move is a no-op (no rows/markers/status/sentinel rewrite) (1.076042ms)
+✔ partial move (sentinel absent) rolls forward through the saga (0.158333ms)
+✔ same-target replay repairs a post-Status partial move with the existing transition ID (0.118584ms)
+✔ same-target replay without a recoverable partial move remains a strict no-op (0.092042ms)
+✖ production completion probe recovers only the latest fully-evidenced entry identity (190.216542ms)
+✖ production completion probe recovers a demotion with target-bound timing evidence (135.798834ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 4
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 334.211125
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs:142:1
+✖ production completion probe recovers only the latest fully-evidenced entry identity (190.216542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs:188:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs:229:1
+✖ production completion probe recovers a demotion with target-bound timing evidence (135.798834ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/move-state/move-state-idempotent.test.mjs:278:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+[move-state] #1720: phase-pair emission failed: Partial runtime loss requires registered recovery
+[move-state] #1720: phase-pair emission failed: Partial runtime loss requires registered recovery

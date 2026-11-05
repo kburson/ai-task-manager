@@ -1,0 +1,38 @@
+✔ attaches bounded intent and absolute locations while stripping only live intent (2.845083ms)
+✔ missing and invalid task intent are diagnostic metadata for historical readers (0.487125ms)
+✔ classifies fixed decomposition thresholds with must-split precedence (0.5365ms)
+✔ preserves missing values instead of treating them as zero (0.092125ms)
+✔ extracts only exact numbered H3 tasks and explicit verifier syntax (0.2565ms)
+✔ matches task keywords case-insensitively and retains duplicate numbers for validation (0.090667ms)
+✔ ignores fenced examples, zero-number tasks, and empty task titles (0.142458ms)
+✔ requires CommonMark closing-fence syntax before exposing structures (0.664916ms)
+✔ does not treat a four-space-indented backtick run as a fence opener (0.241875ms)
+✔ ignores task headings and commands hidden inside HTML comments (0.296375ms)
+✔ preserves pinned task body bytes while hiding comments from command extraction (0.181166ms)
+✔ ignores verifier examples inside multiline code spans and ordinary fences (0.111791ms)
+✔ does not let a verification label authorize a later ordinary fence (0.084833ms)
+✔ preserves verifier source order and accepts labeled tilde fences (0.071667ms)
+✔ linked plan metadata prefers Implementation-plan and strips a commit suffix (0.315083ms)
+✔ linked plan metadata skips placeholder values (0.121792ms)
+✔ linked plan metadata ignores sections hidden inside HTML comments (0.086ms)
+✔ linked plan metadata ignores fenced examples (0.062625ms)
+✔ selects exactly one bounded task from the active Source-plan (0.605375ms)
+✔ fails closed for duplicate fields, unknown headings, and duplicate tasks (0.431708ms)
+✔ refuses conflicting inherited selectors and keeps whole-plan text without a selector (0.722ms)
+✔ resolvePlanPath contains paths to the repository and reports unavailable inputs (25.097708ms)
+✔ accepts a complete visible decomposition waiver (1.0695ms)
+✔ rejects missing, duplicated, and malformed decomposition waiver fields (0.510792ms)
+✔ rejects duplicate decomposition waiver sections (0.139292ms)
+✔ rejects a complete waiver hidden inside an HTML comment (0.058917ms)
+✔ rejects a complete waiver presented only as a fenced example (0.0695ms)
+✔ escaped and unmatched backticks do not expose hidden structures (0.10275ms)
+✔ multiline code spans stop at Markdown block boundaries (0.925458ms)
+✔ multiline code spans remain active across soft line breaks (0.112792ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.137584

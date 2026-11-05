@@ -1,0 +1,12 @@
+✔ intent normalization and manifest output are deterministic (9.959625ms)
+✔ symlink mode records the provider skill directory as the symlink artifact (0.166ms)
+✔ manifest validation rejects unsafe and ambiguous artifacts with stable codes (0.344917ms)
+✔ manifest validation exposes every contract-level stable error code (0.169292ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.184709

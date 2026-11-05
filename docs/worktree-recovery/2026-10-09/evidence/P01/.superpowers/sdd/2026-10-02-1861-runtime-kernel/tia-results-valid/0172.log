@@ -1,0 +1,16 @@
+✔ the sandbox is its own git worktree root (100.888459ms)
+✔ the sandbox carries exactly one commit on trunk (40.314875ms)
+✔ the sandbox carries the package.json and .gitignore the contract promises (25.363125ms)
+✔ two sandboxes are independent repositories, not two views of one (114.6615ms)
+✔ a sandbox is writable and stages files normally after the copy (64.304459ms)
+✔ the prototype is built at most once per process (87.24475ms)
+✔ the sandbox directory actually exists on disk (26.572333ms)
+✔ genuine Git sandboxes are admissible roots outside volatile artifacts (43.832042ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 507.009916

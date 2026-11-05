@@ -1,0 +1,31 @@
+▶ unfinished stories through the production early registry
+  ✔ missing heading passes Refine exit with every unrelated guard enabled (3.70225ms)
+  ✔ missing heading emits no story warning at Refine entry (1.825666ms)
+  ✔ blank passes Refine exit with every unrelated guard enabled (0.721292ms)
+  ✔ blank emits no story warning at Refine entry (0.199375ms)
+  ✔ template passes Refine exit with every unrelated guard enabled (0.320917ms)
+  ✔ template emits no story warning at Refine entry (0.131125ms)
+✔ unfinished stories through the production early registry (7.643167ms)
+▶ guard-parity: backlog→refine
+  ✔ accept fixture: refine-preflight ok on a well-formed fresh issue (0.782167ms)
+  ✔ refuse fixture: validateBody refusal-set agrees across paths (0.219666ms)
+✔ guard-parity: backlog→refine (1.126708ms)
+▶ guard-parity: refine→ready-for-plan
+  ✔ accept fixture: preflight + exit gate agree on ok (1.094708ms)
+  ✔ refuse fixture: blocker sets are identical between paths (0.413583ms)
+✔ guard-parity: refine→ready-for-plan (1.614417ms)
+▶ guard-parity: backlog→refine via-registry
+  ✔ accept fixture: runGuards passes when Priority is set (3.249417ms)
+  ✔ missing Priority does not block entry into active Refine (0.366334ms)
+✔ guard-parity: backlog→refine via-registry (3.775417ms)
+▶ guard-parity: refine→ready-for-plan via-registry
+  ✔ refuse fixture: aggregate registry refusals match library refusals (0.914291ms)
+✔ guard-parity: refine→ready-for-plan via-registry (1.04725ms)
+ℹ tests 13
+ℹ suites 5
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23.502791

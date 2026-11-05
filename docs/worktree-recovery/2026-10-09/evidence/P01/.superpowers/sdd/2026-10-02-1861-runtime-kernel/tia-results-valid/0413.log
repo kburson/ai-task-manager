@@ -1,0 +1,51 @@
+✖ drain cannot erase a concurrently enqueued actor row and replay preserves original bytes (18.964417ms)
+✖ queue corruption and unsupported schema refuse without erasing evidence (2.292125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.897208
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs:11:1
+✖ drain cannot erase a concurrently enqueued actor row and replay preserves original bytes (18.964417ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:98:17)
+      at enqueue (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/queue.mjs:61:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs:33:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs:55:1
+✖ queue corruption and unsupported schema refuse without erasing evidence (2.292125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    Comparison {
+  +   code: 'RUNTIME_OVERRIDE_UNSAFE'
+  -   code: 'TIMING_QUEUE_INVALID'
+    }
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/actor-queue-isolation.test.mjs:61:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Object],
+    operator: 'throws',
+    diff: 'simple'
+  }

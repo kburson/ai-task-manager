@@ -1,0 +1,22 @@
+✔ forecast-ready marker is canonical, replaceable during Plan, and readable by the exit gate (0.960041ms)
+✔ Plan authority converges Refine history, board Estimate/Size, body fields, and forecast read-back (2.154584ms)
+✔ Plan authority rejects an off-grid forecast before its first write (0.906583ms)
+✔ Plan authority rejects a legacy v1 forecast before its first write (0.196708ms)
+✔ Plan authority publishes the normalized forecast Refine baseline (0.444417ms)
+✔ concurrent Plan convergence claims the forecast generation and appends it once (12.592834ms)
+✔ every interrupted seam replays convergently without duplicating the forecast (1.19075ms)
+✔ already-converged replay performs no writes (0.214417ms)
+✔ Develop or frozen forecasts reject supersession outside audited demote/replan (0.256875ms)
+✔ conflicting non-superseded forecasts fail closed (0.298042ms)
+✔ audited Plan re-entry may supersede exactly one prior active forecast (0.177208ms)
+✔ adaptive execution refreshes rubric, builds forecast, creates an envelope, and converges authority (0.25525ms)
+✔ legacy baseline adoption freezes only an exact matching Develop projection (0.249958ms)
+✔ legacy baseline adoption refuses mismatches, existing evidence, or non-Develop state (0.215625ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 24.64925

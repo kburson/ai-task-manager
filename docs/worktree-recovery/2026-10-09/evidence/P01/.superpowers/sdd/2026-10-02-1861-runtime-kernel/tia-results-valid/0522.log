@@ -1,0 +1,25 @@
+✔ #1619: merged recovery accepts wholly absent source attribution with a warning (2.622541ms)
+✔ #1619: merged recovery refuses partial, malformed, duplicate, or conflicting attribution (0.46425ms)
+✔ #1619: preflight failures expose the failed predicate and a supported recovery action (0.298709ms)
+✔ waived merge without attribution trailer produces a labeled v3 receipt input (3.950791ms)
+✔ waived merge with only the exact terminal trailer carries no warning (1.150958ms)
+✔ waived merge refuses conflicting trailer, changed inventory, or changed exception record (1.395875ms)
+✔ waived merge refuses unauthorized body token before an exact terminal trailer (0.473875ms)
+✔ waived merge refuses whitespace-prefixed conflicting trailer before an exact terminal trailer (0.38375ms)
+✔ waived merge refuses whitespace-prefixed duplicate claim with authorized tokens (0.385666ms)
+✔ verifies multi-issue squash attribution from exact inspected commit bytes (0.303917ms)
+✔ external recovery accepts one canonical inspected attribution line (0.335917ms)
+✔ external recovery accepts exact GitHub default merge attribution for the accepted head (0.364ms)
+✔ external recovery refuses inexact or non-merge default merge attribution evidence (0.807417ms)
+✔ external recovery verifies an advanced observed local head against accepted authority (0.112125ms)
+✔ external recovery keeps its exact input schema and authority equality checks (0.264583ms)
+✔ external recovery rejects noncanonical inspected attribution lines (0.480208ms)
+✔ #1619: verification failures expose distinct immutable-evidence predicates (0.330292ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.175542

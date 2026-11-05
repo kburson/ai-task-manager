@@ -1,0 +1,12 @@
+✔ an AC whose only verifier is the fast lane is flagged test-all-verifier (1.198459ms)
+✔ an AC whose only verifier is the slow lane is flagged test-all-verifier (0.266375ms)
+✔ an AC whose only verifier is the legacy floor is still flagged (0.088417ms)
+✔ a targeted node --test AC is NOT flagged (0.357834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5.246042

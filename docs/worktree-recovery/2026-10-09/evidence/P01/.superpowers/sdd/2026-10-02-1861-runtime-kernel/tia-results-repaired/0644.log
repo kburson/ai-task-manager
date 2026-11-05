@@ -1,0 +1,17 @@
+✔ #741: an unconfirmed Status write never reaches the sentinel (0.755458ms)
+✔ #752: a killed post-commit tail after the board write reports success (0.731333ms)
+✔ #752: a sentinel-present failure classifies as complete, never a failure (0.264542ms)
+✔ #753: replay of a complete move reconciles the tail but rewrites nothing (0.145417ms)
+✔ §9: formatMoveReadout emits the exact success block (0.142125ms)
+✔ §9: an idempotent replay is labelled in the readout header (0.076625ms)
+✔ §12: formatMoveError emits the status-phase failure block (sentinel absent) (0.069417ms)
+✔ §12: a sentinel-present failure renders the reconcile block (0.109ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.775125
+[move-state:warn] #759: transition commit provenance missing: Cannot read properties of undefined (reading 'repo')

@@ -1,0 +1,18 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Project root does not exist: /proj
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at physical (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:39:12)
+    at readPhysicalRuntimeIdentity (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:114:16)
+    at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:188:20)
+    at tmpAitmDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:141:20)
+    at locksDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:210:20)
+    at timingLockPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/paths.mjs:230:20)
+    at timingLockPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/heal-timing-starts.mjs:88:10)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/core/coverage-heal-timing-starts.test.mjs:118:13 {
+  code: 'ROOT_IDENTITY_MISMATCH'
+}
+
+Node.js v26.8.1

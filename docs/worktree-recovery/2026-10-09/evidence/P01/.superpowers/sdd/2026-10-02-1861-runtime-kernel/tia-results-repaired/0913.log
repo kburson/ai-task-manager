@@ -1,0 +1,17 @@
+✔ a docs-only kind with a provably docs-only diff skips the complete lanes (19.397292ms)
+✔ a code kind runs every lane even when its diff is all documentation (4.764459ms)
+✔ a docs-only kind whose diff touches code still runs every lane (1.542625ms)
+✔ an unresolvable (empty) diff is default-deny: the lanes run (1.286833ms)
+✔ skipping lanes while a legacy aggregate is declared refuses the transition (0.806ms)
+✔ a declared aggregate is still derived normally when the lanes DO run (2.831625ms)
+✔ the receipt records the skip and fabricates no lane pass entries (1.499792ms)
+✔ a receipt from a run that DID execute the lanes carries no skip record (1.089458ms)
+✔ the green summary comment names the skipped lanes (0.991583ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.93875

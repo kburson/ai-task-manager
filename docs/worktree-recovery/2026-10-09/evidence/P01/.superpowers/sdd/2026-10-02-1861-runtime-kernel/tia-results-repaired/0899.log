@@ -1,0 +1,11 @@
+✓ #996 rejected — moved back to Develop.
+✔ reject.mjs posts an audit row with event slug `rejected:develop`, not bare `develop` (70.714833ms)
+✔ a timing log containing a `rejected:develop` row passes timing-log-sequence validation (1.561542ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.376625
