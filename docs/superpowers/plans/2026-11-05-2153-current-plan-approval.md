@@ -129,7 +129,7 @@ node --test scripts/tests/unit/task-tracker/lib/plan-approval-current-scope.test
 
 - Extend `runPlanApprove` input with `currentScope = false`; CLI `--current-scope` selects it. Keep `repairFromEvidence` independent and reject both true.
 - `observeCurrentPlanSource({ projectDir, cfg, body, governedPlan, storyBinding, admission, deps })` returns the validated evidence record plus operation-only board/source observations. Default Git reads require a clean tree and actual HEAD plus a contained tracked regular plan with bytes equal to HEAD:path; test injection replaces external reads only.
-- Current route returns `approved-current-scope`, `already-approved` or a typed `current-scope-refused` with blockers. Public CLI gives refusal a nonzero exit, and outcome text never calls current approval reconstructed.
+- Current route returns `approved-current-scope` / exit 0, `already-approved-current-scope` / exit 0, or `current-scope-refused` / exit 15 with blockers. Post-write validation/readback failure never exits 0. Existing ordinary and waiver outcomes retain their existing mappings; current approval is never described as reconstructed.
 - Reuse current governed plan/story resolution, checklist lint and forecast/trunk checks. A small shared validator extraction is permitted only with regression coverage and unchanged legacy routing.
 - `validateCurrentScopeApproval({ body, comments, repository, issue, acceptedSourceHead })` returns a pure pass/fail result for the new digest-bearing form; legacy forms remain not-applicable. Verify the canonical record/digest, body scope, selected source HEAD, plan path, story binding and forecast. Thread acceptedSourceHead from the resident snapshot through buildReviewContext; enforce in resident observe as well as required-comments validation.
 
@@ -169,3 +169,27 @@ Review current scope/plan and the resulting source. Re-run required native quali
 ## Estimate rationale
 
 Six human hours is the bounded maximum for this defect: two hours for strict historical evidence and codecs, two hours for producer/consumer transaction and freshness tests, one hour for public workflow/activation regression, and one hour for documentation, review fixes and delivery verification. The two implementation tasks are sequential parts of one approval capability, not independently released features. Reassess before implementation if accepted review expands this scope.
+
+## Mandatory test and dispatch details from accepted spec
+
+These steps are part of the owning tasks, not optional follow-up work.
+
+Task 1 admission fixture: pin the actual #2147 authority comment 6620373277 with createdAt=updatedAt=2026-11-04T01:51:50Z and completion comment 6620377056 with createdAt=updatedAt=2026-11-04T01:52:06Z. Require successful admission of the recorded pair and refusal when updatedAt changes. Keep the historical scope distinct from current scope.
+
+Task 2 parser and dispatch: before any verb-owned reads/writes, reject unknown flags, --current-scop, duplicate flags, duplicate issue arguments, conflicting current-scope/repair flags and missing issue with usage exit 2. Global dispatcher-owned reads are outside this verb-level boundary. Ship strict parsing in the same release as the new flag; already-shipped old installations cannot be corrected retroactively. Dispatch the current lane immediately after parsing and board-state read, before automaticModernEligible, waived reconstruction and the ordinary wrong-state precheck. Write spies proving neither evaluateModernPlanTransitionEvidence nor waived reconstruction runs for a not-required current-lane candidate.
+
+Task 2 consumer negatives: in both resident pass reuse and required-comments, assert an ordinary or waiver audit at the same timestamp cannot satisfy a digest-bearing marker, and a current-form audit cannot satisfy a digestless marker. Preserve legacy behavior for actual legacy marker/audit pairs.
+
+Task 2 convergence integration: run the real resident Review path after final Test stamping, including pass reuse, required-comments and body normalization. Assert success directly or after at most one explicit re-approval at the same source HEAD. The second pass must leave scope identity stable. A repeating approve/normalize/refuse loop fails acceptance. A bounded sequencing correction for the new form is permitted; any broader normalization change returns for reviewed scope adjustment before implementation.
+
+Task 2 trunk tests: simulate audit-post failure, then live-trunk movement at the same source HEAD; explicit producer retry must create a new evidence digest and approval timestamp. Separately verify Review accepts the matching source and recorded provenance even if live trunk has subsequently advanced. Neither test is replaced by a fresh-base race test.
+
+Before final Develop verification, include all touched marker, audit, resident Review and review-context suites in the targeted verifier list, with their exact existing paths. Run the full configured finalization and CI/Test boundary as already required above.
+
+Additional explicit focused verification for the touched marker, audit, resident and review-context behavior:
+
+```sh
+node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs scripts/tests/unit/task-tracker/lib/plan-approval-story-audit.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/review-gate.test.mjs scripts/tests/unit/task-tracker/verbs/review-state-action.test.mjs scripts/tests/unit/task-tracker/lib/state-cursor-interruption.test.mjs scripts/tests/unit/task-tracker/verbs/plan-approve-core.test.mjs scripts/tests/unit/task-tracker/lib/agent-review/validators/required-comments.test.mjs
+```
+
+The canonical audit builder/reader regressions also reside in the existing plan-approve and plan-approve-core suites already listed in Task 2. Extend these rather than assuming an absent plan-approval-audit.test.mjs file exists.
