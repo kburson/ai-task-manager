@@ -296,9 +296,7 @@ export async function renewCumulativeOperator(f, check, initialBinding, initialR
       }
     });
     const entry = trace.filter((row) => row.closeCumulativeTrace === 'entry');
-    const thrown = trace.filter((row) => row.closeCumulativeTrace === 'throw');
     assert.equal(entry.length, 1, result.stdout + result.stderr);
-    assert.equal(thrown.length, 1);
     assert.deepEqual(entry[0].input, {
       method: 'squash',
       sourceBase: f.f.sourceBase,
@@ -306,9 +304,19 @@ export async function renewCumulativeOperator(f, check, initialBinding, initialR
       integrationBase: f.f.integrationBase,
       integrationHead: f.f.merged,
     });
-    assert.equal(thrown[0].error.message, 'close-readiness:content-proof-unavailable');
     results.push({ args, status: JSON.parse(result.stdout).result.status, trace });
   }
+  writeFileSync(
+    path.join(path.dirname(f.stateFile), 'public-readiness-results.json'),
+    JSON.stringify({ expectedStatus: 'ready', results }, null, 2)
+  );
+  assert.ok(
+    results.every(
+      (row) =>
+        row.status === 'ready' && !row.trace.some((event) => event.closeCumulativeTrace === 'throw')
+    ),
+    'both public exact-artifact forms must be ready: ' + JSON.stringify(results)
+  );
   writeFileSync(
     path.join(path.dirname(f.stateFile), 'renewal-qualification.json'),
     JSON.stringify(

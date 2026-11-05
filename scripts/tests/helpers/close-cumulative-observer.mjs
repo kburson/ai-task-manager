@@ -1,5 +1,5 @@
 // @story #2165 — pure source transformation; importing this file installs no hook.
-const header = 'async function compareReadOnlyDeliveryContent(input, output) {';
+const header = 'async function compareReadOnlyDeliveryContent(input, output, observation) {';
 const tail = '\n}\n\n/** Read-only readers share no state across command boundaries. */';
 
 export function observeComparator(source) {

@@ -146,8 +146,9 @@ const ENTRY_CEILING = 800;
 
 let packedFileCache = null;
 // Shipping any diagnostic preload would expose a test-only observation seam.
-test('package-boundary: cumulative Close diagnostics remain outside the shipped runtime', () => {
+test('package-boundary: cumulative Close guide ships while diagnostics remain excluded', () => {
   const files = new Set(packedFiles());
+  assert.equal(files.has('docs/guides/close-cumulative-delivery.md'), true);
   for (const file of [
     'fixtures/close-cumulative-provider.mjs',
     'fixtures/close-cumulative-trace-loader.mjs',
@@ -155,6 +156,7 @@ test('package-boundary: cumulative Close diagnostics remain outside the shipped 
     'helpers/close-cumulative-native.mjs',
     'helpers/close-cumulative-renewal.mjs',
     'helpers/close-cumulative-admission.mjs',
+    'helpers/close-cumulative-proof-fixture.mjs',
     'integration/task-tracker/lib/close-cumulative-recovery.test.mjs',
   ])
     assert.equal(files.has('scripts/tests/' + file), false, file);
@@ -447,7 +449,10 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   for (const entry of spikeDeliverableEntries) assert.ok(files.includes(entry));
   assert.ok(!files.includes('docs/workflows/spike-deliverable.md'));
   assert.ok(!files.includes('scripts/tests/fixtures/spike-deliverable-provider.mjs'));
+  // #2165: measured 978 -> 979 entries; only the operator Markdown guide ships.
+  const cumulativeCloseGuideAllowance = 1;
   const effectiveCeiling =
+    cumulativeCloseGuideAllowance +
     spikeDeliverableEntries.length +
     currentApprovalEntries.length +
     locationAuthorityEntries.length +

@@ -240,7 +240,13 @@ export function fixture({
         commands.push([command, args]);
         assert.equal(command, 'git');
         assert.ok(['cat-file', 'show', 'merge-base', 'ls-tree', 'log'].includes(args[0]));
-        return { stdout: execFileSync(command, args, { cwd: dir, encoding: 'utf8' }) };
+        try {
+          return { stdout: execFileSync(command, args, { cwd: dir, encoding: 'utf8' }) };
+        } catch (error) {
+          // Match the production async transport's numeric exit-code contract.
+          if (error.code === undefined && Number.isInteger(error.status)) error.code = error.status;
+          throw error;
+        }
       },
     },
   });
