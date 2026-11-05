@@ -1,0 +1,1 @@
+Create `scripts/task-tracker/lib/action-decision/presentation.mjs` and `scripts/tests/unit/task-tracker/lib/action-presentation.test.mjs`; extend Task 2 contract definitions and Task 1 conformance fixtures. Keep catalog lookup and CLI orchestration in Task 14. This module accepts validated values and performs no I/O, evaluation, logging, mutation, or authority collection.

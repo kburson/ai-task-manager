@@ -1,0 +1,7 @@
+npm notice run @kburson/ai-peer-review@0.3.0 lint
+npm notice run eslint . && markdownlint-cli2 "**/*.md" && cspell --no-progress "**/*.{md,mjs,js,json}"
+markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+Finding: **/*.md !node_modules/** !coverage/** !.scratch/** !.ai-task-manager/memory/** !.ai-task-manager/templates/** !.claude/commands/task.md !AGENTS.md !templates/author-response.md !templates/reviewer-response.md !templates/human-decision.md !test/golden/templates/** !docs/superpowers/peer-reviews/**/*author-response-*.md !docs/superpowers/peer-reviews/**/*reviewer-response-*.md
+Linting: 92 files
+Summary: 0 issues in 0 files
+CSpell: Files checked: 278, Issues found: 0 in 0 files.

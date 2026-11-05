@@ -1,0 +1,6 @@
+- [ ] Every delivery-verification refusal is addressable by a stable catalog id; no delivery predicate remains a bare throw that no exception record can name. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] A `delivery.*` requirement can be waived only by a current `workflow-exception` record scoped to the exact issue, pull request, head SHA and named invariant, carrying a non-empty substantive human reason; a wildcard, expired, revoked, stale-scope or empty-reason record is refused. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] Full-Auto cannot satisfy a delivery waiver; the waiver requires recorded human authority. <!-- aitm-verified vc-list="vc:3" -->
+- [ ] A delivery that passed only because an invariant was waived produces a receipt that names the waived invariant, the authorizing record, the human actor and the reason, and never renders as an ordinary pass. <!-- aitm-verified vc-list="vc:4" -->
+- [ ] With no waiver record present, every delivery invariant refuses exactly as it does today; the default path is byte-unchanged. <!-- aitm-verified vc-list="vc:5" -->
+- [ ] The reproduction case closes: a pending AITM-authored intent whose pull request merged by a different method reaches a truthful terminal receipt through the generic mechanism, without a merge-method-specific branch. <!-- aitm-verified vc-list="vc:6" -->

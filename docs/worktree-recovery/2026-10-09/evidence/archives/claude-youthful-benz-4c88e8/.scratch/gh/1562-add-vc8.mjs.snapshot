@@ -1,0 +1,27 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { loadConfig } from '../../scripts/task-tracker/config.mjs';
+
+const cfg = await loadConfig();
+
+const VC8 =
+  '- [ ] `node --test scripts/tests/unit/task-tracker/verbs/close-delivery-gate-refusal.test.mjs` <!-- id=8 -->';
+
+const res = await mutateIssueBody({
+  issueNumber: 1562,
+  repo: cfg.repo,
+  mutate: (body) => {
+    let out = body;
+    if (!out.includes('id=8')) {
+      out = out.replace(
+        '- [ ] `npm run test:unit` <!-- id=7 -->',
+        `- [ ] \`npm run test:unit\` <!-- id=7 -->\n${VC8}`
+      );
+    }
+    // AC6 is proven by the close-refusal test, not by the whole unit lane.
+    return out.replace(
+      /(The operator-facing refusal message names the recovery lane[^\n]*?)vc-list="[^"]*"/,
+      '$1vc-list="vc:8"'
+    );
+  },
+});
+console.log('vc8:', JSON.stringify(res?.status ?? res));

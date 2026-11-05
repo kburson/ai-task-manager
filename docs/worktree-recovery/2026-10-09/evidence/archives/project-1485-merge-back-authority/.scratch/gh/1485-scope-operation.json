@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Scope",
+  "expected": "\n\nMake the production `merge-back` graph adapter honor the parent epic's current durable worktree-location branch. Preserve canonical `feature/epic/<N>` fallback only when the parent has no recorded branch, and propagate malformed or ambiguous recorded authority as a fail-closed error before any Git mutation.\n\n",
+  "replacement": "\n\nMake production `merge-back` graph loading honor each parent epic's current durable worktree-location branch, prefetch the child and immediate-epic nodes needed by its synchronous lineage lookups, and keep numeric issue identity separate from opaque branch authority. Preserve canonical `feature/epic/<N>` fallback only when the parent has no recorded branch, and propagate malformed, ambiguous, or missing graph authority as a fail-closed error before any Git mutation.\n\n"
+}

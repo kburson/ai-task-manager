@@ -1,0 +1,3 @@
+Confirmed: preserveAitmMarkers requires exact count and ordered equality of all AITM HTML comments before and after an ordinary issue-body operation. It throws protected AITM markers changed when obsolete verifier declarations are intentionally removed. The guard protects ordinary writes correctly; the shipped command has no supported criteria/evidence revision operation.
+
+The assigned agent must investigate scope/plan digests, legacy declarations versus evidence v2, approval authority, affected Test/Review receipts, durable audit records, and failure recovery. The observed blocker is confirmed; the final transaction protocol requires a reviewed design.

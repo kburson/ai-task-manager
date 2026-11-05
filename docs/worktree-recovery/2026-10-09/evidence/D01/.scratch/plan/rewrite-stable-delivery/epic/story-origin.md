@@ -1,0 +1,4 @@
+- **kind**: code
+- **related**: #1490, #1488, #1485, #1226
+- **discovered-during**: human-requested architectural review of the delivery and reopened-close defect chain
+- **scope-boundary**: Independent architecture epic; existing defects are rehearsal fixtures and future consumers, not parents or newly declared blockers

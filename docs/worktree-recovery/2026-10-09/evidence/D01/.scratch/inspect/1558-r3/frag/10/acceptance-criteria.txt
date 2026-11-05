@@ -1,0 +1,3 @@
+- [ ] Strict shared validation and allowlist projection preserve every operational field while removing only specified diagnostic provenance; no valid-empty substitution hides content. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Typed failures, ordered warnings, effective-policy human requests, cross-issue subject mapping, and deterministic nonrecursive failure output match the amended spec. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Routine/diagnostic modes are closed, evidence growth alone does not grow routine output, and complete diagnostic data remains available without becoming execution input. <!-- aitm-verified vc-list="vc:1" -->

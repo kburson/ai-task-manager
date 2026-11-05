@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Root Cause",
+  "expected": "\n\n`resolveEpicLineage` already supports `parentAuthoritativeBranch` and `parentAuthorityError`, but `merge-back.mjs`'s production `realGraphNode` supplies only numeric parent and child edges. It never reads the parent issue's durable worktree-location marker, so the resolver falls back to the canonical branch spelling even when authoritative custom-branch evidence exists.\n\n",
+  "replacement": "\n\n`resolveEpicLineage` already supports `parentAuthoritativeBranch` and `parentAuthorityError`, but `merge-back.mjs`'s production graph adapter supplies only numeric parent and child edges. It never reads the parent issue's durable worktree-location marker, prefetches only the child node even though merge-back later resolves the immediate epic node, and then calls `parseBranchName(epicBranch).issue` to recover numeric identity from an intentionally opaque branch ref. A custom branch therefore either falls back to a nonexistent canonical ref or cannot be parsed after authority is supplied.\n\n"
+}

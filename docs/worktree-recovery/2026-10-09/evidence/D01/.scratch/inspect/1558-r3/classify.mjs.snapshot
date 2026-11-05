@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+const lines = fs.readFileSync('r2-r3.diff','utf8').split('\n');
+const cats = { story:0, acMarker:0, vcRepr:0, other:[] };
+for (const l of lines) {
+  if (!/^[+-]/.test(l) || /^(\+\+\+|---)/.test(l)) continue;
+  const t = l.slice(1);
+  if (/^(As an? |I want|So that )/.test(t.trim())) { cats.story++; continue; }
+  if (/aitm-verified vc-list=/.test(t)) { cats.acMarker++; continue; }
+  if (/^(Plan verifier name:|Run: `|\*\*Verification Commands:\*\*|Verifier: |Root verifier)/.test(t.trim())) { cats.vcRepr++; continue; }
+  cats.other.push(l);
+}
+console.log('story lines:', cats.story, 'ac-marker lines:', cats.acMarker, 'vc-repr lines:', cats.vcRepr);
+console.log('OTHER changed lines:', cats.other.length);
+for (const o of cats.other) console.log(o.slice(0,260));

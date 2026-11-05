@@ -1,0 +1,24 @@
+{
+  "author": {
+    "host": "codex",
+    "identity_source": "runtime",
+    "joined_at": "2026-09-12T17:11:51.632Z",
+    "model_display": "GPT-5",
+    "model_id": "gpt-5",
+    "provider": "openai",
+    "role": "author",
+    "session_fingerprint": "sha256:17b0f7687638e5979626da70ea1c87d911de9cde19a8d0723e99d40c06d65c45"
+  },
+  "review_id": "review-03ff5087c2d09fdb34d6bf44fdb2928a",
+  "reviewer": {
+    "host": "claude-code",
+    "identity_source": "runtime",
+    "joined_at": "2026-09-12T17:17:14.905Z",
+    "model_display": "Claude Opus 5",
+    "model_id": "claude-opus-5",
+    "provider": "anthropic",
+    "role": "reviewer",
+    "session_fingerprint": "sha256:b442aba55add2575a307df23836f008c2fd2f4224f4758748bf984fd912fefe5"
+  },
+  "schema": "ai-peer-review.participants/v1"
+}

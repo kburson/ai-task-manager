@@ -1,0 +1,11 @@
+- [ ] `recycle <N>` supersedes the original and creates a stub clone carrying only title, story text, scope text, and parent link <!-- aitm-verified vc-list="vc:4" -->
+- [ ] The original records `aitm-superseded-by` pointing at the clone, and the clone records `aitm-recycled-from` pointing at the original <!-- aitm-verified vc-list="vc:3" -->
+- [ ] `aitm-recycled-from` is registered in `body-invariants.mjs` so a later body mutation cannot silently strip provenance <!-- aitm-verified vc-list="vc:3" -->
+- [ ] The clone carries no Priority, Size, Estimate, Rank, or assignee <!-- aitm-verified vc-list="vc:4" -->
+- [ ] Story and Scope extraction succeeds for solo, sub-issue, epic, defect, and legacy body shapes <!-- aitm-verified vc-list="vc:3" -->
+- [ ] Recycling a child swaps the parent epic's sub-issue entry so the parent gains the clone and drops the original <!-- aitm-verified vc-list="vc:4" -->
+- [ ] Every issue whose body records a blocked-by reference to the recycled issue is repointed at the clone, verified by a test that would otherwise observe a silent unblock <!-- aitm-verified vc-list="vc:3 vc:4" -->
+- [ ] `recycle` refuses when commits attributed to the issue exist on any ref, naming the SHAs, and the refusal is not bypassable without an explicit flag <!-- aitm-verified vc-list="vc:3" -->
+- [ ] An override of the committed-work refusal is recorded in an audit comment on both the original and the clone <!-- aitm-verified vc-list="vc:4" -->
+- [ ] `recycle` on a Backlog issue with no stage history refuses as a no-op rather than creating a pointless clone <!-- aitm-verified vc-list="vc:3" -->
+- [ ] `recycle --drain` classifies a set into recyclable, needs-disposition, and blocked, and applies the recyclable set transactionally <!-- aitm-verified vc-list="vc:4" -->

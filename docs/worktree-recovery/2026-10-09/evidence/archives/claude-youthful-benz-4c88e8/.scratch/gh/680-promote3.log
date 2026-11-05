@@ -1,0 +1,11 @@
+
+⛔ Agent Review Gate failed for #680 — 2 objection(s):
+   body-sections: section 'Story Origin' is missing
+   body-sections: section 'Acceptance Criteria' appears before 'Deep Dive'
+
+#680 stays in Review with its state action incomplete. Fix the objections
+above in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of
+fix every registered validator asks for — then re-run `/task review #680`.
+
+✓ #680 promoted: test → review (/task review)
+  ⚠ delegate /task review exited 3 — board reached target; treating as soft warning.

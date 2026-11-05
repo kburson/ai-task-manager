@@ -1,0 +1,3 @@
+- [ ] Bind/resume and early forward edges expose all required session, verb, and mutator checks with stable dispositions. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Shared navigation preserves lifecycle policy, terminal Done, and indeterminate unknown state without a second state walk. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Changed authority after explanation is refused by fresh execution checks. <!-- aitm-verified vc-list="vc:1" -->

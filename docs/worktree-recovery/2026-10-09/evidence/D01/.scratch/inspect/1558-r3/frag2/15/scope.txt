@@ -1,0 +1,18 @@
+**Scope/files:** Create `action-decision/review.mjs`; modify `action-decision/navigation.mjs`, `verbs/review.mjs`, `verbs/promote.mjs`, `lib/review-preflight.mjs`, relevant Test-exit/Review-entry guard producers, and `lib/resident-actions/review-agent-validation.mjs`. Create `scripts/tests/integration/task-tracker/lib/action-review.test.mjs`.
+
+**Interfaces:** Shares current `runReviewPreflight` logic and Task 5 projection; exposes evidence-dependent Review rerun selection to both promote and generic explanation.
+
+- [ ] **Step 1 — Add failing paired cases:** complete unstamped DoD, incomplete ACs, stale exact-HEAD Test evidence, epic-aware requirements, missing commit trail, waived versus passed policy state, semantic-review provider constraints, and a Review resident needing rerun.
+
+```js
+const outcome = await fixture.compareEvaluationAndExecution('review-unstamped-complete');
+assert.equal(outcome.evaluated.status, 'ready');
+assert.equal(outcome.evaluated.normalizations[0].normalizerId, 'functional-dod-derived');
+assert.deepEqual(outcome.explainEffects, []);
+assert.equal(await fixture.nextAction('review-resident-incomplete'), 'review');
+```
+
+- [ ] **Step 2 — Run VC8 to RED.** Include failures at required policy collection, projection persistence/readback, and authority refresh; ensure unsupported managed-provider capability remains a blocker where existing execution requires it.
+- [ ] **Step 3 — Extract Review's full readiness path.** Include preflight, completeness, current evidence, home-state and mutator guards; remove mutate-before-evaluate use of `deriveAndRescan` from this path. Preserve sanctioned Review behavior after readiness, including explicit human approval boundaries and resident execution. Evaluation cannot run review probes, spawn reviewers, tick unrelated items, or emit audit/approval stamps.
+- [ ] **Step 4 — Share evidence-dependent navigation.** If Review must rerun, both consumers select Review using current evidence. Delivery requirements remain explicit blockers/remediations for close; do not silently invent a state edge. Mark the Review adapter complete only after its delegated and direct forms pass the same cases.
+- [ ] **Step 5 — Run VC8 to GREEN and commit**, preserving exact-head and epic-aware Review regressions and deleting migrated inventory allowances.

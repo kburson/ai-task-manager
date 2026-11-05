@@ -1,0 +1,17 @@
+[#1562] test(fixtures): record the package and emitter surface changes
+
+Two hand-maintained baselines move because this change ships real code, and
+both are meant to make such moves review-visible rather than to forbid them.
+
+package-boundary: the reconciliation record is one shipped runtime module, so
+the exact packed surface grows by one. Ceiling 774 -> 775, annotated in the same
+form as every prior bump.
+
+timing-event-emitter characterization: close.mjs emitter call sites shift up by
+three lines. buildDeliveryGateRefusal is deliberately appended at the END of
+close.mjs — inserting it near the top shifted every characterized line by twelve
+and turned an unrelated change into fixture churn. The residual three-line shift
+comes from collapsing the inline refusal string into a single call, which is the
+point of the extraction.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

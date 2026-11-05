@@ -1,0 +1,105 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "native-adapter",
+      "description": "Implement and verify the native GitHub dependency adapter",
+      "baseHumanHours": 1.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/native-dependencies.mjs",
+          "scripts/gh/lib/github-projects.mjs"
+        ],
+        "dependencies": [
+          "GitHub issue dependency read API",
+          "GitHub issue dependency mutation CLI"
+        ]
+      }
+    },
+    {
+      "id": "projection-and-gates",
+      "description": "Implement transient Disposition projection and lifecycle gate reconciliation",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/lib/dependency-disposition.mjs",
+          "scripts/task-tracker/lib/blocked-by-guard.mjs",
+          "scripts/task-tracker/lib/epic-children-gate.mjs"
+        ],
+        "dependencies": [
+          "GitHub Projects Status field",
+          "GitHub Projects Disposition field"
+        ]
+      }
+    },
+    {
+      "id": "commands-and-reconciliation",
+      "description": "Rewrite block and unblock set commands and eager and lazy reconciliation callers",
+      "baseHumanHours": 2,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/verbs/block.mjs",
+          "scripts/task-tracker/verbs/unblock.mjs",
+          "scripts/task-tracker/lib/unpark-dependents.mjs",
+          "scripts/task-tracker/verbs/pull-next.mjs"
+        ],
+        "dependencies": [
+          "AITM lifecycle guard registry",
+          "AITM Done side effects"
+        ]
+      }
+    },
+    {
+      "id": "legacy-migration",
+      "description": "Implement interruption-safe migration and remove runtime legacy authority reads",
+      "baseHumanHours": 1.5,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/task-tracker/verbs/migrate-dependencies.mjs",
+          "scripts/task-tracker/lib/refinement-snapshot.mjs",
+          "scripts/task-tracker/lib/shelve-transaction.mjs"
+        ],
+        "dependencies": [
+          "Legacy blocker marker parser",
+          "Versioned issue body mutation"
+        ]
+      }
+    },
+    {
+      "id": "verification-and-docs",
+      "description": "Add focused regression coverage and update operator documentation",
+      "baseHumanHours": 1,
+      "independentlyReviewable": true,
+      "signals": {
+        "modules": [
+          "scripts/tests/unit/task-tracker",
+          "docs/guides"
+        ],
+        "dependencies": [
+          "Node test runner",
+          "Repository quality pipeline"
+        ]
+      }
+    }
+  ],
+  "testImpact": {
+    "lanes": [
+      "unit",
+      "integration",
+      "slow"
+    ],
+    "isolation": "Injected GitHub and Project adapters for focused tests; repository suites run serially in the governed worktree",
+    "expectedMinutes": 18
+  },
+  "risks": [
+    "Paginated dependency reads must fail closed rather than authorize work from a partial set.",
+    "Partial native mutation and projection failures must remain retryable without rolling back authoritative edges.",
+    "Transient BLOCKED projection must never overwrite or clear a terminal Disposition.",
+    "Legacy migration must remove the strict marker last so interruption remains recoverable."
+  ],
+  "comparableIssueIds": []
+}

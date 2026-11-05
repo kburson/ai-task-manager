@@ -1,0 +1,6 @@
+import sys
+from pathlib import Path
+p=Path(sys.argv[1])
+s=p.read_text()
+s=s.replace('pick 21c4bdb', 'reword 21c4bdb').replace('pick 5449ce4', 'reword 5449ce4')
+p.write_text(s)

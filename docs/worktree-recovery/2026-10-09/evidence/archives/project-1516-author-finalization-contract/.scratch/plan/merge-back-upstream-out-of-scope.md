@@ -1,0 +1,4 @@
+- Force-deleting branches.
+- Rewriting or deleting remote refs.
+- Changing merge-back's rebase, test-lane, or fast-forward integration semantics.
+- General cleanup retry orchestration beyond the observed upstream-tracking failure.

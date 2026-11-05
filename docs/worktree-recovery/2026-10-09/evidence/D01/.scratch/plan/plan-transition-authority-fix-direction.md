@@ -1,0 +1,5 @@
+Make successful Plan-to-Develop authorization self-contained and append-only. Persist the exact policy outcome used at the transition: ordinary human or Full-Auto approval remains `satisfied`; exception authorization remains explicitly `waived` and references the immutable exception record, revision, scope identity, and transition identity. Do not rewrite historical waiver evidence when the exception is later revised or revoked.
+
+Separate historical transition validity from current policy requirements. A later gate may require convergence because the current exception is revoked, but it must start from the durable transition record and automatically use sanctioned evidence repair when all predicates are already satisfied. It must not solicit a human rubber stamp merely to recreate machine-verifiable provenance.
+
+Retain #1716's `--repair-from-evidence` behavior for legacy issues that crossed the transition before this invariant existed. Add focused regression coverage at the real Plan-to-Develop policy/writer seam and at the later consumer that exposed #61.

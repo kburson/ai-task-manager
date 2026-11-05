@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Acceptance Criteria\n",
+  "replacement": "## Delivery Reconciliation\n\nThe accepted parent traceability table in `docs/superpowers/plans/2026-09-16-1558-ask-the-script-guidance-replacement.md` governs the mapping from ratified requirements to the original 26 WBS children. All 26 planned children and discovered #1765/#1767 are closed, and the epic trail verifier finds all 28 histories on this branch. Current AC 1 maps to the full child set. ACs 2-3 map to WBS 1-14 and the shared decision contract. AC 4 maps to WBS 11-13 and 17 plus release children #1772/#1774 nested under #1678. AC 5 maps to WBS 15-17, #1765/#1767, and #1678's three release children. ACs 6-7 are the human reconciliation and recorded paired cost evidence. The governed delivery-reconciliation comment carries the detailed evidence and measured values.\n\n## Acceptance Criteria\n"
+}

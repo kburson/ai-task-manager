@@ -1,0 +1,23 @@
+import os,json,subprocess,collections
+R=os.getcwd();D=R+'/.scratch/worktree-audit/';x=json.load(open(D+'squash-investigation.json'))
+excluded=['/Users/kpburson/.codex/worktrees/eba6/pws-mock-dashboard','/Users/kpburson/.codex/worktrees/88c8/ai-peer-review','/Users/kpburson/.codex/worktrees/e507/ai-peer-review','/Users/kpburson/.codex/worktrees/3719/ai-task-manager','/Users/kpburson/.codex/worktrees/655b/ai-task-manager','/Users/kpburson/.codex/worktrees/107-runtime-api-spec/ai-peer-review']
+safe=[w for w in x['worktrees'] if w['squashAssessment'] in ['ALL-COMMITS-VERIFIED-IN-DELIVERED-PR-OR-PATCH','ALREADY-REACHABLE-FROM-ORIGIN-TRUNK']]
+raw=subprocess.run(['lsof','-d','cwd','-Fn'],capture_output=True,text=True).stdout;cwds=[l[1:] for l in raw.splitlines() if l.startswith('n')]
+def git(p,a):return subprocess.run(['git','-C',p]+a,capture_output=True,text=True,check=True,timeout=60).stdout.strip()
+rows=[]
+for w in safe:
+ p=w['worktree'];m={'path':p,'main':os.path.dirname(w['common']),'head':w['currentHead'],'branch':w['branchNow'],'proof':w['squashAssessment'],'aggregateProof':w['aggregatePatchProof'],'priorHold':w.get('priorReason',''),'sourceClasses':w['commitClasses']};holds=[]
+ if any(p==q or p.startswith(q+'/') for q in excluded):holds.append('unarchived-chat-or-nested-chat-checkout')
+ if not os.path.isdir(p):holds.append('path-no-longer-present')
+ else:
+  m['freshHead']=git(p,['rev-parse','HEAD']);m['freshStatus']=git(p,['status','--porcelain=v1','-uall'])
+  if m['freshHead']!=m['head']:holds.append('HEAD-changed-since-proof')
+  if m['freshStatus']:holds.append('tracked-or-untracked-WIP')
+  if any(q==p or q.startswith(p+'/') for q in cwds):holds.append('live-process-cwd')
+  if git(p,['submodule','status']):holds.append('submodules')
+  if os.path.realpath(git(p,['rev-parse','--show-toplevel']))!=os.path.realpath(p):holds.append('wrong-Git-root')
+  m['gitPointer']=open(p+'/.git').read()
+ m['holds']=holds;m['status']='held' if holds else 'preflight-passed';rows.append(m)
+json.dump(rows,open(D+'delivered-cull-preflight.json','w'),indent=2)
+print('Totals',dict(collections.Counter(m['status'] for m in rows)))
+for m in rows:print(m['status'],m['path'],','.join(m['holds']))

@@ -1,0 +1,35 @@
+import { readFileSync } from 'node:fs';
+
+const path =
+  'docs/superpowers/specs/2026-09-08-1557-blocked-disposition-native-dependencies-design.md';
+const source = readFileSync(path, 'utf8');
+const requiredSections = [
+  '## Problem',
+  '## Goals',
+  '## Non-goals',
+  '## Selected authority model',
+  '## `aitm block`',
+  '## `aitm unblock`',
+  '## Lifecycle gate behavior',
+  '## Feature-branch satisfaction',
+  '## Legacy migration',
+  '## Verification strategy',
+  '## Decision summary',
+];
+
+for (const heading of requiredSections) {
+  if (!source.includes(heading)) throw new Error(`missing required section: ${heading}`);
+}
+if (/\b(?:TBD|TODO|FIXME)\b/.test(source)) throw new Error('placeholder token found');
+for (const decision of ['Issue:** #1557', 'schema 3', 'marker last']) {
+  if (!source.includes(decision)) throw new Error(`missing required decision: ${decision}`);
+}
+
+console.log(
+  JSON.stringify({
+    path,
+    lines: source.split('\n').length,
+    requiredSections: requiredSections.length,
+    placeholders: 0,
+  })
+);

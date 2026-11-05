@@ -1,0 +1,3 @@
+As an agent starting or advancing work,
+I want to inspect session and early-transition readiness without rebinding or moving an issue,
+So that navigation predicts the same checks that execution enforces.
