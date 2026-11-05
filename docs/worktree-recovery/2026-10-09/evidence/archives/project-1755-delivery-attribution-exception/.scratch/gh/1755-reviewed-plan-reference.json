@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **Reviewed-spec commit:** `0fc890a98ba79497df5b6beb9436fd8389d6f13c` (manual review rounds 1\u20132; reviewer acceptance pending)",
+  "replacement": "- **Reviewed-spec commit:** `0fc890a98ba79497df5b6beb9436fd8389d6f13c` (manual review rounds 1\u20132; reviewer acceptance pending)\n- **Reviewed-spec comparison plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md @ `087b9134`",
+  "expectedVersion": 20
+}

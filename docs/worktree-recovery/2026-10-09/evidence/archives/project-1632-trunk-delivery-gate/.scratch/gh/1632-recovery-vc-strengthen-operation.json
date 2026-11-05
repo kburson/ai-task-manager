@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] `gh issue view 1633 -R kburson/ai-task-manager --json body --jq '.body | contains(\"Every false-Done or indeterminate story has a governed recovery issue\")'` <!-- id=3 -->",
+  "replacement": "- [ ] `gh issue view 1633 -R kburson/ai-task-manager --json body --jq '.body' | rg -q -F 'Every false-Done or indeterminate story has a governed recovery issue'` <!-- id=3 -->"
+}

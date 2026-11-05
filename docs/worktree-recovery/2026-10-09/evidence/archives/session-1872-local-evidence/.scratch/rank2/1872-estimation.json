@@ -1,0 +1,119 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "policy",
+      "description": "Implement strict rank barrier and stable graph evaluator",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": [
+          "epic-admission"
+        ],
+        "dependencies": [
+          "refinement-snapshot"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "authority",
+      "description": "Implement immutable authority and bounded authentic source scope",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": [
+          "wave-authority"
+        ],
+        "dependencies": [
+          "authorization-provenance"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "isolation",
+      "description": "Validate physical worktree lineage and phase-aware occupancy",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": [
+          "wave-bindings"
+        ],
+        "dependencies": [
+          "occupancy"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "serialization",
+      "description": "Implement common Git parent lock and concurrent admission proof",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": [
+          "admission-lock"
+        ],
+        "dependencies": [
+          "issue-lock"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "recovery",
+      "description": "Implement governed publication and same-record recovery routes",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": [
+          "wave-store"
+        ],
+        "dependencies": [
+          "issue-body-transaction"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "parity",
+      "description": "Integrate direct Plan Promote Explain and pull-next parity",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": [
+          "task-lifecycle"
+        ],
+        "dependencies": [
+          "action-decision"
+        ]
+      },
+      "independentlyReviewable": false
+    },
+    {
+      "id": "verification",
+      "description": "Complete adversarial integration tests and workflow documentation",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": [
+          "wave-tests"
+        ],
+        "dependencies": [
+          "verification"
+        ]
+      },
+      "independentlyReviewable": false
+    }
+  ],
+  "testImpact": {
+    "lanes": [
+      "unit",
+      "integration",
+      "slow"
+    ],
+    "isolation": "owned worktree and repository-sanctioned isolated test scratch",
+    "expectedMinutes": 60
+  },
+  "risks": [
+    "Partial comment/body publication must retain same immutable operation",
+    "Worktree-local locks must not substitute for common parent admission lock",
+    "Existing authentic source context must remain usable without ambiguous inference",
+    "Sanctioned handoff and completed peers must preserve isolation without deadlock"
+  ],
+  "comparableIssueIds": []
+}

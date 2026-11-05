@@ -1,0 +1,5 @@
+- **kind**: code
+- **discovered-during**: #1872 close after successful timing replay recovery owned by #1876
+- **authority**: Maintainer authorized sole ownership and delivery to Done, including necessary completion blocker repair; no orchestrator or sub-agent.
+- **evidence**: PR #1875 merged at 3321c2256e577d8609c3979aa76391d0ae5c4c35; exact source 87f3e5e9eab41ff100367eb7a2eb71de444671bd; verified intent/receipt 01M4409F8PHN6MFHCGNCH0JVA5. Initial close experienced GitHub TLS timeout after persisting timing. Retry refused close-authority-drift. Real read-only diagnostic exposes DeliveryVerificationError input at v5 port validation. Two full genuine gate/receipt observations remain identical. Source trace shows resume changes approval provenance after caching the initial gate.
+- **related**: #1872 delivery owner; #1876 actor replay repair; #1862 broader runtime adoption.

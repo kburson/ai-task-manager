@@ -1,0 +1,4 @@
+- [ ] Replaying an actor opener after derived-delta normalization performs no second remote update and confirms canonical read-back; queued original events can drain successfully. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] Every non-derived cell and evidence marker remains part of replay identity; changed actor, timestamp, cursors, duration, description or interval evidence refuses equivalence. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] The registered dry-run-first recovery retains original actor openers and all genuine intervals while removing only proven redundant replay copies; conflicting or ambiguous evidence refuses without writes. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] Recovery preserves original evidence and provenance, validates unchanged engagement intervals and cursors, and confirms exact remote read-back before reporting repaired. <!-- aitm-verified vc-list="vc:1 vc:2" -->

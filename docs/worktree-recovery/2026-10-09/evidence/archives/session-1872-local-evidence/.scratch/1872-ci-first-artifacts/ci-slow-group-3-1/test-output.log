@@ -1,0 +1,124 @@
+
+> @kburson/ai-task-manager@0.1.0 test:slow
+> node scripts/run-tests.mjs --lane slow --shard 3/3
+
+▶ lane=slow (18 files)
+
+▶ scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs ... ok (3.6s)
+▶ scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs ... ok (6.2s)
+▶ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs ... ok (3.4s)
+▶ scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs ... ok (968ms)
+▶ scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs ... ok (507ms)
+▶ scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs ... ok (312ms)
+▶ scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs ... ok (1.6s)
+▶ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs ... ok (11.6s)
+▶ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ... ok (150ms)
+▶ scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ... ok (5.3s)
+▶ scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs ... ok (4.2s)
+▶ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ... ok (1.5s)
+▶ scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs ... ok (483ms)
+▶ scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs ... ok (202ms)
+▶ scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ... ok (952ms)
+▶ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs ... ok (272ms)
+
+▶ scheduling: 0 pure unit file(s) at pool concurrency 3 (peak 0); 0 direct-subprocess file(s) at pool concurrency 2 (peak 0); 1 explicit-safe slow file(s) at pool concurrency 2 (peak 1); 17 explicit-unsafe/integration/unmarked-slow file(s) serial
+
+2 of 18 test file(s) failed:
+
+── scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs ──
+✔ AC6: all six #438 suites are discovered and classified into the slow lane (11.32502ms)
+✔ #864: the suite is runnable only in bounded sections — no test:all script (0.379629ms)
+✔ #864: --lane all survives ONLY as the internal coverage union (0.990141ms)
+✖ #1413: fast CI runs the unit and integration lanes explicitly (0.746215ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.931929
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs:82:1
+✖ #1413: fast CI runs the unit and integration lanes explicitly (0.746215ms)
+  AssertionError [ERR_ASSERTION]: fast CI must run the unit lane
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs:85:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '# Continuous-integration quality gates.\n#\n# Why this exists (code-review epic #549, story #550): the repo has a strong\n# local test/quality toolchain (`npm run quality`, a 400+ file node-test fleet)\n# but no automated gate — "all tests pass" relied entirely on developer\n# discipline. This workflow makes the fast lane mandatory on every PR and every\n# push to trunk, and establishes the green baseline the Wave 3 refactors\n# (#559/#560/#561) depend on.\n#\n# Heavy lanes use three independent collection groups (#1872). Each job keeps\n...',
+    expected: /run:\s*npm run test:unit\b/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+── scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ──
+✔ every public direct entry point exits safely for --help and -h (18499.640862ms)
+✔ every package bin emits detailed help through an install-style symlink (764.519427ms)
+✔ every package lifecycle subcommand help exits before mutation (1271.638041ms)
+✔ help probes do not consume option values and run before subprocess work (902.304917ms)
+✔ every routed verb supports help, ?, --help, and -h (144200.649506ms)
+✔ equivalent direct, routed, and package-bin forms render the same contract (2017.475025ms)
+✔ direct task help forms exit before project configuration is read (454.065367ms)
+✖ routed task wrappers propagate command return codes (581.944939ms)
+✔ unknown commands return usage error with compact ANSI-free aggregate help (462.334313ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169163.320351
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs:273:1
+✖ routed task wrappers propagate command return codes (581.944939ms)
+  AssertionError [ERR_ASSERTION]: [task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/home/runner/work/ai-task-manager/ai-task-manager/.ai-task-manager/runtime/test-fixtures/test/aitm-task-exit-N82hCY for the active issue
+  [task-tracker] Board features unavailable: project not configured (projectId missing).
+    Run: npx ai-task-manager init   or   /task config init
+  file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:8
+    const error = new TypeError('Invalid timing actor identity or marker');
+                  ^
+  
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/state.mjs:256:21)
+      at runVerbPreflight (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/task-tracker.mjs:298:23)
+      at async file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/task-tracker.mjs:562:5 {
+    code: 'TIMING_ACTOR_INVALID'
+  }
+  
+  Node.js v24.21.0
+  
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs:292:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+

@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "4. a newly merged pull request whose exact source head is the same accepted SHA, plus correlated delivery intent/receipt and fresh exact-SHA Test and Review authority;",
+  "replacement": "4. a newly merged pull request whose source is either the historical accepted SHA or one exact two-parent current-trunk integration head with that SHA first, plus correlated delivery intent/receipt and fresh exact-delivery-SHA Test and Review authority;"
+}

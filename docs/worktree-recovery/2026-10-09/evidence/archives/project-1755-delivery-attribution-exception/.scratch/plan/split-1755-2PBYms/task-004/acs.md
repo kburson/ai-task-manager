@@ -1,0 +1,1 @@
+- [ ] Deliver "### Task 4: Two-pass CLI and Codex-only user authority" exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="vc:1" -->

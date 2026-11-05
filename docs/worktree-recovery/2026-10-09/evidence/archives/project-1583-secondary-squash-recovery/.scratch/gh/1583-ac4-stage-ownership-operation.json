@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] Repository lint, format, fast, and slow verification remain green. <!-- aitm-verified vc-list=\"vc:3 vc:4 vc:5 vc:6\" -->",
+  "replacement": "- [ ] Repository lint and format verification remain green before Test. <!-- aitm-verified vc-list=\"vc:3 vc:4\" -->"
+}

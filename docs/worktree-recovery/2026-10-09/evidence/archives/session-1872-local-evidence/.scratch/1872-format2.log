@@ -1,0 +1,49 @@
+docs/guides/workflow.md 241ms (unchanged)
+scripts/gh/lib/wave-admission.mjs 62ms
+scripts/task-tracker/lib/action-decision/contract.mjs 45ms (unchanged)
+scripts/task-tracker/lib/command-surface/catalog.mjs 31ms (unchanged)
+scripts/task-tracker/lib/command-surface/routing.mjs 4ms (unchanged)
+scripts/task-tracker/lib/epic-children-gate.mjs 12ms (unchanged)
+scripts/task-tracker/lib/epic-orchestration-plan.mjs 7ms (unchanged)
+scripts/task-tracker/lib/fetch-parent-issue.mjs 3ms (unchanged)
+scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs 2ms (unchanged)
+scripts/task-tracker/states/plan.mjs 2ms (unchanged)
+scripts/task-tracker/task-tracker.mjs 21ms (unchanged)
+scripts/task-tracker/verbs/help-data.mjs 12ms (unchanged)
+scripts/task-tracker/verbs/plan.mjs 3ms (unchanged)
+scripts/task-tracker/verbs/promote.mjs 26ms (unchanged)
+scripts/task-tracker/verbs/pull-next.mjs 15ms (unchanged)
+scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs 27ms
+scripts/tests/unit/task-tracker/core/package-boundary.test.mjs 14ms (unchanged)
+scripts/tests/unit/task-tracker/core/verb-locks.test.mjs 2ms
+scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs 13ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs 15ms (unchanged)
+scripts/tests/unit/task-tracker/lib/guard-parity-plan-develop.test.mjs 8ms
+scripts/tests/unit/task-tracker/lib/guard-registry-plan-exit.test.mjs 15ms
+scripts/tests/unit/task-tracker/lib/nested-epic-semantics.test.mjs 7ms
+scripts/tests/unit/task-tracker/verbs/coverage-promote.test.mjs 19ms
+scripts/tests/unit/task-tracker/verbs/pull-next-close-convergence.test.mjs 5ms
+scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs 10ms (unchanged)
+docs/guides/epic-rank-waves.md 12ms (unchanged)
+docs/superpowers/plans/2026-10-03-1872-rank-level-parallel.md 18ms (unchanged)
+docs/superpowers/specs/2026-10-03-1872-rank-level-parallel-design.md 24ms (unchanged)
+scripts/task-tracker/lib/epic-admission-lock.mjs 7ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-admission.mjs 2ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-authority.mjs 5ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-bindings.mjs 7ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-policy.mjs 6ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-refinement.mjs 3ms
+scripts/task-tracker/lib/epic-rank-wave-runtime.mjs 6ms
+scripts/task-tracker/lib/epic-rank-wave-source.mjs 9ms (unchanged)
+scripts/task-tracker/lib/epic-rank-wave-store.mjs 10ms (unchanged)
+scripts/task-tracker/verbs/epic-wave.mjs 4ms (unchanged)
+scripts/tests/fixtures/legacy-rank-wave.mjs 1ms (unchanged)
+scripts/tests/integration/task-tracker/lib/epic-rank-wave-lock.test.mjs 8ms (unchanged)
+scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs 8ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-authority.test.mjs 4ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-bindings.test.mjs 5ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs 3ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-refinement.test.mjs 2ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-routes.test.mjs 4ms (unchanged)
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs 4ms (unchanged)
+scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs 1ms (unchanged)

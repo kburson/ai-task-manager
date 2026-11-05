@@ -1,0 +1,11 @@
+import { mutateIssueBody } from '../../scripts/task-tracker/lib/issue-body-mutate.mjs';
+import { setDeliverablePosted } from '../../scripts/task-tracker/lib/issue-kind.mjs';
+
+const url = 'https://github.com/kburson/ai-task-manager/issues/1633#issuecomment-5682743221';
+const result = await mutateIssueBody({
+  issueNumber: 1633,
+  repo: 'kburson/ai-task-manager',
+  mutate: (body) => setDeliverablePosted(body, { url }),
+});
+
+console.log(`deliverable marker: ${result.status} version=${result.version} url=${url}`);

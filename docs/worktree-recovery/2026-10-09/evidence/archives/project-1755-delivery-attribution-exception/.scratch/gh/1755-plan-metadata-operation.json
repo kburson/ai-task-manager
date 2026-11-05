@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive",
+  "replacement": "## Plan Metadata\n\n- **Implementation-plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception.md\n- **Specification:** docs/superpowers/specs/2026-09-22-1755-delivery-attribution-exception-design.md\n\n## Pickup Directive"
+}

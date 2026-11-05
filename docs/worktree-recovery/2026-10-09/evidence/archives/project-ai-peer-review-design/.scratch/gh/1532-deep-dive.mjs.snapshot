@@ -1,0 +1,26 @@
+import { ensureDeepDive } from '../../scripts/task-tracker/lib/deep-dive.mjs';
+
+const prose = `Task 1 was reviewed against the immutable extraction source \`4b3bcd43cba141a611da4a2b861433b915462806\`, the current synchronized AITM trunk, and the absence of both a local \`/Users/kpburson/projects/Vibe-Coding/ai-peer-review\` directory and a remote \`kburson/ai-peer-review\` repository. Work will occur only in a fresh clone at that standalone path; filtering will never run in an AITM checkout or worktree.
+
+Files to create in the standalone repository are \`scripts/verify-extraction.mjs\`, \`scripts/run-secret-scan.mjs\`, \`.gitleaks.toml\`, \`provenance/extraction-manifest.json\`, \`provenance/relicensing-declaration.json\`, \`LICENSE\`, \`NOTICE\`, \`CONTRIBUTING.md\`, \`README.md\`, \`docs/spdx-policy.md\`, \`docs/design/2026-09-07-ai-peer-review-extraction-design.md\`, and \`test/unit/verify-extraction.test.mjs\`. The filter retains only the exact review, provider, co-review test/plan/spec, and historical license paths named by the accepted plan.
+
+Implementation follows the accepted eight steps without reordering. Create the one-ref fresh clone, record contributor and retained-path inventories, run the exact \`git filter-repo\` path selection, write failing verifier tests, implement the closed extraction verifier, populate all observed provenance fields, run Gitleaks across the complete filtered history, obtain and verify the signed relicensing declaration, install the Apache-2.0 boundary, remove \`LICENSE-COMMERCIAL\` from publishable HEAD, and commit the auditable bootstrap whose first parent is the filtered history tip. The public GitHub repository is not created in this child; Task 14 owns that publication action after all Phase 1 gates.
+
+The test addition is \`test/unit/verify-extraction.test.mjs\`. It will prove exact filtered history succeeds and that leaked foreign paths, widened glob matches, later source refs, malformed boundaries, foreign standalone paths, retained legacy paths under the release gate, failed or missing secret scans, empty or changed contributor audits, and null relicensing digests fail closed. Tests will be written and observed failing before production verifier code.
+
+Primary risks are an unavailable \`git filter-repo\` or Gitleaks binary, a contributor identity outside the ratified holder set, an invalid or unavailable signing authority, secret-scan findings, and accidentally broad history retention. The plan's exact commands, immutable inventories, independent expected-holder constant, full-history scan, and signed-declaration digest address these risks. Missing legal authority stops before relicensing, bootstrap commit, public repository creation, or release; no field or signature will be fabricated.
+
+No additional sibling issue is needed. Any newly discovered defect will be tracked before work through the sanctioned AITM issue-creation path.
+
+## Dependency Map
+Depends on: none; the immutable source and accepted specification and plan commits are already recorded.
+Blocks: #1533-#1549 because every later package, release, and migration task consumes this standalone history and license boundary.`;
+
+const result = await ensureDeepDive({
+  issueNumber: 1532,
+  repo: 'kburson/ai-task-manager',
+  prose,
+  posted: true,
+});
+
+console.log(JSON.stringify({ status: result.status, attempts: result.attempts, version: result.version }));

@@ -1,0 +1,1396 @@
+npm notice run @kburson/ai-task-manager@0.1.0 test:slow
+npm notice run node scripts/run-tests.mjs --lane slow
+▶ lane=slow (55 files)
+
+▶ scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs ... ok (81ms)
+▶ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs ... ok (5.0s)
+▶ scripts/tests/slow/task-tracker/core/lifecycle-traversal-e2e.test.mjs ... ok (91ms)
+▶ scripts/tests/slow/task-tracker/core/maintenance-scripts-strict-argv.test.mjs ... ok (4.2s)
+▶ scripts/tests/slow/task-tracker/core/packaged-doctor-consumer.test.mjs ... ok (12.5s)
+▶ scripts/tests/slow/task-tracker/core/packaged-tail-profile-consumer.test.mjs ... ok (7.2s)
+▶ scripts/tests/slow/task-tracker/core/verify-develop.test.mjs ... ok (1.3s)
+▶ scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/action-capture-integration.test.mjs ... ok (2.5s)
+▶ scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/agent-guard.test.mjs ... ok (1.6s)
+▶ scripts/tests/slow/task-tracker/lib/agentic-help-runtime.test.mjs ... ok (169.6s)
+▶ scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs ... ok (6.2s)
+▶ scripts/tests/slow/task-tracker/lib/body-write-roundtrip.test.mjs ... ok (54ms)
+▶ scripts/tests/slow/task-tracker/lib/chore-mode-activity-guard.test.mjs ... ok (658ms)
+▶ scripts/tests/slow/task-tracker/lib/cli.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/commit-trail-handler.test.mjs ... ok (3.1s)
+▶ scripts/tests/slow/task-tracker/lib/config-completeness-invariant.test.mjs ... ok (703ms)
+▶ scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs ... ok (6.1s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs ... ok (1.2s)
+▶ scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/demonstrable-ac-gate.test.mjs ... ok (91ms)
+▶ scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs ... ok (741ms)
+▶ scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs ... ok (516ms)
+▶ scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs ... ok (3.7s)
+▶ scripts/tests/slow/task-tracker/lib/evidence-v2/frozen-worktree-rehearsal.test.mjs ... ok (19.7s)
+▶ scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs ... ok (466ms)
+▶ scripts/tests/slow/task-tracker/lib/gates.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/init-status-palette.test.mjs ... ok (9.5s)
+▶ scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs ... ok (2.9s)
+▶ scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/move-state.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs ... ok (2.9s)
+▶ scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/ready-for-plan-live-migration.test.mjs ... ok (478ms)
+▶ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/lib/worktree-seed-integration.test.mjs ... ok (1.8s)
+▶ scripts/tests/slow/task-tracker/verbs/close-lifecycle-tick.test.mjs ... ok (209ms)
+▶ scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ... ok (8.7s)
+▶ scripts/tests/slow/task-tracker/verbs/deadlock-regression.test.mjs ... ok (412ms)
+▶ scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/verbs/state-marker-single-writer.test.mjs ... ok (521ms)
+▶ scripts/tests/slow/task-tracker/verbs/verb-test-remove-worktree.test.mjs ... ok (310ms)
+▶ scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs ... ok (102ms)
+
+▶ scheduling: 0 pure unit file(s) at pool concurrency 9 (peak 0); 0 direct-subprocess file(s) at pool concurrency 2 (peak 0); 1 explicit-safe slow file(s) at pool concurrency 2 (peak 1); 54 explicit-unsafe/integration/unmarked-slow file(s) serial
+
+21 of 55 test file(s) failed:
+
+── scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: stderr:
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/tt-ac-gate-1-3InRwL for the active issue
+[task-tracker] Board features unavailable: project not configured (projectId missing).
+  Run: npx ai-task-manager init   or   /task config init
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/ac-evidence-gate.test.mjs:142:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.\n' +
+    '[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/tt-ac-gate-1-3InRwL for the active issue\n' +
+    '[task-tracker] Board features unavailable: project not configured (projectId missing).\n' +
+    '  Run: npx ai-task-manager init   or   /task config init\n' +
+    '[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.\n' +
+    'no active task\n',
+  expected: /EVIDENCE_REQUIRED:/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ──
+✔ Edit src/foo.ts in develop → pass (89.319458ms)
+✔ Edit docs/notes.md in plan without current-session binding → allow (72.389ms)
+✔ Edit docs/notes.md in refine without an exact binding → allow (74.869375ms)
+✔ Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass (82.563625ms)
+✔ Bash npm test in test → pass (87.620792ms)
+✔ Bash READ command (cat README.md) in done → pass (88.765459ms)
+✔ Write .scratch/gh/foo.txt in develop → pass (scratch carve-out) (77.397042ms)
+✔ Write .scratch/plan/draft.md in refine → pass (scratch carve-out) (82.590959ms)
+✔ Write absolute .scratch/ path → pass (scratch carve-out) (77.743958ms)
+✔ Write .tmp/aitm runtime path in refine → pass (78.629709ms)
+✔ Edit src/foo.ts in refine → block; suggests develop (84.203834ms)
+✔ Edit src/foo.ts in test → block; suggests develop (93.288917ms)
+✔ Bash heredoc to src/ in refine → block (77.885875ms)
+✔ Bash npm run build in refine → block (83.695083ms)
+✔ Bash git commit in refine → block (COMMIT_CODE) (119.856917ms)
+✔ Edit src/foo.ts with active issue but no state field → block; suggest reconcile (83.545708ms)
+✔ Edit src/foo.ts with no state file at all → block (no-active-task) (81.829ms)
+✔ Edit docs/notes.md with active issue but no state → allow (78.908625ms)
+✔ Read with no active task is universally allowed; no state file → pass (90.488375ms)
+✔ malformed stdin JSON → pass (don't deadlock) (74.332125ms)
+✔ unknown tool_name → pass-through (81.140375ms)
+✔ Edit with missing file_path → pass (avoid false-positive) (69.659875ms)
+✔ Edit with absolute path inside project root → normalized + blocked in refine (90.00125ms)
+✔ session kanbanState cache supplies state when global state field is absent (88.367458ms)
+✔ session kanbanState overrides legacy global state when both present (84.863666ms)
+✔ session cache for a different issue is ignored (88.9135ms)
+✔ session cache with invalid kanbanState is ignored; falls back (87.408459ms)
+✔ most-recently-modified session cache wins when multiple match (152.320334ms)
+✔ invalid state value in state file with active issue → block; suggest reconcile (78.103ms)
+✔ linked backlog document commit uses payload worktree and exact owner (3708.227666ms)
+✔ linked refine document commit uses payload worktree and exact owner (6055.376834ms)
+✔ linked ready-for-plan document commit uses payload worktree and exact owner (4131.956333ms)
+✔ linked plan document commit uses payload worktree and exact owner (4445.620875ms)
+✔ native hook session selects its own state instead of an environment session (156.068875ms)
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (214.175708ms)
+✔ Bash scope guard does not execute quoted cat payload examples as issue commands (93.966541ms)
+✔ Plan runner does not bypass exact document binding (90.331708ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 36
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21404.064125
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:812:1
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (214.175708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:825:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+── scripts/tests/slow/task-tracker/lib/cli.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: verb "#42" should fail-closed with config-not-found or not initialized
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/cli.test.mjs:206:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-norepo-u6EfHi\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at assertOutsideArtifacts (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:44:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:194:5)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {\n' +
+    "  code: 'ROOT_OVERRIDE_UNSAFE'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n',
+  expected: /config-not-found|not initialized/i,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ──
+✖ normalized timing identity deduplicates exact events but admits later timestamps (449.888625ms)
+✖ timestamp-less lifecycle events remain runnable instead of becoming session-global duplicates (254.824ms)
+✖ stamp write failure skips the timing flush and fails closed (152.577125ms)
+✖ SessionStart: no active and no paused → "No active task." (126.763667ms)
+✖ SessionStart: no active, lastActive present but no fleet entry → "No active task." (129.621209ms)
+✖ SessionStart: discover bucket active → "Discovery bucket active." (132.262417ms)
+✖ SessionStart: active task with stale entryStartTs → recovery banner (124.444041ms)
+✖ SessionStart: active task with no entryStartTs → active banner, no recovery time (117.776292ms)
+✖ SessionStart banks an existing session cursor tail exactly once (242.869ms)
+✖ SessionStart orphan recovery rows use the freshly banked marker pair (133.185458ms)
+✔ PreCompact: active with entryStartTs → flush path runs (exit 0) (123.982791ms)
+✔ PreCompact: bound-but-paused (no entryStartTs) → early return (#407) (132.431166ms)
+✔ PreCompact: nothing active → early return (121.71025ms)
+✔ PostCompact: active → resume row path (exit 0) (118.874ms)
+✖ PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor (242.539916ms)
+✖ PostCompact banks a tail preserved by an unavailable PreCompact exactly once (384.162833ms)
+✔ PostCompact: nothing active → early return (117.08225ms)
+✖ malformed stdin → JSON.parse catch, no handler dispatched, exit 0 (129.404ms)
+✔ unknown event → no handler dispatched, exit 0 (140.466792ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 6
+ℹ fail 13
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3384.373375
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:133:1
+✖ normalized timing identity deduplicates exact events but admits later timestamps (449.888625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:147:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:155:1
+✖ timestamp-less lifecycle events remain runnable instead of becoming session-global duplicates (254.824ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:159:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:165:1
+✖ stamp write failure skips the timing flush and fails closed (152.577125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /hook stamp.*fail/i. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:176:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /hook stamp.*fail/i,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:181:1
+✖ SessionStart: no active and no paused → "No active task." (126.763667ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /No active task\./. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:183:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /No active task\./,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:186:1
+✖ SessionStart: no active, lastActive present but no fleet entry → "No active task." (129.621209ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /No active task\./. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:188:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /No active task\./,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:191:1
+✖ SessionStart: discover bucket active → "Discovery bucket active." (132.262417ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Discovery bucket active\./. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:193:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /Discovery bucket active\./,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:196:1
+✖ SessionStart: active task with stale entryStartTs → recovery banner (124.444041ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /#7 is active/. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:201:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /#7 is active/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:204:1
+✖ SessionStart: active task with no entryStartTs → active banner, no recovery time (117.776292ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /#7 is active/. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:209:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /#7 is active/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:212:1
+✖ SessionStart banks an existing session cursor tail exactly once (242.869ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  100 !== 103
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:236:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 100,
+    expected: 103,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:243:1
+✖ SessionStart orphan recovery rows use the freshly banked marker pair (133.185458ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-UVBKVR/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:260:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-UVBKVR/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:304:1
+✖ PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor (242.539916ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-BZYinJ/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:318:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-BZYinJ/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:335:1
+✖ PostCompact banks a tail preserved by an unavailable PreCompact exactly once (384.162833ms)
+  Error: ENOENT: no such file or directory, open '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-dZpnoR/.tmp/aitm/state/task-tracker-queue.json'
+      at readFileSync (node:fs:621:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:383:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'open',
+    path: '/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/proj-dZpnoR/.tmp/aitm/state/task-tracker-queue.json'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:402:1
+✖ malformed stdin → JSON.parse catch, no handler dispatched, exit 0 (129.404ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /Error/. Input:
+  
+  'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs:405:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n  throw new RuntimeRootError(code, message);\n        ^\n\nRuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR\n    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)\n    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/hook-handler.mjs:41:20\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n...',
+    expected: /Error/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }
+
+── scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ──
+✖ happy path: creates, tethers, substitutes placeholders (237.266667ms)
+✖ explicit --assignee is forwarded to gh issue create (190.185375ms)
+✖ missing projectId: exits non-zero before calling gh (218.220667ms)
+✖ tether failure: prints recovery command and exits non-zero (200.051667ms)
+✖ --parent flag forwards to project-tether (192.487959ms)
+✖ --no-tether: skips tether step entirely (203.482792ms)
+✖ --shape sub-issue: refuses creation under a Done parent epic (239.214417ms)
+✔ --shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent check (226.520292ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 1
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1711.200625
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:115:1
+✖ happy path: creates, tethers, substitutes placeholders (237.266667ms)
+  AssertionError [ERR_ASSERTION]: create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-oeSswW
+  
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:148:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:181:1
+✖ explicit --assignee is forwarded to gh issue create (190.185375ms)
+  AssertionError [ERR_ASSERTION]: create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-9obrTk
+  
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:202:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:208:1
+✖ missing projectId: exits non-zero before calling gh (218.220667ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /projectId/. Input:
+  
+  'create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-4JOGhD\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:226:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-4JOGhD\n',
+    expected: /projectId/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:230:1
+✖ tether failure: prints recovery command and exits non-zero (200.051667ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^AITM_CREATED_ISSUE=9999$/m. Input:
+  
+  'create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-ue1WJJ\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:252:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-ue1WJJ\n',
+    expected: /^AITM_CREATED_ISSUE=9999$/m,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:258:1
+✖ --parent flag forwards to project-tether (192.487959ms)
+  AssertionError [ERR_ASSERTION]: create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-el0XX3
+  
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:279:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:285:1
+✖ --no-tether: skips tether step entirely (203.482792ms)
+  AssertionError [ERR_ASSERTION]: create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-dpxYRc
+  
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:306:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:314:1
+✖ --shape sub-issue: refuses creation under a Done parent epic (239.214417ms)
+  AssertionError [ERR_ASSERTION]: expected exit 2, got 1
+  create-issue: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/aitm-create-mGAsOw
+  
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/create-issue.test.mjs:366:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+── scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs ──
+✖ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (978.906625ms)
+✔ promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710) (61.496083ms)
+✔ promote: exit-0 close that moves board to done still reports promoted (#710) (46.090875ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1089.4335
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:178:1
+✖ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (978.906625ms)
+  AssertionError [ERR_ASSERTION]: expected exit 5, got 1. stderr:
+  file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26
+    throw new RuntimeRootError(code, message);
+          ^
+  
+  RuntimeRootError: Ambiguous Git root observation
+      at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+      at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)
+      at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)
+      at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+      at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)
+      at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+  
+  Node.js v26.8.1
+  
+  
+  1 !== 5
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/dirty-review-promote-false-success.test.mjs:184:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+── scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0, got 1. stderr:
+move-state-cli.mjs: RuntimeRootError: Ambiguous Git root observation
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)
+    at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+stdout:
+
+
+1 !== 0
+
+    at runNode (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:87:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs:121:15 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/discover-autosave.test.mjs ──
+save-draft: no-active-discover-bucket
+  Start a discovery session first: `/task discover`
+
+── scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: exit non-zero; stderr:
+ensure-wave-parent error: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-ewp-1-wgiBwT
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/ensure-wave-parent.test.mjs:245:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/gates.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The input did not match the regular expression /review-authorization-missing/. Input:
+
+'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+  '  throw new RuntimeRootError(code, message);\n' +
+  '        ^\n' +
+  '\n' +
+  'RuntimeRootError: Ambiguous Git root observation\n' +
+  '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+  '    at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)\n' +
+  '    at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)\n' +
+  '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)\n' +
+  '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+  '    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)\n' +
+  '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {\n' +
+  "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+  '}\n' +
+  '\n' +
+  'Node.js v26.8.1\n'
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/gates.test.mjs:193:12 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Ambiguous Git root observation\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)\n' +
+    '    at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {\n' +
+    "  code: 'ROOT_IDENTITY_MISMATCH'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n',
+  expected: /review-authorization-missing/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ undefined
+- '#321'
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/lifecycle.test.mjs:38:8
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: '#321',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: dry-run failed
+log-issue-time: log-issue-time: canonical timing source unavailable
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/log-issue-time.test.mjs:127:10
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 4, got 1: move-state-cli.mjs: RuntimeRootError: Foreign project root requires registered admission: AI_TASK_MANAGER_PROJECT_DIR
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:205:9)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+
+1 !== 4
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/move-state-approval-gate.test.mjs:307:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 4,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 4, got 1: move-state-cli.mjs: RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-gate-wW5kGh
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at assertOutsideArtifacts (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:44:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:194:5)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+
+1 !== 4
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/move-state-gate.test.mjs:193:10
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 4,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/move-state.test.mjs ──
+node:internal/errors:999
+  const err = new Error(message);
+              ^
+
+Error: Command failed: node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 123 backlog
+move-state-cli.mjs: RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-ms-backlog-R56UgM
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at assertOutsideArtifacts (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:44:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:194:5)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+    at genericNodeError (node:internal/errors:999:15)
+    at wrappedFn (node:internal/errors:544:14)
+    at ChildProcess.exithandler (node:child_process:417:12)
+    at ChildProcess.emit (node:events:514:20)
+    at maybeClose (node:internal/child_process:1125:16)
+    at Socket.<anonymous> (node:internal/child_process:497:11)
+    at Socket.emit (node:events:514:20)
+    at Pipe.<anonymous> (node:net:362:12) {
+  code: 1,
+  killed: false,
+  signal: null,
+  cmd: 'node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs 123 backlog',
+  stdout: '',
+  stderr: 'move-state-cli.mjs: RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-ms-backlog-R56UgM\n' +
+    '    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)\n' +
+    '    at assertOutsideArtifacts (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:44:9)\n' +
+    '    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:194:5)\n' +
+    '    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)\n' +
+    '    at runMoveStateHost (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/gh/move-state.mjs:92:16)\n' +
+    '    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/helpers/move-state-cli.mjs:19:1\n' +
+    '    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n' +
+    '    at async node:internal/modules/esm/loader:650:26\n' +
+    '    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0 (reconciled gate); stdout:
+
+stderr:
+[task-tracker] WARN: configuration is missing 11 known project field id(s): Blocked By (cfg.fieldBlockedBy), Start Time (cfg.fieldStartTime), Engaged (cfg.fieldEngagedTime), Session (cfg.fieldSessionTime), Review (cfg.fieldReviewTime), Plan (cfg.fieldPlanTime), Estimate (cfg.fieldEstimate), Rank (cfg.fieldRank), Size (cfg.sizeFieldId), Priority (cfg.priorityFieldId), Status (cfg.kanbanFieldId). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.ai-task-manager/runtime/test-fixtures/test/tt-proof-gate-383-lL6HGj for the active issue
+[task-tracker] Board features unavailable: project not configured (projectId missing).
+  Run: npx ai-task-manager init   or   /task config init
+[task-tracker] ⚠ `check` is deprecated and now aliases `ensureChecked` (it no longer toggles). Use `/task ensureChecked "<label>"` to tick, `/task ensureUnchecked "<label>"` to untick.
+no active task
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs:157:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: expected exit 0; stderr:
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Ambiguous Git root observation
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at observeGitIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:78:32)
+    at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:140:23)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {
+  code: 'ROOT_IDENTITY_MISMATCH'
+}
+
+Node.js v26.8.1
+
+
+1 !== 0
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs:352:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs ──
+file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:60
+    throw new Error(
+          ^
+
+Error: expected exit 7, got 1
+stdout: 
+stderr: file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/tt-preflight-RoMWGP
+    at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+    at assertOutsideArtifacts (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:44:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:194:5)
+    at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+    at buildContext (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/task-tracker.mjs:477:17 {
+  code: 'ROOT_OVERRIDE_UNSAFE'
+}
+
+Node.js v26.8.1
+
+    at expectExit (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:60:11)
+    at async file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:69:15
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs ──
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: parent worktree active must be #500
+
+null !== '#500'
+
+    at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/lib/worktree-isolation.test.mjs:91:8
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: '#500',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+
+── scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs ──
+✔ promote: refine→R4P is a direct move-state call with refine-estimate hook (266.651709ms)
+✔ promote: refine→R4P refused when full refine-estimate signals are missing (67.430291ms)
+✔ promote: refine→R4P refuses when Acceptance Criteria drift after snapshot (73.2515ms)
+✔ promote: refine→R4P refused when refine-exit gate returns blockers (#147) (40.659416ms)
+✔ promote: backlog→refine stamps Start time on success (#147, #1211) (37.607041ms)
+✔ promote: backlog→refine is a direct move-state call without a Priority gate (36.30525ms)
+✖ promote: plan→develop is a direct move-state call when planned-estimate appendix is present (47.483334ms)
+✖ promote: plan→develop surfaces an empty Plan Metadata refusal before move-state (58.607375ms)
+✖ promote: plan→develop refused when refine-estimate comment is missing (#134) (50.417333ms)
+✖ promote: plan→develop refused when any sub-issue still in Backlog (#135) (55.714334ms)
+✖ promote: plan→develop refuses only children without current R4P-or-later evidence (63.944084ms)
+✔ promote: refine→plan refused when an epic child is PAST refine (#149 — lead-rule) (94.974167ms)
+✖ promote: plan→develop refused when planned-estimate appendix is missing (#134) (148.820416ms)
+✔ promote: develop→test delegates to /task test (#137) (112.234625ms)
+✔ promote: develop→test refused when CODE_COMPLETE gate returns blockers (#136) (143.261958ms)
+✔ promote: develop→test allowed when CODE_COMPLETE gate passes (#136) (128.799084ms)
+✔ promote: test→review delegates to the review verb (51.434041ms)
+✔ promote: test→review refused when aitm-dod-verified marker is missing (#210 Fix C) (107.225292ms)
+✔ promote: test→review REFUSED when a non-lifecycle checkbox is still unticked (#257) (153.8665ms)
+✔ promote: test→review ALLOWED when dod-verified present and every checkbox ticked (#257) (91.24625ms)
+✔ promote: review→done delegates to /task close (86.662959ms)
+✔ promote: review→done reports transition-failed when close exits 0 but board stays review (#710) (41.814625ms)
+✖ promote: historical Assigned body canonicalizes to R4P before drift comparison (40.855417ms)
+✔ promote: terminal refusal on done (18.185167ms)
+✔ promote: drift refused when live ≠ recorded (16.393083ms)
+✖ promote: bootstrap when lastKnownState absent — syncs to live, then promotes (55.100584ms)
+✔ promote: transition-failed when alias verb exits non-zero — no metadata update (75.431333ms)
+✔ promote: delegate non-zero but board reached target → promoted-with-warning (#175) (85.152333ms)
+✔ promote: delegate non-zero, board at target, marker stale → repair write fires (#175) (57.958875ms)
+✔ promote: delegate non-zero, marker repair write fails → audit comment posted (#175, #168) (90.088333ms)
+✔ promote: alias=test exit non-zero, board at target, NO aitm-dod-verified → promoted-with-warning, no rollback (#271 regression guard) (77.848417ms)
+✔ promote: delegate non-zero AND board drifted to non-target → transition-failed (#175) (66.923667ms)
+✔ promote: drift-reconcile is a no-op when live state matches recorded after failure (437.85675ms)
+✔ promote: drift-reconcile survives getLiveState throwing on the post-failure read (211.149333ms)
+✔ promote: error when recorded state is unknown (44.640875ms)
+✔ promote: no longer writes a move:<target> audit row (#128 — chokepoint emits paired phase rows) (60.42ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 28
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3308.1125
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:317:1
+✖ promote: plan→develop is a direct move-state call when planned-estimate appendix is present (47.483334ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'promoted'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:328:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'promoted',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:335:1
+✖ promote: plan→develop surfaces an empty Plan Metadata refusal before move-state (58.607375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'plan-metadata-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:349:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'plan-metadata-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:354:1
+✖ promote: plan→develop refused when refine-estimate comment is missing (#134) (50.417333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'planned-estimate-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:360:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'planned-estimate-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:365:1
+✖ promote: plan→develop refused when any sub-issue still in Backlog (#135) (55.714334ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'epic-children-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:382:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'epic-children-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:387:1
+✖ promote: plan→develop refuses only children without current R4P-or-later evidence (63.944084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'epic-children-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:406:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'epic-children-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:438:1
+✖ promote: plan→develop refused when planned-estimate appendix is missing (#134) (148.820416ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'planned-estimate-refused'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:449:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'planned-estimate-refused',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:606:1
+✖ promote: historical Assigned body canonicalizes to R4P before drift comparison (40.855417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'promoted'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:609:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'promoted',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:636:1
+✖ promote: bootstrap when lastKnownState absent — syncs to live, then promotes (55.100584ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'wip-budget-refused'
+  - 'promoted'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/promote-verb.test.mjs:652:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'wip-budget-refused',
+    expected: 'promoted',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+[state-recording] issue #1752 marker write to "test" FAILED after 2 attempts: simulated gh failure
+
+── scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ──
+[task-tracker] ✓ #501 removed native blockers #999
+✔ AC4: runDemote succeeds on a marker-heavy body (write path is not fragile) (3.286334ms)
+✔ AC4: runUnblock clears a native blocker without rewriting a marker-heavy body (0.566333ms)
+✔ AC4: backward demote exit guard fires while a blocker is open (confirmed contract) (0.438667ms)
+✔ AC (#572): main-anchored resolvers build under the passed main path regardless of cwd (0.147667ms)
+✔ AC (#572): findMainWorktreePath anchors fleet/lock to MAIN from a sibling worktree cwd (156.635458ms)
+✔ AC (#574): relocated .ai-task-manager/templates survive a fresh worktree checkout (143.586834ms)
+✖ AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd (0.491792ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 313.343083
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs:291:1
+✖ AC (#572): getProjectDir precedence — AI_TASK_MANAGER_PROJECT_DIR > CLAUDE_PROJECT_DIR > cwd (0.491792ms)
+  RuntimeRootError: Project root does not exist: /c
+      at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:26:9)
+      at physical (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:33:12)
+      at readPhysicalRuntimeIdentity (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:108:16)
+      at resolveRuntimeRoot (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/lib/runtime-storage.mjs:182:20)
+      at getProjectDir (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/task-tracker/paths.mjs:123:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs:293:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_IDENTITY_MISMATCH'
+  }
+

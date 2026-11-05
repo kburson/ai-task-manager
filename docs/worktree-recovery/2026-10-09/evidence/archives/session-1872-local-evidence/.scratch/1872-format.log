@@ -1,0 +1,38 @@
+scripts/gh/lib/wave-admission.mjs 72ms
+scripts/task-tracker/lib/action-decision/contract.mjs 40ms
+scripts/task-tracker/lib/command-surface/catalog.mjs 55ms
+scripts/task-tracker/lib/command-surface/entrypoints.mjs 2ms (unchanged)
+scripts/task-tracker/lib/command-surface/routing.mjs 4ms (unchanged)
+scripts/task-tracker/lib/epic-children-gate.mjs 11ms
+scripts/task-tracker/lib/epic-orchestration-plan.mjs 7ms
+scripts/task-tracker/lib/fetch-parent-issue.mjs 2ms
+scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs 2ms
+scripts/task-tracker/states/plan.mjs 2ms (unchanged)
+scripts/task-tracker/task-tracker.mjs 22ms (unchanged)
+scripts/task-tracker/verbs/help-data.mjs 13ms
+scripts/task-tracker/verbs/plan.mjs 3ms (unchanged)
+scripts/task-tracker/verbs/promote.mjs 28ms
+scripts/task-tracker/verbs/pull-next.mjs 9ms
+scripts/tests/unit/task-tracker/lib/epic-children-gate-blocked.test.mjs 18ms
+scripts/tests/unit/task-tracker/lib/epic-r4p-orchestration.test.mjs 21ms
+scripts/tests/unit/task-tracker/verbs/pull-next-verb.test.mjs 12ms
+docs/superpowers/plans/2026-10-03-1872-rank-level-parallel.md 43ms (unchanged)
+docs/superpowers/specs/2026-10-03-1872-rank-level-parallel-design.md 20ms (unchanged)
+scripts/task-tracker/lib/epic-admission-lock.mjs 6ms
+scripts/task-tracker/lib/epic-rank-wave-admission.mjs 2ms
+scripts/task-tracker/lib/epic-rank-wave-authority.mjs 5ms
+scripts/task-tracker/lib/epic-rank-wave-bindings.mjs 6ms
+scripts/task-tracker/lib/epic-rank-wave-policy.mjs 6ms
+scripts/task-tracker/lib/epic-rank-wave-runtime.mjs 9ms
+scripts/task-tracker/lib/epic-rank-wave-source.mjs 8ms
+scripts/task-tracker/lib/epic-rank-wave-store.mjs 10ms
+scripts/task-tracker/verbs/epic-wave.mjs 2ms
+scripts/tests/fixtures/legacy-rank-wave.mjs 1ms
+scripts/tests/integration/task-tracker/lib/epic-rank-wave-lock.test.mjs 5ms
+scripts/tests/integration/task-tracker/lib/epic-rank-wave-recovery.test.mjs 7ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-authority.test.mjs 3ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-bindings.test.mjs 4ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-policy.test.mjs 5ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-routes.test.mjs 5ms
+scripts/tests/unit/task-tracker/lib/epic-rank-wave-source.test.mjs 3ms
+scripts/tests/unit/task-tracker/verbs/epic-wave.test.mjs 2ms

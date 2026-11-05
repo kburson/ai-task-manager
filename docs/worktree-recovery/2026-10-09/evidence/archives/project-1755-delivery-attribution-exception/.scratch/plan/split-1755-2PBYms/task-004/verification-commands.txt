@@ -1,0 +1,1 @@
+node --test scripts/tests/integration/task-tracker/verbs/delivery-attribution-exception.test.mjs scripts/tests/unit/task-tracker/core/command-manifest.test.mjs scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs

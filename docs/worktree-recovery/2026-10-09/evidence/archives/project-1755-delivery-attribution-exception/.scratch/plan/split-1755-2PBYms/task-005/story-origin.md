@@ -1,0 +1,3 @@
+- **kind**: code
+- **discovered-during**: #1755
+- **source-plan-section**: ### Task 5: Open-PR preflight, late revalidation, and operation-bound intent
