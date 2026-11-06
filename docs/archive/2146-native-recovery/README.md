@@ -49,3 +49,11 @@ The original failed native Test, rejected absolute-path alternative, failed trun
 - [Review and qualification history](https://github.com/kburson/ai-task-manager/issues/2146#issuecomment-6667588806)
 
 This code, archive and tests are repository-only assets. Verify the real npm pack inventory excludes them before delivery; no product command, hook, policy, dependency or package export is added.
+
+## Delivered source integration
+
+The carrier includes the already delivered source at `e3ca90f3bb72136da82bbd6735b779f4d6a5d067` through ordinary merge `40851592e306d17bf0355af9a7acbe05317fcec5`. Its first parent is the reviewed archival correction at `6a0b29ccedcea71c6e74b270c642921af8c707e0`; its second parent is the delivered source. The complete merge tree matches the independently reviewed projection. This inherited source is distinct from the archival implementation.
+
+The separately authorized integration replaces the earlier live source freeze while preserving the original source commit, all raw artifacts and archive pins. Four of the twelve original source paths now have the delivered bytes in the live carrier. Their historical assertions still use the original commit and its reconstruction. Original findings and accepted documents remain historical records; they do not claim the changed live carrier has the old source bytes.
+
+Genuine native diagnostics before and after the merge matched the owner, binding generation and timing entry, with only the expected commit change. Their runtime comparison covers the observed helper only. Physical source and configured entry paths are recorded separately; neither observation proves every module loaded, whole runtime identity or live recovery. The complete accepted amendment, independent review and separate execution authority are retained in the [integration audit](https://github.com/kburson/ai-task-manager/issues/2146#issuecomment-6672471749) and authority history. Each final carrier commit still requires its own independent review, strict verification, full CI and native Test evidence.
