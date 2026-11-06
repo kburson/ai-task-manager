@@ -30,6 +30,13 @@ process may remain unit. `trunk-ref.integration.test.mjs` is integration because
 coordinates multiple repositories and a remote end to end, including clone, push,
 fetch, and close-gate remote synchronization.
 
+The layout audit also permits explicitly owned integration collections. Inflation's
+four exact directories, `task-tracker/inflation/{source,plain,active,retired}`, are
+owned respectively by the registered `inflate-estimate` verb, the estimate writer,
+and the inflation-intent module for both active and retired forecast cases. Their source
+owners must exist. This registration applies only to these integration directories;
+other lanes, unlisted siblings, and nested directories do not inherit it.
+
 Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
 `scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees
 are rejected. Move the file into the correct canonical lane; do not narrow discovery
@@ -64,12 +71,12 @@ one source of truth and cannot drift.
 
 ## CI collection groups
 
-CI runs integration in three independent GitHub Actions jobs and uses three jobs
+CI runs integration in nine independent GitHub Actions jobs and uses three jobs
 for slow tests when the existing nightly, manual, or `ci-slow` trigger applies.
 Unit remains one complete lane. Each instance owns its checkout and dependency
 setup; the runner retains its existing scheduling, isolation and timing checks.
 
-`node scripts/run-tests.mjs --lane integration --shard 1/3` selects one group.
+`node scripts/run-tests.mjs --lane integration --shard 1/9` selects one group.
 Groups are derived from the complete canonical lane inventory. Whole test files
 stay intact. Files in the same directory with the same first hyphen-separated
 suite-name segment stay together, so `delivery.test.mjs` and

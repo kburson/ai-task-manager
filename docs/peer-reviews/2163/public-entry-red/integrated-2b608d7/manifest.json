@@ -1,0 +1,51 @@
+{
+  "evidenceClass": "automated-provider-isolated-public-entry",
+  "nativeHostAdmission": false,
+  "files": [
+    {
+      "path": "attempts.json",
+      "sha256": "9e90b10963f8659ad7dc1809e6a08d56dcba0db35d3581f0dc5d78ccb07a30d9",
+      "bytes": 3223625
+    },
+    {
+      "path": "finalState.json",
+      "sha256": "a6d5e38560d5f035fa9caee4c65ad7978e0974349b5e80f1e40ac415df14ef34",
+      "bytes": 12821
+    },
+    {
+      "path": "initialState.json",
+      "sha256": "500770ab71c46129d5747c1b2a6b9a6485cc413e8dc7840461c4c03378aa2cd2",
+      "bytes": 1732
+    },
+    {
+      "path": "ledger.json",
+      "sha256": "29cbf27e4cdaa1b227d4a730bbb6a88a8d692bcd155a8090dc0c8d120717ae01",
+      "bytes": 774924
+    },
+    {
+      "path": "legacy-audit.md",
+      "sha256": "6df4d66556671ba583ede248ecf6bfc909f79f3f400318e117094e65bf6d0bac",
+      "bytes": 593
+    },
+    {
+      "path": "legacy-before-record.txt",
+      "sha256": "df28432e59e72906fcd168c0a65b3aa7f878dbbcdbbde9050bcb544ada04fed9",
+      "bytes": 2826
+    },
+    {
+      "path": "legacy-issue-body.md",
+      "sha256": "fb4c4cd6b747c18cd6955c35c1d8deff69a6c91d5073fdab576ccfd1f332d95b",
+      "bytes": 9717
+    },
+    {
+      "path": "legacy-publication.txt",
+      "sha256": "2d077e7517034164703d479f5e355300449065a92fc3ef1c8087ea21b71d1c17",
+      "bytes": 3175
+    },
+    {
+      "path": "sourceIdentity.json",
+      "sha256": "30dfacfd603bde8ddfae9ac2a4ab810c0dd1ea9b1320da35611ebeefb20ff5c7",
+      "bytes": 968016
+    }
+  ]
+}

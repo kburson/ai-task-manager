@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #868
+// @story #868 #2163
 // #868 — current test-tree authority. Every live test must occupy exactly one
 // canonical lane and every path in the checked-in current-state baseline must
 // remain live in that lane. Canonically placed additions are allowed; an
@@ -116,11 +116,27 @@ const laneRootPrefix = (lane) => `scripts/tests/${lane}/`;
 // #876 places every discovered test under exactly one canonical lane root.
 const underLaneRoot = (rel, lane) => rel.startsWith(laneRootPrefix(lane));
 
+// #2163 separates complete public-entry collections for CI while retaining
+// ownership by the registered inflation verb and its publication helpers.
+// Exact integration directories only: neither other lanes nor descendants inherit ownership.
+const INTEGRATION_OWNERS = new Map([
+  ['task-tracker/inflation/source', 'scripts/task-tracker/verbs/inflate-estimate.mjs'],
+  ['task-tracker/inflation/plain', 'scripts/task-tracker/lib/estimate-writer-publication.mjs'],
+  ['task-tracker/inflation/active', 'scripts/task-tracker/lib/inflation-intent.mjs'],
+  ['task-tracker/inflation/retired', 'scripts/task-tracker/lib/inflation-intent.mjs'],
+]);
+
 // A lane subdir S (e.g. "gh/lib") is a valid subsystem mirror iff it is the
 // core/meta bucket, the external-package review integration bucket, or a real
 // source directory exists at scripts/<S> or scripts/task-tracker/<S>, or the
 // package's top-level guidance runtime owns the `guidance` test subtree.
-function isValidSubsystem(sub) {
+// Explicit integration collections additionally require their source owner to exist.
+function isValidSubsystem(sub, lane, projectRoot = REPO_ROOT) {
+  if (INTEGRATION_OWNERS.has(sub)) {
+    return (
+      lane === 'integration' && existsSync(path.join(projectRoot, INTEGRATION_OWNERS.get(sub)))
+    );
+  }
   if (
     sub === 'core' ||
     sub === 'meta' ||
@@ -135,13 +151,39 @@ function isValidSubsystem(sub) {
     ? sub.slice('task-tracker/'.length)
     : sub;
   return (
-    (sub === 'guidance' && existsSync(path.join(REPO_ROOT, 'guidance'))) ||
-    existsSync(path.join(REPO_ROOT, 'scripts', sub)) ||
-    existsSync(path.join(REPO_ROOT, 'scripts', 'task-tracker', sub)) ||
-    existsSync(path.join(REPO_ROOT, 'scripts', taskTrackerRelative)) ||
-    existsSync(path.join(REPO_ROOT, 'scripts', 'task-tracker', taskTrackerRelative))
+    (sub === 'guidance' && existsSync(path.join(projectRoot, 'guidance'))) ||
+    existsSync(path.join(projectRoot, 'scripts', sub)) ||
+    existsSync(path.join(projectRoot, 'scripts', 'task-tracker', sub)) ||
+    existsSync(path.join(projectRoot, 'scripts', taskTrackerRelative)) ||
+    existsSync(path.join(projectRoot, 'scripts', 'task-tracker', taskTrackerRelative))
   );
 }
+
+test('inflation integration ownership is exact and does not admit other lanes or descendants', () => {
+  for (const sub of [
+    'task-tracker/inflation/source',
+    'task-tracker/inflation/plain',
+    'task-tracker/inflation/active',
+    'task-tracker/inflation/retired',
+  ]) {
+    assert.equal(isValidSubsystem(sub, 'integration'), true, `${sub} has an integration owner`);
+    assert.equal(isValidSubsystem(sub, 'unit'), false, `${sub} is not a unit subsystem`);
+    assert.equal(isValidSubsystem(sub, 'slow'), false, `${sub} is not a slow subsystem`);
+    assert.equal(isValidSubsystem(`${sub}/unowned`, 'integration'), false);
+  }
+  for (const sub of ['task-tracker/inflation', 'task-tracker/inflation/unowned']) {
+    assert.equal(isValidSubsystem(sub, 'integration'), false);
+  }
+});
+
+test('explicit integration ownership refuses a missing source owner', () => {
+  const projectRoot = mkdtempProjectIsolated('inflation-owner-');
+  const sub = 'task-tracker/inflation/active';
+  assert.equal(isValidSubsystem(sub, 'integration', projectRoot), false);
+  writeFixture(projectRoot, 'scripts/task-tracker/lib/inflation-intent.mjs');
+  assert.equal(isValidSubsystem(sub, 'integration', projectRoot), true);
+  assert.equal(isValidSubsystem(sub, 'unit', projectRoot), false);
+});
 
 test('feature-oriented files keep semantic ownership after their lane correction', () => {
   const featureFiles = [
@@ -208,8 +250,8 @@ test('AC2: every lane subdirectory has an explicit subsystem or integration owne
       const sub = path.posix.dirname(afterRoot);
       assert.notEqual(sub, '.', `${rel} sits in the lane root — AC1 nesting violated`);
       assert.ok(
-        isValidSubsystem(sub),
-        `${rel}: subdir "${sub}" mirrors no source subsystem and is not core/meta`
+        isValidSubsystem(sub, lane),
+        `${rel}: subdir "${sub}" has no source subsystem or explicit integration owner`
       );
     }
   }
