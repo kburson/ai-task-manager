@@ -376,19 +376,19 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 106,
+          "line": 115,
           "fingerprint": "sha256:937ee8e1eaa09ea2778622d753476b597a8c9beb70300c8a9e702571e5cefc71",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 174,
+          "line": 238,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         },
         {
           "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
-          "line": 177,
+          "line": 241,
           "fingerprint": "sha256:6f9caf7514fba80c87c5f1d963896b9167a20d1f4c827ecaad4f95951f4c39d5",
           "kind": "refusal"
         }
@@ -811,7 +811,7 @@
       "sites": [
         {
           "file": "scripts/task-tracker/lib/action-decision/close.mjs",
-          "line": 1125,
+          "line": 1216,
           "fingerprint": "sha256:29ab192a2d91255b4af9c4ce8825c47b08f17e74821df6fcd239015563d88b7a",
           "kind": "refusal"
         },

@@ -1,4 +1,4 @@
-// @story #309 #1988
+// @story #309 #1988 #2161
 import { registerTetherPublicationCases } from './project-tether-publication.cases.mjs';
 import assert from 'node:assert/strict';
 import {
@@ -154,6 +154,10 @@ async function tetherIssueToProject(args) {
         observedProjections: [],
       }),
   });
+  fixture.readParentBody = async ({ issueNumber }) => {
+    assert.equal(issueNumber, args.parentIssueNumber);
+    return '## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->\n';
+  };
   const original = args.runGql;
   const runGql = async (q, v) => {
     const result = await original(q, v);

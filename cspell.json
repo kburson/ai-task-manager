@@ -4,7 +4,10 @@
   "ignoreRegExpList": [
     "01M3SS09DEQCABP49A5D1B7EDV",
     "01M4NVNKYFJGEA0KCXQR6HNXJN",
-    "01M5CRHF99AKZRD6E33GD7P5KW"
+    "01M5CRHF99AKZRD6E33GD7P5KW",
+    "01M6NMKF7JH5Y08STJBNX6G7EW",
+    "01M6PBHKZZXJE143QJJ5NKZASA",
+    "01M6PC7J5ZH7TD7Q1YMMMN96X8"
   ],
   "useGitignore": false,
   "dictionaryDefinitions": [
@@ -16,6 +19,23 @@
   ],
   "dictionaries": ["project"],
   "overrides": [
+    {
+      "filename": [
+        "docs/superpowers/plans/2026-11-05-2157-timing-reengagement-repair.md",
+        "docs/superpowers/specs/2026-11-05-2157-timing-reengagement-repair-design.md",
+        "docs/superpowers/plans/2026-11-05-2161-first-child-epic-convergence.md",
+        "docs/superpowers/specs/2026-11-05-2161-first-child-epic-convergence-design.md",
+        "cspell.json"
+      ],
+      "ignoreWords": ["precheck", "rederivation", "rederives", "xhigh"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/plans/2026-11-05-2165-close-cumulative-proof.md",
+        "docs/superpowers/specs/2026-11-05-2165-close-cumulative-proof-design.md"
+      ],
+      "ignoreWords": ["xhigh"]
+    },
     {
       "filename": "docs/worktree-recovery/2026-10-09/index.json",
       "ignoreRegExpList": [

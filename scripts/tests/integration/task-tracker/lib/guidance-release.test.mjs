@@ -190,8 +190,37 @@ test('current package capture preserves lifecycle outcomes and instruction input
       ['lifecycle-close', 'ready'],
     ]
   );
-  assert.deepEqual(current.identity.productionPackage, archived.identity.productionPackage);
-  assert.deepEqual(current.measurement.installedStatic, archived.measurement.installedStatic);
+  // #2156: compare actual installed bytes with current source, retaining the
+  // historical certified transcript and its exact file inventory unchanged.
+  const digest = (bytes) => 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+  const expectedPackage = structuredClone(archived.identity.productionPackage);
+  expectedPackage.files = expectedPackage.files.map(({ path: file }) => ({
+    path: file,
+    sha256: digest(readFileSync(path.resolve(file))),
+  }));
+  expectedPackage.filesSha256 = digest(JSON.stringify(expectedPackage.files));
+  assert.deepEqual(current.identity.productionPackage, expectedPackage);
+  for (const adapter of ['claude', 'codex']) {
+    const expected = structuredClone(archived.measurement.installedStatic[adapter]);
+    expected.files = expected.files.map((file) => {
+      const bytes = readFileSync(path.resolve(file.sourcePath));
+      const characters = bytes.toString('utf8').length;
+      return {
+        ...file,
+        characters,
+        bytes: bytes.length,
+        proxyTokens: Math.ceil(characters / 4),
+        sha256: digest(bytes),
+      };
+    });
+    expected.totals = Object.fromEntries(
+      ['characters', 'bytes', 'proxyTokens'].map((key) => [
+        key,
+        expected.files.reduce((sum, file) => sum + file[key], 0),
+      ])
+    );
+    assert.deepEqual(current.measurement.installedStatic[adapter], expected);
+  }
   // #1989 Current catalog and complete decomposition provider data change the fixture;
   // retain the archived identity and require the observed current snapshot instead.
   assert.notEqual(current.identity.initialFixtureSha256, archived.identity.initialFixtureSha256);

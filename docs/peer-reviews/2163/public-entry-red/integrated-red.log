@@ -1,0 +1,32 @@
+Preparing worktree (new branch 'codex/4242-fixture')
+✖ registered inflation seals its exact prepared audit authority (26371.553ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26449.79275
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs:190:1
+✖ registered inflation seals its exact prepared audit authority (26371.553ms)
+  AssertionError [ERR_ASSERTION]:
+  inflate-estimate: partial: estimate-publication:final-authority-drift
+
+
+  1 !== 0
+
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/2163-inflation-intent/ai-task-manager/scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs:242:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
