@@ -1,6 +1,6 @@
 # #2146-first qualification against Z: design
 
-Status: planning only; execution, scope publication and delivery remain held. This document and its companion plan are the only authorized preparation additions. R remains an immutable historical baseline. The eventual preparation commit Q is an ordinary documentation child of R; it does not qualify the archival implementation or final integration.
+Status: planning only; execution, scope publication and delivery remain held. This document and its companion plan are the only authorized preparation additions. R remains an immutable historical baseline. The immutable original preparation commit Q=09000cdb0fb86d0cc3774f3720c4bbe5c70c4696 is an ordinary documentation child of R. This correction produces descendant H; neither Q nor H qualifies the archival implementation or final integration.
 
 ## Decision, authority and history
 
@@ -34,7 +34,7 @@ The pure three-way path/mode/blob projection was validated by reproducing the ac
 
 Only cspell.json changes on both sides. Preserve all Z additions and append exactly R's existing eleven archive ignores at the existing runtime-fixtures tail. Exact combined bytes4825, SHA2569006fff6651bd7ac7e090f5b1424cdcf3cf40d7fe9d2a0e8aa71305b44bd2852, blob35918cf2bc333d7ca9085f0a4963ae174e0028e9. Z's new words and scoped2165 override survive. R's markdownlint exception remains unchanged; every other upstream path/mode/blob is taken from Z. An automatic cspell merge is acceptable only if its bytes match this pin. Any other conflict, deletion, resolution or source discrepancy stops.
 
-The eventual ordinary merge has actual docs-preparation/review descendant Q as first parent, Z as second. The full expected pre-provenance tree equals this baseline projection plus the exact committed planning/review additions accepted separately. It cannot be self-hashed inside these documents without circularity. Before execution, Root must pin actual Q, enumerate every Q−R path, validate only authorized documentation/protocol changes, calculate the complete expected tree from those actual blobs and review/approve that concrete execution record. Do not silently merge R while losing Q or assert f5fe... is the full future Q+Z tree.
+The eventual ordinary merge, if a separately resolved path is approved, has actual reviewed descendant H of Q as first parent, Z as second. The full expected pre-provenance tree equals this baseline projection plus the exact committed planning/review additions accepted separately. It cannot be self-hashed inside these documents without circularity. Before execution, Root must pin actual H, enumerate every H−R path, validate only authorized documentation/protocol changes, calculate the complete expected tree from those actual blobs and review/approve that concrete execution record. Do not silently merge R while losing Q/H or assert f5fe... is the full future H+Z tree.
 
 Subsequent authored provenance is limited to the existing docs/archive/2146-native-recovery/README.md, docs/superpowers/reviews/2146/2026-11-05-2146-archival-review-history.md and docs/superpowers/reviews/2146/2026-11-05-2146-original-carrier-authority-history.json. Append only actual source/review/qualification facts after retained candidate review; preserve all prior bytes/history. No source repair is authorized or assumed.
 
@@ -48,21 +48,114 @@ Z CI changes integration collection from3 to12. Required final workflow coverage
 
 No fixture/verifier/test/package execution occurred during this planning examination. Later full quality, package and CI must qualify actual final head F. R's141/141 and CI42151622966 are R-only history, not F proof.
 
-## Lifecycle body reserve: unresolved admission blocker
+## Lifecycle body reserve: selected execution path is blocked
 
-Fresh planning Resume produced version117 with52731 UTF-8 bytes (normal assessment/version refresh only must be independently compared before publication). Existing develop-final receipt marker is3139 bytes. Reader limit65536 leaves12805 bytes before future changes. Full design/reviews belong in normal comments, not the body. Do not prune history/DoD or change the reader limit.
+**Decision: do not execute the proposed #2146-first integration/qualification path.** The ordinary configured project-provider native Test success publication cannot fit the current full inline body. Its source-derived minimum version-stamped payload is **65,769 UTF-8 bytes**, **233 bytes above** the65,536-byte decomposition-reader contract. This is a bounded source/data conclusion for the specified path and current body/config; no native Test, fixture, verifier or live body write was executed. Z remains a valid archival source candidate; the lifecycle-body blocker prevents qualification/Close through this selected path. It does not prove that #2169's WBS correction must precede #2146, authorize #2171, or choose a production repair.
 
-Source examination of verification-receipt.mjs:210–374,728–846 and test.mjs:1176–1435 shows native final receipts duplicate canonical VC argv and carry full config/runtime metadata. The current8 VCs include the explicit ten-file archive command. An initial coarse planning-only byte model (no executed receipt and no persisted synthetic proof), using default Node assumptions rather than the actual project provider, predicts develop marker4277 bytes, net1138 after replacing3139; test marker8168 bytes for9 command records. Sum52731+1138+8168=62037 leaves3499 bytes for current-target authority, actual provenance/config/path differences, AC/DoD proofs, Test/Review/Done entries, approval/footnote and version/assessment framing. This model is not a proven maximum: its classifications/provider setup/executionContext are placeholders, and a native sandbox path/receipt structure must come from the actual source path. Do not call3499 a certified reserve.
+### Current inputs and independent reproduction boundary
 
-A conservative allocation of512 authority bytes,1024 proof growth,256 Test entry/start/framing bytes,160 Review entry bytes,768 approval/footnote bytes,512 Close/derived bytes, and512 metadata/framing contingency consumes3744 bytes. The modeled total65781 exceeds65536 by245. This does NOT prove the actual lifecycle must overflow; it proves that the current coarse envelope does not authorize a safe full sequence. A precise source-derived projection of every remaining normal successful write and retry, using bounded actual fields, is a mandatory planning blocker before scope publication or integration. Do not pretend #2171 must be implemented solely because the coarse envelope is over.
+Fresh connector body118 has52,731 UTF-8 bytes (52,721 JavaScript UTF-16 code units). Default still equals pinned Z. New genuine planning entry2026-11-06T20:20:36.927Z naturally retained the original generation. Native runtime diagnostic nonce39b6ad178cf84b47a250512921462026 matched owner/root/branch/issue/Q/Develop/entry and sameObservedHelper, with helper-only scope. No source transition followed.
 
-The actual project configuration selects provider project: Develop finalSteps lint-full and format-full; Test setup npm-ci and test-cloud-complete running node scripts/maintenance/verify-ci-receipts.mjs, with declared npm test and npm run test:slow mapped to that complete CI classification. Preserve this configuration; do not override it with the default Node provider. The earlier coarse model and its245-byte overage are not native overflow evidence.
+The proposed shell projection remains refused: its historical data named an old carrier path, so the hook blocked it before execution. It was not replayed, encoded or retargeted. Root separately authorized inert orchestration JavaScript over already-read primary body/receipt/source data, without filesystem/import/process/network/tool calls inside the calculation. The counts below were computed only that way. Paths in receipt data remained inert strings; no old worktree was accessed. Persist only identities/formulas/counts/bounds/decisions, never synthetic proof payloads.
 
-The proposed exact pure-transform projection was refused before execution because embedded historical body/receipt data named the old carrier root outside the allowed read scope. No result exists. Do not retry, encode, transfer through an intermediate file, or substitute another route without an explicit coordinator disposition of that admission refusal. This preserves a precise missing-evidence blocker, not a product defect claim.
+The earlier default-Node245-byte coarse overage and later project-provider65,317/65,829 model are superseded planning data. The latter omitted mandatory VC/AC evidence expansion, derived Functional behavior and later Close records. Preserve them in Q09000cdb0fb86d0cc3774f3720c4bbe5c70c4696 and the ignored checkpoint; neither establishes native fit/overflow or qualified evidence.
 
-Complete an explicitly admitted read-only projection against fresh body117/current version and Z/native source. Inventory normal receipt upserts/replacements, source SHA widths, actual provider setup and executionContext, three AC refreshes, five functional proofs, Test-start/result and state entries, Agent Review checklist behavior, full-auto signal/footnote and Close marker/derived changes. Include exact final version-stamped UTF8 bytes for each normal push and rebased retry. Normal upsert replaces same-stage receipts; it does not authorize deleting different evidence. Set a concrete maximum for the exact new Scope/Plan append after the remaining reserve is proved. If a normal path cannot fit without unsupported pruning/repair, return the exact failing payload/source boundary to Root and stop this closure design before development.
+### Source-bound command multiplicity
 
-Timing and delivery receipts remain normal issue comments. Unrelated operator text or full review prose must not consume the body. Do not silently shorten operative ACs/VCs or remove the ten-file proof to force a fit. The primary reviews must address this unresolved reserve, not waive it.
+Actual .ai-task-manager/task-tracker.json selects provider project. Develop finalization has lint-full and format-full. Native Test uses npm-ci and test-cloud-complete via node scripts/maintenance/verify-ci-receipts.mjs; declared npm test and npm run test:slow are covered aggregate results. No provider/config override is proposed.
+
+There are **nine serialized Test receipt command records**: two reused Develop lint/format records plus seven actual sandbox execution records. The seven are CI reader, report, plan, lint, format, git-log and the explicit ten-file archive test. Thus lint and format each appear twice in the receipt, once reused and once as a declared targeted command. Two derived aggregate result entries (npm test and npm run test:slow) have no receiptCommand, so they are not extra receipt records, but their passing results still cause VC6/VC7 evidence. All eight declared VCs receive proof. Do not deduplicate these native records or omit the covered-aggregate proof expansion merely to make the budget fit.
+
+Relevant immutable Z source:
+
+- verification-provider-registry.mjs:174–211 builds targeted steps; verification-providers/project.mjs:22–64 handles declared coverage and uncovered commands.
+- test.mjs:1166–1223 emits reused/real receiptCommand records;1240–1289 handles derived/targeted results;1415–1436 serializes the Test receipt.
+- test.mjs:1464 passes explicit {sha} to autoTickVerified;1471–1526 publishes the combined receipt/proof fold through the fresh native mutator.
+- auto-tick-verified.mjs:139 skips already-checked entries only when requestedSha is absent;141–149 therefore refreshes every passing VC, including checked ones, adding both full cmd and evidence text. Lines153–185 refresh AC proof;200–232 stamps keyed Functional proof.
+- verification-receipt.mjs:311–372 defines the fields;728–731 encodes canonical JSON as base64url;827–846 replaces same-stage markers and inserts against the native field block.
+- proof-marker.mjs:49–54,279–308 serializes/upserts the one consolidated proof marker; functional-dod-evidence.mjs:244–284 preserves declarations while adding run properties.
+
+### Minimum-sized successful Test publication
+
+The data calculation deliberately minimizes growth: zero new authority bytes, zero-duration numeric fields, a one-digit native PID, a129-byte sandbox path, fixed40-character SHA/26-character receipt ID/24-character canonical UTC timestamps, the existing nine config hash entries, fixed current v26.8.1/darwin-arm64 toolchain, ordinary non-artifact mode, no extra stage/result/Review/Close records, and no proper pre-Test owner-provenance expansion. Actual normal execution can only add required data under these pinned contracts. No shortened VC, altered command, pruned proof, changed provider or reader-limit change is used.
+
+Base64url length is ceil(UTF8(canonicalJSON)×4/3). Marker size is exact UTF-8 prefix+base64url length+suffix. Canonical key order does not change byte length. Old Develop marker is3,139 bytes; minimum replacement is4,255 (JSON3,143), net1,116. Minimum Test marker is8,117 (JSON6,046). These are data lengths, not receipts for an execution.
+
+| Source-derived component                           | Delta bytes | Version-stamped body bytes |
+| -------------------------------------------------- | ----------: | -------------------------: |
+| Current primary body118                            |           0 |                     52,731 |
+| Minimum Develop receipt replacement                |       1,116 |                     53,847 |
+| Minimum Test receipt insertion and exact separator |       8,118 |                     61,965 |
+| Eight mandatory VC proofs                          |       3,188 |                     65,153 |
+| Three mandatory AC proof refreshes                 |         358 |                     65,511 |
+| Three minimum Functional proof stamps              |         258 |                 **65,769** |
+
+The last three rows are one required native Test success body mutation, not independently selectable optional writes. The row order is an explanatory sum; native autoTick scans AC/VC/Functional sections and publishes their combined result.
+
+| VC    | Command UTF-8 bytes | Mandatory proof delta bytes |
+| ----- | ------------------: | --------------------------: |
+| 1     |                  60 |                         265 |
+| 2     |                  58 |                         261 |
+| 3     |                  12 |                         169 |
+| 4     |                  20 |                         185 |
+| 5     |                  20 |                         185 |
+| 6     |                   8 |                         161 |
+| 7     |                  17 |                         179 |
+| 8     |                 819 |                        1783 |
+| Total |               1,014 |                       3,188 |
+
+Each VC proof adds twice its command text plus145 fixed bytes: total2×1,014+8×145=3,188. VC8 alone has819 command bytes and adds1,783 proof bytes. AC deltas are120,120,118, totaling358; they retain the existing key/vc-list/provenance, refresh the old9-character SHA to40 characters and add actual Test evidence text. Functional tests/lint/commits each add86 minimum bytes, totaling258, even without owner provenance. Already-checked AC/Functional items refresh because the explicit SHA is supplied. There is no negative contingency or optional proof omission in this minimum.
+
+The earliest required out-of-budget payload is the **successful native Test evidence publication** at test.mjs:1471–1526. Earlier Develop and Test-entry/state/start writes are below the limit in this minimum; including their actual required growth makes the identified Test publication larger. Later Close cannot make that already-required earlier payload valid. This is a writer/reader contract failure risk, not proof that the writer refuses before pushing: actual Z versioned-issue-write.mjs:408–411 stamps and pushes without a final payload size guard. Executing the path could leave an oversized unreadable issue. Do not run it to reproduce the condition.
+
+### Framing, no-ops, retries and later Close
+
+The calculation reproduces stripBodyVersion's removal and3+-newline collapse (versioned-issue-write.mjs:78–84), same-stage receipt removal/replacement, trimEnd and field-block separator handling, then body-version.mjs:32–45 final trim plus two newlines, version marker and terminal newline. It does not add version markers repeatedly or count an old Develop receipt as another new receipt. Current118 and projected versions through999 have the same three-digit width. The normalized version-stamped baseline remains52,731; no arbitrary whitespace discount is assumed.
+
+A supported run must be serialized with no concurrent unrelated body writer. At every boundary require exact fresh body/version/source/config/VC authority; unexplained drift stops before another effect and requires recalculation/decision. Arbitrary concurrent external growth has no finite bound. This operator assumption does not install a runtime size guard. The existing first-attempt no-op branch (versioned-issue-write.mjs:365–373) pushes nothing. The rebase path (375–405) applies the edit to a fresh base rather than concatenating another copy; overlapping edits refuse. Its final stamp/push remains subject to the same accounting and drift stop. A retry cannot remove the mandatory successful-Test proof payload or turn this blocked path into a fit.
+
+Later normal Close has additional omitted effects, independently source-inventoried:
+
+- projectFunctionalDod/deriveAndRescan creates the two derived proofs only if absent, with their exact derive command names and no invented execution provenance. It does not erase earlier VC/receipt proof.
+- Full-Auto approval has its native consolidated approval marker/footnote. Close's native gate-bypassed audit record is143 marker bytes under its exact source text; it is not permission to bypass any guard.
+- close.mjs:4367–4467 and close-convergence.mjs::upsertDeliveredCloseTransaction maintain one delivered-close marker, initially221 bytes and growing by upsert to383 bytes after all eight terminal steps. They do not append eight transaction copies. Schema, UUID36, issue2146, SHA40 and source-owned review-authority are fixed-width here.
+- log-issue-time.mjs:306–367 and timing-rollup.mjs:222–287 add/update a stage-rollup record. The current eight visits plus future Test/Review give ten before Done. Under an explicit calendar2026/eight-digit nonnegative duration bound and one open trailing visit0, this marker is at most754 bytes. A later new visit/date bound invalidates that model. It is not active-time evidence.
+- Timing fields use the actual ten configured field keys. Unknown engaged/session remain null; no invented numeric active total. For the two potentially numeric review/plan values, a24-character JSON-number bound gives at most40 positive bytes over two nulls. Existing startTime is set and is not repaired; other ordinary fields stay intact. Disposition null→Delivered adds7 bytes; native lifecycle/housekeeping checkbox ticks add0 bytes.
+- Stage entries use one next visit marker per actual transition, last-known-state and move-complete replace their existing records, and state/field writers relocate the one canonical field block with their documented newline normalization. Estimation outcome, timing rows and provider delivery receipts use comments. These later details reinforce the stop but are not speculative additions needed to prove the earlier233-byte excess.
+
+### Exact held authority text (485 bytes total)
+
+This is a proposed small semantic append only, not a file operation or publication authorization. Scope text is347 UTF-8 bytes; Plan Metadata text138 bytes. Together485≤512. In the minimum proof above their growth is deliberately0, so shrinking this new text cannot cure the already-blocking Test publication. Preserve the original Plan marker/history and withdrawn post2169 records.
+
+The exact insertion strings below use JSON escaping so their leading and terminal newlines are unambiguous. Parse the two string values before counting or comparing bytes; JSON indentation/fence framing is not part of the485-byte payload.
+
+````json
+{
+  "scope": "\n### #2146-first target\n\nPlan qualification against Z=2e5a3feec6d6296778f767977cf8086f587d1967; keep #2169/#2171 held. Preserve R and prior sequence records as history. Integration, including source/runtime transition at the merge working-tree interval, needs separate approval after SAR, SPR and XPR. Full native qualification remains required.\n\n",
+  "metadata": "- **Current target**: Z=2e5a3feec6d6296778f767977cf8086f587d1967; prior post-#2169 proposal withdrawn; execution blocked on body budget.\n\n"
+}
+``` Before any future authorized body write, compare actual bytes/version and exact operation/readback independently. No operation file or live scope publication has been authorized in this phase.
+
+### Immutable Z source identities for independent SAR
+
+| Z source | Bytes | SHA256 |
+| --- | ---: | --- |
+| `scripts/task-tracker/lib/auto-tick-verified.mjs` | 10762 | `caaeacf638b34f07033def636ccad07095bb2f2abf5c7f4d0bcf573097b3471d` |
+| `scripts/task-tracker/verbs/test.mjs` | 75264 | `03b5bb83b89951533f6c9aa290abecd63c0a50bd0b00de8d9f709b1dc3323076` |
+| `scripts/task-tracker/verify-develop.mjs` | 13047 | `e2750aad5f95fefe1fc7fb261fb363c7d12f906cc5710efa3a01f97fecb0e435` |
+| `scripts/task-tracker/lib/verification-providers/project.mjs` | 2362 | `8842d31755d7bc52b2309f5e131c4332331a7340d4450a35c8759abc20d6d04d` |
+| `scripts/task-tracker/lib/verification-provider-registry.mjs` | 10795 | `2c6ff59091d7b97f9bdfc17c9066724e99b3219ea1a42ec11da535bcb862b486` |
+| `scripts/task-tracker/lib/verification-receipt.mjs` | 30839 | `07f4c87c5c3554b9a96ab1eaade80befb6d697aca8e6fb2c6d318ad04b785d2a` |
+| `scripts/task-tracker/lib/functional-dod-evidence.mjs` | 16156 | `5739785b9397fd3b4011ecac1d64615053f696da02c510b74df2e0898436aa65` |
+| `scripts/task-tracker/lib/proof-marker.mjs` | 15878 | `efe2046c8e9ddefc0a9760a766b0a2b389e2a0b82156ebab5d707f358ff853b0` |
+| `scripts/task-tracker/lib/body-version.mjs` | 2065 | `487ad93cfd46203803d14bc1b9d7f70549299c60866bd62dd3e682302778c6bb` |
+| `scripts/task-tracker/lib/versioned-issue-write.mjs` | 18656 | `ce66d3d458292932c4bea082658bd594dcbb05fe55c9640f7b499be23faf82a5` |
+| `scripts/task-tracker/lib/decomposition-records.mjs` | 8698 | `ea5db87b17b59881880006891dbf0ebf939c7586ed5c527cd9c2c0b1ee5a04da` |
+| `scripts/task-tracker/timing-rollup.mjs` | 17736 | `ff1ed8eaf4581542a0ff6ce444ab48ac1cad5b2f5fe4a2cc661a3828e039e0fa` |
+| `scripts/task-tracker/lib/close-convergence.mjs` | 18970 | `cfd6b8ac2b77f1175824275fdab91ac7b79e6a21626f5a3138d62e26a8d261a3` |
+| `scripts/task-tracker/verbs/close.mjs` | 216770 | `c72898844d7d24b37aaf230d5216acba45d144a3e8cc001a6bb2ff0c30a17343` |
+
+The handoff must describe the path as **execution blocked pending a concrete reviewed decision**, not implementation-ready. Fresh SAR independently verifies this source-bound conclusion and data transforms; primary SPR/XPR review the same bounded decision afterward. Acceptance of a blocked planning conclusion grants no execution authority or new production chain.
 
 ## Qualification and downstream release
 
@@ -70,11 +163,11 @@ Require actual pre/post source/binding/timer/native-helper observations, complet
 
 Refresh AC/DoD with genuine per-item execution evidence; preserve stale stamps as history until their supported replacement. One serialized promote may drive Develop→Test only under separately accepted final authority; agents never independently Review/Close. Root owns Review, human-delegated approval, expected-head provider action, receipt, native Close and default verification. No stale CI receipt bridge, synthetic sourceBase or hidden field surgery. Ordinary native Test sandbox work needs its normal later authority, not a new managed owner worktree.
 
-After #2146 Close, Root may reconsider #2169/#2171 and dependent #2142→#2143→#2144 under their own updated authority. This design neither repairs #2169's body nor releases #2071/#2145 recovery. Preserve original dirty #2071, #2145/f7be and all failed/refused evidence. If any new product bug or required code repair appears, stop for full remaining-story SAR+SPR+XPR replan.
+After #2146 qualification and native Close, preserve the priority #2142 then #2143 then #2144. #2169 Test and #2171 Backlog remain held unless a separately established blocker and concrete reviewed decision explicitly changes that order. This design neither repairs #2169's body nor releases #2071/#2145 recovery. Preserve original dirty #2071, #2145/f7be and all failed/refused evidence. If any new product bug or required code repair appears, stop for full remaining-story SAR+SPR+XPR replan.
 
 ## Forecast and readiness
 
-Conditional remaining work forecast:3–5 active engineering hours after planning/review/admission blockers are resolved; review/CI/provider wall latency and any newly required repair are excluded. No estimate-field mutation. Exact budget projection and required three reviews are outstanding. Static source/topology supports Z viability; execution/closure readiness is NOT established.
+Conditional remaining work forecast:3–5 active engineering hours after planning/review/admission blockers are resolved; review/CI/provider wall latency and any newly required repair are excluded. No estimate-field mutation. The selected ordinary lifecycle path is source-projected BLOCKED at native Test success publication; fresh SAR and primary SPR/XPR must review that bounded conclusion. Static source/topology supports Z as an archival target, but no execution or closure readiness follows. The inherited conditional forecast is not an approved repair estimate or a forecast for resolving this newly established blocker.
 
 ## Immutable inventory appendix
 
@@ -929,4 +1022,4 @@ The following snapshot is derived by read-only Git object examination and AST pa
     "ignored": false
   }
 }
-```
+````
