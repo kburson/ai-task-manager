@@ -1,4 +1,5 @@
 // @story #2146
+// cspell:words includeif partialclone uploadpack hookspath fsmonitor sshcommand gitproxy alternaterefscommand
 import { execFileSync } from 'node:child_process';
 import {
   lstatSync,
@@ -32,6 +33,39 @@ export function assertGitEnvironment(env = process.env) {
   }
 }
 
+function configRefusalIdentity(scope, key) {
+  const scopeName =
+    ['system', 'global', 'local', 'worktree', 'command'].find((name) => name === scope) ??
+    'unknown';
+  const family =
+    [
+      ['core.', 'core'],
+      ['filter.', 'filter'],
+      ['url.', 'url'],
+      ['includeif.', 'conditional-include'],
+      ['extensions.partialclone', 'partial-clone'],
+      ['remote.', 'remote'],
+      ['uploadpack.', 'upload-pack'],
+      ['http.', 'http'],
+      ['ssh.', 'ssh'],
+    ].find(([prefix]) => key.startsWith(prefix))?.[1] ?? 'other';
+  const setting =
+    [
+      'filter.lfs.clean',
+      'filter.lfs.smudge',
+      'filter.lfs.process',
+      'filter.lfs.required',
+      'core.hookspath',
+      'core.fsmonitor',
+      'core.sshcommand',
+      'core.gitproxy',
+      'core.alternaterefscommand',
+      'core.worktree',
+      'extensions.partialclone',
+    ].find((name) => name === key) ?? 'redacted';
+  return scopeName + ':' + family + ':' + setting;
+}
+
 export function assertSafeConfig(rows, { carrier = false } = {}) {
   for (const row of rows) {
     const key = row.key.toLowerCase(),
@@ -44,7 +78,7 @@ export function assertSafeConfig(rows, { carrier = false } = {}) {
         key
       )
     )
-      fail('git-configuration:unsafe-setting');
+      fail('git-configuration:unsafe-setting:' + configRefusalIdentity(row.scope, key));
   }
 }
 

@@ -1,4 +1,5 @@
 // @story #2146
+// cspell:words hookspath
 import assert from 'node:assert/strict';
 import childProcess, { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
@@ -170,6 +171,111 @@ test('never discloses URL-subsection credentials in a configuration refusal', ()
   assert.ok(observed);
   assert.equal(String(observed).includes(sentinel.toLowerCase()), false);
   assert.equal(String(observed).includes('another-private-value'), false);
+});
+
+// These contracts catch missing diagnostics, arbitrary-text disclosure and unsafe admission.
+test('configuration diagnostics identify refused system LFS settings without values', () => {
+  const value = 'PRIVATE_2146_FILTER_COMMAND';
+  for (const [key, message] of [
+    [
+      'filter.lfs.clean',
+      'reconstruct:git-configuration:unsafe-setting:system:filter:filter.lfs.clean',
+    ],
+    [
+      'filter.lfs.smudge',
+      'reconstruct:git-configuration:unsafe-setting:system:filter:filter.lfs.smudge',
+    ],
+    [
+      'filter.lfs.process',
+      'reconstruct:git-configuration:unsafe-setting:system:filter:filter.lfs.process',
+    ],
+    [
+      'filter.lfs.required',
+      'reconstruct:git-configuration:unsafe-setting:system:filter:filter.lfs.required',
+    ],
+  ]) {
+    assert.throws(
+      () => assertSafeConfig([{ scope: 'system', key, value }]),
+      (error) => {
+        assert.equal(error.message, message);
+        assert.equal(String(error).toLowerCase().includes(value.toLowerCase()), false);
+        return true;
+      }
+    );
+  }
+});
+
+test('configuration diagnostics redact private subsections while retaining refusal families', () => {
+  const secret = 'PRIVATE_2146_SUBSECTION',
+    value = 'PRIVATE_2146_VALUE';
+  for (const [key, message] of [
+    [
+      'url.https://user:' + secret + '@example.invalid/.insteadOf',
+      'reconstruct:git-configuration:unsafe-setting:global:url:redacted',
+    ],
+    [
+      'filter.' + secret + '.smudge',
+      'reconstruct:git-configuration:unsafe-setting:global:filter:redacted',
+    ],
+    [
+      'includeIf.gitdir:' + secret + '.path',
+      'reconstruct:git-configuration:unsafe-setting:global:conditional-include:redacted',
+    ],
+    [
+      'remote.' + secret + '.uploadPack',
+      'reconstruct:git-configuration:unsafe-setting:global:remote:redacted',
+    ],
+    [
+      'http.https://user:' + secret + '@example.invalid/.proxy',
+      'reconstruct:git-configuration:unsafe-setting:global:http:redacted',
+    ],
+    ['ssh.' + secret, 'reconstruct:git-configuration:unsafe-setting:global:ssh:redacted'],
+    [
+      'uploadPack.' + secret,
+      'reconstruct:git-configuration:unsafe-setting:global:upload-pack:redacted',
+    ],
+  ]) {
+    assert.throws(
+      () => assertSafeConfig([{ scope: 'global', key, value }]),
+      (error) => {
+        assert.equal(error.message, message);
+        for (const privateText of [secret, value]) {
+          assert.equal(String(error).includes(privateText), false);
+          assert.equal(String(error).toLowerCase().includes(privateText.toLowerCase()), false);
+        }
+        return true;
+      }
+    );
+  }
+});
+
+test('configuration diagnostics canonicalize known keys and reject arbitrary scope text', () => {
+  const key = 'CoRe.HooKsPaTh',
+    value = 'PRIVATE_2146_HOOK_PATH';
+  for (const [scope, message] of [
+    ['system', 'reconstruct:git-configuration:unsafe-setting:system:core:core.hookspath'],
+    ['global', 'reconstruct:git-configuration:unsafe-setting:global:core:core.hookspath'],
+    ['local', 'reconstruct:git-configuration:unsafe-setting:local:core:core.hookspath'],
+    ['worktree', 'reconstruct:git-configuration:unsafe-setting:worktree:core:core.hookspath'],
+    ['command', 'reconstruct:git-configuration:unsafe-setting:command:core:core.hookspath'],
+    [
+      'PRIVATE_2146_SCOPE:system',
+      'reconstruct:git-configuration:unsafe-setting:unknown:core:core.hookspath',
+    ],
+  ]) {
+    assert.throws(
+      () => assertSafeConfig([{ scope, key, value }]),
+      (error) => {
+        assert.equal(error.message, message);
+        assert.equal(String(error).includes(key), false);
+        for (const privateText of ['PRIVATE_2146_SCOPE', value]) {
+          assert.equal(String(error).includes(privateText), false);
+          assert.equal(String(error).toLowerCase().includes(privateText.toLowerCase()), false);
+        }
+        return true;
+      }
+    );
+  }
 });
 
 test('allocates a private empty validation root with no Git call or carrier mutation', async () => {
