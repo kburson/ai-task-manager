@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the existing issue identity, persistent writer claim, native producers, generation store and transition journal. Add one typed operation-evidence envelope to carry exact staged deltas, and rebind authority through native producers rather than trusting serialized capabilities. Switch public entrypoints and their result consumers together.
 
-**Tech Stack:** Existing Node.js >=24 ESM, repository Git object provenance, existing AITM native guards, GitHub GraphQL/REST adapters and node:test. No new dependency, daemon, policy engine, clock or authority database.
+**Tech Stack:** Existing Node.js >=24 ESM, repository Git object provenance, existing AITM native guards, GitHub GraphQL/REST adapters and node:test. No new dependency, daemon, policy engine or clock. Immutable native issuance evidence uses the existing runtime storage, separately from editable story candidates.
 
 **Spec:** Governing spec S and technical plan T below; this document contains the #2071 integration design missing from Task30. It does not amend the accepted #2039 carrier route or its five parent documents.
 
@@ -21,7 +21,7 @@
 - Original schemas retain exact identity, immutable payloads, one owning human/agent/worktree, measured Unknown and per-visit completion. Provider compare/write remains non-atomic; do not advertise CAS.
 - All supported source/caller boundaries below must be implemented and verified together before release. #2050 end-to-end budget work and #2051 adoption/admin work remain separate; routine contract operations cannot be deferred to them.
 - Keep #2145 as an edge throughout Develop. Source readiness and native integration/trunk-drift qualification precede any later removal.
-- No new defect stories or execution of held Plan work. The missing integration is part of existing #2071.
+- No new defects, graph mutations or execution of held Plan work are authorized. The integration remains the existing #2071 Task30 capability; mandatory decomposition must be reviewed before implementation.
 
 ## Review Focus
 
@@ -55,7 +55,47 @@ A source expression O:path or H:path below is an exact Git blob object expressio
 
 **Readiness:** Root and an independent Astra6/xhigh source reviewer accepted the finding that a bulk import is unsafe, not product readiness. Source qualification was read-only. No tests in this document have been executed for #2071. The preliminary chat called the candidate cache graph “34”; the retained inventory contains **35** entries (8 identical, 5 H-identical missing leaves, 22 other candidates). This document corrects that counting error. None of those counts constitutes source acceptance.
 
-The original 3.5h Task30 allocation assumed delivered, compatible prerequisites and only small activation seams. Current delivery lacks prerequisite modules, and actual proof/contract consumers require integration. Planning estimate for the work below is **24–34 active engineering hours**, excluding review wait and future #2050/#2051 work. This is an engineering estimate, not a board-field change or a promise that the original allocation remains adequate. Root must assess it with the reviewed plan before Phase6. Keep the work in #2071; the task steps are reviewable increments, not new stories.
+The original 3.5h Task30 allocation assumed compatible delivered prerequisites and small activation seams. The first draft estimated 24–34h. Primary review found additional durable issuance and conflict-reconciliation work; the revised estimate is **33–44 active engineering hours**, excluding review wait and #2050/#2051. This is not a board-field change.
+
+### Mandatory decomposition and route decision
+
+**Phase6 is blocked by native decomposition, even if this design passes XPR.** K decomposition-policy.mjs sets splitEstimateHours=24 and splitTaskCount=4. The live S/3.5h field and prior 4h assessment cannot authorize this plan. No issue, kind, estimate, state or graph change has occurred.
+
+A genuinely narrower complete Task30 route is not source-qualified: K lacks necessary native publication modules, and all routine proof/contract/result consumers must move together. Dropping them or assigning routine activation to #2050/#2051 would cut accepted scope; wholesale O import would remove delivered K safeguards. Those are not reductions we can accept.
+
+Recommend a separately reviewed governed decomposition of existing #2071 into bounded causal children, retaining #2071 as a nested epic under #2039 if native rules require that kind. These are proposed units, not issue IDs:
+
+| Unit | Independent boundary / prerequisites                                                              | Estimate |
+| ---- | ------------------------------------------------------------------------------------------------- | -------- |
+| C1   | Exact native store/ownership prerequisites with working-generation behavior; no public activation | 3–4h     |
+| C2   | Plan/forecast/native-graph prerequisites reconciled with K; C1                                    | 3–4h     |
+| C3   | Atomic operation records and independent native issuance; C1                                      | 3–4h     |
+| C4   | Native proof/approval/reviewed-scope rebind; C2/C3                                                | 3–4h     |
+| C5   | Explicit views and public result adapters, not global activation; C3                              | 3–4h     |
+| C6   | Contract working chain and typed provider-ID templates; C4/C5                                     | 3–4h     |
+| C7   | CLI/hook/bind context and estimator dispatch; C2/C5                                               | 3–4h     |
+| C8   | Native publisher and conflict reconciliation; C4/C6/C7                                            | 3–4h     |
+| C9   | Remaining caller migrations with executable route coverage; C5/C6/C7                              | 3–4h     |
+| C10  | Timing/retention/handoff integration; C3/C4/C8                                                    | 3–4h     |
+| C11  | One coordinated public cutover and native qualification; all above                                | 3–4h     |
+
+The sum is 33–44h, not a guarantee. Every unit needs precise ownership, interface, Story Intent, verifier and independently reviewable result before creation. Subdivide C9 or any other unit if the actual census cannot fit 4h; no 4h umbrella or guessed estimate bypass. The parent remains held until sizing is credible.
+
+Native decompose-check reads current assessment. split-plan #2071 --plan <committed reviewed decomposition plan> --dry-run requires numbered Task headings, Story Intent and executable verifiers, preflights all children via sanctioned create-issue, and preserves partial-success recovery. An independently authorized --confirm creates them. split-plan does not itself convert the parent kind. No such command has run here. This design is not a ready split-plan input: the separate decomposition plan must supply child contracts, native current-source authority and proposed metadata changes for review.
+
+Preserve source pins, #2071->#2039, D as the approved integration route and P at K until Root authorizes concrete child worktree/parent changes. Account for existing code commits before selecting an epic/no-commit completion lane; do not rewrite their attribution. Obtain a fresh native assessment after approved estimate/kind/metadata changes; do not assume a new parent Plan approval is available in Develop. Keep #2145 as an edge; children cannot bypass it. Integrate sequentially where ownership overlaps. Foundations/adapters remain unexposed. C11 switches writers/readers/transition ports together; no intermediate activation release. A child's completion is not Task30 delivery.
+
+**Dual-lineage trap and proposed native-compatible route:** K selectedPlan in decomposition-authority.mjs chooses Decomposition-plan's path for an epic but still resolves its commit from Source-plan-commit first, then Plan-commit. There is no independent Decomposition-plan-commit field. K decomposition-wbs-coverage.mjs compares the complete child-pinned outer source-plan bytes with the accepted outer plan. Do not retarget #2071 Source-plan-commit to D just to make a new decomposition file readable: D's outer active-child plan differs from J. Headings now use the parser's actual `### Task 1:` grammar; the initial ccc draft's `Task1` headings were conceptual, not a native counted nine-task result. No classifier was executed here.
+
+A source-supported candidate is an explicitly approved **content-equivalent provenance carrier**: a docs-only commit based on the accepted outer-plan source J, retaining its exact Source-plan path and complete bytes while adding only the reviewed new #2071 decomposition plan. Keep #2071 Source-plan path/Task30 section/title and outer relation; a future approved Source-plan-commit update selects this carrier, whose old outer-plan bytes remain byte-equal to J, and Decomposition-plan selects the new inner plan from that SAME commit. The inner plan file must also be readable locally through approved docs integration. With epic selection's activePlanKey=null, the original Task30 selector does not truncate the inner decomposition plan. This uses existing metadata semantics, not a fabricated field or changes to closed sibling bindings.
+
+A new distinct-path copy of J's outer plan inside D is NOT a demonstrated shortcut: outer WBS requires #2071's Source-plan path to equal the accepted outer path as well as complete byte equality. Merely pointing #2071 at a copied path would fail that rule; changing the accepted outer path would affect the other existing bindings. No closed-sibling rebinding is authorized.
+
+A second route qualification is the exact outer child title. WBS compares title literally. If the actual governed conversion/convergence path renames the BUG prefix to an Epic prefix, the J carrier alone cannot solve title equality. Helper-level rename behavior is a warning, not proof that the actual selected command executes it; confirm the registered call path. The separate route plan must either demonstrate native conversion preserving the required title or name a sanctioned outer-WBS reconciliation that preserves all 31 closed-child provenance bindings. No manual title restoration, parent-plan overwrite, blanket closed rebinding or metadata invention is proposed. Until that actual route is verified, the carrier remains conditional and implementation blocked.
+
+This candidate has NOT been created, executed or natively admitted. The separate decomposition/route plan must first prove, read-only, both selections and full outer-WBS equality at the exact proposed carrier, then obtain Root's explicit authority for any carrier worktree/ref and metadata/approval changes. Preserve J as historical origin and all original refs/parent files. Native current-source/review/convergence checks and any actually applicable approval gate must pass; content equality alone is not approval. Converted-epic recovery can remain in Develop. Do not propose generic plan-approve --current-scope: K explicitly rejects that lane when live children exist, while ordinary plan-approve requires Plan outside narrow repairs. Each new leaf needs its own genuine Plan/approval admission. Determine the converted parent's eventual gate from native current decisions; never relabel a decomposition refresh as Plan approval or demote merely to manufacture one. If actual native selection requires a different authority route, stop and revise that bounded plan instead of overwriting outer provenance or adding an unreviewed metadata feature. Until then the dual-lineage route remains a concrete Phase6 blocker.
+
+This XPR reviews the design and mandatory-decomposition decision. Acceptance cannot authorize implementation until Root also accepts the bounded decomposition/route plan and native assessment. No waiver or stale small-story field is proposed.
 
 ## Design choices
 
@@ -91,7 +131,7 @@ The exact top-level keys are schema/body/title/operations. Exact operation keys 
 
 Neutral operations have evidence:[] and cannot touch protected proof/marker/directory targets. evidence locators refer only to canonical native evidence sources: exact Test receipt, native verifier cache entry, reviewed manifest plus artifacts, native approval source/selection, native decomposition inputs or already observed published evidence. They are not arbitrary file paths supplied as authority. A retained artifact path must pass its owning native path/subject validator.
 
-Store the canonical operation records and any immutable copied evidence bytes in the SAME proposed generation as all affected working bodies/comments/fields. The issue working entry capabilityRef is operations:<SHA256 of canonical operation list>; each affected resource references the same operation ID through its typed candidate payload. The store validates every reference/digest and complete resource set before publishing the new manifest. No second evidence journal or later “attach proof” write.
+Store the canonical operation records and any immutable copied evidence bytes in the SAME proposed generation as all affected working bodies/comments/fields. The issue working entry capabilityRef is operations:<SHA256 of canonical operation list>; each affected resource references the same operation ID through its typed candidate payload. The store validates every reference/digest and complete resource set before publishing the new manifest. No later attach-proof content write. Independent native issuance is retained before the atomic candidate commit; an orphan native receipt acknowledges no staged content.
 
 Use the existing store expectedGeneration comparison, immutable payload write/fsync and manifest publication. Only return staged after reading the exact manifest generation and all referenced bytes back. A failure before publication leaves the old generation authoritative; orphan immutable bytes grant nothing. Failure after an uncertain manifest publication is reconciled by exact readback, never by acknowledging a guessed generation. Conflicting concurrent staging is a typed stale-generation refusal.
 
@@ -114,20 +154,20 @@ Interfaces:
 
 Production dispatch is a fixed module-owned table. Native producer implementations derive their own target, declaration, command, actor and candidate from actual current native inputs. Do not expose mintGrant(result), trust a caller's success boolean, or permit runtime CLI/deps JSON to replace production validators. Test injection is confined to offline fixture construction, not public arguments/environment.
 
-The dispatcher registers a grant only after the producer returns from its genuine operation under the current owner. The grant is an unforgeable process-local object held in a private WeakMap, bound to exact identity/claim/generation/operation digests. It is revoked after commit/freeze scope exits, lock release, actor/root drift or any relevant input change. It is not serialized.
+The dispatcher registers a grant only after the producer returns from its genuine operation under the current owner and any required native issuance (execution or approval) has durable readback; other kinds require their listed independent native evidence. The grant is an unforgeable process-local object held in a private WeakMap, bound to exact identity/claim/generation/operation digests. It is revoked after commit/freeze scope exits, lock release, actor/root drift or any relevant input change. It is not serialized.
 
-| Kind                 | Independent native producer and evidence                                                                                                                                                                                   | Rebind after process loss                                                                                                                                                                                                                                                                                                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| evidence-stamp       | ac-stamp/dod-stamp/evidence-markers select declaration from working body, run existing evidence-runner or validate exact existing Test receipt; preserve declaration identity, artifact operator and issue-proof authority | Re-read original native Test receipt or eligible verifier-cache entry using native validators and exact source/declaration fingerprint. Cached operation bytes alone cannot attest a run. If no independently reusable evidence exists, require the normal native stamp command to rerun/renew in a stage that permits it; never auto-run tests inside transition. |
-| evidence-check       | check/auto-tick evaluates native evidence gate against the exact working target and corresponding rebound evidence operation or published evidence                                                                         | Recompute the gate and target identity; a stored checked glyph is insufficient. Honest non-demonstrable hatch remains a distinct native declaration, not execution proof.                                                                                                                                                                                          |
-| reviewed-scope       | reviewed-scope/runtime reads bound manifest and artifact bytes, validates real review/target/lineage/actor; record.mjs computes exact allowed pointer/tick delta                                                           | Re-read manifest/artifacts and real current native identity; use bounded admitted current comment observations for predecessor/current record. Recreate its native capability without republishing the record. Changed manifest, target, source or predecessor refuses.                                                                                            |
-| native-plan-approval | existing runPlanApprove plus current-scope route, direct-guidance/native mode, exact plan/trunk/forecast/scope; #2069 native issuance and K currentApprovalDigest are both preserved                                       | Rebind via the native approval owner and current source/selection validators. Full-Auto requires the actual currently authorized native mode. A persisted human-mode string cannot recreate human consent; absent independent native approval authority requires explicit native approval renewal. Never turn a historical exemption into present approval.        |
-| native-decomposition | existing decomposition native issuer derives assessment/projection from validated inputs and scope-specific native observation                                                                                             | Recompute through native issuer with identical source/selection and owner; neither serialized assessment nor projection alone grants permission.                                                                                                                                                                                                                   |
-| lifecycle-marker     | registered lifecycle command derives exact state/visit/cursor/marker mutation from native action decision and event identity                                                                                               | Re-establish the same registered native boundary; ordinary staging cannot mint completed state/receipt.                                                                                                                                                                                                                                                            |
-| contract-capsule     | native contract operation planner validates original contract epoch/grant, semantic record IDs and evidence producer for record-evidence                                                                                   | Recompute from exact native contract/evidence lineage and current working predecessor; confirm published predecessors in transition before dependent effects.                                                                                                                                                                                                      |
-| timing-repair        | existing explicitly requested healer validates the exact retained row/event candidate                                                                                                                                      | Re-run the pure candidate validation and identity checks; it never confers lifecycle completion.                                                                                                                                                                                                                                                                   |
+| Kind                 | Independent native producer and evidence                                                                                                                         | Rebind after process loss                                                                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| evidence-stamp       | Actual evidence-runner execution or validated native Test receipt; exact command/argv, source, declaration and original timestamps                               | Validate independently retained native issuance below. Every stamped command is retained, including node --test; verifier-cache eligibility/pruning is not the persistence contract.                                                                                    |
+| evidence-check       | check/auto-tick evaluates native evidence gate against the exact working target and corresponding rebound evidence operation or published evidence               | Recompute the gate and target identity; a stored checked glyph is insufficient. Honest non-demonstrable hatch remains a distinct native declaration, not execution proof.                                                                                               |
+| reviewed-scope       | reviewed-scope/runtime reads bound manifest and artifact bytes, validates real review/target/lineage/actor; record.mjs computes exact allowed pointer/tick delta | Re-read manifest/artifacts and real current native identity; use bounded admitted current comment observations for predecessor/current record. Recreate its native capability without republishing the record. Changed manifest, target, source or predecessor refuses. |
+| native-plan-approval | Existing ordinary/current-scope native approval and actual human/Full-Auto mode                                                                                  | Validate independent issuance and current source/scope under the same issuer; do not infer consent from candidate markers or relabel mode.                                                                                                                              |
+| native-decomposition | existing decomposition native issuer derives assessment/projection from validated inputs and scope-specific native observation                                   | Recompute through native issuer with identical source/selection and owner; neither serialized assessment nor projection alone grants permission.                                                                                                                        |
+| lifecycle-marker     | registered lifecycle command derives exact state/visit/cursor/marker mutation from native action decision and event identity                                     | Re-establish the same registered native boundary; ordinary staging cannot mint completed state/receipt.                                                                                                                                                                 |
+| contract-capsule     | native contract operation planner validates original contract epoch/grant, semantic record IDs and evidence producer for record-evidence                         | Recompute from exact native contract/evidence lineage and current working predecessor; confirm published predecessors in transition before dependent effects.                                                                                                           |
+| timing-repair        | existing explicitly requested healer validates the exact retained row/event candidate                                                                            | Re-run the pure candidate validation and identity checks; it never confers lifecycle completion.                                                                                                                                                                        |
 
-Native verifier caches/receipts are existing protected native sources, not a new cryptographic root. This does not protect against a process with arbitrary permission to replace all native evidence/runtime code. Within the supported command boundary, editing only the story cache cannot forge authority. A positive restart test must use a real native exact-source receipt or cache path, not a test-created permission object.
+Native evidence files and receipts are protected native sources, not a cryptographic root. This does not protect against a process with arbitrary permission to replace all native evidence/runtime code. Within the supported command boundary, editing only the story cache cannot forge authority. A positive restart test must use a real native exact-source receipt or cache path, not a test-created permission object.
 
 ### Exact producer requests and dispatch ownership
 
@@ -146,19 +186,33 @@ The request is data describing the requested native action, not a claimed result
 | contract-capsule / {action,target,recordRequest}                                 | github-records/contract-write.mjs: prepareNativeContractCapsule({context,request}); action/recordRequest are the existing contract planner's discriminated operation, validated by its current schema       |
 | timing-repair / {rowIndex,repairKind}                                            | gh-timing-comment.mjs: prepareNativeTimingRepair({context,request}); exact repairKind comes from the existing healer's registered supported operations; retained candidate/event bytes are derived natively |
 
-The explicit file additions in this table are NEW #2071 integration seams, not claimed O exports. Lifecycle action IDs and contract operations use their existing closed native registries; introducing a new action or contract operation is outside this plan.
+The explicit file additions in this table are NEW #2071 integration seams, not claimed O exports. Lifecycle action IDs and contract operations use their existing closed native registries. For action=approve specifically, fixed dispatch calls verbs/approve.mjs: prepareNativeReviewApproval({context,request}), preserving runApprove semantics and producing approval-issued evidence. Other lifecycle actions cannot impersonate approve. Introducing a new lifecycle action or contract operation is outside this plan.
 
-### Restart and handoff decisions
+### Durable native issuance and restart
 
-No existing independent durable artifact was found for a newly issued, unpublished human Plan approval or chat-relayed Review approval. Direct-guidance admission proves guidance was read; it does not prove human consent. A working marker, a Full-Auto mode string, an operation digest and an action-ledger entry generated from the same candidate cannot fill this gap.
+**R1 correction:** ordinary Develop stamps have no durable Test receipt, and verifier-cache retains only four suite commands and prunes old SHAs. The original draft's re-stamp route would livelock both ordinary proof and human approval across CLI processes. This revision adds immutable native issuance evidence for actual operations. It adds no human-consent requirement.
 
-Accordingly, rebind accepts already published approval only after the current native approval/lifecycle evidence validators verify its exact observed artifact and scope. Full-Auto rebind invokes the native approval owner under the currently authorized native Full-Auto context, preserving that truthful provenance. A new human approval with no independent native consent source cannot be recovered merely by rerunning validators. The implementation must not acknowledge it as restart-safe.
+Create lib/native-operation-evidence.mjs (NEW integration ownership). It owns fixed native-producer dispatch and immutable persistence. prepareAndRetainNativeOperation({context,kind,request}) accepts only the typed native action request above, never caller-produced results, exit codes, approval mode, timestamp, success flags or callbacks. It invokes the actual owning producer adapters under current K admission/approval rules. readNativeOperationEvidence({context,receiptRef}) validates data; revalidateRetainedNativeOperation({context,receiptRef,operation}) also invokes the native current source/scope validator. operation-authority registers grants only from these native returns.
 
-**Concrete consent limit for primary XPR:** do not introduce a stronger consent requirement at initial issuance than the existing native producer requires. K runPlanApprove chooses human versus explicit Full-Auto from its native environment and validates current source/scope; K runApprove recognizes its native --human/published human checkbox path and preserves accepted review/Test evidence. Keep those actual rules. An unpublished approval whose original native authority cannot be re-established in a new process remains visible pending intent and returns STORY_OPERATION_RENEWAL_REQUIRED before freeze/effects; it is not silently invalidated or relabeled as human-approved. Return the exact owning command (plan-approve or approve), source/scope mismatch and reason. Do not automatically loop that command or promise that every human intent survives a process boundary. The supported autonomous path uses actual currently authorized Full-Auto renewal and independent review, never an invented human act. A valid already-published human approval remains reusable under existing native scope/receipt checks. No new consent store, signing key, approval prompt or generic bypass is included. Primary XPR must assess these explicit supported cases and limits against the governing spec; it must not infer universal recovery.
+Use resolveRuntimeRoot and assertRuntimeReadable with their existing sharedRoot, and contained private files native-operation-evidence/<identityHash>/<receiptDigest>.json. Reuse native owner/no-symlink/path checks and exclusive immutable temp/link/fsync/readback semantics; no new root, setup, key, DB engine or runtime repair. Exact schema aitm.native-operation-issuance/v1 is {schema,identity,issuer,operationId,kind,sourceGeneration,beforeDigest,afterDigest,inputsDigest,effectKeys,issuedAt,source,nativeEvidence,previousReceiptRef}; receiptDigest is external, not self-included; previousReceiptRef is null for original issuance or the exact prior native receipt for reviewed reconciliation. source carries the full 40-character selected commit, tree fingerprint/clean status and existing artifact/operator identity. nativeEvidence is closed by kind:
+
+- evidence-run: declared command/argv, declaration fingerprint and original per-command {exit,startedAt,completedAt,cached,originReceipt}.
+- approval-issued: actual command (plan-approve or approve), native-selected mode, approved scope/plan/trunk/forecast/currentApprovalDigest or Review approved SHA and native accepted Test/review evidence identities.
+  Other independently revalidatable kinds retain their existing native evidence references; this file is not permission to invent new proof.
+
+Retain every actually stamped command, including node --test, without extending the reusable verifier-cache allowlist. Cached execution keeps its original evidence/time. These immutable receipts are not pruned on a new SHA and are not a green-result cache. Native exact-source/declaration validation still applies: a changed selected source makes old proof stale, not proof of the new commit. One genuine stamp at the new source creates a new durable receipt that survives the next CLI process. A pinned artifact can remain applicable across an operator-only commit only when existing native artifact guards permit it.
+
+Persist/read back native issuance BEFORE committing operation plus content in one story generation. Retain its exact reference/digest in operation evidence; any copied bytes are diagnostic, never rebind authority. Receipt persistence failure means no staged success. Generation failure may orphan an immutable receipt, but no acknowledged operation references it; it cannot authorize a different operation/delta. This is ordered durability, not a claimed cross-store atomic transaction: acknowledge only when native evidence AND the one content/evidence generation are durable. No later content write attaches authority.
+
+Approval-issued records what the actual native command admitted under K's rules, not cryptographically verified human consent. runPlanApprove's native human/explicit-Full-Auto selection and runApprove's --human/published-human-checkbox semantics and accepted Test/review checks remain. The SAME genuine issuer/session can rebind its exact native issuance in a later CLI process without re-asking, changing mode or rerunning approval. Missing/damaged receipt, foreign issuer or changed scope/source returns STORY_OPERATION_RENEWAL_REQUIRED before effects and preserves intent. The real owning command renews with a durable receipt, so the subsequent process can publish instead of looping.
+
+Trust boundary: editing story-cache bytes alone cannot manufacture matching independent native issuance. Like existing native verifier evidence, this does not defend against an actor replacing native runtime code and all native evidence files. No file checksum is described as human consent. Keep real identity and full-source guards. A fabricated candidate referencing no exact native receipt fails.
+
+Mandatory INTEGRATION cases: non-cache-eligible node --test stamp in process1 -> promote in process2 succeeds; an intervening source commit retains but invalidates old evidence, one real restamp then fresh-process publication succeeds; ordinary human plan-approve -> promote and approve --human -> close succeed in distinct processes under the same issuer; changed issuer/source refuses without content loss. Genuine native producers execute these cases. Unit permission objects do not count.
 
 For non-approval lifecycle markers, rebind is permitted only for the exact event derivable from retained native timing events or an independently validated Test/Review/delivery/completion receipt. State-entry/completion markers requiring a transition receipt are publisher-derived; they are not independently stageable declarations. A native action decision is reevaluated against the same source/state/visit; it cannot attest that a past external effect happened.
 
-After acknowledged handoff, preserve the original operation bytes and issuer tuple. readWorkingOperationChain remains data-only. rebindNativeStoryOperations additionally validates the existing native registry's completed transfer and exact bundle acknowledgement connecting that issuer to the current owner. Neutral content survives. Evidence-stamp/check and timing evidence can survive only when their native evidence validator admits the unchanged source and original actor provenance for the new owner. Decomposition and Full-Auto approval must be rederived under the recipient's actual current authority. Reviewed-scope actor/target checks remain native; a changed required actor refuses. Human consent follows the explicit limit above. There is no automatic authority transfer just because bytes were acknowledged.
+After acknowledged handoff, preserve the original operation bytes and issuer tuple. readWorkingOperationChain remains data-only. rebindNativeStoryOperations additionally validates the existing native registry's completed transfer and exact bundle acknowledgement connecting that issuer to the current owner. Neutral content survives. Evidence-stamp/check and timing evidence can survive only when their native evidence validator admits the unchanged source and original actor provenance for the new owner. Decomposition and Full-Auto approval must be rederived under the recipient's actual current authority. Reviewed-scope actor/target checks remain native; a changed required actor refuses. Approval-issued evidence does not automatically transfer to a different issuer. Use a real owning approval command after handoff, or already-published native approval; ordinary same-session process restart uses its durable issuance. There is no automatic authority transfer just because bytes were acknowledged.
 
 Add renewNativeStoryOperations({store,claim,cfg,admission,operationIds}) in operation-authority.mjs for those kinds with independently revalidatable evidence. It recomputes the exact existing operation against its retained before/after values through its native owner, validates the acknowledged handoff when needed, and creates only current-process grants. It does not rewrite history or treat the recipient as the original executor. If revalidation changes the requested delta or native consent is absent, return a typed renewal-required refusal with no content change; use the existing owning command's invalidate/restamp route, preserving unrelated staged content and old generations.
 
@@ -206,7 +260,7 @@ Keep observeRemoteBody semantics on any genuine remote observation: the initial 
 
 ### Contract/capsule and reviewed-record creation
 
-K and O github-records/contract-write.mjs are identical. Its325–359 path directly calls createCommentWithGh/appendCapsule/readback and updateIssueComment. check.mjs branches on directory-written; ac-stamp records evidence through this family. They are routine supported operations.
+K and O github-records/contract-write.mjs are identical. Its325–359 path directly calls createCommentWithGh/appendCapsule/readback and updateIssueComment. check.mjs branches on directory-written, as does verbs/demote.mjs at K line232; ac-stamp records evidence through this family. They are routine supported operations.
 
 Add stageDirectoryContractOperation({context, action, target, evidenceRequest}) in contract-write.mjs. It invokes the existing pure planner/semantic validators, and native evidence producer where required, then atomically stages:
 
@@ -214,6 +268,8 @@ Add stageDirectoryContractOperation({context, action, target, evidenceRequest}) 
 - its expected semantic predecessor record ID and contract epoch/grant;
 - the delivery-contract projection update and exact dependency on the new capsule;
 - any issue-directory or reviewed-pointer slot requiring a real provider identity.
+
+Derive records, active head, predecessor, lifecycle projection and replay/no-op from readWorkingStory's admitted baseline plus ALL staged capsules/projections. Capsule2 chains off Capsule1's native record ID while both are unpublished. Repeating set-check compares against the working projection and returns unpublished no-op without another append. Staging never calls readDirectoryContract or the 1970-since listIssueCommentsSince transport. Admission must include complete current capsule inventory/required ancestors within 10 pages/4 MiB; incomplete, ambiguous or exhausted coverage refuses, with no unbounded history fallback.
 
 Do not run appendCapsule’s provider execution/readback loop during routine staging. Keep its pure chain planning/validation; route transport through the journal. Working records have {envelope,body,source:'working',intentKey,providerIdentity:null}; published records retain real IDs. Never feed an invented pending ID into a parser whose return value represents an observed GitHub record.
 
@@ -238,16 +294,31 @@ Create the production context at the actual command runtime boundary after exist
 - Acquisition uses bounded current target identity, singleton authenticated human and complete inventory. Failure uses the existing bind failure/occupancy release path and never reports a successful writable binding. Do not undo an already recorded prior-issue departure or fabricate its replacement. Switch resolves the old writer before staging its departure; it cannot borrow the new target's claim. Explain, reports, arbitrary readers, hooks and ordinary staging never acquire. A user with an existing active binding and no cache can invoke Start on that same issue to initialize without resetting the timer.
 - A new CLI process or installed hook resolves its real current provider session, bound issue, physical root/branch and persistent claim. It opens the exact store without hydration; no copying another session ID into env. A different process in the same native session may reuse the claim after real identity checks.
 - The ordinary staging helper receives only this native context; absent/corrupt/frozen/foreign/transferring claim refuses. Hooks never acquire on behalf of another actor or repair the store.
-- scripts/gh/move-state.mjs constructs mandatory store/claim/ports at its real issue-lock boundary. runtime.runMoveStateInProcess forwards the ordinary native context; optional test-only ctx.storyCache is not production activation.
+- scripts/gh/move-state.mjs constructs mandatory store/claim/ports at its real issue-lock boundary. runtime.runMoveStateInProcess forwards the ordinary native context; O's optional ctx.storyCache seam is not production activation; K has no such property.
 - Preserve the host’s matrix/one-step routing, cursor, operator and preflight checks. Evaluate the full candidate-aware registry once through the sealed coordinator; do not first publish legacy guard side effects or execute both sagas.
 - move-state-core must refuse an absent production cache context for supported existing-issue transitions; it must not choose legacy writes because a property is undefined.
 - Network-skipped fixtures remain explicitly skipped, not publication success. Native direct low-level transports require publisher authority or a separately admitted creation/admin purpose.
 
 ### Observation and budget contract
 
-The ledger distinguishes command admission, proof/source guards, staging, transition snapshot, native graph, effect mutation/readback and final census. Zero applies to staging, not to required native source/lifecycle observations. Tests assert both zero staging calls and the presence of required native observations.
+The ledger records PROVIDER CALL ATTEMPTS ONLY with category, operation, resourceKey and processId. Local writes/calculations/generation commits are not entries. Categories distinguish admission, native guards, staging, snapshot, native graph, effects and readback/final census. Retain each process's ledger; assert zero staging calls on the process that staged, not only a later publisher. Zero applies to staging, not to required native source/lifecycle observations. Tests assert both zero staging calls and the presence of required native observations.
 
 Reuse the shared bounded snapshot budget (O snapshot-reader53–75: maxPages10, maxBytes4194304), including preflight/final census/recovery within one invocation as its existing contract requires. The native target/parent graph is a separate explicitly counted native-guard observation, shared across its scoped readers; it is not estimated-history discovery. Do not claim whole-transition #2050 budget qualification from unit tests here. Missing/partial observations refuse rather than empty-default or shadow reread.
+
+### Conflict and explicit three-way reconciliation
+
+The O transition-journal already retains the three-way package {batchId,baseline,working,current,changes} at O lines571–586 and740–756. It is not a separate conflict.mjs. Preserve original generations and native issuance. Reads/Explain never change baseline or remove operations.
+
+Add story-cache/reconcile-operations.mjs exporting reconcileStoryOperations({context,batchId,expectedGeneration,resolution}). Only issue-body's explicit --conflict-resolution <contained-file> purpose invokes it, mutually exclusive with ordinary mutation. Schema aitm.story-conflict-resolution/v1 is {schema,batchId,expectedGeneration,baselineDigest,currentDigest,resourceValues,operationDispositions}; cover every conflicted resource/affected operation. Dispositions are keep-revalidated, renew-through-owner or discard-approved: user-reviewed input, not proof or blanket marker-loss permission.
+
+Recheck actual claim and one bounded complete current snapshot against the package. Any uncertain/attempted unresolved batch needs the existing journal recovery owner first; no compensation/recreate. For a safe unattempted conflict, derive ALL operations against the accepted reviewed baseline before one atomic generation:
+
+- Neutral deltas recompute base-to-reviewed values and pass protected/composite invariants.
+- Privileged deltas rederive through their native owner, with new before/after/source-generation bindings and native issuance linked to original evidence; no transplanted grant.
+- Approval survives only if native issuance validates identical approved scope/source and issuer. Changed scope needs its actual owner. Remote UI human approval is fresh observed evidence under K's current rules.
+- Explicit discard invokes the owning native invalidator for that exact delta and preserves unrelated edits; no arbitrary protected proof removal.
+
+Only complete validation creates a new baseline/operations and clears the old unattempted active conflict/batch in the NEW generation. History remains. Failure leaves the whole conflict pending, not partial baseline acceptance. Fresh transition guards rerun. Integration: UI approval edit after staging -> retained conflict/zero effects -> explicit reviewed resolution -> same-source rebind -> publication; changed plan/forecast refuses stale approval.
 
 ## Source acceptance manifest
 
@@ -360,6 +431,18 @@ Known external leaves remain K: runtime-storage/session-id/ownership-policy/issu
 
 **Explicit exclusions:** No replacement of versioned-issue-write with O; no deletion of K convergence/current-scope flows; no O runtime-wide estimator rewrite under a projection-only dependency; no publisher/recovery duplicate lane; no indiscriminate package inventories from O; no dependency/lockfile/runtime repair. Estimator dispatch is the separately enumerated #2063 hunk set below; projection extraction alone does not cover it.
 
+### New integration inputs required by primary review
+
+| New owned path                                                | Native inputs/consumer and verifier                                                                                                                                                                         |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| scripts/task-tracker/lib/native-operation-evidence.mjs        | Fixed actual native producers, runtime-storage paths/checks and immutable native evidence; operation-authority consumes exact receipts. Genuine cross-process proof/approval and persistence-failure tests. |
+| scripts/task-tracker/lib/story-cache/reconcile-operations.mjs | Existing O journal three-way package, actual claim/current snapshot, reviewed resolution; rederive operations in one generation. Conflict/recovery integration tests.                                       |
+| scripts/task-tracker/verbs/approve.mjs                        | Preserve K human/Full-Auto and accepted-evidence semantics while retaining native issuance before staging; two-process human approval/Close test.                                                           |
+| scripts/task-tracker/verbs/demote.mjs                         | Staged/no-op contract results are handled; no directory-written fallthrough.                                                                                                                                |
+| scripts/task-tracker/verbs/issue-body.mjs                     | Mutually exclusive explicit conflict-resolution purpose through native reconciliation; no ordinary mutation bypass.                                                                                         |
+
+These are new integration ownership under #2071's required decomposition, not closed-prerequisite exports. Revised sizing includes them.
+
 ### Exact #2063 estimator dispatch selection
 
 The #2063 selector is resolveEstimationMode(cfg), not an invented CLI local-calculation mode. Keep its exact output: rubric 0 -> disabled/rubric-disabled; positive safe integer -> local/retained-evidence-only; invalid configuration provenance -> unavailable/config-invalid. estimationDispatchDecision({cfg,verb,args}) returns null outside calculation; plan-estimate with --compatibility-mode and no --evidence-file is a governed human appendix operation. Evidence-file takes precedence. Other plan-estimate calculation requests stop before clients with disabled or unavailable (local reason retained-local-input-required). O and K verbs/plan-estimate.mjs are identical.
@@ -419,55 +502,60 @@ Each row owns every listed path. Paths are relative to scripts/task-tracker unle
 
 The census is a route specification, not a claim that every path needs code changes. An unchanged caller can be KEEP only when its actual native result/read contract is compatible; record that determination in the implementation diff. A newly discovered required path changes the manifest and requires review before importing it.
 
-## Implementation tasks (not yet authorized)
+## Implementation work packages (not yet authorized)
 
-### Task1: Assemble the reviewed prerequisite interfaces against K
+These nine packages describe design/test decisions, not executable issue assignments. Required decomposition maps them to bounded C1–C11 or justified subdivisions with actual IDs. References below to #2071 implementation commits mean eventual approved child ownership, never 44h under its current small-story assessment.
 
-**Files:** only the source-manifest destinations and their exact named hunks. Create scripts/tests/helpers/story-cache-public-activation-fixture.mjs and scripts/tests/unit/task-tracker/lib/story-cache/public-activation-source.test.mjs.
+**Test-boundary rule for every package:** unit suites use pure/in-memory adapters only. Actual filesystem durability, native evidence-runner, separate processes, Git commits, native command hosts, cleanup and acknowledged handoff execute only in the named integration suites. Unit import smoke checks do not prove delivered behavior.
 
-**Interfaces:** exports in the manifest. Test-only createNativeActivationFixture({identity,comments,fields,actor,source}) returns {context,store,claim,ledger,runCommand,restart,runHook,transition,handoff,failStoreAt}. runCommand({verb,args}) invokes the actual public verb/CLI adapter and returns its public result. restart() starts a distinct process with the same test-native session/binding files and opens the existing generation, with no shared WeakMap. runHook({toolName,toolInput}) invokes the installed hook entrypoint. transition({to}) invokes the real move-state host with offline provider transport. handoff({recipient}) runs the actual native transfer/acknowledgement protocol. failStoreAt(point) installs offline I/O failure at payload-fsync, before-manifest or after-manifest. ledger.entries have {category,operation,resourceKey}; category is admission, native-guard, staging, snapshot, native-graph, effect or readback. Fixtures create native session/receipt evidence using the repository's test setup and real native runners; they never return grant-shaped objects. Production CLI has no fixture injection flag.
+### Task 1: Assemble the reviewed prerequisite interfaces against K
 
-The assertion seeds below define outcomes; fixture adapters execute the real command, evidence and store boundaries. They are not executed by this docs-only phase.
+**Files:** only the source-manifest destinations and their exact named hunks. Create scripts/tests/helpers/story-cache-public-activation-fixture.mjs and scripts/tests/unit/task-tracker/lib/story-cache/public-activation-prerequisites.test.mjs.
 
-- [ ] Write source-contract tests asserting required exports and native construction, while current K is missing them; verify the intended missing-export failure.
-- [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/public-activation-source.test.mjs.
+**Interfaces:** scripts/tests/helpers/story-cache-public-activation-fixture.mjs is unit-only. createActivationUnitFixture({identity,comments,fields,actor,source}) returns {context,store,claim,ledger} with in-memory store, native pure validators and provider-call accounting. No subprocess, actual verifier execution, Git invocation or physical handoff. Unit cases are not genuine execution-proof evidence.
+
+Create scripts/tests/helpers/story-cache-native-process-fixture.mjs for integration only. createNativeActivationFixture(...) returns {context,store,claim,ledger,runCommand,restart,runHook,transition,handoff,failStoreAt}. Use real test-native session/binding files and actual command/evidence/store/host boundaries with offline provider transport. restart creates a distinct process with the same legitimate test-native session and no shared WeakMap. failStoreAt supports native-receipt-fsync, payload-fsync, before-manifest and after-manifest. Ledgers record provider calls per process. No production fixture injection flag or grant-shaped result.
+
+- [ ] Write behavior oracles: a working edit survives an atomic generation, a foreign claim refuses without changing content, and published reading retains baseline authority. Fail on missing supported behavior, not just an absent export. Imports are smoke checks only.
+- [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/public-activation-prerequisites.test.mjs.
 - [ ] Assemble only approved exact sources/hunks, retaining K preservation rows. Remove no current API because O lacks it.
 - [ ] Run the same focused test plus unchanged native regression suites covering preserved APIs; all pass.
 - [ ] Commit a #2071 internal, unexposed prerequisite increment and record real trace. No public route switch or release here.
 
-### Task2: Persist and rebind genuine operations atomically
+### Task 2: Persist and rebind genuine operations atomically
 
-**Files:** new story-cache/operation-record.mjs and operation-authority.mjs; adapt store, stage-body, stage-comment, view-payloads, views, stage-capabilities; native producers listed in A. Create scripts/tests/unit/task-tracker/lib/story-cache/operation-authority.test.mjs.
+**Files:** new story-cache/operation-record.mjs, operation-authority.mjs and lib/native-operation-evidence.mjs; adapt store/stage/views/capabilities and A's native producers. Create pure scripts/tests/unit/task-tracker/lib/story-cache/operation-authority.test.mjs and physical scripts/tests/integration/task-tracker/lib/story-cache-native-issuance.integration.test.mjs.
 
 **Interfaces:** exactly A. Do not implement a general mint-from-JSON API.
 
-- [ ] Write positive native stamp -> atomic commit -> fresh process -> native receipt rebind -> valid exact delta test. Assert original run source/time remains, no second cloud write, and changed declaration refuses.
+- [ ] In native-issuance.integration.test.mjs, implement the four genuine two-process proof/approval cases in Durable native issuance, including non-cache-eligible node --test and source commit/restamp. Assert original source/time, no automatic rerun in transition and no renewal loop. Unit authority tests validate pure records/deltas only.
 - [ ] Add failure injection before/after payload flush and manifest publication: acknowledged generation contains both exact content and evidence or neither; orphan bytes cannot authorize.
 - [ ] Add proof move, foreign issue/claim/source, unknown operation, broad-flag union, forged grant, missing native receipt and multi-operation composite rejection.
 - [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/operation-authority.test.mjs; confirm intended red assertions.
 - [ ] Implement A and rerun to green; commit #2071 with real trace.
 
-Assertion seed in operation-authority.test.mjs (native fixture's configured declaration is a real deterministic zero-exit verifier, run through evidence-runner):
+Assertion seed ONLY in story-cache-native-issuance.integration.test.mjs (configured AC1 is a real deterministic node --test verifier executed through evidence-runner):
 
 ```js
 const staged = await f.runCommand({ verb: 'ac-stamp', args: ['AC1'] });
 assert.equal(staged.publication, 'unpublished');
 assert.ok(staged.operationIds.length > 0);
+assert.equal(f.ledger.entries.filter((e) => e.category === 'staging').length, 0);
 const afterRestart = await f.restart();
 const result = await afterRestart.transition({ to: 'test' });
 assert.equal(result.publication, 'published');
-assert.equal(afterRestart.ledger.entries.filter((e) => e.category === 'staging').length, 0);
+assert.ok(result.receipt);
 ```
 
 Separate negative cases use a copy of the retained generation with a changed declaration or fabricated evidence reference, and assert refusal before any effect ledger entry. Do not edit genuine shared runtime state during tests.
 
-### Task3: Switch body/comment results and explicit views together
+### Task 3: Switch body/comment results and explicit views together
 
 **Files:** Task30 seven public paths, issue-body/versioned write seams, identity-read callers in census. Create scripts/tests/unit/task-tracker/lib/story-cache/public-activation.test.mjs.
 
 **Interfaces:** StageResult, PublishedResult and explicit readers in B; retain exports.
 
-- [ ] Test actual public neutral body/title/comment call: zero staging provider traffic, unpublished result, local readback and restart preservation; published reader still returns remote bytes.
+- [ ] Test actual public neutral body/title/comment call: zero staging provider traffic, unpublished result and local working readback; published reader still returns observed remote bytes. Physical restart preservation belongs in native-issuance.integration.test.mjs.
 - [ ] Test missing/corrupt/foreign/frozen claim mutation refusal and genuine no-cache remote-only reader success.
 - [ ] Test real pre-read versus verified remote callback values and third fresh-remote argument; local candidate never triggers them.
 - [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/public-activation.test.mjs; observe intended failures, implement, rerun green and commit #2071.
@@ -486,15 +574,15 @@ assert.equal(ledger.entries.filter((e) => e.category === 'staging').length, 0);
 
 staged comes from the actual neutral public mutation; working and published come from the two explicit B readers, not fixture-supplied values.
 
-### Task4: Stage contracts, capsules and reviewed pointers
+### Task 4: Stage contracts, capsules and reviewed pointers
 
-**Files:** github-records/contract-write.mjs, capsule-chain.mjs, github-comment-store.mjs, reviewed-scope record/comments/runtime, check/ac-stamp/dod-stamp/evidence adapters from census. Create scripts/tests/unit/task-tracker/lib/story-cache/public-contract-staging.test.mjs.
+**Files:** github-records/contract-write.mjs, capsule-chain.mjs, github-comment-store.mjs, reviewed-scope record/comments/runtime, verbs/demote.mjs and check/ac-stamp/dod-stamp/evidence adapters from census. Create scripts/tests/unit/task-tracker/lib/story-cache/public-contract-staging.test.mjs.
 
 **Interfaces:** stageDirectoryContractOperation and typed working record from B; A proof producer for record-evidence.
 
-- [ ] Test real native record-evidence -> capsule+projection one generation; check’s handled staged branch must not execute legacy body writer.
+- [ ] Test pure record-evidence projection -> capsule+projection one in-memory generation; check's handled staged branch never calls the legacy writer. Actual native record-evidence execution and durable capsule publication belong in native-issuance/public-transition integration suites.
 - [ ] Test two ordered capsules, exact predecessor, interrupted creation, node versus database IDs, pointer slot realization and no remote identity before confirmation.
-- [ ] Test reviewed evidence operation survives restart through original manifest/artifact/native record validation and rejects changed bytes.
+- [ ] Physical reviewed-evidence restart/actual execution cases live in story-cache-native-issuance.integration.test.mjs. Pure contract unit cases cover working chain/replay, two staged capsules and zero provider reads.
 - [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/public-contract-staging.test.mjs; observe intended failures, implement, rerun green and commit #2071.
 
 Assertion seeds in public-contract-staging.test.mjs:
@@ -515,9 +603,9 @@ assert.throws(() =>
 );
 ```
 
-Observe legacyBodyWriterCalls at the actual legacy body-writer boundary. Confirmed effects come from the actual offline journal execution, not a caller success flag.
+Observe legacyBodyWriterCalls at the actual legacy body-writer boundary. Unit confirmed-effect values are typed test data for the pure materialization validator only and confer no grant. The native journal's real confirmation/authority boundary is separately exercised by public-transition integration.
 
-### Task5: Construct real CLI and hook contexts
+### Task 5: Construct real CLI and hook contexts
 
 **Files:** runtime.mjs, hook-handler.mjs, task-tracker.mjs, verbs/start.mjs (existing delegation retained), verbs/resume.mjs, verbs/switch.mjs, lib/verb-preflight.mjs, action/session and guard classification rows only as required; scripts/gh/move-state.mjs. Create scripts/tests/integration/task-tracker/lib/story-cache-native-entrypoints.integration.test.mjs.
 
@@ -540,14 +628,14 @@ assert.equal(ledger.entries.filter((e) => e.category === 'staging').length, 0);
 
 Use actual Start/no-op and Explain command invocations, read native binding/event state, then invoke a real guarded mutation. Include failed admission and preserve the original active span.
 
-### Task6: Freeze and publish exact native authority
+### Task 6: Freeze and publish exact native authority
 
-**Files:** native-transition, batch, native-authority, transition-batch/journal, native Plan/graph adapters, move-state-core/host. Create scripts/tests/integration/task-tracker/lib/story-cache-public-transition.integration.test.mjs.
+**Files:** native-transition, batch, native-authority, transition-batch/journal, reconcile-operations, verbs/issue-body.mjs conflict purpose, native Plan/graph adapters, move-state-core/host. Create scripts/tests/integration/task-tracker/lib/story-cache-public-transition.integration.test.mjs.
 
 **Interfaces:** A rebound grants + operationsDigest; B confirmed publication result.
 
 - [ ] Test genuine proof-bearing operation after restart through real host: native guards, prerequisites confirmed before Status, one final body, complete vector and receipt. Non-null capabilityRef is accepted only through native rebind.
-- [ ] Test changed assignment/foreign comment/field/revision, incomplete inventory, stale source/plan/trunk or expired native authority refuses before effects.
+- [ ] Test foreign assignment/resource/revision and stale authority refusal. Retain the three-way conflict; cover remote UI edit, explicit reviewed resolution, native operation rederivation and atomic baseline acceptance.
 - [ ] Inject uncertainty at create, pre-Status authority, Status and final body; assert no automatic recreate, no legacy tail/compensation, no false completion. Confirm no more than one attempted dispatch per frozen effect.
 - [ ] Run node --test scripts/tests/integration/task-tracker/lib/story-cache-public-transition.integration.test.mjs; red, implement, green, commit #2071.
 
@@ -564,7 +652,7 @@ assert.equal(recoveryDuplicateCreates, 0);
 
 Indices/counts come from the provider transport ledger of the actual move-state host. The uncertainty test uses a provider-side accepted create with a lost response, then a fresh process recovery.
 
-### Task7: Finish every proof/result/reader census family
+### Task 7: Finish every proof/result/reader census family
 
 **Files:** exact remaining census rows only. Extend public-activation.test.mjs and native-entrypoints integration tests with a maintained per-entry route table.
 
@@ -575,7 +663,7 @@ Indices/counts come from the provider transport ledger of the actual move-state 
 - [ ] Implement required direct-call replacements; a textual grep match alone neither passes nor fails the route test.
 - [ ] Run the named focused suites; all mapped cases pass. Commit #2071 with the final per-path disposition manifest updated.
 
-Assertion seeds for the #2063 cases in public-activation-source.test.mjs and native-entrypoints.integration.test.mjs:
+Assertion seeds for the #2063 cases in public-activation-prerequisites.test.mjs and native-entrypoints.integration.test.mjs:
 
 ```js
 assert.deepEqual(resolveEstimationMode({ estimationRubricIssue: 0 }), {
@@ -594,7 +682,7 @@ assert.equal(
   estimationDispatchDecision({
     cfg,
     verb: 'plan-estimate',
-    args: ['--compatibility-mode', '--evidence-file=x.json'],
+    args: ['--compatibility-mode', '--evidence-file', 'x.json'],
   }).reason,
   'retained-local-input-required'
 );
@@ -603,18 +691,18 @@ assert.equal(cloudClientConstructionCount, 0);
 
 cfg in the last two cases has a positive rubric; corrupt physical configuration is separately loaded through actual loadConfig and must yield config-invalid before native cloud dispatch.
 
-### Task8: Preserve timing, retention and handoff semantics
+### Task 8: Preserve timing, retention and handoff semantics
 
-**Files:** timing/repair/report/field/retention/handoff census rows. Create scripts/tests/unit/task-tracker/lib/story-cache/public-timing-authority.test.mjs.
+**Files:** timing/repair/report/field/retention/handoff census rows. Create pure scripts/tests/unit/task-tracker/lib/story-cache/public-timing-authority.test.mjs; physical restart/cleanup/handoff belongs in scripts/tests/integration/task-tracker/lib/story-cache-native-handoff.integration.test.mjs.
 
 **Interfaces:** existing canonical event source + independent ingestion/publication cursors + timingAuthority.
 
-- [ ] Test cumulative snapshot/restart ingestion does not double-count; measured Active/Idle and Unknown remain visible without completion proof.
+- [ ] Test pure repeated cumulative snapshot/serialized-state ingestion does not double-count and preserves measured Active/Idle and Unknown. Physical process restart is separately tested in native-handoff.integration.test.mjs.
 - [ ] Test two visits with different full timing comment hashes preserve first immutable event subset; altered first subset removes completion without deleting measured work.
-- [ ] Test staged repair never changes board/completion automatically; pending payloads survive cleanup and acknowledged transfer. Positive handoff rebind of real unchanged native evidence preserves staged content and original issuer; missing acknowledgement, changed actor-sensitive evidence and unsupported human approval refuse without content loss.
+- [ ] In native-handoff.integration.test.mjs, physical cleanup/transfer preserves pending content and original issuer. Independent native evidence rebinds where allowed; missing acknowledgement or changed actor-sensitive authority refuses without loss. Same-issuer human approval across CLI processes succeeds under Task 2, not an unsupported path.
 - [ ] Run node --test scripts/tests/unit/task-tracker/lib/story-cache/public-timing-authority.test.mjs; red, implement, green, commit #2071.
 
-Assertion seeds in public-timing-authority.test.mjs:
+The first four seeds belong in pure public-timing-authority.test.mjs; the final two physical handoff assertions belong ONLY in story-cache-native-handoff.integration.test.mjs:
 
 ```js
 assert.notEqual(firstFullCommentDigest, secondFullCommentDigest);
@@ -627,11 +715,11 @@ assert.deepEqual(retainedDescriptor.issuer, originalNativeIssuer);
 
 The last assertion checks the native operation descriptor retained in the resulting publication evidence. The in-process grant itself remains private. Repeated ingestion asserts unchanged measured totals and cursors; absence of completion retains measured work and Unknown.
 
-### Task9: Integrated qualification and handoff
+### Task 9: Integrated qualification and handoff
 
 **Files:** final implementation/test/document paths already owned; no unreviewed import expansion.
 
-- [ ] Run the focused source/operation/public/contract/timing and native entrypoint/transition suites, then required repository checks appropriate to the complete change once.
+- [ ] Run focused pure prerequisite/operation/public/contract/timing and native issuance/handoff/entrypoint/transition suites. Whole-package Test/Review and exact-head evidence remain native-owned; never manually repeat full suites to compensate for missing receipts.
 - [ ] Verify preserved K behavior: remote observation forwarding, third async remote argument, shared mutation session guard, location snapshot, unique state/visit validators, currentScope/currentApprovalDigest/audit evidence, exported refuseVerbPreflight, same-observation readReadyForecastRecordId, and convergence frame.
 - [ ] Verify the actual public route has no optional-cache legacy fallback and no routine direct transport; compare executed ledger categories and declared read budgets. Do not claim #2050 package-wide budget proof.
 - [ ] Reconcile actual modified paths with this manifest/census. Any new causal input must receive review before acceptance.
