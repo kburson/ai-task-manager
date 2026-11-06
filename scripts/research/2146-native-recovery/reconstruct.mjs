@@ -1,14 +1,7 @@
 // @story #2146
 // cspell:words includeif partialclone uploadpack hookspath fsmonitor sshcommand gitproxy alternaterefscommand
 import { execFileSync } from 'node:child_process';
-import {
-  lstatSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  realpathSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PINS, requirePhysicalDirectory } from './archive.mjs';
@@ -134,6 +127,116 @@ export function configRows(raw) {
   return rows;
 }
 
+const CANONICAL_LFS = new Map([
+  ['filter.lfs.clean', 'git-lfs clean -- %f'],
+  ['filter.lfs.smudge', 'git-lfs smudge -- %f'],
+  ['filter.lfs.process', 'git-lfs filter-process'],
+  ['filter.lfs.required', 'true'],
+]);
+
+function nulFields(raw, category) {
+  const text = String(raw);
+  if (!text) return [];
+  const fields = text.split('\0');
+  if (fields.pop() !== '' || text.includes('\ufffd')) fail('git-attributes:' + category);
+  return fields;
+}
+
+function operationPaths(raw, kind) {
+  const paths = new Set();
+  for (const record of nulFields(raw, 'path-format')) {
+    const match =
+      kind === 'index'
+        ? /^(?:100644|100755|120000) [a-f0-9]{40} 0\t([\s\S]+)$/.exec(record)
+        : kind === 'tree'
+          ? /^(?:100644|100755|120000) blob [a-f0-9]{40}\t([\s\S]+)$/.exec(record)
+          : [record, record];
+    const name = match?.[1];
+    if (
+      !name ||
+      name.split('/').some((part) => !part || part === '.' || part === '..') ||
+      paths.has(name)
+    )
+      fail('git-attributes:path-format');
+    paths.add(name);
+  }
+  return paths;
+}
+
+function assertInactiveAttributes(raw, paths) {
+  const fields = nulFields(raw, 'output-format');
+  if (fields.length % 3) fail('git-attributes:output-format');
+  const seen = new Set();
+  for (let i = 0; i < fields.length; i += 3) {
+    const [name, attribute] = fields.slice(i, i + 2);
+    const pair = name + '\0' + attribute;
+    if (!paths.has(name) || !/^[A-Za-z0-9_.][A-Za-z0-9_.-]*$/.test(attribute) || seen.has(pair))
+      fail('git-attributes:output-format');
+    seen.add(pair);
+    if (attribute === 'filter') fail('git-attributes:active-filter');
+  }
+}
+
+// This check is bound to the next operation. It assumes stable configuration,
+// attributes, index, worktree and executable between inspection and that operation.
+export function assertSafeGit(
+  readGit,
+  root,
+  { carrier = false, operation = 'inspect', tree } = {}
+) {
+  if (
+    !['inspect', 'stage', 'checkout'].includes(operation) ||
+    typeof carrier !== 'boolean' ||
+    (carrier && operation !== 'inspect') ||
+    (operation === 'checkout'
+      ? typeof tree !== 'string' || !/^[a-f0-9]{40}$/.test(tree)
+      : tree !== undefined)
+  )
+    fail('git-attributes:operation');
+  const rows = configRows(
+    String(readGit(['config', '--null', '--list', '--show-scope', '--includes']))
+  );
+  const candidates = rows.filter(
+    (row) =>
+      row.scope === 'system' &&
+      CANONICAL_LFS.get(row.key) === row.value &&
+      CANONICAL_LFS.has(row.key)
+  );
+  const candidateSet = new Set(candidates);
+  assertSafeConfig(
+    rows.filter((row) => !candidateSet.has(row)),
+    { carrier }
+  );
+  if (!candidates.length) return;
+  if (candidates.length !== 4 || new Set(candidates.map((row) => row.key)).size !== 4)
+    fail('git-configuration:lfs-shape');
+  if (rows.some((row) => row.key.toLowerCase() === 'attr.tree'))
+    fail('git-attributes:source-override');
+  if (String(readGit(['rev-parse', '--show-toplevel'])).replace(/\n$/, '') !== root)
+    fail('git-attributes:root');
+  const paths =
+    operation === 'checkout'
+      ? operationPaths(readGit(['ls-tree', '-r', '-z', '--full-tree', tree]), 'tree')
+      : operationPaths(readGit(['ls-files', '--stage', '-z', '--full-name']), 'index');
+  if (operation === 'stage') {
+    const untracked = operationPaths(
+      readGit(['ls-files', '--others', '--exclude-standard', '-z', '--full-name']),
+      'untracked'
+    );
+    for (const name of untracked) {
+      if (paths.has(name)) fail('git-attributes:path-format');
+      paths.add(name);
+    }
+  }
+  const input = Buffer.from([...paths].map((name) => name + '\0').join(''));
+  const modes = operation === 'checkout' ? [['--source=' + tree]] : [[], ['--cached']];
+  for (const mode of modes)
+    assertInactiveAttributes(
+      readGit(['check-attr', ...mode, '--all', '-z', '--stdin'], input),
+      paths
+    );
+}
+
 export function reconstructHistoricalSource(carrierRoot, allocation) {
   assertGitEnvironment();
   const carrier = requirePhysicalDirectory(carrierRoot);
@@ -147,7 +250,7 @@ export function reconstructHistoricalSource(carrierRoot, allocation) {
   )
     fail('allocation-not-empty');
   const commands = [];
-  const git = (cwd, args) => {
+  const git = (cwd, args, input) => {
     assertGitEnvironment();
     requirePhysicalDirectory(cwd);
     const argv = ['--no-pager', ...args];
@@ -155,7 +258,8 @@ export function reconstructHistoricalSource(carrierRoot, allocation) {
       const output = execFileSync('git', argv, {
         cwd,
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+        ...(input === undefined ? {} : { input }),
         timeout: 10000,
         maxBuffer: 8 * 1024 * 1024,
       });
@@ -182,12 +286,9 @@ export function reconstructHistoricalSource(carrierRoot, allocation) {
     );
   };
   try {
-    const inspectConfig = (cwd, options) =>
-      assertSafeConfig(
-        configRows(git(cwd, ['config', '--null', '--list', '--show-scope', '--includes'])),
-        options
-      );
-    inspectConfig(carrier, { carrier: true });
+    const inspectGit = (cwd, options) =>
+      assertSafeGit((args, input) => git(cwd, args, input), cwd, options);
+    inspectGit(carrier, { carrier: true });
     if (realpathSync(git(carrier, ['rev-parse', '--show-toplevel'])) !== carrier)
       fail('carrier-root');
     git(carrier, ['cat-file', '-e', PINS.sourceCommit + '^{commit}']);
@@ -203,14 +304,16 @@ export function reconstructHistoricalSource(carrierRoot, allocation) {
       sourceRoot,
     ]);
     requirePhysicalDirectory(sourceRoot);
-    inspectConfig(sourceRoot);
-    if (lstatSync(path.join(sourceRoot, '.git')).isSymbolicLink()) fail('git-directory');
+    requirePhysicalDirectory(path.join(sourceRoot, '.git'));
+    if (readdirSync(sourceRoot).some((name) => name !== '.git')) fail('source-not-empty');
+    inspectGit(sourceRoot, { operation: 'checkout', tree: PINS.sourceCommit });
     git(sourceRoot, ['update-ref', '--no-deref', 'HEAD', PINS.sourceCommit]);
     git(sourceRoot, ['read-tree', '--reset', '-u', PINS.sourceCommit]);
     const sourceCommit = git(sourceRoot, ['rev-parse', 'HEAD']);
     const sourceTree = git(sourceRoot, ['rev-parse', 'HEAD^{tree}']);
     if (sourceCommit !== PINS.sourceCommit || sourceTree !== PINS.sourceTree)
       fail('source-identity');
+    inspectGit(sourceRoot);
     if (git(sourceRoot, ['status', '--porcelain', '--untracked-files=all']) !== '')
       fail('source-dirty');
     const sourceGit = (args) => {
@@ -221,7 +324,7 @@ export function reconstructHistoricalSource(carrierRoot, allocation) {
         ].some((allowed) => JSON.stringify(allowed) === JSON.stringify(args))
       )
         fail('read-command');
-      inspectConfig(sourceRoot);
+      inspectGit(sourceRoot);
       return git(sourceRoot, args);
     };
     retain(diagnostics('success'));

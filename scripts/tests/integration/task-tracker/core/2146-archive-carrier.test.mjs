@@ -19,8 +19,7 @@ import {
 } from '../../../../research/2146-native-recovery/carrier.mjs';
 import {
   allocateValidationRoot,
-  assertSafeConfig,
-  configRows,
+  assertSafeGit,
 } from '../../../../research/2146-native-recovery/reconstruct.mjs';
 import { sha } from '../../../../research/2146-native-recovery/archive.mjs';
 
@@ -47,24 +46,24 @@ const readWorkingFile = (file) => {
   return readFileSync(paths.includes(relative) ? file : path.join(process.cwd(), relative));
 };
 const inspect = (readGit) => inspectCarrier(root, { readGit, readWorkingFile });
-const fixtureGit = (fixture, args) =>
+const fixtureGit = (fixture, args, input) =>
   execFileSync('git', ['--no-pager', '--no-optional-locks', ...args], {
     cwd: fixture,
     encoding: 'utf8',
     timeout: 10000,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+    ...(input === undefined ? {} : { input }),
   });
 const commitFixture = (fixture, templateRoot) => {
-  const git = (args) => fixtureGit(fixture, args);
+  const git = (args, input) => fixtureGit(fixture, args, input);
   // Before init Git may discover the owning carrier. Only its local hooks are
   // allowed; inherited executable configuration must already refuse here.
-  assertSafeConfig(configRows(git(['config', '--null', '--list', '--show-scope', '--includes'])), {
-    carrier: true,
-  });
+  assertSafeGit((args, input) => fixtureGit(root, args, input), root, { carrier: true });
   git(['init', '--quiet', '--template=' + templateRoot]);
   // The private repository may not execute hooks or filters during setup.
-  assertSafeConfig(configRows(git(['config', '--null', '--list', '--show-scope', '--includes'])));
+  assertSafeGit(git, fixture, { operation: 'stage' });
   git(['add', '--all']);
+  assertSafeGit(git, fixture, { operation: 'stage' });
   git([
     '-c',
     'user.name=Archive validation fixture',
@@ -102,6 +101,40 @@ test('records the carrier HEAD and digest of every declared runtime/data file', 
   for (const file of paths) assert.ok(result.digests[file]);
   assert.equal(Object.keys(result.digests).length, 42);
 });
+
+for (const active of [false, true]) {
+  test(`carrier ${active ? 'refuses active' : 'admits dormant'} LFS before content reads`, () => {
+    const config = [
+      ['clean', 'git-lfs clean -- %f'],
+      ['smudge', 'git-lfs smudge -- %f'],
+      ['process', 'git-lfs filter-process'],
+      ['required', 'true'],
+    ]
+      .map(([key, value]) => `system\0filter.lfs.${key}\n${value}\0`)
+      .join('');
+    const calls = [];
+    const base = reader({ 'config --null --list --show-scope --includes': config });
+    const read = (args, input) => {
+      calls.push(args[0]);
+      if (args[0] === 'ls-files') return `100644 ${head} 0\talpha.txt\0`;
+      if (args[0] === 'check-attr') {
+        assert.ok(Buffer.isBuffer(input));
+        assert.equal(input.toString(), 'alpha.txt\0');
+        return active ? 'alpha.txt\0filter\0lfs\0' : '';
+      }
+      return base(args);
+    };
+    if (active) {
+      assert.throws(() => inspect(read), { message: 'reconstruct:git-attributes:active-filter' });
+      assert.equal(calls.includes('status'), false);
+      assert.equal(calls.includes('show'), false);
+    } else {
+      assert.equal(inspect(read).archiveCarrierClean, true);
+      assert.equal(calls.filter((command) => command === 'check-attr').length, 2);
+      assert.ok(calls.indexOf('check-attr') < calls.indexOf('status'));
+    }
+  });
+}
 test('refuses dirty carrier state before reading committed data', () => {
   assert.throws(
     () => inspect(reader({ 'status --porcelain --untracked-files=all': ' M tracked-file' })),
@@ -220,10 +253,7 @@ test('carrier fixture setup refuses active hooks before staging or committing', 
   const allocation = await allocateValidationRoot(process.cwd());
   const fixture = allocation.sourceRoot;
   mkdirSync(fixture);
-  assertSafeConfig(
-    configRows(fixtureGit(fixture, ['config', '--null', '--list', '--show-scope', '--includes'])),
-    { carrier: true }
-  );
+  assertSafeGit((args, input) => fixtureGit(root, args, input), root, { carrier: true });
   fixtureGit(fixture, ['init', '--quiet', '--template=' + allocation.templateRoot]);
   const hooks = path.join(allocation.ownedRoot, 'hooks');
   mkdirSync(hooks);

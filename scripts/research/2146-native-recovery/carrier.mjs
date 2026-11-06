@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { requirePhysicalDirectory, sha } from './archive.mjs';
-import { assertGitEnvironment, assertSafeConfig, configRows } from './reconstruct.mjs';
+import { assertGitEnvironment, assertSafeGit } from './reconstruct.mjs';
 
 const TOOL_PATH = 'scripts/research/2146-native-recovery/';
 const HELPER_MODULES = [
@@ -74,12 +74,13 @@ export function inspectCarrier(carrierRoot, { readGit, readWorkingFile = physica
   const carrier = requirePhysicalDirectory(carrierRoot);
   const git =
     readGit ??
-    ((args) => {
+    ((args, input) => {
       assertGitEnvironment();
       try {
         return execFileSync('git', ['--no-pager', '--no-optional-locks', ...args], {
           cwd: carrier,
-          stdio: ['ignore', 'pipe', 'pipe'],
+          stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+          ...(input === undefined ? {} : { input }),
           timeout: 10000,
           maxBuffer: 8 * 1024 * 1024,
         });
@@ -87,10 +88,7 @@ export function inspectCarrier(carrierRoot, { readGit, readWorkingFile = physica
         return fail('git-read');
       }
     });
-  assertSafeConfig(
-    configRows(String(git(['config', '--null', '--list', '--show-scope', '--includes']))),
-    { carrier: true }
-  );
+  assertSafeGit(git, carrier, { carrier: true });
   if (String(git(['rev-parse', '--show-toplevel'])).trim() !== carrier) fail('root');
   const head = String(git(['rev-parse', 'HEAD'])).trim();
   if (!/^[a-f0-9]{40}$/.test(head)) fail('head');

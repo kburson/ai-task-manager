@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { sha } from '../../../../research/2146-native-recovery/archive.mjs';
 import {
   allocateValidationRoot,
+  assertSafeGit,
   reconstructHistoricalSource,
 } from '../../../../research/2146-native-recovery/reconstruct.mjs';
 const script = fileURLToPath(
@@ -57,15 +58,18 @@ test('strict CLI refuses executable drift and a committed replaced original mani
     // only this newly owned fixture receives the current test input bytes.
     writeFileSync(target, readFileSync(path.join(source, relative)));
   }
-  const git = (args) =>
+  const git = (args, input) =>
     execFileSync('git', ['--no-pager', '--no-optional-locks', ...args], {
       cwd: fixture,
       encoding: 'utf8',
       timeout: 10000,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+      ...(input === undefined ? {} : { input }),
     });
   const commit = () => {
+    assertSafeGit(git, fixture, { operation: 'stage' });
     git(['add', '--', ...inputs]);
+    assertSafeGit(git, fixture, { operation: 'stage' });
     git([
       '-c',
       'user.name=Archive validation fixture',
@@ -106,6 +110,7 @@ test('strict CLI refuses executable drift and a committed replaced original mani
   writeFileSync(adapter, Buffer.concat([adapterBytes, Buffer.from('\n// disposable drift\n')]));
   // Exercise committed-blob checks even when Git's status trusts this index flag.
   git(['update-index', '--assume-unchanged', '--', code + 'verify-historical.mjs']);
+  assertSafeGit(git, fixture);
   assert.equal(git(['status', '--porcelain', '--untracked-files=all']), '');
   for (const mode of ['report', 'plan']) requireRefusal(mode);
   writeFileSync(adapter, adapterBytes);
@@ -141,6 +146,7 @@ test('strict CLI refuses executable drift and a committed replaced original mani
   writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n');
   writeFileSync(archivePath, compressed);
   commit();
+  assertSafeGit(git, fixture);
   assert.equal(git(['status', '--porcelain', '--untracked-files=all']), '');
   assert.notEqual(manifest.sha256, originalHash);
   for (const mode of ['report', 'plan']) requireRefusal(mode);
