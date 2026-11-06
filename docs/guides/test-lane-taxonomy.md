@@ -71,12 +71,12 @@ one source of truth and cannot drift.
 
 ## CI collection groups
 
-CI runs integration in nine independent GitHub Actions jobs and uses three jobs
+CI runs integration in twelve independent GitHub Actions jobs and uses three jobs
 for slow tests when the existing nightly, manual, or `ci-slow` trigger applies.
 Unit remains one complete lane. Each instance owns its checkout and dependency
 setup; the runner retains its existing scheduling, isolation and timing checks.
 
-`node scripts/run-tests.mjs --lane integration --shard 1/9` selects one group.
+`node scripts/run-tests.mjs --lane integration --shard 1/12` selects one group.
 Groups are derived from the complete canonical lane inventory. Whole test files
 stay intact. Files in the same directory with the same first hyphen-separated
 suite-name segment stay together, so `delivery.test.mjs` and
