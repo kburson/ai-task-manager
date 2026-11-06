@@ -50,11 +50,13 @@ No fixture/verifier/test/package execution occurred during this planning examina
 
 ## Lifecycle body reserve: selected execution path is blocked
 
-**Decision: do not execute the proposed #2146-first integration/qualification path.** The ordinary configured project-provider native Test success publication cannot fit the current full inline body. Its source-derived minimum version-stamped payload is **65,769 UTF-8 bytes**, **233 bytes above** the65,536-byte decomposition-reader contract. This is a bounded source/data conclusion for the specified path and current body/config; no native Test, fixture, verifier or live body write was executed. Z remains a valid archival source candidate; the lifecycle-body blocker prevents qualification/Close through this selected path. It does not prove that #2169's WBS correction must precede #2146, authorize #2171, or choose a production repair.
+**Decision: do not execute the proposed #2146-first integration/qualification path.** The ordinary configured project-provider native Test success publication cannot fit the captured full inline body. Its source-derived minimum version-stamped payload is **65,769 UTF-8 bytes**, **233 bytes above** the65,536-byte decomposition-reader contract. This is a bounded source/data conclusion for the specified path and captured body/config; no native Test, fixture, verifier or live body write was executed. Z remains a valid archival source candidate; the lifecycle-body blocker prevents qualification/Close through this selected path. It does not prove that #2169's WBS correction must precede #2146, authorize #2171, or choose a production repair.
 
-### Current inputs and independent reproduction boundary
+### Captured inputs and independent reproduction boundary
 
-Fresh connector body118 has52,731 UTF-8 bytes (52,721 JavaScript UTF-16 code units). Default still equals pinned Z. New genuine planning entry2026-11-06T20:20:36.927Z naturally retained the original generation. Native runtime diagnostic nonce39b6ad178cf84b47a250512921462026 matched owner/root/branch/issue/Q/Develop/entry and sameObservedHelper, with helper-only scope. No source transition followed.
+Historical author capture118 had52,731 UTF-8 bytes (52,721 JavaScript UTF-16 code units). At that capture, default equaled pinned Z. The genuine planning entry2026-11-06T20:20:36.927Z naturally retained the original generation. Native runtime diagnostic nonce39b6ad178cf84b47a250512921462026 matched owner/root/branch/issue/Q/Develop/entry and sameObservedHelper, with helper-only scope. No source transition followed.
+
+Independent manual SAR round1 repeated the complete calculation against its observed body119:52,731 UTF-8 bytes/52,721 UTF-16 code units, SHA25604974668986775626a02f561637045ca09e8ba12b3713569f701141375b1ffdc, connector updated_at2026-11-06T20:42:16Z. It reproduced65,769 bytes/233above the limit and observed a byte-identical119 final readback. This cites the SAR snapshot, not a claim that119 remains live after any later Resume. The reviewer did not retain a full118 snapshot and did not attest the exact118-to119 diff; equal sizes alone do not prove content equality.
 
 The proposed shell projection remains refused: its historical data named an old carrier path, so the hook blocked it before execution. It was not replayed, encoded or retargeted. Root separately authorized inert orchestration JavaScript over already-read primary body/receipt/source data, without filesystem/import/process/network/tool calls inside the calculation. The counts below were computed only that way. Paths in receipt data remained inert strings; no old worktree was accessed. Persist only identities/formulas/counts/bounds/decisions, never synthetic proof payloads.
 
@@ -83,7 +85,7 @@ Base64url length is ceil(UTF8(canonicalJSON)×4/3). Marker size is exact UTF-8 p
 
 | Source-derived component                           | Delta bytes | Version-stamped body bytes |
 | -------------------------------------------------- | ----------: | -------------------------: |
-| Current primary body118                            |           0 |                     52,731 |
+| Historical author capture118                       |           0 |                     52,731 |
 | Minimum Develop receipt replacement                |       1,116 |                     53,847 |
 | Minimum Test receipt insertion and exact separator |       8,118 |                     61,965 |
 | Eight mandatory VC proofs                          |       3,188 |                     65,153 |

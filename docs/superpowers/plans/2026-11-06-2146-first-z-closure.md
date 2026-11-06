@@ -26,7 +26,7 @@ R5a3f83d90dd504c88990e1a859c404453d8c5673 remains immutable history. Z2e5a3feec6
 
 **Files/interfaces:** the actual configured project provider, native Test/autoTick proof fold, receipt and body-version writers, and Close/timing/state sources identified in the design.
 
-**Consumes:** fresh primary body118, actual Z/source identities and unchanged project configuration/VCs.
+**Consumes:** historical author body118 and the independently reproduced SAR body119 snapshot/digest cited in the design, actual Z/source identities and unchanged project configuration/VCs. Neither historical body is asserted current after a later Resume.
 **Produces:** the source-supported candidate and bounded decision BEFORE any review acceptance or implementation gate.
 
 - Verify the exact9receipt-record/7sandbox-execution/2covered-aggregate multiplicity and8VC/3AC/3Functional proof expansions against immutable source.
@@ -44,7 +44,7 @@ R5a3f83d90dd504c88990e1a859c404453d8c5673 remains immutable history. Z2e5a3feec6
 **Produces:** ordinary documentation correction commit and exact artifact hashes for fresh SAR, then primary SPR and XPR under coordinator dispatch.
 
 - Read both complete artifacts; verify the supplied source/data formulas. Formatting/checks may affect only these two files. No product test or package command is authorized.
-- Require staged/index/path set limited to the two artifacts. Commit an ordinary child of Q with explicit #2146 blocked-planning subject, then verify parent/tree/committed blobs/bytes/SHA256 and clean state.
+- Require staged/index/path set limited to the two artifacts. Commit an ordinary descendant of Q, preserving all existing correction/review history, with explicit #2146 blocked-planning subject. The actual parent for this M1/M2 correction is7935ebe3ea33ba7bd1e399cb3500b8fbfebdeb72; do not reset or recreate lineage. Verify parent/tree/committed blobs/bytes/SHA256 and clean state.
 - Return the candidate to the coordinator. Do not launch reviews until its concrete dispatch. Fresh SAR is gpt-6-astra/xhigh and must independently verify the actual source/transforms, omitted earlier evidence and correctly bounded blocking decision. A requested selection is not per-turn model attestation.
 - After SAR dispositions and final candidate bytes, use registered primary SPR with genuine second Codex participant B at gpt-6-astra/xhigh, then primary XPR provider claude/model opus/effort medium. Pass these values unchanged; no fallback or specific resolved revision claim. Preserve historical higher-effort review separately.
 - Read-only doctor/help/broker status establishes only the readiness it actually reports. Current manual doctor is healthy, automatic reviewer launch is unavailable and broker is offline/APR_BROKER_STALE with no registrations/candidates. No setup/reconcile/start or alternate runtime is authorized.
