@@ -1,7 +1,8 @@
-// @story #1872
+// @story #1872 #2165
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { planShards, validateShardReceipts } from '../../../../run-tests-shards.mjs';
+import { laneFiles } from '../../../../run-tests-lanes.mjs';
 
 const groups = [
   [
@@ -37,6 +38,17 @@ function receipts() {
 }
 const validate = (results) =>
   validateShardReceipts(results, { inventory, lane: 'integration', commit, total: 3 });
+
+test('twelve integration groups retain the complete canonical inventory exactly once', () => {
+  const canonical = laneFiles('integration');
+  const planned = planShards(canonical, 12);
+  assert.equal(planned.length, 12);
+  assert.ok(planned.every((files) => files.length > 0));
+  const selected = planned.flat();
+  assert.equal(new Set(selected).size, selected.length);
+  assert.deepEqual(selected.sort(), [...canonical].sort());
+  assert.deepEqual(planShards([...canonical].reverse(), 12), planned);
+});
 
 test('three groups preserve suite families and cover every file once, independent of discovery order', () => {
   assert.deepEqual(planShards(inventory, 3), groups);
