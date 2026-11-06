@@ -129,31 +129,33 @@ This is a proposed small semantic append only, not a file operation or publicati
 
 The exact insertion strings below use JSON escaping so their leading and terminal newlines are unambiguous. Parse the two string values before counting or comparing bytes; JSON indentation/fence framing is not part of the485-byte payload.
 
-````json
+```json
 {
   "scope": "\n### #2146-first target\n\nPlan qualification against Z=2e5a3feec6d6296778f767977cf8086f587d1967; keep #2169/#2171 held. Preserve R and prior sequence records as history. Integration, including source/runtime transition at the merge working-tree interval, needs separate approval after SAR, SPR and XPR. Full native qualification remains required.\n\n",
   "metadata": "- **Current target**: Z=2e5a3feec6d6296778f767977cf8086f587d1967; prior post-#2169 proposal withdrawn; execution blocked on body budget.\n\n"
 }
-``` Before any future authorized body write, compare actual bytes/version and exact operation/readback independently. No operation file or live scope publication has been authorized in this phase.
+```
+
+Before any future authorized body write, compare actual bytes/version and exact operation/readback independently. No operation file or live scope publication has been authorized in this phase.
 
 ### Immutable Z source identities for independent SAR
 
-| Z source | Bytes | SHA256 |
-| --- | ---: | --- |
-| `scripts/task-tracker/lib/auto-tick-verified.mjs` | 10762 | `caaeacf638b34f07033def636ccad07095bb2f2abf5c7f4d0bcf573097b3471d` |
-| `scripts/task-tracker/verbs/test.mjs` | 75264 | `03b5bb83b89951533f6c9aa290abecd63c0a50bd0b00de8d9f709b1dc3323076` |
-| `scripts/task-tracker/verify-develop.mjs` | 13047 | `e2750aad5f95fefe1fc7fb261fb363c7d12f906cc5710efa3a01f97fecb0e435` |
-| `scripts/task-tracker/lib/verification-providers/project.mjs` | 2362 | `8842d31755d7bc52b2309f5e131c4332331a7340d4450a35c8759abc20d6d04d` |
-| `scripts/task-tracker/lib/verification-provider-registry.mjs` | 10795 | `2c6ff59091d7b97f9bdfc17c9066724e99b3219ea1a42ec11da535bcb862b486` |
-| `scripts/task-tracker/lib/verification-receipt.mjs` | 30839 | `07f4c87c5c3554b9a96ab1eaade80befb6d697aca8e6fb2c6d318ad04b785d2a` |
-| `scripts/task-tracker/lib/functional-dod-evidence.mjs` | 16156 | `5739785b9397fd3b4011ecac1d64615053f696da02c510b74df2e0898436aa65` |
-| `scripts/task-tracker/lib/proof-marker.mjs` | 15878 | `efe2046c8e9ddefc0a9760a766b0a2b389e2a0b82156ebab5d707f358ff853b0` |
-| `scripts/task-tracker/lib/body-version.mjs` | 2065 | `487ad93cfd46203803d14bc1b9d7f70549299c60866bd62dd3e682302778c6bb` |
-| `scripts/task-tracker/lib/versioned-issue-write.mjs` | 18656 | `ce66d3d458292932c4bea082658bd594dcbb05fe55c9640f7b499be23faf82a5` |
-| `scripts/task-tracker/lib/decomposition-records.mjs` | 8698 | `ea5db87b17b59881880006891dbf0ebf939c7586ed5c527cd9c2c0b1ee5a04da` |
-| `scripts/task-tracker/timing-rollup.mjs` | 17736 | `ff1ed8eaf4581542a0ff6ce444ab48ac1cad5b2f5fe4a2cc661a3828e039e0fa` |
-| `scripts/task-tracker/lib/close-convergence.mjs` | 18970 | `cfd6b8ac2b77f1175824275fdab91ac7b79e6a21626f5a3138d62e26a8d261a3` |
-| `scripts/task-tracker/verbs/close.mjs` | 216770 | `c72898844d7d24b37aaf230d5216acba45d144a3e8cc001a6bb2ff0c30a17343` |
+| Z source                                                      |  Bytes | SHA256                                                             |
+| ------------------------------------------------------------- | -----: | ------------------------------------------------------------------ |
+| `scripts/task-tracker/lib/auto-tick-verified.mjs`             |  10762 | `caaeacf638b34f07033def636ccad07095bb2f2abf5c7f4d0bcf573097b3471d` |
+| `scripts/task-tracker/verbs/test.mjs`                         |  75264 | `03b5bb83b89951533f6c9aa290abecd63c0a50bd0b00de8d9f709b1dc3323076` |
+| `scripts/task-tracker/verify-develop.mjs`                     |  13047 | `e2750aad5f95fefe1fc7fb261fb363c7d12f906cc5710efa3a01f97fecb0e435` |
+| `scripts/task-tracker/lib/verification-providers/project.mjs` |   2362 | `8842d31755d7bc52b2309f5e131c4332331a7340d4450a35c8759abc20d6d04d` |
+| `scripts/task-tracker/lib/verification-provider-registry.mjs` |  10795 | `2c6ff59091d7b97f9bdfc17c9066724e99b3219ea1a42ec11da535bcb862b486` |
+| `scripts/task-tracker/lib/verification-receipt.mjs`           |  30839 | `07f4c87c5c3554b9a96ab1eaade80befb6d697aca8e6fb2c6d318ad04b785d2a` |
+| `scripts/task-tracker/lib/functional-dod-evidence.mjs`        |  16156 | `5739785b9397fd3b4011ecac1d64615053f696da02c510b74df2e0898436aa65` |
+| `scripts/task-tracker/lib/proof-marker.mjs`                   |  15878 | `efe2046c8e9ddefc0a9760a766b0a2b389e2a0b82156ebab5d707f358ff853b0` |
+| `scripts/task-tracker/lib/body-version.mjs`                   |   2065 | `487ad93cfd46203803d14bc1b9d7f70549299c60866bd62dd3e682302778c6bb` |
+| `scripts/task-tracker/lib/versioned-issue-write.mjs`          |  18656 | `ce66d3d458292932c4bea082658bd594dcbb05fe55c9640f7b499be23faf82a5` |
+| `scripts/task-tracker/lib/decomposition-records.mjs`          |   8698 | `ea5db87b17b59881880006891dbf0ebf939c7586ed5c527cd9c2c0b1ee5a04da` |
+| `scripts/task-tracker/timing-rollup.mjs`                      |  17736 | `ff1ed8eaf4581542a0ff6ce444ab48ac1cad5b2f5fe4a2cc661a3828e039e0fa` |
+| `scripts/task-tracker/lib/close-convergence.mjs`              |  18970 | `cfd6b8ac2b77f1175824275fdab91ac7b79e6a21626f5a3138d62e26a8d261a3` |
+| `scripts/task-tracker/verbs/close.mjs`                        | 216770 | `c72898844d7d24b37aaf230d5216acba45d144a3e8cc001a6bb2ff0c30a17343` |
 
 The handoff must describe the path as **execution blocked pending a concrete reviewed decision**, not implementation-ready. Fresh SAR independently verifies this source-bound conclusion and data transforms; primary SPR/XPR review the same bounded decision afterward. Acceptance of a blocked planning conclusion grants no execution authority or new production chain.
 
@@ -1022,4 +1024,4 @@ The following snapshot is derived by read-only Git object examination and AST pa
     "ignored": false
   }
 }
-````
+```

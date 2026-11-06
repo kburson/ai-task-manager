@@ -63,7 +63,7 @@ R5a3f83d90dd504c88990e1a859c404453d8c5673 remains immutable history. Z2e5a3feec6
 - Present Root exact small Scope/Plan append, expected live body/version, full audit payload and supported operations. Publish only after specific acceptance, with independent comment/body readbacks and source-supported normal derived deltas. Retain historical Plan marker and post2169 audit. Do not reuse its withdrawn operation.
 - Require explicit runtime/source authority covering the working-tree merge interval. This task and every later task are unauthorized until separate execution release.
 
-## Task 4: Integrate Q and Z and append actual provenance
+## Task 4: Integrate H and Z and append actual provenance
 
 **Files:** ordinary merge accepts Z upstream changes, existing R archive changes and accepted planning/review records; conflict resolution only cspell.json exact4825bytes/SHA9006fff6651bd7ac7e090f5b1424cdcf3cf40d7fe9d2a0e8aa71305b44bd2852. Later author changes only the three existing provenance files named in the spec.
 **Produces:** actual two-parent merge M then reviewed provenance child F.
