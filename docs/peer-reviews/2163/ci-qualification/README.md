@@ -25,3 +25,33 @@ Run 42122846359 subsequently completed group 3 with the same sole residue-audit 
 Actual serial time was 2,625,080.8 ms. As in the first run, its actual failure was residue and the runner exited before evaluating the section ceiling. The unchanged evaluator separately reports that recorded time over 600,000 ms. Replaying all 297 costs from this one completed run through the new nine-group layout estimates a maximum **557,186.7 ms**, leaving 7.1 percent margin. This later observation supersedes the older mixed-run projection for planning; the older record is preserved unchanged. Neither projection qualifies future CI. Final-head jobs must all pass their existing limits.
 
 These later two evidence files and this addendum were added after the source freeze for tree `511ae78baa64846f5173ece1e4f4c0e207147d87` ended. That frozen tree passed both complete public commands: 110/110 in 947.527 seconds and 30/30 in 389.238 seconds. The later evidence additions require explicit documentation carryforward review and do not change tested executable bytes.
+
+## Nine-group run and explicit integration ownership
+
+Run [42131172017](https://github.com/kburson/ai-task-manager/actions/runs/42131172017)
+tested source `cf15e6b50ee3d23b8bfa25ac848a1f8da9d97544` through merge checkout
+`f68a3769da52d776fcdfb8ce878605e810b2b56b`. Unit, all three slow groups, and
+integration groups 1 through 8 passed. Group 9 failed only
+`scripts/tests/integration/meta/test-tree-layout.test.mjs`: its explicit-owner
+assertion did not recognize the newly separated inflation integration directories.
+Its other nine assertions and the other 32 files passed. No native Test was started.
+
+Artifact 13464066867 from job 127607859372 was downloaded through the supported
+GitHub artifact tool. The ZIP is 8,771 bytes with independently verified SHA-256
+`1f923e830457116893eeb74b09f823085e0b7523e0fadb94187ca471734811d9`.
+`cf15e6-group9-timing.json` and `cf15e6-group9-output.log` preserve its exact
+extracted timing and output. `cf15e6-group9-evaluation.json` records their digests
+and a separate replay through the unchanged production section evaluator.
+
+The actual runner exited at the failed-file block before its ceiling check. The
+separate evaluation of measured serial time **515,182.4 ms** does not breach the
+unchanged 600,000 ms ceiling. This is a calculation from failed-run evidence, not
+a successful worker, aggregate, or native receipt.
+
+The bounded correction registers only the four exact inflation integration
+directories against existing source owners. Their owners must exist; other lanes,
+unlisted siblings, and descendants do not inherit the registration. Canonical
+discovery, the baseline, all nine inflation wrappers, assertions, fixtures, and
+production modules remain unchanged. The layout failure was reproduced locally
+before the correction. Source review and complete CI on the eventual new head
+remain required before native lifecycle progress.

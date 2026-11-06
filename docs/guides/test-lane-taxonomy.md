@@ -30,6 +30,13 @@ process may remain unit. `trunk-ref.integration.test.mjs` is integration because
 coordinates multiple repositories and a remote end to end, including clone, push,
 fetch, and close-gate remote synchronization.
 
+The layout audit also permits explicitly owned integration collections. Inflation's
+four exact directories, `task-tracker/inflation/{source,plain,active,retired}`, are
+owned respectively by the registered `inflate-estimate` verb, the estimate writer,
+and the inflation-intent module for both active and retired forecast cases. Their source
+owners must exist. This registration applies only to these integration directories;
+other lanes, unlisted siblings, and nested directories do not inherit it.
+
 Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
 `scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees
 are rejected. Move the file into the correct canonical lane; do not narrow discovery
