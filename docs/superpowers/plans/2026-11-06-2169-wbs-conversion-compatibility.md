@@ -53,7 +53,7 @@ Fresh duplicate searches found no existing open fix. Paused Ready-for-Planning #
 - Estimate: 6 hours
 - Labels: bug
 - Estimate basis: conservative upper bound of the reviewed provisional 5-6 active engineering hours, including baseline/source setup (0.5h), predicate/collector/digest work (1.25h), native conversion/refresh/formatter fixtures (1.5h), targeted qualification (0.75h), and review/delivery repair (1-2h).
-- Stop boundary: if detailed preparation cannot credibly stay within 6h, stop for rescoping; do not disguise it as a 4h story or assume a repair chain.
+- Stop boundary: if detailed preparation cannot credibly stay within 6h, stop to revise the scope; do not disguise it as a 4h story or assume a repair chain.
 
 ## Story Intent
 

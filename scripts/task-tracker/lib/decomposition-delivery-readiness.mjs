@@ -141,6 +141,7 @@ function evaluateBranch({ issueNumber, epicBody, children }) {
 
 export async function evaluateMaterializedWbsReadiness({
   issueNumber,
+  repository = null,
   tasks = [],
   acceptedPlanPath,
   acceptedPlanText,
@@ -156,6 +157,8 @@ export async function evaluateMaterializedWbsReadiness({
       acceptedPlanText,
       children,
       readPlanAtCommit,
+      repository,
+      parentIssueNumber: issueNumber,
     });
   } catch (error) {
     coverage = { ok: false, blockers: [`wbs-evidence-unreadable: ${error.message}`] };

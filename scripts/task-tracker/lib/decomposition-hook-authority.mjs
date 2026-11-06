@@ -110,7 +110,7 @@ const projectItems =
 const comments =
   'comments(first:100){nodes{__typename id databaseId body createdAt updatedAt url author{login} issue{number repository{nameWithOwner}}} pageInfo{hasNextPage endCursor}}';
 const subIssues =
-  'subIssues(first:50){nodes{id number title body state stateReason labels(first:100){nodes{id name} pageInfo{hasNextPage endCursor}} blockedBy(first:100){nodes{id number} pageInfo{hasNextPage endCursor}} ' +
+  'subIssues(first:50){nodes{id number repository{nameWithOwner} title body state stateReason labels(first:100){nodes{id name} pageInfo{hasNextPage endCursor}} blockedBy(first:100){nodes{id number} pageInfo{hasNextPage endCursor}} ' +
   projectItems +
   '} pageInfo{hasNextPage endCursor}}';
 const presence = 'subIssues(first:50){nodes{id} pageInfo{hasNextPage endCursor}}';
@@ -401,7 +401,17 @@ async function collectSnapshot({ issue, cfg, projectDir, deps = {} }, permission
         'child-dependencies'
       );
     }
-    children = mapSubIssueNodes(node.subIssues.nodes, cfg).map((child, index) => ({
+    children = mapSubIssueNodes(
+      node.subIssues.nodes.map((child) => ({
+        ...child,
+        nativeWbsParent: {
+          repository: node.repository.nameWithOwner.toLowerCase(),
+          nodeId: node.id,
+          number: node.number,
+        },
+      })),
+      cfg
+    ).map((child, index) => ({
       ...child,
       blockedBy: node.subIssues.nodes[index].blockedBy.nodes.map((dependency) => dependency.number),
     }));

@@ -670,3 +670,83 @@ test('unready unique forecast exposes reconciliation data but remains unavailabl
   assert.equal(read.value.publicationTransition.readyRecordId, null);
   assert.equal(current.capabilities.includes('scoped-implementation'), false);
 });
+
+// @story #2169 — conversion facts must stale authority even when another blocker persists.
+function convertedEpicFixture(blocked = false) {
+  const f = epicFixture();
+  f.values.plan.content = f.values.plan.content.replaceAll(
+    'Child authority',
+    '🐞 [BUG] Child authority'
+  );
+  f.values.plan.digest = hash(f.values.plan.content);
+  f.deps.readPlanAtCommit = async () => f.values.plan.content;
+  const child = f.values.project.children[0];
+  child.title = child.rawTitle = '🧑‍🧒‍🧒 [Epic] Child authority';
+  child.body =
+    child.body.replaceAll('Child authority', '🐞 [BUG] Child authority') +
+    '\n## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->';
+  child.nativeWbsIdentity = {
+    repository: 'o/r',
+    nodeId: 'CHILD',
+    number: 2001,
+    parent: { repository: 'o/r', nodeId: 'PARENT', number: 1987 },
+  };
+  if (blocked) child.hasCurrentRefinement = false;
+  return f;
+}
+test('#2169 real readiness forwards subject context for converted positive', async () => {
+  const f = convertedEpicFixture();
+  const result = await collect(f);
+  assert.equal(result.input.epicReadiness.planning, true);
+  assert.equal(result.input.availability.status, 'complete');
+  assert.deepEqual(
+    Object.keys(result.input.epicReadiness.children[0]).sort(),
+    [
+      'issue',
+      'sourcePlanCommit',
+      'sourcePlanSection',
+      'refinementDigest',
+      'rank',
+      'blockedBy',
+      'state',
+      'disposition',
+    ].sort()
+  );
+});
+for (const blocked of [false, true])
+  for (const [name, mutate] of [
+    ['raw title', (c) => (c.rawTitle += ' ')],
+    ['strict kind', (c) => (c.body += '\n<!-- aitm-issue-kind kind="epic" -->')],
+    ['child node', (c) => (c.nativeWbsIdentity.nodeId = 'OTHER')],
+    ['child number', (c) => (c.nativeWbsIdentity.number = 2010)],
+    ['child repository', (c) => (c.nativeWbsIdentity.repository = 'foreign/r')],
+    ['parent node', (c) => (c.nativeWbsIdentity.parent.nodeId = 'OTHER')],
+    ['parent number', (c) => (c.nativeWbsIdentity.parent.number = 9)],
+    ['parent repository', (c) => (c.nativeWbsIdentity.parent.repository = 'foreign/r')],
+    ['source path', (c) => (c.body = c.body.replace('docs/plan.md', 'docs/other.md'))],
+    ['source pin', (c) => (c.body = c.body.replace('1'.repeat(40), '2'.repeat(40)))],
+    ['source section', (c) => (c.body = c.body.replace('### Task 1:', '### Task 2:'))],
+  ])
+    test(
+      '#2169 ' + name + ' drift invalidates conversion with planning-blocked=' + blocked,
+      async () => {
+        const f = convertedEpicFixture(blocked);
+        const before = await collect(f);
+        assert.equal(before.input.epicReadiness.planning, !blocked);
+        f.body = replaceDecompositionRecords(f.body, {
+          assessment: before.assessment,
+          publication: null,
+        });
+        mutate(f.values.project.children[0]);
+        const after = await collect(f);
+        assert.notEqual(after.inputDigest, before.inputDigest);
+        assert.equal(after.projection.status, 'stale');
+        assert.equal(after.capabilities.includes('scoped-completion'), false);
+        assert.equal(
+          after.input.observations.find((o) => o.resource === 'project').digest,
+          before.input.observations.find((o) => o.resource === 'project').digest
+        );
+        if (blocked) assert.equal(after.input.epicReadiness.planning, false);
+        assert.equal(f.writes.length, 0);
+      }
+    );

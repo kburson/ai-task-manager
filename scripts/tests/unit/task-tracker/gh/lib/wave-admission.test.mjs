@@ -307,3 +307,117 @@ function node({
 }
 
 console.log('wave-admission.test.mjs: all passed');
+
+// @story #2169 — observed native context, not metadata, grants the title exception.
+import test from 'node:test';
+import { fetchAllSubIssueNodes } from '../../../../../gh/lib/wave-admission.mjs';
+import { reconcileWbsCoverage } from '../../../../../task-tracker/lib/decomposition-wbs-coverage.mjs';
+import { classifyDecomposition } from '../../../../../task-tracker/lib/decomposition-policy.mjs';
+
+function conversionTransport() {
+  const content = '### Task 1: 🐞 [BUG] Retain WBS child\n\nRun: `node verify.mjs`\n';
+  const child = {
+    id: 'CHILD',
+    number: 43,
+    repository: { nameWithOwner: 'O/R' },
+    title: '🧑‍🧒‍🧒 [Epic] Retain WBS child',
+    body: '## Plan Metadata\n- **Source-plan**: docs/plan.md\n- **Source-plan-commit**: pin\n- **Source-plan-section**: ### Task 1: 🐞 [BUG] Retain WBS child\n\n## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->',
+  };
+  const root = { id: 'PARENT', number: 42, repository: { nameWithOwner: 'O/R' } };
+  const calls = [];
+  return {
+    content,
+    child,
+    root,
+    calls,
+    gqlFn: async (query) => {
+      calls.push(query);
+      return {
+        repository: {
+          issue: {
+            ...root,
+            subIssues: {
+              totalCount: 1,
+              nodes: [structuredClone(child)],
+              pageInfo: { hasNextPage: false },
+            },
+          },
+        },
+      };
+    },
+  };
+}
+async function conversionCoverage(f, nodes) {
+  return reconcileWbsCoverage({
+    tasks: classifyDecomposition({ planText: f.content }).tasks,
+    acceptedPlanPath: 'docs/plan.md',
+    acceptedPlanText: f.content,
+    repository: 'o/r',
+    parentIssueNumber: 42,
+    children: mapSubIssueNodes(nodes, 'P'),
+    readPlanAtCommit: async () => f.content,
+  });
+}
+for (const space of ['', 'leading', 'trailing'])
+  test('#2169 wave collector raw-title ' + (space || 'positive'), async () => {
+    const f = conversionTransport();
+    if (space === 'leading') f.child.title = ' ' + f.child.title;
+    if (space === 'trailing') f.child.title += ' ';
+    const nodes = await fetchAllSubIssueNodes({
+      parentEpicNumber: 42,
+      repo: 'o/r',
+      gqlFn: f.gqlFn,
+    });
+    const r = await conversionCoverage(f, nodes);
+    assert.equal(r.ok, !space, r.blockers.join('\n'));
+    assert.equal(f.calls.length, 2);
+    assert.ok(f.calls.every((q) => !/mutation/.test(q)));
+    const mapped = mapSubIssueNodes(nodes, 'P')[0];
+    assert.equal(mapped.rawTitle, f.child.title);
+    assert.equal(mapped.title, f.child.title.trim());
+    assert.deepEqual(mapped.nativeWbsIdentity, {
+      repository: 'o/r',
+      nodeId: 'CHILD',
+      number: 43,
+      parent: { repository: 'o/r', nodeId: 'PARENT', number: 42 },
+    });
+  });
+for (const [name, mutate] of [
+  ['child repository', (f) => delete f.child.repository],
+  ['parent repository', (f) => delete f.root.repository],
+  ['parent ID', (f) => delete f.root.id],
+  ['foreign child', (f) => (f.child.repository.nameWithOwner = 'foreign/r')],
+])
+  test('#2169 wave missing or foreign ' + name + ' cannot grant compatibility', async () => {
+    const f = conversionTransport();
+    mutate(f);
+    const nodes = await fetchAllSubIssueNodes({
+      parentEpicNumber: 42,
+      repo: 'o/r',
+      gqlFn: f.gqlFn,
+    });
+    assert.equal((await conversionCoverage(f, nodes)).ok, false);
+  });
+for (const [name, mutate] of [
+  ['parent node', (r) => (r.id = 'OTHER')],
+  ['parent number', (r) => (r.number = 99)],
+  ['parent repository', (r) => (r.repository.nameWithOwner = 'foreign/r')],
+  ['child repository', (r) => (r.subIssues.nodes[0].repository.nameWithOwner = 'foreign/r')],
+])
+  test('#2169 wave fence rejects drifted ' + name, async () => {
+    const f = conversionTransport();
+    const gqlFn = async (q) => {
+      const d = await f.gqlFn(q);
+      if (f.calls.length === 2) mutate(d.repository.issue);
+      return d;
+    };
+    await assert.rejects(
+      fetchAllSubIssueNodes({ parentEpicNumber: 42, repo: 'o/r', gqlFn }),
+      /identity|snapshot|parent/
+    );
+  });
+test('#2169 legacy mapper cannot manufacture native context from config or body', async () => {
+  const f = conversionTransport();
+  f.child.body += '\n<!-- converted-from-bug parent="42" -->';
+  assert.equal((await conversionCoverage(f, [f.child])).ok, false);
+});

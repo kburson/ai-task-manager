@@ -1,4 +1,4 @@
-// @story #1052 #1279 #1281
+// @story #1052 #1279 #1281 #2169
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -64,6 +64,117 @@ function planText(taskCount = 2, verifiedCount = 2) {
   }).join('\n\n');
 }
 
+function convertedWbsInput() {
+  const acceptedPlanText =
+    '### Task 1: 🐞 [BUG] Retain WBS child\n\nRun: `node verify-child.mjs`\n';
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const child = wbsChild({ number: 2001, task: tasks[0] });
+  Object.assign(child, {
+    title: '🧑‍🧒‍🧒 [Epic] Retain WBS child',
+    rawTitle: '🧑‍🧒‍🧒 [Epic] Retain WBS child',
+    nativeWbsIdentity: {
+      repository: 'o/r',
+      nodeId: 'CHILD_2001',
+      number: 2001,
+      parent: { repository: 'o/r', nodeId: 'PARENT_2039', number: 2039 },
+    },
+  });
+  child.body += '\n\n## AITM Progress Markers\n<!-- aitm-issue-kind kind="epic" -->\n';
+  return {
+    repository: 'o/r',
+    parentIssueNumber: 2039,
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [child],
+    readPlanAtCommit: async () => acceptedPlanText,
+  };
+}
+
+test('#2169 exact native BUG-to-Epic representation retains the accepted WBS claim', async () => {
+  const result = await reconcileWbsCoverage(convertedWbsInput());
+  assert.equal(result.ok, true, result.blockers.join('\n'));
+  assert.equal(result.coveredCount, 1);
+  assert.equal(result.matched[0].child.number, 2001);
+});
+
+// These catch widening the exception beyond the native representation and accepted claim.
+for (const [name, mutate] of [
+  ['missing raw title', (i, c) => delete c.rawTitle],
+  ['leading whitespace', (i, c) => (c.rawTitle = ' ' + c.rawTitle)],
+  ['trailing whitespace', (i, c) => (c.rawTitle += ' ')],
+  ['changed suffix', (i, c) => (c.rawTitle += ' changed')],
+  ['legacy prefix', (i, c) => (c.rawTitle = 'EPIC: Retain WBS child')],
+  ['lowercase prefix', (i, c) => (c.rawTitle = c.rawTitle.replace('Epic', 'epic'))],
+  ['extra prefix', (i, c) => (c.rawTitle = '🐞 [BUG] ' + c.rawTitle)],
+  ['non-BUG accepted title', (i) => (i.tasks[0].title = 'Retain WBS child')],
+  [
+    'empty suffix',
+    (i, c) => {
+      i.tasks[0].title = '🐞 [BUG] ';
+      c.rawTitle = '🧑‍🧒‍🧒 [Epic] ';
+    },
+  ],
+  ['title only', (i, c) => (c.body = c.body.replace('<!-- aitm-issue-kind kind="epic" -->', ''))],
+  [
+    'fenced kind',
+    (i, c) =>
+      (c.body = c.body.replace(
+        '<!-- aitm-issue-kind kind="epic" -->',
+        '```md\n<!-- aitm-issue-kind kind="epic" -->\n```'
+      )),
+  ],
+  ['misplaced kind', (i, c) => (c.body = c.body.replace('## AITM Progress Markers', '## Other'))],
+  ['duplicate kind', (i, c) => (c.body += '<!-- aitm-issue-kind kind="epic" -->')],
+  ['malformed kind', (i, c) => (c.body = c.body.replace('kind="epic"', 'kind=epic'))],
+  ['absent expected repository', (i) => delete i.repository],
+  ['absent expected parent', (i) => delete i.parentIssueNumber],
+  ['missing identity', (i, c) => delete c.nativeWbsIdentity],
+  ['foreign child', (i, c) => (c.nativeWbsIdentity.repository = 'foreign/r')],
+  ['foreign parent', (i, c) => (c.nativeWbsIdentity.parent.repository = 'foreign/r')],
+  ['wrong parent', (i, c) => (c.nativeWbsIdentity.parent.number = 2040)],
+  ['wrong child', (i, c) => (c.nativeWbsIdentity.number = 2002)],
+  ['unsafe child number', (i, c) => (c.nativeWbsIdentity.number = Number.MAX_SAFE_INTEGER + 1)],
+  ['missing child node', (i, c) => (c.nativeWbsIdentity.nodeId = '')],
+  ['missing parent node', (i, c) => (c.nativeWbsIdentity.parent.nodeId = '')],
+  ['self parent', (i, c) => (c.nativeWbsIdentity.parent.nodeId = c.nativeWbsIdentity.nodeId)],
+  [
+    'wrong path',
+    (i, c) =>
+      (c.body = c.body.replace('Source-plan**: docs/plan.md', 'Source-plan**: docs/other.md')),
+  ],
+  ['wrong section', (i, c) => (c.body = c.body.replace('### Task 1:', '### Task 2:'))],
+  ['missing pin', (i, c) => (c.body = c.body.replace('child-plan-commit', ''))],
+  [
+    'unreadable pin',
+    (i) =>
+      (i.readPlanAtCommit = async () => {
+        throw new Error('unknown commit');
+      }),
+  ],
+  ['different full bytes', (i) => (i.readPlanAtCommit = async () => i.acceptedPlanText + '\n')],
+  ['duplicate claim', (i, c) => i.children.push({ ...c, number: 2002 })],
+  ['missing task', (i) => (i.children = [])],
+]) {
+  test('#2169 conversion refuses ' + name, async () => {
+    const input = convertedWbsInput();
+    mutate(input, input.children[0]);
+    const result = await reconcileWbsCoverage(input);
+    assert.equal(result.ok, false, name);
+    assert.equal(result.coveredCount, 0, name);
+  });
+}
+
+test('#2169 ordinary normalized equality needs no native conversion evidence', async () => {
+  const input = convertedWbsInput();
+  input.children[0].title = '  🐞 [BUG] Retain WBS child  ';
+  delete input.children[0].nativeWbsIdentity;
+  delete input.children[0].rawTitle;
+  delete input.repository;
+  delete input.parentIssueNumber;
+  assert.equal((await reconcileWbsCoverage(input)).ok, true);
+});
+
 test('parses visible WBS child provenance without trusting Generated-by', () => {
   const task = { number: 1, title: 'Classifier', heading: '### Task 1: Classifier' };
   assert.deepEqual(parseWbsChildClaim(wbsChild({ number: 1201, task })), {
@@ -72,6 +183,9 @@ test('parses visible WBS child provenance without trusting Generated-by', () => 
     sourcePlan: SOURCE_PLAN,
     sourcePlanCommit: 'child-plan-commit',
     sourcePlanSection: '### Task 1: Classifier',
+    rawTitle: null,
+    kindClassification: { kind: 'code', reasons: [] },
+    nativeWbsIdentity: null,
   });
 });
 

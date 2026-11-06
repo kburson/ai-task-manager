@@ -6,6 +6,9 @@ export function runFirstChildGh(args) {
   const file = process.env.AITM_FIRST_CHILD_FIXTURE;
   if (!file) throw new Error('fixture file required');
   const state = JSON.parse(readFileSync(file, 'utf8'));
+  const repo = state.repo ?? 'o/r';
+  const parentNumber = state.parentNumber ?? 42;
+  const createdNumber = state.childTemplate.number;
   const at = (flag) => args[args.indexOf(flag) + 1];
   const save = () => writeFileSync(file, JSON.stringify(state));
   const issue = (number) => {
@@ -25,7 +28,7 @@ export function runFirstChildGh(args) {
   };
   const drift = (point) => {
     if (state.tetherDriftPoint === point && state.effectsAtDrift === undefined) {
-      state.issues[42].assignees.nodes = [{ login: 'other' }];
+      state.issues[parentNumber].assignees.nodes = [{ login: 'other' }];
       state.effectsAtDrift = state.effects.length;
       save();
     }
@@ -43,7 +46,7 @@ export function runFirstChildGh(args) {
       authorAssociation: 'OWNER',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      issue: { number, repository: { nameWithOwner: 'o/r' } },
+      issue: { number, repository: { nameWithOwner: repo } },
     };
     target.comments.nodes.push(created);
     write('comment:' + number);
@@ -55,21 +58,22 @@ export function runFirstChildGh(args) {
     JSON.stringify({ args, session: process.env.AI_TASK_MANAGER_SESSION_ID ?? null }) + '\n'
   );
   if (args[0] === 'issue' && args[1] === 'create') {
-    if (Object.hasOwn(state.issues, '43')) throw new Error('duplicate creation');
+    if (Object.hasOwn(state.issues, createdNumber)) throw new Error('duplicate creation');
     const child = structuredClone(state.childTemplate);
     child.body = readFileSync(at('--body-file'), 'utf8');
     child.title = at('--title');
     child.projectItems.nodes = [];
-    state.issues[43] = child;
-    if (state.driftAfterCreate) state.issues[42].assignees.nodes = [{ login: 'other' }];
-    write('create:43');
+    state.issues[createdNumber] = child;
+    if (state.driftAfterCreate) state.issues[parentNumber].assignees.nodes = [{ login: 'other' }];
+    write('create:' + createdNumber);
     save();
     return child.url;
   }
   if (args[0] === 'issue' && args[1] === 'view') {
     const target = issue(Number(args[2]));
-    if (target.number === 43 && state.effects.includes('create:43')) drift('child-body-read');
-    if (at('-R') !== 'o/r' && at('--repo') !== 'o/r') throw new Error('foreign repository');
+    if (target.number === createdNumber && state.effects.includes('create:' + createdNumber))
+      drift('child-body-read');
+    if (at('-R') !== repo && at('--repo') !== repo) throw new Error('foreign repository');
     const fields = at('--json').split(',');
     const value = Object.fromEntries(
       fields.map((key) => [
@@ -82,7 +86,11 @@ export function runFirstChildGh(args) {
   }
   if (args[0] === 'issue' && args[1] === 'comment')
     return comment(Number(args[2]), at('--body')).url;
-  const endpoint = args.find((arg) => /^\/?repos\/o\/r\/issues\/\d+\/comments$/.test(arg));
+  const endpoint = args.find(
+    (arg) =>
+      arg.replace(/^\//, '').startsWith('repos/' + repo + '/issues/') &&
+      /\/\d+\/comments$/.test(arg)
+  );
   if (args[0] === 'api' && endpoint) {
     const number = Number(endpoint.match(/issues\/(\d+)/)[1]);
     if (args.includes('--input'))
@@ -140,7 +148,7 @@ export function runFirstChildGh(args) {
   const fields = parseSelection(query, variables);
   const mutation = fields[0];
   const input = mutation.args.input ?? {};
-  const root = { viewer: { login: 'operator' }, repository: { id: 'R', nameWithOwner: 'o/r' } };
+  const root = { viewer: { login: 'operator' }, repository: { id: 'R', nameWithOwner: repo } };
   if (/^\s*mutation/.test(query)) {
     if (mutation.name === 'linkProjectV2ToRepository')
       root.linkProjectV2ToRepository = { repository: root.repository };
@@ -154,16 +162,17 @@ export function runFirstChildGh(args) {
         number: target.number,
         title: target.title,
         url: target.url,
-        repository: { nameWithOwner: 'o/r' },
+        repository: { nameWithOwner: repo },
       };
       target.projectItems.nodes.push(item);
       root.addProjectV2ItemById = { item };
     } else if (mutation.name === 'addSubIssue') {
       const parent = find(input.issueId),
         child = find(input.subIssueId);
-      if (parent?.number !== 42 || child?.number !== 43) throw new Error('foreign child link');
-      if (!parent.childNumbers.includes(43)) parent.childNumbers.push(43);
-      child.parent = { number: 42 };
+      if (parent?.number !== parentNumber || child?.number !== createdNumber)
+        throw new Error('foreign child link');
+      if (!parent.childNumbers.includes(createdNumber)) parent.childNumbers.push(createdNumber);
+      child.parent = { id: parent.id, number: parentNumber, repository: { nameWithOwner: repo } };
       root.addSubIssue = { issue: parent, subIssue: child };
     } else if (mutation.name === 'updateProjectV2ItemFieldValue') {
       const item = find(input.itemId);
@@ -215,7 +224,7 @@ export function runFirstChildGh(args) {
     if (source === root && field.name === 'nodes') return field.args.ids.map(find);
     if (source === root && field.name === 'node') return find(field.args.id) ?? null;
     if (source === root.repository && field.name === 'issue') return issue(field.args.number);
-    if (source === root.repository && field.name === 'nameWithOwner') return 'o/r';
+    if (source === root.repository && field.name === 'nameWithOwner') return repo;
     if (source === root && field.name === 'rateLimit') return { cost: 1 };
     if (source === state.project && field.name === 'items')
       return {

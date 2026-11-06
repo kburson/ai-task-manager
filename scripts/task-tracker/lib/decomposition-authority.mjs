@@ -491,6 +491,7 @@ async function readiness({ kind, project, plan, body, subject, projectDir, deps,
     const children = project.children;
     const r = await evaluateMaterializedWbsReadiness({
       issueNumber: subject.issue,
+      repository: subject.repository,
       tasks: extractPlanTasks(plan.content),
       acceptedPlanPath: plan.path,
       acceptedPlanText: plan.content,
@@ -513,6 +514,24 @@ async function readiness({ kind, project, plan, body, subject, projectDir, deps,
         disposition: child.closeReason ?? null,
       };
     });
+    // Only facts actually used to admit a mismatched title become new authority.
+    // Ordinary inputs retain the original hash payload and closed child codec.
+    const titleCompatibilityFacts = (r.boundaries.coverage.matched ?? [])
+      .filter(({ task, child }) => task.title !== child.title)
+      .map(({ task, child }) => ({
+        task: { number: task.number, title: task.title, heading: task.heading },
+        sourcePlan: child.sourcePlan,
+        sourcePlanCommit: child.sourcePlanCommit,
+        sourcePlanSection: child.sourcePlanSection,
+        rawTitle: child.rawTitle,
+        kindClassification: child.kindClassification,
+        nativeWbsIdentity: child.nativeWbsIdentity,
+      }))
+      .sort((left, right) => {
+        const a = canonicalDecompositionJson(left),
+          b = canonicalDecompositionJson(right);
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
     return {
       availability: 'observed',
       planning: r.deliveryReady,
@@ -521,6 +540,7 @@ async function readiness({ kind, project, plan, body, subject, projectDir, deps,
         children: normalized,
         planning: r.deliveryReady,
         terminal: children.map(isAcceptedTerminalChild),
+        ...(titleCompatibilityFacts.length ? { titleCompatibilityFacts } : {}),
       }),
       children: normalized,
     };

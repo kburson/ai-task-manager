@@ -62,10 +62,15 @@ export const hookPresence = 'subIssues(first:50){nodes{id} pageInfo{hasNextPage 
 export const optimizedHookRoot = retainedHookQuery
   .replace('id number body assignees', 'id number repository{nameWithOwner} body assignees')
   .replace(hookChildren, hookPresence);
-export const optimizedHookGraph =
+const retainedOptimizedHookGraph =
   'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
   hookChildren +
   '}}}';
+// @story #2169 — recognize the new exact selection alongside the retained form.
+export const optimizedHookGraph = retainedOptimizedHookGraph.replace(
+  'nodes{id number title',
+  'nodes{id number repository{nameWithOwner} title'
+);
 export const optimizedHookFence =
   'query {viewer{login} repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body assignees(first:100){nodes{login}} ' +
   hookItems +
@@ -74,6 +79,14 @@ export const optimizedHookFence =
   '}}}';
 
 export const optimizedHookContinuations = [
+  { query: retainedOptimizedHookGraph, family: 'hook-graph' },
+  {
+    query: retainedOptimizedHookGraph.replace(
+      'subIssues(first:50)',
+      'subIssues(first:50,after:"page:50")'
+    ),
+    family: 'hook-graph',
+  },
   {
     query:
       'query {repository(owner:"o",name:"r"){issue(number:2073){id number repository{nameWithOwner} body ' +
