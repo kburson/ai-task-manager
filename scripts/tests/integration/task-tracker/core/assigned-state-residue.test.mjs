@@ -1,10 +1,10 @@
-// @story #1206 #1986 #2012
+// @story #1206 #1986 #2012 #2163
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-import { evaluateResidueAudit } from '../../../lib/residue-audit-scope.mjs';
+import { evaluateResidueAudit, legacyMatches } from '../../../lib/residue-audit-scope.mjs';
 
 const SELF = 'scripts/tests/integration/task-tracker/core/assigned-state-residue.test.mjs';
 
@@ -213,6 +213,31 @@ const ALLOWLIST = new Map(
       1,
       'immutable #2012 package inventory records the historical migration filename',
     ],
+    // #2163: preserve exact original/integrated/portable source inventories.
+    'docs/peer-reviews/2163/public-entry-red/original-927c53d/attempts.json': [
+      3,
+      'three immutable original attempt inventories name the existing migration',
+    ],
+    'docs/peer-reviews/2163/public-entry-red/original-927c53d/sourceIdentity.json': [
+      1,
+      'immutable original source inventory names the existing migration',
+    ],
+    'docs/peer-reviews/2163/public-entry-red/integrated-2b608d7/attempts.json': [
+      3,
+      'three immutable integrated attempt inventories name the existing migration',
+    ],
+    'docs/peer-reviews/2163/public-entry-red/integrated-2b608d7/sourceIdentity.json': [
+      1,
+      'immutable integrated source inventory names the existing migration',
+    ],
+    'docs/peer-reviews/2163/public-entry-red/legacy-portable-927c53d/attempts.json': [
+      3,
+      'three immutable portable attempt inventories name the existing migration',
+    ],
+    'docs/peer-reviews/2163/public-entry-red/legacy-portable-927c53d/sourceIdentity.json': [
+      1,
+      'immutable portable source inventory names the existing migration',
+    ],
     'skill/shared/references/state-walk-detail.md': [
       1,
       'historical raw-boundary compatibility detail retained outside routine context',
@@ -245,4 +270,48 @@ test('legacy On Deck vocabulary exists only in the audited compatibility allowli
     [],
     `legacy Assigned-state residue audit failed:\n${failures.join('\n')}`
   );
+});
+
+test('inflation archive allowances cover only known inventory references and reject new residue', () => {
+  const prefix = 'docs/peer-reviews/2163/public-entry-red/';
+  const paths = [...ALLOWLIST.keys()].filter((file) => file.startsWith(prefix));
+  assert.equal(paths.length, 6);
+  const reference = '"path": "scripts/migrate/rename-on-deck-to-assigned.mjs",';
+  const addedResidue = ['On', 'Deck'].join(' ');
+  const onlyInventoryReferences = (source) =>
+    legacyMatches(source).every((line) => line.replace(/^\d+:/, '') === reference);
+  for (const file of paths) {
+    const source = readFileSync(file, 'utf8');
+    assert.ok(onlyInventoryReferences(source), file);
+    for (const replacement of [
+      `"reviewNote": "${addedResidue}", ${reference}`,
+      `"path": "scripts/${addedResidue}.mjs",`,
+    ]) {
+      const changed = source.replace(reference, replacement);
+      assert.doesNotThrow(() => JSON.parse(changed), file);
+      assert.equal(legacyMatches(changed).length, legacyMatches(source).length, file);
+      assert.deepEqual(
+        evaluateResidueAudit({
+          entries: [{ file, source: changed }],
+          allowlist: new Map([[file, ALLOWLIST.get(file)]]),
+        }),
+        [],
+        file
+      );
+      assert.equal(onlyInventoryReferences(changed), false, file);
+    }
+    const failures = evaluateResidueAudit({
+      entries: [{ file, source: source + '\n' + addedResidue }],
+      allowlist: new Map([[file, ALLOWLIST.get(file)]]),
+    });
+    assert.equal(failures.length, 1, file);
+    assert.ok(failures[0].startsWith('COUNT ' + file + ':'), failures[0]);
+  }
+  const unlisted = prefix + 'unreviewed/sourceIdentity.json';
+  const failures = evaluateResidueAudit({
+    entries: [{ file: unlisted, source: reference }],
+    allowlist: new Map(),
+  });
+  assert.equal(failures.length, 1);
+  assert.ok(failures[0].startsWith('UNEXPECTED ' + unlisted), failures[0]);
 });
