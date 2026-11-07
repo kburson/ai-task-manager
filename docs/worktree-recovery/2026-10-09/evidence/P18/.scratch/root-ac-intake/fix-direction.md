@@ -1,0 +1,1 @@
+Use a small shared pure AC section locator for the affected functional/body-invariant readers, with canonical root heading precedence and the existing supported legacy fallback. Preserve all original bytes and section offsets, existing validation/refusal semantics, and proof marker interpretation.

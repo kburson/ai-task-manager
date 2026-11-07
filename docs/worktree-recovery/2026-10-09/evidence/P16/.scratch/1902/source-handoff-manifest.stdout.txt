@@ -1,0 +1,70 @@
+{
+  "status": "Staged implementation verified; uncommitted, NOT CODE_COMPLETE",
+  "head": "dab9548a5836f958b7abcf623f8c7447e2eaabca",
+  "branch": "codex/1902-preserve-merge-history",
+  "files": [
+    {
+      "path": "docs/superpowers/plans/2026-10-06-1902-preserve-merge-history.md",
+      "sha256": "836b0f705b5466bb5b48d20145d7f6526465325760bb8291f85ba32b1e1766fc",
+      "bytes": 6267
+    },
+    {
+      "path": "scripts/task-tracker/merge-back.mjs",
+      "sha256": "41d2aa3b3475d60188095cc2b53f018d4bb3a415117d733c5c36b82eb21fb472",
+      "bytes": 10921
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/merge-back.test.mjs",
+      "sha256": "2b2d92a8fac784846c82f4387b85738333e96902d9885502a9f8aca61d781b12",
+      "bytes": 23400
+    },
+    {
+      "path": "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+      "sha256": "25ddc5708a7fdc0ffcd86ec76d8f2eaee4729e62cad7a25e304a20ced65fa972",
+      "bytes": 13694
+    }
+  ],
+  "checkExitCodes": [
+    {
+      "label": "real-merge-history-red",
+      "exitCode": 1
+    },
+    {
+      "label": "contained-race-red",
+      "exitCode": 1
+    },
+    {
+      "label": "real-merge-history-green",
+      "exitCode": 1
+    },
+    {
+      "label": "contained-race-green",
+      "exitCode": 1
+    },
+    {
+      "label": "vc1-affected-green",
+      "exitCode": 0
+    },
+    {
+      "label": "lint-full",
+      "exitCode": 0
+    },
+    {
+      "label": "format-full",
+      "exitCode": 0
+    },
+    {
+      "label": "final-diff-check",
+      "exitCode": 0
+    },
+    {
+      "label": "staged-diff-check",
+      "exitCode": 0
+    }
+  ],
+  "paths": {
+    "handoff": ".scratch/1902/author-source-handoff.json",
+    "pauseRelease": ".scratch/1902/author-source-pause-release.json",
+    "prBody": ".scratch/1902/pr-description.md"
+  }
+}

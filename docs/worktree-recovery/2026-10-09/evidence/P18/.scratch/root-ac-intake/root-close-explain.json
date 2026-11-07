@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1904,\"actionId\":\"close\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+    ""
+  ],
+  "pid": 50990,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1904,\"actionId\":\"close\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.close\",\"digest\":\"sha256:a62f668fc999787492462b9207f0fcf60744339e3a5886d46ac63dadadfc71c7\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"close\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"close\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": ""
+}

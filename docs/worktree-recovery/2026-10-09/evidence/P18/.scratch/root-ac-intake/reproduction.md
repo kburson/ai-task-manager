@@ -1,0 +1,1 @@
+Run deriveAcsStatus on the actual restored ai-peer-review #144 public issue body containing an embedded `#### Acceptance Criteria` in Scope and one checked formal `## Acceptance Criteria`. It returns total=0, ticked=0, allTicked=false, sectionPresent=true instead of total=1/ticked=1/allTicked=true. No issue/source mutation is needed.

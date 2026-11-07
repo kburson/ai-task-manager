@@ -1,0 +1,5 @@
+ .../2026-10-06-1902-preserve-merge-history.md      | 105 ++++++++++++++++
+ scripts/task-tracker/merge-back.mjs                |  31 ++---
+ .../task-tracker/merge-back-cli.test.mjs           | 138 ++++++++++++++++++++-
+ .../tests/unit/task-tracker/merge-back.test.mjs    |  47 +++++--
+ 4 files changed, 299 insertions(+), 22 deletions(-)

@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "[task-tracker] ac-stamp on #1904: running 1 verifier(s) for AC \"Regression coverage preserves legacy supported headings and existing malformed/duplicate canonical body refusals.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs scripts/tests/unit/task-tracker/lib/functional-dod-evidence.test.mjs scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1904: run-props (key=b1fa326e) upserted onto the AC line's aitm-verified marker (sha=f09688fe).\n",
+    ""
+  ],
+  "pid": 56876,
+  "stdout": "[task-tracker] ac-stamp on #1904: running 1 verifier(s) for AC \"Regression coverage preserves legacy supported headings and existing malformed/duplicate canonical body refusals.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/root-ac-consumers.test.mjs scripts/tests/unit/task-tracker/lib/functional-dod-evidence.test.mjs scripts/tests/unit/task-tracker/lib/body-invariants.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1904: run-props (key=b1fa326e) upserted onto the AC line's aitm-verified marker (sha=f09688fe).\n",
+  "stderr": ""
+}

@@ -1,0 +1,43 @@
+/task user-story — Write the Connextra 3-line User Story onto an issue.
+
+  Purpose: Write the Connextra 3-line User Story onto an issue.
+  Usage:  /task user-story [#N] --as "<role>" --want "<goal>" --so-that "<benefit>"
+  Alias:  story
+
+  Arguments:
+    [#N]
+        Optional issue number; defaults to the active task.
+    --as "<role>"
+        the actor
+    --as-a "<role>"
+        alias of --as
+    --want "<goal>"
+        the desired capability
+    --i-want "<goal>"
+        alias of --want
+    --so-that "<benefit>"
+        the value
+    --so "<benefit>"
+        alias of --so-that
+
+  Preconditions:
+    The target issue must exist and all three Connextra fields are required.
+
+  Effects:
+    Creates or replaces the canonical first User Story section.
+
+  Output:
+    Prints the updated issue and normalized story text.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  usage error / unknown verb
+
+  Examples:
+    /task user-story 667 --as "an operator" --want "per-verb help" --so-that "I skip reading source"
+
+  Related:
+    new
+    refine
+    plan

@@ -1,0 +1,12 @@
+{
+  "status": 20,
+  "signal": null,
+  "output": [
+    null,
+    "AITM_PROVIDER_ACTION_REQUIRED: {\"action\":\"github.merge-pull-request\",\"baseRef\":\"trunk\",\"commitMessage\":\"PR #1905\\nSource: d0bbf8c62c5c34b86158054b4c80d3548f8d13b1\\n\\nAttribution: [#1904]\",\"commitTitle\":\"[#1904] Governed PR delivery\",\"expectedHeadSha\":\"d0bbf8c62c5c34b86158054b4c80d3548f8d13b1\",\"headRef\":\"codex/root-ac-derivation\",\"intentId\":\"01M48ZHNB3BXX7PVNP6SAHDMRB\",\"issueNumber\":1904,\"mergeMethod\":\"squash\",\"prNumber\":1905,\"repository\":\"kburson/ai-task-manager\",\"schema\":1}\n",
+    ""
+  ],
+  "pid": 42866,
+  "stdout": "AITM_PROVIDER_ACTION_REQUIRED: {\"action\":\"github.merge-pull-request\",\"baseRef\":\"trunk\",\"commitMessage\":\"PR #1905\\nSource: d0bbf8c62c5c34b86158054b4c80d3548f8d13b1\\n\\nAttribution: [#1904]\",\"commitTitle\":\"[#1904] Governed PR delivery\",\"expectedHeadSha\":\"d0bbf8c62c5c34b86158054b4c80d3548f8d13b1\",\"headRef\":\"codex/root-ac-derivation\",\"intentId\":\"01M48ZHNB3BXX7PVNP6SAHDMRB\",\"issueNumber\":1904,\"mergeMethod\":\"squash\",\"prNumber\":1905,\"repository\":\"kburson/ai-task-manager\",\"schema\":1}\n",
+  "stderr": ""
+}

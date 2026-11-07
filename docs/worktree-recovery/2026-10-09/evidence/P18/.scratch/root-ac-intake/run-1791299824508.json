@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "pause",
+    "Author handoff: native Git hook binding refused; source ready with 78 focused checks green, TIA incomplete at 800-second ceiling."
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T15:16:58.176Z",
+  "end": "2026-10-06T15:17:04.508Z",
+  "exitCode": 0,
+  "stdout": "Paused #1904: +Unknown active min (wall 19), +287 words. Use \"/task resume\" to resume.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' pause Author handoff: native Git hook binding refused; source ready with 78 focused checks green, TIA incomplete at 800-second ceiling.\n"
+}

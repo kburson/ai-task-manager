@@ -1,0 +1,16 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "plan-estimate",
+    "1904",
+    "--evidence-file",
+    ".scratch/root-ac-intake/estimate.json"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:47:33.627Z",
+  "end": "2026-10-06T14:50:06.643Z",
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan-estimate 1904 --evidence-file .scratch/root-ac-intake/estimate.json\ngh exited 1: Post \"https://api.github.com/graphql\": net/http: TLS handshake timeout\n\n"
+}
