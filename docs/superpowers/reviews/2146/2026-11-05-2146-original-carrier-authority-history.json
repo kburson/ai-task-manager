@@ -664,5 +664,22 @@
     "runtime": "Bounded source transition authorized at merge; actual pre/post native binding and observed-helper diagnostics passed; not whole-runtime or recovery attestation",
     "rawPreservation": "All prior66records and non-record metadata preserved;30new raw records appended; execution snapshot immutable",
     "limits": "No final-head CI/nativeTest/delivery/Close claimed. Earlier statements remain historical capture. Stopped optional CI log export remains stopped."
+  },
+  "firstZIntegration": {
+    "date": "2026-11-07",
+    "authority": "Human minimum safe delivery/closure instruction relayed by coordinator01a1b283-8514-7192-9ef4-5f878fd2f9ee; explicit original-owner Resume/integration dispatch",
+    "H": "215d82e9c32da7714a13dca0b109d0888948e260",
+    "Z": "2e5a3feec6d6296778f767977cf8086f587d1967",
+    "merge": "31e8bd3bdbc71009e2017241d5f30eeb783be27a",
+    "tree": "6cf01ccb63fcf1eb554f244a7afcd86360e5f3a2",
+    "entryCount": 4746,
+    "cspellSha256": "9006fff6651bd7ac7e090f5b1424cdcf3cf40d7fe9d2a0e8aa71305b44bd2852",
+    "all42CarrierInputsPreserved": true,
+    "bodyExtractionCommit": "215d82e9c32da7714a13dca0b109d0888948e260",
+    "bodyVersionAfterExtraction": 124,
+    "bodyBytesAfterExtraction": 45576,
+    "reviewLimits": "Historical bounded STOP SAR/SPR accepted; uncertain XPR0fcc preserved unresolved. Independent final implementation review and actual qualification remain required.",
+    "productLimits": "exactRecovery UNIMPLEMENTED; nativeHostActivation UNPROVEN; no2145recovery, no2171implementation",
+    "qualification": "Pending actual final-head local/package/CI/native gates; not a passing receipt"
   }
 }
