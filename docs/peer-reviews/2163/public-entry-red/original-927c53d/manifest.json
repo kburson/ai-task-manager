@@ -1,0 +1,51 @@
+{
+  "evidenceClass": "automated-provider-isolated-public-entry",
+  "nativeHostAdmission": false,
+  "files": [
+    {
+      "path": "attempts.json",
+      "sha256": "25e0d2b33b9026a3ec764b31ef191cf08bd25207480acf543409e3774cfc0f2d",
+      "bytes": 3183611
+    },
+    {
+      "path": "finalState.json",
+      "sha256": "d80c133bb15996e3c23fff628d29f03797fe7ffa30ec987e4aaebaabc0dc57e0",
+      "bytes": 12821
+    },
+    {
+      "path": "initialState.json",
+      "sha256": "39677eb977f45c87b5c1e0d7c6aeecb154b9e22856d3bd60917903d87adb4578",
+      "bytes": 1732
+    },
+    {
+      "path": "ledger.json",
+      "sha256": "c96ad84697a0a7046f42b4103ae86a3324140523a393fe7fccd2a64cb20e0a1f",
+      "bytes": 774924
+    },
+    {
+      "path": "legacy-audit.md",
+      "sha256": "6df4d66556671ba583ede248ecf6bfc909f79f3f400318e117094e65bf6d0bac",
+      "bytes": 593
+    },
+    {
+      "path": "legacy-before-record.txt",
+      "sha256": "60e43d211b085542eb563c8e87745e3d66b67b402d29c915860f435d551ae7d3",
+      "bytes": 2826
+    },
+    {
+      "path": "legacy-issue-body.md",
+      "sha256": "538a066901b239849b0fc4acb9bfd11dadddabffaaf316ff4e99e46bf7367942",
+      "bytes": 9717
+    },
+    {
+      "path": "legacy-publication.txt",
+      "sha256": "ff25b79476b20547b3b9c6a1c8ef484c7f5e4a7f04529f9979e44404723c112f",
+      "bytes": 3175
+    },
+    {
+      "path": "sourceIdentity.json",
+      "sha256": "dd0598eada2ed648acf034e9b350b2615109e6b4f9c5ab224af81caaed5eb212",
+      "bytes": 955698
+    }
+  ]
+}

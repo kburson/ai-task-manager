@@ -24,10 +24,12 @@ function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
-      // #516 — drift events are now body audit markers, not timing rows. Capture
-      // the appended marker text produced by the `mutate` callback.
       mutateIssueBody: async ({ mutate }) => {
-        calls.markers.push(mutate(''));
+        body = mutate(body);
+        const audit = /<!-- aitm-(?:reconciled|reverted)\b[^>]*-->/.exec(body);
+        if (audit) calls.markers.push(audit[0]);
+        else calls.writes.push(body);
+        return { status: 'ok', body };
       },
       persistTrackerState: ({ issueNumber, state }) => {
         calls.persists.push({ issueNumber, state });

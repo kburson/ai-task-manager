@@ -7,7 +7,7 @@
 # push to trunk, and establishes the green baseline the Wave 3 refactors
 # (#559/#560/#561) depend on.
 #
-# Heavy lanes use three independent collection groups (#1872). Each job keeps
+# Integration uses twelve collection groups; slow retains three (#1872, #2163, #2165). Each job keeps
 # directory-local suite families together and retains the runner safeguards.
 # Aggregate checks prove complete lane coverage from downloadable result artifacts.
 #
@@ -111,13 +111,40 @@ jobs:
             total: 1
           - lane: integration
             shard: 1
-            total: 3
+            total: 12
           - lane: integration
             shard: 2
-            total: 3
+            total: 12
           - lane: integration
             shard: 3
-            total: 3
+            total: 12
+          - lane: integration
+            shard: 4
+            total: 12
+          - lane: integration
+            shard: 5
+            total: 12
+          - lane: integration
+            shard: 6
+            total: 12
+          - lane: integration
+            shard: 7
+            total: 12
+          - lane: integration
+            shard: 8
+            total: 12
+          - lane: integration
+            shard: 9
+            total: 12
+          - lane: integration
+            shard: 10
+            total: 12
+          - lane: integration
+            shard: 11
+            total: 12
+          - lane: integration
+            shard: 12
+            total: 12
     outputs:
       skip_tests: ${{ github.event_name == 'pull_request' && (steps.scope.outputs.docs_only == 'true' || contains(github.event.pull_request.labels.*.name, 'docs-only')) }}
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
@@ -274,7 +301,7 @@ jobs:
         if: needs.fast-tests.outputs.skip_tests != 'true'
         run: |
           node scripts/maintenance/ci-test-shards.mjs verify unit 1 .tmp/aitm/ci-results/unit
-          node scripts/maintenance/ci-test-shards.mjs verify integration 3 .tmp/aitm/ci-results/integration
+          node scripts/maintenance/ci-test-shards.mjs verify integration 12 .tmp/aitm/ci-results/integration
       - uses: actions/upload-artifact@v4
         if: needs.fast-tests.outputs.skip_tests != 'true'
         with:

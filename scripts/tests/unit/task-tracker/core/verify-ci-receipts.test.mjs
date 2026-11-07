@@ -1,4 +1,4 @@
-// @story #1873
+// @story #1873 #2163 #2165
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
@@ -22,16 +22,15 @@ const run = {
 const inventories = Object.fromEntries(
   ['unit', 'integration', 'slow'].map((lane) => [
     lane,
-    [
-      `scripts/tests/${lane}/one.test.mjs`,
-      `scripts/tests/${lane}/two.test.mjs`,
-      `scripts/tests/${lane}/three.test.mjs`,
-    ],
+    (lane === 'integration'
+      ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
+      : ['one', 'two', 'three']
+    ).map((name) => `scripts/tests/${lane}/${name}.test.mjs`),
   ])
 );
-function lanes() {
+function lanes({ integration = 12, unit = 1, slow = 3 } = {}) {
   return Object.entries(inventories).map(([lane, inventory]) => {
-    const total = lane === 'unit' ? 1 : 3;
+    const total = { integration, unit, slow }[lane];
     return {
       schema: 'aitm.ci-lane-results/v1',
       runId: '42',
@@ -72,7 +71,7 @@ test('cloud acceptance requires successful exact-head CI from the owning reposit
     assert.throws(() => validateCloudRun({ ...run, ...change }, options), /cloud-receipt/);
 });
 test('all three lanes require exact attempt and complete successful test coverage', () => {
-  assert.equal(validateCloudLanes(lanes(), options).count, 9);
+  assert.equal(validateCloudLanes(lanes(), options).count, 18);
   assert.throws(() => validateCloudLanes(lanes().slice(1), options), /lane/);
   for (const change of [
     { runId: '41' },
@@ -93,4 +92,44 @@ test('all three lanes require exact attempt and complete successful test coverag
   const duplicated = lanes();
   duplicated[1].results[1] = duplicated[1].results[0];
   assert.throws(() => validateCloudLanes(duplicated, options), /shard/);
+});
+
+test('complete twelve-group integration evidence includes every nonempty worker', () => {
+  const records = lanes();
+  assert.ok(records[1].results.every(({ timing }) => timing.count === 1));
+  assert.equal(validateCloudLanes(records, options).count, 18);
+  for (let index = 0; index < 12; index++) {
+    const missing = lanes();
+    missing[1].results.splice(index, 1);
+    assert.throws(() => validateCloudLanes(missing, options), /missing shard/);
+
+    const failed = lanes();
+    failed[1].results[index].exitCode = 1;
+    assert.throws(() => validateCloudLanes(failed, options), /runner exit/);
+
+    const foreign = lanes();
+    foreign[1].results[index].timing.commit = head;
+    assert.throws(() => validateCloudLanes(foreign, options), /receipt commit mismatch/);
+  }
+});
+
+test('integration refuses old three/nine-group, wrong-total, duplicate and foreign-head evidence', () => {
+  assert.throws(() => validateCloudLanes(lanes({ integration: 3 }), options), /lane identity/);
+  assert.throws(() => validateCloudLanes(lanes({ integration: 9 }), options), /lane identity/);
+  assert.throws(() => validateCloudLanes(lanes({ integration: 8 }), options), /lane identity/);
+  const wrongTotal = lanes();
+  wrongTotal[1].results[8].timing.shard.total = 3;
+  assert.throws(() => validateCloudLanes(wrongTotal, options), /invalid shard/);
+  const duplicated = lanes();
+  duplicated[1].results[8] = duplicated[1].results[7];
+  assert.throws(() => validateCloudLanes(duplicated, options), /duplicate or invalid shard/);
+  const foreign = lanes();
+  foreign[1].sourceHead = commit;
+  assert.throws(() => validateCloudLanes(foreign, options), /lane identity/);
+});
+
+test('twelve-group integration leaves unit-one and slow-three contracts enforced', () => {
+  assert.throws(() => validateCloudLanes(lanes({ unit: 3 }), options), /lane identity/);
+  assert.throws(() => validateCloudLanes(lanes({ slow: 9 }), options), /lane identity/);
+  assert.equal(validateCloudLanes(lanes(), options).count, 18);
 });

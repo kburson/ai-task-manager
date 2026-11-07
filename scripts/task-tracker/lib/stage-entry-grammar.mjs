@@ -6,6 +6,10 @@ import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 
 const STATE_TOKEN = '[a-z]+(?:-[a-z]+)*';
 
+// Pair with the whole-comment matcher when a writer must reject incomplete
+// visit evidence instead of skipping it as tolerant history readers do.
+export const ENTRY_MARKER_START_RE = /<!--\s*aitm-entered-/gi;
+
 // Whole-comment matcher for both accepted forms. Consumers that scan or
 // rewrite bodies must use this shared expression instead of constructing one.
 export const ENTRY_MARKER_RE = new RegExp(
@@ -26,7 +30,7 @@ function splitStateAndVisit(name) {
   return { state: match[1], visit: match[2] ? Number(match[2]) : 1 };
 }
 
-export function parseEntryMarker(line) {
+export function parseEntryMarker(line, options) {
   const source = String(line || '').trim();
 
   const legacy = new RegExp(LEGACY_COLON_ENTRY_MARKER_RE.source, 'i').exec(source);
@@ -39,7 +43,7 @@ export function parseEntryMarker(line) {
     };
   }
 
-  const marker = parseMarker(source);
+  const marker = parseMarker(source, options);
   if (!marker) return null;
   const identity = splitStateAndVisit(marker.name);
   if (!identity || typeof marker.props.ts !== 'string') return null;

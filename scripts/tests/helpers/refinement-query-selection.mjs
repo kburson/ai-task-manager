@@ -1,4 +1,4 @@
-// @story #2073 — test-only selection interpreter; no GraphQL runtime dependency.
+// @story #2073 #2165 — test-only selection interpreter; no GraphQL runtime dependency.
 export function parseSelection(query, variables = {}) {
   const tokens =
     query.match(/"(?:\\.|[^"\\])*"|\.\.\.|[_A-Za-z][_0-9A-Za-z]*|-?\d+(?:\.\d+)?|[^\s,]/g) ?? [];
@@ -13,6 +13,7 @@ export function parseSelection(query, variables = {}) {
       while (tokens[index] !== '}') {
         const key = take();
         take();
+        if (Object.hasOwn(out, key)) throw new Error('duplicate input field');
         out[key] = value();
       }
       take();
@@ -42,6 +43,7 @@ export function parseSelection(query, variables = {}) {
         while (tokens[index] !== ')') {
           const key = take();
           if (take() !== ':') throw new Error('argument');
+          if (Object.hasOwn(args, key)) throw new Error('duplicate field argument');
           args[key] = value();
         }
         take();
