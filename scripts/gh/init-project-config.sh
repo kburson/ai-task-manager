@@ -268,17 +268,28 @@ resolve_existing_project() {
   fi
   login="${parsed%%:*}"
   number="${parsed##*:}"
-  project_json=$(gh api graphql -F login="$login" -F number="$number" -f query='
+  # Resolve one actual owner: querying both concrete roots can discard a valid
+  # project when GitHub reports that the other owner type does not exist.
+  if ! project_json=$(gh api graphql -F login="$login" -F number="$number" -f query='
 query($login: String!, $number: Int!) {
-  user(login: $login) {
-    projectV2(number: $number) { id title number }
+  repositoryOwner(login: $login) {
+    ... on User {
+      projectV2(number: $number) { id title number }
+    }
+    ... on Organization {
+      projectV2(number: $number) { id title number }
+    }
   }
-  organization(login: $login) {
-    projectV2(number: $number) { id title number }
-  }
-}' --jq '[.data.user.projectV2, .data.organization.projectV2] | map(select(. != null)) | first // empty' 2>/dev/null || echo '')
+}' --jq '.data.repositoryOwner.projectV2 // empty' 2>/dev/null); then
+    return 1
+  fi
 
-  if [[ -z "$project_json" || "$project_json" == "null" ]]; then
+  if ! printf '%s\n' "$project_json" | jq -e --argjson number "$number" '
+    type == "object" and
+    (.id | type == "string" and length > 0) and
+    (.title | type == "string" and length > 0) and
+    (.number | type == "number") and .number == $number
+  ' >/dev/null 2>&1; then
     return 1
   fi
 
