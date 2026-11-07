@@ -59,3 +59,7 @@ tmp/
 
 # #1857 registered verification worktrees own runtime authority, not artifacts.
 /.ai-task-manager/runtime/test-sandboxes/
+
+# #2161 private peer-review startup and provider invitations stay local.
+docs/peer-reviews/**/review-*-author-startup.md
+docs/peer-reviews/**/review-*-reviewer-invitation.md

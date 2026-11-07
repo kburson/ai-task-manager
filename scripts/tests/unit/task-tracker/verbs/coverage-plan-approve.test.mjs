@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #615
+// @story #615 #2153
 // Coverage for verbs/plan-approve.mjs. Drives runPlanApprove directly through
 // its dep seam (fetchIssueBody / mutateIssueBody / getBoardState / nowIso) so
 // every result branch is hit without network: arg guards, wrong-state,
@@ -151,10 +151,10 @@ function runVerb(rest, { env = {}, deps, cfg = CFG } = {}) {
     .finally(restore);
 }
 
-test('verbPlanApprove: no issue number → usage, exit 1', async () => {
+test('verbPlanApprove: no issue number → usage, exit 2', async () => {
   const r = await runVerb([]);
-  assert.equal(r.exitCode, 1);
-  assert.match(r.stderr, /Usage:/);
+  assert.equal(r.exitCode, 2);
+  assert.match(r.stderr, /usage:/i);
 });
 
 test('verbPlanApprove: TT_SKIP_NETWORK set → refuses, exit 1', async () => {

@@ -1,0 +1,56 @@
+{
+  "evidenceClass": "automated-provider-isolated-public-entry",
+  "nativeHostAdmission": false,
+  "files": [
+    {
+      "path": "attempts.json",
+      "sha256": "b3714b37e4d28101a0abfe9be2bfdff389521782cafa764a4e32fd43556a83a2",
+      "bytes": 3184229
+    },
+    {
+      "path": "finalState.json",
+      "sha256": "aab0cb646560a7d62139b00d4adc5f3c1e3af16568fb079c96a487fa267e1fc9",
+      "bytes": 12821
+    },
+    {
+      "path": "fixture-source.bundle",
+      "sha256": "c84b58b9081a4fe32c18831ffee3d342a209427519e7c7538e04c076ade666c4",
+      "bytes": 17916647
+    },
+    {
+      "path": "initialState.json",
+      "sha256": "ff33d00c0a3c74cc088c9f33e519e81f2a0f5413713f5ea3d37c65effedcaf9b",
+      "bytes": 1732
+    },
+    {
+      "path": "ledger.json",
+      "sha256": "31dbf232b06e68d41e233de7236aa8acdb182a5f455f286f012e14ebc52a1e6d",
+      "bytes": 775632
+    },
+    {
+      "path": "legacy-audit.md",
+      "sha256": "6df4d66556671ba583ede248ecf6bfc909f79f3f400318e117094e65bf6d0bac",
+      "bytes": 593
+    },
+    {
+      "path": "legacy-before-record.txt",
+      "sha256": "6b3d3b1e3bca3e4063cdad7f7f8eb74c2674ab7c36f2f26f7400102fe27e007d",
+      "bytes": 2826
+    },
+    {
+      "path": "legacy-issue-body.md",
+      "sha256": "359e96ce492a686203fda8d576c7f70199b8e3d70e7e846b07b46be6b164cb6b",
+      "bytes": 9717
+    },
+    {
+      "path": "legacy-publication.txt",
+      "sha256": "9df41150845dde38f0a1107d072fee2831d54861a9779de7dd7f2e6ceadf626d",
+      "bytes": 3175
+    },
+    {
+      "path": "sourceIdentity.json",
+      "sha256": "c379da41a9b1bae2ffad05bd4e1a55417a85c8cbf7263a441e23f346eee478c4",
+      "bytes": 955884
+    }
+  ]
+}

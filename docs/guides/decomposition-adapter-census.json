@@ -93,6 +93,11 @@
       "proof": "decomposition-adaptive-publication.cases"
     },
     {
+      "path": "scripts/task-tracker/lib/inflation-intent.mjs",
+      "disposition": "Pure comparison codec only; exact audit prediction and bounded retry completion never persist authority or replace sealed intent",
+      "proof": "inflation-intent.test; inflation-retry-intent.test; inflation-retired-forecast.test; inflate-estimate-authority.test"
+    },
+    {
       "path": "scripts/task-tracker/lib/markers.mjs",
       "disposition": "Excluded: marker-only body changes preserve existing fields and decomposition records",
       "proof": "marker and authority suites"

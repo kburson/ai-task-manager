@@ -20,6 +20,17 @@ export function unescapeValue(v) {
   return String(v).replace(/&quot;/g, '"');
 }
 
+export function validMarkerTimestamp(value) {
+  // Date.parse accepts arbitrary text and normalizes invalid dates. Compare
+  // the wall-clock components before applying the recorded UTC offset.
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.exec(
+    value
+  );
+  if (!match || !Number.isFinite(Date.parse(value))) return false;
+  const wall = new Date(match[1] + 'Z');
+  return Number.isFinite(wall.valueOf()) && wall.toISOString().slice(0, 19) === match[1];
+}
+
 // Serialize a marker name + ordered key/value object into one comment. Key
 // insertion order is preserved. With no props, returns the prop-less form.
 export function serializeMarker(name, props = {}) {
@@ -45,13 +56,14 @@ const ATTR_RE = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
 
 // Parse a single marker comment. Returns { name, props } on a well-formed
 // match, or null for any non-marker / legacy-form line, without throwing.
-export function parseMarker(line) {
+export function parseMarker(line, { uniqueAttributes = false } = {}) {
   const src = String(line || '').trim();
   const m = src.match(MARKER_RE);
   if (!m) return null;
   const name = m[1];
   const props = {};
   for (const a of String(m[2]).matchAll(ATTR_RE)) {
+    if (uniqueAttributes && Object.hasOwn(props, a[1])) return null;
     props[a[1]] = unescapeValue(a[2]);
   }
   return { name, props };

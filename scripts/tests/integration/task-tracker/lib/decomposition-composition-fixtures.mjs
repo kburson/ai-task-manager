@@ -14,6 +14,7 @@ import { hash } from '../../../unit/task-tracker/lib/decomposition-authority-fix
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { estimationProjectionGraphql } from '../../../fixtures/estimation-publication.mjs';
 const tick = String.fromCharCode(96);
 const intent =
   '#### Story Intent\n- **Beneficiary:** release operator\n- **Capability:** stop partial publication\n- **Need:** remote effects can fail\n- **Value or failure prevented:** consumers receive complete releases\n#### Scope\n';
@@ -75,8 +76,25 @@ export async function composedPublication({
   await f.runtime.refresh(f.subject);
   const cfg = { ...f.cfg, fieldIds: { size: 'SIZE', estimate: 'EST' } };
   const counts = { audit: 0, size: 0, estimate: 0, fields: 0 };
-  let comment = { id: 99, body: '<!-- aitm-refined-estimate: 107 -->\n### Refine estimate\n' },
+  let comment = {
+      id: 99,
+      node_id: 'IC_refine_107',
+      issue_url: 'https://api.github.com/repos/o/r/issues/107',
+      body: '<!-- aitm-refined-estimate: 107 -->\n### Refine estimate\n',
+    },
     failed = false;
+  // @story #2163 — retain the real collector and inject complete projection transport.
+  delete f.authority.deps.readForecast;
+  f.authority.deps.forecast = {
+    graphql: estimationProjectionGraphql({
+      cfg,
+      issueNumber: 107,
+      itemId: 'PVTI_a',
+      getBody: () => f.authority.body,
+      getProject: () => f.authority.values.project,
+      getComments: () => [comment],
+    }),
+  };
   async function effect(name, apply) {
     assert.equal(readDecompositionRecords(f.authority.body).publication.status, 'pending');
     if (!failed && failure === name && outcome === 'before') {

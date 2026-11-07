@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "sourceHead": "cf15e6b50ee3d23b8bfa25ac848a1f8da9d97544",
+  "runId": 42131172017,
+  "runAttempt": 1,
+  "jobId": 127607859372,
+  "artifactId": 13464066867,
+  "artifactName": "ci-integration-9-1",
+  "zipBytes": 8771,
+  "zipSha256": "1f923e830457116893eeb74b09f823085e0b7523e0fadb94187ca471734811d9",
+  "testedCommit": "f68a3769da52d776fcdfb8ce878605e810b2b56b",
+  "actualExit": 1,
+  "actualFailedFiles": [
+    {
+      "path": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "label": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "wallMs": 466,
+      "inProcMs": 382.5,
+      "status": 1
+    }
+  ],
+  "timingFileSha256": "14ce9c3b94fc17d1ea5b8d2a6eb6c1a31ca4a34f6a06475acfd5a7fbf6531833",
+  "outputFileSha256": "e1a651adb818a861eb4a1b4609722a09dd9dfacd27bff73bfe6fbca8ed3fe49c",
+  "evaluationKind": "separate-production-evaluator-replay-of-actual-measurement",
+  "actualRunnerReachedCeilingEvaluation": false,
+  "evaluation": {
+    "lane": "integration",
+    "sections": [
+      {
+        "name": "serial",
+        "count": 33,
+        "breached": false,
+        "exempt": false,
+        "ceilingMs": 600000,
+        "elapsedMs": 515182.4
+      }
+    ],
+    "totalElapsedMs": 515182.4,
+    "breached": false
+  },
+  "limitations": [
+    "The job failed at failed-file exit before ceiling evaluation.",
+    "This replay is not a successful worker or lane receipt.",
+    "The bounded correction and new source head require independent review and complete fresh CI."
+  ]
+}

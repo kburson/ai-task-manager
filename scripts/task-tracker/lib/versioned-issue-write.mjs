@@ -306,6 +306,7 @@ export async function versionedWriteBody({
   expectedVersion,
   validateMutation,
   validateFreshBaseAsync,
+  observeRemoteBody,
 } = {}) {
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
@@ -340,6 +341,7 @@ export async function versionedWriteBody({
   while (attempts < maxRetries) {
     attempts++;
     const remote = await fetchBody(repo, issueNumber);
+    observeRemoteBody?.(remote);
     const remoteVersion = parseBodyVersion(remote);
     if (expectedVersion !== undefined && remoteVersion !== expectedVersion) {
       throw new BodyWriteRefusalError(
@@ -358,7 +360,7 @@ export async function versionedWriteBody({
       assertMutateReturnedString({ ourLocal, issueNumber });
       checkStaleInput({ ourLocal, remoteVersion, issueNumber });
       if (typeof validateFreshBaseAsync === 'function') {
-        await validateFreshBaseAsync(ourBase, ourLocal);
+        await validateFreshBaseAsync(ourBase, ourLocal, remote);
       }
       // #697 — no-op short-circuit, first attempt. The retry path already
       // returns 'no-op' when the previous mutate changed nothing; without this
@@ -391,7 +393,7 @@ export async function versionedWriteBody({
         // they expected to persist — no extra GitHub round-trip: `remote` was
         // already fetched at the top of this iteration (line ~279).
         if (typeof validateFreshBaseAsync === 'function') {
-          await validateFreshBaseAsync(remoteBase, remoteBase);
+          await validateFreshBaseAsync(remoteBase, remoteBase, remote);
         }
         return { status: 'no-op', attempts, version: remoteVersion, body: remote };
       }
@@ -399,7 +401,7 @@ export async function versionedWriteBody({
       ourLocal = rebaseOnto({ ourEdit, theirEdit, remote: remoteBase });
       if (typeof validateMutation === 'function') validateMutation(ourBase, ourLocal);
       if (typeof validateFreshBaseAsync === 'function') {
-        await validateFreshBaseAsync(ourBase, ourLocal);
+        await validateFreshBaseAsync(ourBase, ourLocal, remote);
       }
     }
 
@@ -413,6 +415,7 @@ export async function versionedWriteBody({
     // match could mask a lost write. Require byte-equality with our push —
     // modulo trailing whitespace, which `gh issue view -q .body` appends.
     const verifyRemote = await fetchBody(repo, issueNumber);
+    observeRemoteBody?.(verifyRemote);
     const norm = (s) => String(s ?? '').replace(/\s+$/, '');
     if (norm(verifyRemote) === norm(stamped)) {
       // Surface the post-write verify-fetch (#655) as the verified live body.

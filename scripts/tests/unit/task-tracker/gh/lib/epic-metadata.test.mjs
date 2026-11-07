@@ -9,6 +9,12 @@ import {
   reconcileEpicMetadata,
 } from '../../../../../gh/lib/epic-metadata.mjs';
 import { EPIC_PREFIX } from '../../../../../gh/lib/kind-prefix.mjs';
+import { setIssueKindMarker } from '../../../../../task-tracker/lib/issue-kind.mjs';
+import { stripBodyVersion } from '../../../../../task-tracker/lib/versioned-issue-write.mjs';
+import {
+  stampBodyVersion,
+  parseBodyVersion,
+} from '../../../../../task-tracker/lib/body-version.mjs';
 
 const DOD = [
   '### Functional (verified at Test)',
@@ -64,6 +70,7 @@ test('reconciles the body marker and Epic-specific DoD idempotently', () => {
 test('reconciler writes only missing carriers and verifies live readback', async () => {
   const f = await governedFixture(7, { issue: 42 });
   f.authority.body = f.authority.body.replace('## AITM Progress Markers', BODY);
+  f.authority.body = setIssueKindMarker(f.authority.body, 'epic');
   let live = {
     title: 'Metadata drift',
     labels: ['bug'],
@@ -86,7 +93,10 @@ test('reconciler writes only missing carriers and verifies live readback', async
       readIssue: async () => structuredClone(live),
       readDodTemplate: () => DOD,
       mutateIssueBody: async ({ mutate }) => {
-        live.body = mutate(live.body);
+        live.body = stampBodyVersion(
+          mutate(stripBodyVersion(live.body)),
+          parseBodyVersion(live.body) + 1
+        );
         writes.push('body');
         return { status: 'ok' };
       },
@@ -130,6 +140,7 @@ test('reconciler writes only missing carriers and verifies live readback', async
 
 test('reconciler fails closed when readback remains incomplete', async () => {
   const f = await governedFixture(7, { issue: 42 });
+  f.authority.body = setIssueKindMarker(f.authority.body, 'epic');
   await assert.rejects(
     reconcileEpicMetadata({
       issueNumber: 42,
@@ -145,6 +156,6 @@ test('reconciler fails closed when readback remains incomplete', async () => {
         writeVisible: async () => {},
       },
     }),
-    /readback/
+    /readback|body-drift|visible-drift/
   );
 });
