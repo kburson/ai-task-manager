@@ -550,6 +550,11 @@ async function main() {
 
   try {
     const ghArgs = { ...args, 'body-file': bodyFilePath };
+    if (!skipTether && args.parent) {
+      const { assertProspectiveEpicParent } =
+        await import('../task-tracker/lib/decomposition-plan-exit-guard.mjs');
+      await assertProspectiveEpicParent({ parentIssueNumber: Number(args.parent), cfg });
+    }
     const issueNumber = ghCreate(ghArgs, assignee);
 
     if (!skipTether) tether(issueNumber, args, priority);

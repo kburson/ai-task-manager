@@ -89,6 +89,30 @@ function holderDiagnostic(row) {
   return `provider=${row.provider} worktree=${row.worktreePath} sid=${row.sid.slice(0, 12)}`;
 }
 
+export function assertOccupancyAvailable(rows, { issue, sid, provider, worktreePath }) {
+  const held = rows[issueKey(issue)];
+  if (held && (held.sid !== sid || held.provider !== provider)) {
+    throw new OccupancyConflictError(
+      `occupancy: issue #${issue} is held (${holderDiagnostic(held)})`,
+      'occupancy-issue-held',
+      held
+    );
+  }
+  const worktreeHolder = Object.values(rows).find(
+    (row) =>
+      path.resolve(row.worktreePath) === worktreePath &&
+      (row.sid !== sid || row.provider !== provider)
+  );
+  if (worktreeHolder) {
+    throw new OccupancyConflictError(
+      `occupancy: worktree is held (${holderDiagnostic(worktreeHolder)}); use an isolated worktree`,
+      'occupancy-worktree-held',
+      worktreeHolder
+    );
+  }
+  return held;
+}
+
 export function claimOccupancy(input, options = {}) {
   const file = fileFor(input);
   const issue = issueKey(input.issue);
@@ -101,26 +125,7 @@ export function claimOccupancy(input, options = {}) {
   const worktreePath = path.resolve(rawWorktreePath);
   return withLock(file, () => {
     const before = readOccupancy(file);
-    const held = before[issue];
-    if (held && held.sid !== sid) {
-      throw new OccupancyConflictError(
-        `occupancy: issue #${issue} is held (${holderDiagnostic(held)})`,
-        'occupancy-issue-held',
-        held
-      );
-    }
-
-    const worktreeHolders = Object.values(before).filter(
-      (row) => path.resolve(row.worktreePath) === worktreePath && row.sid !== sid
-    );
-    const worktreeHolder = worktreeHolders[0];
-    if (worktreeHolder) {
-      throw new OccupancyConflictError(
-        `occupancy: worktree is held (${holderDiagnostic(worktreeHolder)}); use an isolated worktree`,
-        'occupancy-worktree-held',
-        worktreeHolder
-      );
-    }
+    const held = assertOccupancyAvailable(before, { issue, sid, provider, worktreePath });
 
     if (
       held &&
@@ -145,7 +150,7 @@ export function claimOccupancy(input, options = {}) {
     const after = clone(before);
     let moved = false;
     for (const [key, row] of Object.entries(after)) {
-      if (key !== issue && row.sid === sid) {
+      if (key !== issue && row.sid === sid && row.provider === provider) {
         delete after[key];
         moved = true;
       }

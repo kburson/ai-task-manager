@@ -178,11 +178,26 @@ export async function runPlanAnalysisVerb(ctx, deps = {}) {
       fail('operator-drift');
     const snapshot = await collect({ issue, cfg: ctx.cfg, projectDir, deps });
     validateSnapshot(snapshot, operator, issue, ctx.cfg);
-    if (
-      readDeepDiveSignals(snapshot.signals.body).hasHeading &&
-      !canonicalSection(snapshot.signals.body)?.endsWith(appendixText)
-    )
-      fail('existing-analysis-conflict');
+    if (readDeepDiveSignals(snapshot.signals.body).hasHeading) {
+      const section = canonicalSection(snapshot.signals.body);
+      const commentId = /^> Mirrored from comment #issuecomment-([1-9]\d{0,15}) /.exec(
+        section ?? ''
+      )?.[1];
+      const url =
+        'https://' + host + '/' + ctx.cfg.repo + '/issues/' + issue + '#issuecomment-' + commentId;
+      const backpointer =
+        '> Mirrored from comment #issuecomment-' +
+        commentId +
+        ' (' +
+        url +
+        '). Comment is the diff-history canonical; this body copy is the gate-canonical source.\n\n';
+      if (
+        !commentId ||
+        !Number.isSafeInteger(Number(commentId)) ||
+        section !== backpointer + appendixText
+      )
+        fail('existing-analysis-conflict');
+    }
     if (baseline && snapshot.current.inputDigest !== baseline) fail('source-drift');
     if (
       expectedBody !== undefined &&

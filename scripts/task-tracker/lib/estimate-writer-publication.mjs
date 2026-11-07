@@ -230,6 +230,7 @@ export async function executeEstimateWriter({
   proposal,
   effects: makeEffects,
   deriveIntendedInput,
+  validatePendingInput,
   deriveProposal,
   deps = {},
 }) {
@@ -304,10 +305,11 @@ export async function executeEstimateWriter({
     throw new Error(
       `estimate-publication:authority-unavailable:${initial.input.availability.reasons.join(',')}`
     );
+  const createdAt = prior?.createdAt ?? new Date().toISOString();
   adapters = await makeEffects({
     subject,
     operationId,
-    createdAt: prior?.createdAt ?? new Date().toISOString(),
+    createdAt,
     initial,
   });
   const retiredSource = initial.sourceObservations.readForecast.value;
@@ -365,7 +367,7 @@ export async function executeEstimateWriter({
     prior?.intendedInputDigest ??
     decompositionInputDigest(
       deriveIntendedInput
-        ? deriveIntendedInput(initial)
+        ? deriveIntendedInput(initial, { subject, operationId, createdAt, effects: adapters })
         : intendedPublishedRevisionInput(initial, proposal)
     );
   const saved = readEstimateBeforeRecord(initial.sourceObservations.readIssue.value.body);
@@ -392,6 +394,7 @@ export async function executeEstimateWriter({
         ))
     )
       beforeFailure('before-record-missing');
+    const initialFields = parseIssueFieldDb(initial.sourceObservations.readIssue.value.body);
     beforeRecord = {
       schema: 'aitm.estimate-before/v1',
       subject,
@@ -409,10 +412,12 @@ export async function executeEstimateWriter({
           : null,
       fieldBaseline:
         initial.input.availability.status === 'complete' &&
-        initial.sourceObservations.readProject.value?.estimate ===
-          parseIssueFieldDb(initial.sourceObservations.readIssue.value.body).values?.estimate &&
-        initial.sourceObservations.readProject.value?.size ===
-          parseIssueFieldDb(initial.sourceObservations.readIssue.value.body).values?.size
+        initialFields.ok &&
+        ['estimate', 'size'].every(
+          (key) =>
+            (initial.sourceObservations.readProject.value?.[key] ?? null) ===
+            (initialFields.values[key] ?? null)
+        )
           ? {
               estimate: initial.sourceObservations.readProject.value.estimate ?? null,
               size: initial.sourceObservations.readProject.value.size ?? null,
@@ -452,8 +457,18 @@ export async function executeEstimateWriter({
   )
     beforeFailure('before-manifest-drift');
   const business = adapters;
-  const checkpoint = async (owner) => {
-    const state = owner.publication();
+  const validatePending = async (current, state) => {
+    if (validatePendingInput)
+      await validatePendingInput(current, {
+        subject,
+        operationId,
+        createdAt,
+        effects: business,
+        publication: state,
+        beforeRecord,
+      });
+  };
+  const checkEffects = async (state) => {
     for (const effect of business) {
       const evidence = beforeRecord.effects.find((e) => e.id === effect.id),
         actual = await readAdapter(effect),
@@ -466,6 +481,15 @@ export async function executeEstimateWriter({
         beforeFailure(`effect-drift:${effect.id}`);
     }
   };
+  const checkpoint = async (owner) => {
+    const state = owner.publication();
+    await checkEffects(state);
+    if (validatePendingInput) await validatePending(await runtime.collect(subject), state);
+  };
+  if (prior?.status === 'pending' && validatePendingInput) {
+    await checkEffects(prior);
+    await validatePending(await runtime.collect(subject), prior);
+  }
   adapters = [
     {
       id: 'writer-before-values',
@@ -510,6 +534,7 @@ export async function executeEstimateWriter({
       writerId,
       supersedes,
       intendedInputDigest: intended,
+      createdAt,
       beforeEffects: async (owner) => {
         await checkpoint(owner);
         if (deps.beforePublicationEffects) await deps.beforePublicationEffects(owner);

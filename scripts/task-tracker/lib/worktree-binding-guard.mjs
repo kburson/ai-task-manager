@@ -253,10 +253,9 @@ export function parseForeignWorktreeOverride(argv = []) {
   return { argv: clean, allowForeignWorktree };
 }
 
-export async function enforceVerbWorktreeBinding({
+export function inspectVerbWorktreeBinding({
   verb,
   rest = [],
-  cfg,
   invokingDir = process.cwd(),
   allowForeignWorktree = false,
   deps = {},
@@ -267,7 +266,6 @@ export async function enforceVerbWorktreeBinding({
   const resolveBinding = deps.resolveBinding || readWorktreeIdentity;
   const resolveBoundDir = deps.resolveBoundDir || resolveProjectDir;
   const resolveBoundIssue = deps.resolveBoundIssue || issueNumberFromBoundDir;
-  const postAudit = deps.postAudit || postForeignWorktreeAudit;
   const explicitIssueNumber = issueNumberFromVerb({ verb, rest });
 
   let boundDir;
@@ -292,6 +290,14 @@ export async function enforceVerbWorktreeBinding({
     throw new ForeignWorktreeBindingError({ issueNumber, bound, invoking });
   }
 
-  await postAudit({ issueNumber, verb, cfg, bound, invoking });
-  return { status: 'override-audited', issueNumber, bound, invoking };
+  return { status: 'override-requested', issueNumber, bound, invoking };
+}
+
+export async function enforceVerbWorktreeBinding(options = {}) {
+  const observed = inspectVerbWorktreeBinding(options);
+  if (observed.status !== 'override-requested') return observed;
+  const postAudit = options.deps?.postAudit || postForeignWorktreeAudit;
+  const { issueNumber, bound, invoking } = observed;
+  await postAudit({ issueNumber, verb: options.verb, cfg: options.cfg, bound, invoking });
+  return { ...observed, status: 'override-audited' };
 }

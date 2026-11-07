@@ -34,12 +34,35 @@ export function assignmentSnapshotFromGraphql(data, cfg) {
   return { state, assignees: canonicalLogins(nodes) };
 }
 
-export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = {}) {
+// Location mutations need these fields from the same response as ownership and Status.
+function locationFields(data, include) {
+  if (!include) return {};
+  const issue = data?.repository?.issue;
+  const currentUser = canonicalLogin(data?.viewer?.login);
+  if (
+    typeof issue?.body !== 'string' ||
+    !['OPEN', 'CLOSED'].includes(issue.state) ||
+    !currentUser ||
+    issue.assignees.nodes.some((node) => !canonicalLogin(node))
+  ) {
+    throw new Error('assignment snapshot: location authority is unreadable');
+  }
+  return { body: issue.body, issueState: issue.state, currentUser };
+}
+
+export async function fetchAssignmentSnapshot({
+  issueNumber,
+  cfg,
+  includeLocation = false,
+  deps = {},
+} = {}) {
   if (!issueNumber) throw new Error('fetchAssignmentSnapshot: issueNumber is required');
   if (!cfg?.repo || !cfg?.projectId) {
     throw new Error('fetchAssignmentSnapshot: repo and projectId are required');
   }
   const query = deps.gql || gql;
+  const viewer = includeLocation ? ' viewer { login }' : '';
+  const issueFields = includeLocation ? ' body state' : '';
   const { owner, repoName } = splitRepo(cfg.repo);
   const projectItems = [];
   let assignees = null;
@@ -49,9 +72,9 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
 
   for (let page = 0; page < 1000; page += 1) {
     const data = await query(
-      `query($owner: String!, $repo: String!, $issue: Int!, $cursor: String) {
+      `query($owner: String!, $repo: String!, $issue: Int!, $cursor: String) {${viewer}
         repository(owner: $owner, name: $repo) {
-          issue(number: $issue) {
+          issue(number: $issue) {${issueFields}
             assignees(first: 100) { nodes { login } }
             projectItems(first: 50, after: $cursor) {
               nodes {
@@ -104,9 +127,9 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
         const itemId = matches[0]?.id;
         if (!itemId) throw new Error('assignment snapshot: configured project item id is missing');
         const final = await query(
-          `query($owner: String!, $repo: String!, $issue: Int!, $item: ID!) {
+          `query($owner: String!, $repo: String!, $issue: Int!, $item: ID!) {${viewer}
             repository(owner: $owner, name: $repo) {
-              issue(number: $issue) { assignees(first: 100) { nodes { login } } }
+              issue(number: $issue) {${issueFields} assignees(first: 100) { nodes { login } } }
             }
             node(id: $item) {
               ... on ProjectV2Item {
@@ -127,9 +150,13 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
         if (!state || !Array.isArray(finalNodes)) {
           throw new Error('assignment snapshot: final Status or assignees are unreadable');
         }
-        return { state, assignees: canonicalLogins(finalNodes) };
+        return {
+          state,
+          assignees: canonicalLogins(finalNodes),
+          ...locationFields(final, includeLocation),
+        };
       }
-      return assignmentSnapshotFromGraphql(
+      const snapshot = assignmentSnapshotFromGraphql(
         {
           repository: {
             issue: { assignees, projectItems: { nodes: projectItems } },
@@ -137,6 +164,7 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
         },
         cfg
       );
+      return { ...snapshot, ...locationFields(data, includeLocation) };
     }
     const next = connection.pageInfo.endCursor;
     if (!next) throw new Error('assignment snapshot: pagination has a missing cursor');
