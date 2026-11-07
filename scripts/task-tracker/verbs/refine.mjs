@@ -65,6 +65,11 @@ export function parseArgs(argv = []) {
     const flag = args[i];
     const val = args[i + 1];
     switch (flag) {
+      case '--supersede-pending':
+        if (parsed.supersedePending) throw new Error('refine: duplicate --supersede-pending');
+        parsed.supersedePending = true;
+        i += 1;
+        break;
       case '--size':
         parsed.size = val;
         i += 2;
@@ -381,7 +386,15 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     cfg,
     issueNumber,
     writerId: 'refine',
-    key: { size, estimate: estimateNum, priority: priorityNorm, rank: rankNum, reason },
+    key: {
+      size,
+      estimate: estimateNum,
+      priority: priorityNorm,
+      rank: rankNum,
+      reason,
+      ...(args.supersedePending === true ? { supersedePending: true } : {}),
+    },
+    supersedePending: args.supersedePending === true,
     estimate: estimateNum,
     size,
     deps,
@@ -390,8 +403,13 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     writeField: ({ field, value, context, effectId }) =>
       tether({ cfg: cfgForTether, issueNumber, [field]: value, context, effectId, deps }),
   });
-  if (publication.status === 'unchanged') {
-    await prepare();
+  if (
+    publication.status === 'unchanged' ||
+    (publication.status === 'recorded' && newBody === null)
+  ) {
+    // Reconciled field effects may already match without running applyBody.
+    // Still publish this Refine invocation's rationale and completion snapshot.
+    if (publication.status === 'unchanged') await prepare();
     const fresh = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
     const actual = fresh.sourceObservations.readProject.value;
     if (

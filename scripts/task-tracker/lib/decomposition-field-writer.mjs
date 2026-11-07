@@ -19,6 +19,7 @@ export async function publishFieldEstimateRevision({
   applyBody,
   extraEffects = [],
   deriveIntendedInput,
+  supersedePending = false,
   deps = {},
 }) {
   const current = await readEstimateWriterAuthority({ cfg, issueNumber, deps });
@@ -48,7 +49,7 @@ export async function publishFieldEstimateRevision({
       size,
     },
     deriveIntendedInput,
-    deps: { ...deps, beforePublicationEffects: beforeEffects },
+    deps: { ...deps, supersedePending, beforePublicationEffects: beforeEffects },
     effects: async ({ subject }) => {
       const readers = await createFieldEffectReaders({ subject, cfg, graphql: deps.targetGraphql });
       return [
