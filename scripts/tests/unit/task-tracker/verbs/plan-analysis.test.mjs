@@ -383,6 +383,33 @@ test('changed prose after a successful mirror refuses before changing the fixed 
   assert.equal(f.authority.body, before.body);
 });
 
+test('removing a leading optional section from completed analysis refuses before any effect', async () => {
+  const { runPlanAnalysisVerb, validatePlanAnalysis } = await api();
+  const f = await setup();
+  const extended = prose.replace(
+    '### Story Intent',
+    '### Authority and intended outcome\nCurrent Plan authority admits bounded analysis while unfinished children continue to deny completion and delivery.\n\n### Story Intent'
+  );
+  assert.doesNotThrow(() => validatePlanAnalysis(extended));
+  assert.doesNotThrow(() => validatePlanAnalysis(prose));
+  f.deps.readFile = () => extended;
+  assert.equal((await runPlanAnalysisVerb(f.ctx, f.deps)).status, 'complete');
+  const before = { comment: f.comments[0].body, body: f.authority.body };
+  const effects = [];
+  for (const name of ['createComment', 'updateComment', 'mutateIssueBody']) {
+    const original = f.deps[name];
+    f.deps[name] = (...args) => {
+      effects.push(name);
+      return original(...args);
+    };
+  }
+  f.deps.readFile = () => prose;
+  await assert.rejects(() => runPlanAnalysisVerb(f.ctx, f.deps), /existing-analysis-conflict/);
+  assert.deepEqual(effects, []);
+  assert.equal(f.comments[0].body, before.comment);
+  assert.equal(f.authority.body, before.body);
+});
+
 test('undersized analysis refuses before the comment and canonical gate is never bypassed', async () => {
   const { runPlanAnalysisVerb } = await api();
   const f = await setup();
