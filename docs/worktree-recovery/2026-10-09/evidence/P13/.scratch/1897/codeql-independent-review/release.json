@@ -1,0 +1,15 @@
+{
+  "bin": "npx",
+  "args": [
+    "aitm",
+    "occupancy",
+    "--release",
+    "1897"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+  "startedAt": "2026-10-05T23:55:41.550Z",
+  "endedAt": "2026-10-05T23:55:43.110Z",
+  "status": 0,
+  "stdout": "Released occupancy #1897: provider=codex sid=01a10a24-827 worktree=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release 1897\n"
+}

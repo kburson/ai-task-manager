@@ -1,0 +1,57 @@
+✔ continuous nine-hour session is repaired without changing original rows or actor accounting (9.7255ms)
+✔ continuity recovery refuses wrong session before writing (0.936667ms)
+✔ continuity recovery refuses duplicate metadata before writing (0.618292ms)
+✔ continuity recovery refuses unexplained gap before writing (0.68875ms)
+✔ continuity recovery refuses real terminal before writing (0.63225ms)
+✔ continuity recovery refuses user interruption before writing (0.560209ms)
+✔ continuity recovery refuses nonmonotonic before writing (0.424583ms)
+✔ continuity recovery refuses malformed timestamp before writing (0.425666ms)
+✔ continuity recovery refuses truncated evidence before writing (0.760042ms)
+✔ apply requires dry-run source, comment and transcript identities (2.439917ms)
+✔ canonical source or completed transcript drift refuses before mutation (2.271708ms)
+✔ unexplained gaps and general backdating remain forbidden (0.305583ms)
+✔ concurrent canonical or transcript change is refused under the apply boundary (6.056791ms)
+✔ append-only events beyond the completed window preserve the accepted evidence (2.625292ms)
+✔ remote readback failure cannot report a healed log (4.028708ms)
+✔ ambiguous timing actor windows refuse rather than inventing observations (0.418125ms)
+✔ late insertion of historical transcript records cannot escape the pinned prefix (0.420208ms)
+✖ duplicate tool observation identity refuses an ambiguous evidence window (0.940583ms)
+✖ conflicting repair modes refuse before reading or writing (0.5655ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 17
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 241.881417
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:140:1
+✖ duplicate tool observation identity refuses an ambiguous evidence window (0.940583ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:142:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /timing-continuity/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:144:1
+✖ conflicting repair modes refuse before reading or writing (0.5655ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:146:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /timing-continuity/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

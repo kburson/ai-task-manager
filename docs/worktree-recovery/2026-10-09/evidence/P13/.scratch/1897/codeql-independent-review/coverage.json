@@ -1,0 +1,19 @@
+{
+  "base": "b0911ff3af3c813492e94724da548805684c6942",
+  "head": "344a6abb3dbf6d0a3f5ab4037b1bd78b0cabd86e",
+  "paths": [
+    {
+      "path": "scripts/task-tracker/lib/ac-evidence.mjs",
+      "sha256": "258ee45277340cf1cd5142ea4eed58d0a8b94a6c48566b33ea835ba713d2a58b",
+      "reviewed": true
+    },
+    {
+      "path": "scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs",
+      "sha256": "e3a9168b939e00c36bc5a21f4011fdccf3c6f4ce2d0517b37bea68301945fe99",
+      "reviewed": true
+    }
+  ],
+  "residualUnreviewedFiles": [],
+  "planUnchanged": true,
+  "previousProbesPass": true
+}

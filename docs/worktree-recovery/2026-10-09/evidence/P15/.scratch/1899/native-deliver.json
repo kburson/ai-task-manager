@@ -1,0 +1,10 @@
+{
+  "args": [
+    "aitm",
+    "deliver",
+    "1899"
+  ],
+  "status": 20,
+  "stdout": "AITM_PROVIDER_ACTION_REQUIRED: {\"action\":\"github.merge-pull-request\",\"baseRef\":\"trunk\",\"commitMessage\":\"PR #1900\\nSource: c254618a6e756697f395c42bf40a60583e7276bc\\n\\nAttribution: [#1899]\",\"commitTitle\":\"[#1899] Governed PR delivery\",\"expectedHeadSha\":\"c254618a6e756697f395c42bf40a60583e7276bc\",\"headRef\":\"codex/1899-cloud-coverage\",\"intentId\":\"01M475P99M4VRWQXH33Y57NTDV\",\"issueNumber\":1899,\"mergeMethod\":\"squash\",\"prNumber\":1900,\"repository\":\"kburson/ai-task-manager\",\"schema\":1}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' deliver 1899\n"
+}

@@ -1,0 +1,3 @@
+- **kind**: code
+- **discovered-during**: kburson/ai-peer-review#140
+- **source**: registered Test refusal b213df21-c6df-4e2a-8cab-11b8b16e5429 after merge-back rebase; delivered AITM12ecd7df9f58dc60cf7a9bc42c33c9b019976068.

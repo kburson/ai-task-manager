@@ -1,0 +1,11 @@
+{
+  "args": [
+    "push",
+    "--force-with-lease=refs/heads/codex/1897-canonical-ac:a7ad2b4583deda01a4fcc8dd8b4e65d13957779a",
+    "origin",
+    "HEAD:refs/heads/codex/1897-canonical-ac"
+  ],
+  "status": 0,
+  "stdout": "",
+  "stderr": "To github.com:kburson/ai-task-manager.git\n + a7ad2b458...b0911ff3a HEAD -> codex/1897-canonical-ac (forced update)\n"
+}

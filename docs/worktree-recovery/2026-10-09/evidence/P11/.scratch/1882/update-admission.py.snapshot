@@ -1,0 +1,10 @@
+from pathlib import Path
+import json
+p=Path('scripts/tests/fixtures/1558/admission-surface.json');s=p.read_text();data=json.loads(s)
+entry=next(x for x in data['entrypoints'] if x['path']=='scripts/task-tracker/merge-back.mjs')
+old=json.dumps(entry['staticImports'],indent=2)
+start=s.index('"path": "scripts/task-tracker/merge-back.mjs"')
+a=s.index('"staticImports": [', start);b=s.index(']',a)+1
+replacement=json.dumps(['./lib/direct-guidance-admission.mjs','node:path','./lib/graph-node-authority.mjs','./lib/resolve-epic-lineage.mjs','../lib/self-doc.mjs','./lib/merge-back-verification.mjs','./lib/merge-back-cli.mjs'],indent=2).replace('\n','\n      ')
+s=s[:a]+'"staticImports": '+replacement+s[b:];p.write_text(s)
+p=Path('docs/guides/workflow.md');s=p.read_text().replace('Use `aitm merge-back <child#> <worktree-path>\n--preserve-worktree`', 'Use `aitm merge-back <child#> <worktree-path> --preserve-worktree`');p.write_text(s)

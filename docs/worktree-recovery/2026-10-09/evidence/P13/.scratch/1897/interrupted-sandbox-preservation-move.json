@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-05T23:29:38.720Z",
+  "originalPath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.ai-task-manager/runtime/test-sandboxes/.task-test-1897-a7ad2b45-20435-da52a4dd",
+  "preservedPath": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/.scratch/1897/interrupted-native-test-sandbox-a7ad2b45",
+  "same": true,
+  "entryCount": 13767,
+  "beforeDigest": "fb307e1e3b7a4dc99d4e3719efb6242bcc7e7a67eecea2f89a4e961985507a6a",
+  "afterDigest": "fb307e1e3b7a4dc99d4e3719efb6242bcc7e7a67eecea2f89a4e961985507a6a",
+  "noDeletion": true,
+  "notDeliveryEvidence": true,
+  "gitStatus": ""
+}

@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "## Plan Metadata\n\n## Pickup Directive",
+  "replacement": "## Plan Metadata\n\n- **Implementation approach**: Transport the exact successful occupancy claim generation through native resume/switch and per-session state projection; preserve collision and rollback guards.\n- **Planning evidence**: Deep-Dive Analysis comment https://github.com/kburson/ai-task-manager/issues/1889#issuecomment-5988047079 and its gate-canonical mirrored body.\n- **Verification approach**: Declared native-binding/state regressions and native rank-wave integration, affected host tests only, then exact-head full CI receipts.\n\n## Pickup Directive",
+  "expectedVersion": 17
+}

@@ -1,0 +1,236 @@
+✖ canonical H2 precedes embedded H1 for parser and checkbox lookup (2.932459ms)
+✖ canonical unstamped AC remains gated after embedded H1 (0.596708ms)
+✖ canonical stamp after embedded H1 preserves every other line and citations (0.157042ms)
+✖ canonical H2 precedes embedded H3 for parser and checkbox lookup (0.170083ms)
+✖ canonical unstamped AC remains gated after embedded H3 (0.146583ms)
+✖ canonical stamp after embedded H3 preserves every other line and citations (0.069917ms)
+✖ canonical H2 precedes embedded H4 for parser and checkbox lookup (0.169959ms)
+✖ canonical unstamped AC remains gated after embedded H4 (0.132833ms)
+✖ canonical stamp after embedded H4 preserves every other line and citations (0.097958ms)
+✔ supported H1 with literal declaration is preserved without another canonical H2 (0.599042ms)
+✔ supported H1 with by-id declaration is preserved without another canonical H2 (0.419375ms)
+✔ supported H2 with literal declaration is preserved without another canonical H2 (0.142292ms)
+✔ supported H2 with by-id declaration is preserved without another canonical H2 (0.144833ms)
+✔ supported H3 with literal declaration is preserved without another canonical H2 (0.131541ms)
+✔ supported H3 with by-id declaration is preserved without another canonical H2 (0.108417ms)
+✔ supported H4 with literal declaration is preserved without another canonical H2 (0.097042ms)
+✔ supported H4 with by-id declaration is preserved without another canonical H2 (0.12475ms)
+✔ retired ordinal declaration remains unresolved under H1 (0.271583ms)
+✔ retired ordinal declaration remains unresolved under H2 (0.130667ms)
+✔ retired ordinal declaration remains unresolved under H3 (0.0745ms)
+✔ retired ordinal declaration remains unresolved under H4 (0.166833ms)
+✖ canonical heading retains existing case-insensitive suffix behavior (1.504208ms)
+✔ missing AC heading keeps empty lookup and stamping refusal (0.085584ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 13
+ℹ fail 10
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.910709
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:56:3
+✖ canonical H2 precedes embedded H1 for parser and checkbox lookup (2.932459ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'Embedded source criterion remains source content'
+  -   'Canonical criterion resolves its exact commands'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Embedded source criterion remains source content' ],
+    expected: [ 'Canonical criterion resolves its exact commands' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:68:3
+✖ canonical unstamped AC remains gated after embedded H1 (0.596708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'pass'
+  - 'refuse-ac-evidence'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:70:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'pass',
+    expected: 'refuse-ac-evidence',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:75:3
+✖ canonical stamp after embedded H1 preserves every other line and citations (0.157042ms)
+  Error: stampAcEvidenceMarker: no evidence-bearing AC line matching "Canonical criterion resolves its exact commands" found
+      at stampAcEvidenceMarker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/task-tracker/lib/ac-evidence.mjs:239:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:77:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:56:3
+✖ canonical H2 precedes embedded H3 for parser and checkbox lookup (0.170083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'Embedded source criterion remains source content'
+  -   'Canonical criterion resolves its exact commands'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Embedded source criterion remains source content' ],
+    expected: [ 'Canonical criterion resolves its exact commands' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:68:3
+✖ canonical unstamped AC remains gated after embedded H3 (0.146583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'pass'
+  - 'refuse-ac-evidence'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:70:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'pass',
+    expected: 'refuse-ac-evidence',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:75:3
+✖ canonical stamp after embedded H3 preserves every other line and citations (0.069917ms)
+  Error: stampAcEvidenceMarker: no evidence-bearing AC line matching "Canonical criterion resolves its exact commands" found
+      at stampAcEvidenceMarker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/task-tracker/lib/ac-evidence.mjs:239:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:77:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:56:3
+✖ canonical H2 precedes embedded H4 for parser and checkbox lookup (0.169959ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'Embedded source criterion remains source content'
+  -   'Canonical criterion resolves its exact commands'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:59:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Embedded source criterion remains source content' ],
+    expected: [ 'Canonical criterion resolves its exact commands' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:68:3
+✖ canonical unstamped AC remains gated after embedded H4 (0.132833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'pass'
+  - 'refuse-ac-evidence'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:70:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'pass',
+    expected: 'refuse-ac-evidence',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:75:3
+✖ canonical stamp after embedded H4 preserves every other line and citations (0.097958ms)
+  Error: stampAcEvidenceMarker: no evidence-bearing AC line matching "Canonical criterion resolves its exact commands" found
+      at stampAcEvidenceMarker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/task-tracker/lib/ac-evidence.mjs:239:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:77:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:128:1
+✖ canonical heading retains existing case-insensitive suffix behavior (1.504208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'Embedded source criterion remains source content'
+  -   'Canonical criterion resolves its exact commands'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac/scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs:129:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Embedded source criterion remains source content' ],
+    expected: [ 'Canonical criterion resolves its exact commands' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

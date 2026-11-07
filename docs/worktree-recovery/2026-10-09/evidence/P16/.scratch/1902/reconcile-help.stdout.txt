@@ -1,0 +1,40 @@
+/task reconcile — Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.
+
+  Purpose: Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.
+  Usage:  /task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N
+
+  Arguments:
+    <accept-live|revert-to-recorded|revert-to-sentinel|backfill>
+        Explicit reconciliation or missing-field backfill mode.
+    #N
+        Issue number whose recorded and live state differ.
+
+  Preconditions:
+    The issue must exist, a listed reconciliation or backfill mode is required, and its mutation lock must be available.
+
+  Effects:
+    Adopts live state, walks the board to a recorded sentinel, or backfills missing markers.
+
+  Output:
+    Prints detected drift, each repair step, and the final reconciled state.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  usage error / unknown verb
+    3  delegated board transition refused its verb-context gate
+    4  no drift exists for the selected reconciliation mode
+    5  requested repair would move in the wrong direction
+    6  delegated evidence-contiguity gate refused
+    7  the issue mutation lock is held
+    8  reconciled state could not be recorded
+
+  Examples:
+    /task reconcile accept-live 667
+    /task reconcile revert-to-sentinel 667
+    /task reconcile backfill 667
+
+  Related:
+    board
+    status
+    promote

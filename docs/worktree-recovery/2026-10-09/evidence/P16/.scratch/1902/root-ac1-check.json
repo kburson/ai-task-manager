@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "[task-tracker] ✓ Checked \"A real Git child history containing a merge commit and the parent tip reaches native fast-forward integration at the original reviewed SHA, without replaying or flattening its accepted history.\" on #1902\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked A real Git child history containing a merge commit and the parent tip reaches native fast-forward integration at the original reviewed SHA, without replaying or flattening its accepted history.\n"
+  ],
+  "pid": 75392,
+  "stdout": "[task-tracker] ✓ Checked \"A real Git child history containing a merge commit and the parent tip reaches native fast-forward integration at the original reviewed SHA, without replaying or flattening its accepted history.\" on #1902\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ensureChecked A real Git child history containing a merge commit and the parent tip reaches native fast-forward integration at the original reviewed SHA, without replaying or flattening its accepted history.\n"
+}

@@ -1,0 +1,12 @@
+{
+  "args": [
+    "aitm",
+    "ac-stamp",
+    "Existing supported legacy heading and declaration forms retain their behavior."
+  ],
+  "status": 0,
+  "stdout": "[task-tracker] ac-stamp on #1897: running 1 verifier(s) for AC \"Existing supported legacy heading and declaration forms retain their behavior.\"…\n  ✓ node --test scripts/tests/unit/task-tracker/lib/ac-evidence-heading-selection.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-vc-list-774.test.mjs scripts/tests/unit/task-tracker/lib/ac-evidence-non-demonstrable-marker.test.mjs (exit=0)\n[task-tracker] ✓ ac-stamp on #1897: run-props (key=f4d5d21e) upserted onto the AC line's aitm-verified marker (sha=344a6abb).\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' ac-stamp Existing supported legacy heading and declaration forms retain their behavior.\n",
+  "capturedAt": "2026-10-05T23:57:50.541Z",
+  "metadataNote": "Wrapper capture time after command return; actual native verifier timestamps remain unchanged in stdout/live marker."
+}

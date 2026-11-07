@@ -1,0 +1,19 @@
+from pathlib import Path
+p=Path('scripts/task-tracker/merge-back.mjs')
+s=p.read_text().replace('export function mergeBack({ child, path, deps } = {}) {', '''export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) {
+  if (typeof preserveWorktree !== 'boolean') {
+    throw new TypeError('merge-back: preserveWorktree must be boolean');
+  }''')
+s=s.replace('if (!deps.runTests({ path, branch: childBranch })) {','if (deps.runTests({ path, branch: childBranch }) !== true) {')
+s=s.replace('''  if (path) git(['worktree', 'remove', path]);
+  if (hasConfiguredUpstream(git, childBranch)) {
+    git(['branch', '--unset-upstream', childBranch]);
+  }
+  git(['branch', '-d', childBranch]);''', '''  if (!preserveWorktree) {
+    if (path) git(['worktree', 'remove', path]);
+    if (hasConfiguredUpstream(git, childBranch)) {
+      git(['branch', '--unset-upstream', childBranch]);
+    }
+    git(['branch', '-d', childBranch]);
+  }''')
+p.write_text(s)

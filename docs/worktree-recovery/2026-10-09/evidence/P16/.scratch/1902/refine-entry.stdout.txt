@@ -1,0 +1,10 @@
+✓ Issue #1902 moved to: refine
+✓ move #1902 backlog→refine complete
+  exit flush  : backlog row closed (verified)
+  entry stamp : aitm-entered-refine present (verified)
+  entry row   : refine row opened (verified)
+  status      : Status == Refine (verified)
+  sentinel    : aitm-move-complete state=refine (written last)
+  tail        : 8/8 best-effort steps ok
+✓ #1902 promoted: backlog → refine (direct)
+✓ #1902 refined: size=XS, estimate=2h, priority=P0; moved backlog → Refine

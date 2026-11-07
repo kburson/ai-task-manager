@@ -1,0 +1,19 @@
+{
+  "issue": 1897,
+  "kind": "native-pretool-rejection",
+  "attempts": [
+    {
+      "command": "node .scratch/1897/run.mjs focused-commit git commit -m '[#1897] Select canonical acceptance criteria before embedded source headings' --allow-foreign-worktree",
+      "workdir": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac",
+      "sandbox": "require_escalated",
+      "reason": "Refusing git commit: could not verify exclusive ownership of #1897 (gh exited 1: gh: Could not resolve to an Issue with the number of 1897.). Attributed development commits fail closed when ownership is unreadable. Retry with GitHub connectivity, or use an un-attributed chore commit for work that does not belong to the story."
+    },
+    {
+      "command": "git -C /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1897-canonical-ac commit -m '[#1897] Select canonical acceptance criteria before embedded source headings'",
+      "sandbox": "require_escalated",
+      "reason": "[task-tracker] Native hook session has no active issue binding."
+    }
+  ],
+  "execution": "Neither commit tool command executed; changes remain staged, genuine own agent timer remains active #1897",
+  "authority": "No hook disable, SID injection, unattributed commit or activity override was used"
+}

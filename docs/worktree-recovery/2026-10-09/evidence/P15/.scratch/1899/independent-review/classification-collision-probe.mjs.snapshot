@@ -1,0 +1,232 @@
+// @story #1089
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { runVerbTest } from "file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/scripts/task-tracker/verbs/test.mjs";
+import {
+  canonicalVerificationCommandSet,
+  createVerificationReceipt,
+  parseVerificationReceipt,
+  requiredTestReceiptClassifications,
+  upsertVerificationReceipt,
+  validateVerificationReceipt,
+} from "file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/scripts/task-tracker/lib/verification-receipt.mjs";
+import { partitionVerificationCommands } from "file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/scripts/task-tracker/lib/verification-commands.mjs";
+
+const SHA = 'a'.repeat(40);
+const INSTANT = '2026-08-01T18:00:00.000Z';
+const cfg = { repo: 'o/r' };
+const LIVE_COMMANDS = [
+  { command: 'npm run lint' },
+  { command: 'npm run format:check' },
+  { command: 'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs' },
+];
+const TARGETED_COMMANDS = LIVE_COMMANDS.slice(2);
+
+function fingerprint(identity, verificationCommands = LIVE_COMMANDS) {
+  return {
+    commitSha: SHA,
+    verificationCommands: canonicalVerificationCommandSet(verificationCommands, {
+      projectDir: process.cwd(),
+    }),
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+      sandbox: { kind: 'worktree', identity, clean: true },
+    },
+  };
+}
+
+function developReceipt(verificationCommands = LIVE_COMMANDS) {
+  return createVerificationReceipt({
+    issueNumber: 1089,
+    stage: 'develop-final',
+    fingerprint: fingerprint('/outer', verificationCommands),
+    commands: [
+      {
+        classification: 'lint-full',
+        command: 'npm',
+        args: ['run', 'lint'],
+        exitCode: 0,
+        durationMs: 10,
+        startedAt: '2026-08-01T17:59:58.000Z',
+        completedAt: '2026-08-01T17:59:59.000Z',
+      },
+      {
+        classification: 'format-full',
+        command: 'npm',
+        args: ['run', 'format:check'],
+        exitCode: 0,
+        durationMs: 10,
+        startedAt: '2026-08-01T17:59:59.000Z',
+        completedAt: INSTANT,
+      },
+    ],
+    now: () => INSTANT,
+  });
+}
+
+function testReceipt(verificationCommands = LIVE_COMMANDS) {
+  return createVerificationReceipt({
+    issueNumber: 1089,
+    stage: 'test',
+    fingerprint: fingerprint('/sandbox', verificationCommands),
+    commands: [
+      ['lint-full', 'lint'],
+      ['format-full', 'format:check'],
+      ['test-unit', 'test:unit'],
+      ['test-integration', 'test:integration'],
+      ['test-slow', 'test:slow'],
+    ].map(([classification, script]) => ({
+      classification,
+      command: 'npm',
+      args: ['run', script],
+      exitCode: 0,
+      durationMs: 10,
+    })),
+    now: () => INSTANT,
+  });
+}
+
+function docsOnlyTestReceipt() {
+  const full = testReceipt();
+  return {
+    ...full,
+    commands: full.commands.filter(({ classification }) =>
+      ['lint-full', 'format-full'].includes(classification)
+    ),
+    laneSkip: {
+      reason: 'docs-only-diff',
+      kind: 'docs-only',
+      lanes: ['test-unit', 'test-integration', 'test-slow'],
+      changedPaths: ['docs/DESIGN.md'],
+    },
+  };
+}
+
+function issueBody() {
+  return [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    '- [ ] `npm run lint`',
+    '- [ ] `npm run format:check`',
+    '- [ ] `node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs`',
+  ].join('\n');
+}
+
+function targetedOnlyIssueBody() {
+  return [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    '- [ ] `node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs`',
+  ].join('\n');
+}
+
+async function runCloudCoverageFixture({ cloudExit = 0, extraExit = 0, multiple = false } = {}) {
+  const commands = [
+    { command: 'npm test' },
+    { command: 'npm run test:slow' },
+    { command: 'node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs' },
+  ];
+  let body = [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    ...commands.map(({ command }, i) => '- [ ] `' + command + '` <!-- id=' + (i + 1) + ' -->'),
+  ].join('\n');
+  const providerConfig = {
+    id: 'project',
+    develop: {
+      iterationSteps: [],
+      finalSteps: [
+        { classification: 'lint-full', kind: 'lint', command: 'npm run lint' },
+        { classification: 'format-full', kind: 'format', command: 'npm run format:check' },
+      ],
+    },
+    test: {
+      setup: 'npm-ci',
+      steps: [
+        {
+          classification: 'test-targeted-1',
+          kind: 'test',
+          command: 'node scripts/maintenance/verify-ci-receipts.mjs',
+        },
+        ...(multiple
+          ? [
+              {
+                classification: 'test-extra',
+                kind: 'test',
+                command: 'node scripts/maintenance/verify-affected-or-cloud.mjs',
+              },
+            ]
+          : []),
+      ],
+      declaredCommandCoverage: [
+        {
+          command: 'npm test',
+          requires: multiple ? ['test-targeted-1', 'test-extra'] : ['test-targeted-1'],
+        },
+        { command: 'npm run test:slow', requires: ['test-targeted-1'] },
+      ],
+    },
+  };
+  const base = developReceipt(commands);
+  base.provider = { id: 'project', requiredClassifications: ['lint-full', 'format-full'] };
+  base.commands = base.commands.map((command) => ({
+    ...command,
+    providerId: 'project',
+    kind: command.classification === 'lint-full' ? 'lint' : 'format',
+  }));
+  const executed = [];
+  const comments = [];
+  const result = await runVerbTest({
+    cfg: { ...cfg, verificationProvider: providerConfig },
+    issueNumber: 1089,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps: {
+      fetchBody: async () => body,
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+        return { status: 'ok', body };
+      },
+      postComment: async ({ body: comment }) => comments.push(comment),
+      getHeadSha: async () => SHA,
+      runDevelopFinalization: async () => ({
+        ok: true,
+        fingerprint: fingerprint('/outer', commands),
+        receipt: base,
+      }),
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      npmCi: async () => {},
+      getSandboxHeadSha: async () => SHA,
+      buildFingerprint: ({ verificationCommands }) => fingerprint('/sandbox', verificationCommands),
+      execInSandbox: async ({ argv }) => {
+        const command = argv.join(' ');
+        executed.push(command);
+        const exit =
+          command === 'node scripts/maintenance/verify-ci-receipts.mjs'
+            ? cloudExit
+            : command === 'node scripts/maintenance/verify-affected-or-cloud.mjs'
+              ? extraExit
+              : 0;
+        return {
+          exit,
+          stdout: 'fixture execution',
+          stderr: '',
+          durationMs: 5,
+          startedAt: INSTANT,
+          completedAt: INSTANT,
+        };
+      },
+      moveState: async () => ({ ok: true }),
+      logIssueTime: async () => {},
+    },
+  });
+  return { result, body, executed, comments };
+}
+
+
+const result = await runCloudCoverageFixture({cloudExit:1}); console.log(JSON.stringify({status:result.result.status,results:result.result.results.map(({command,classification,passed})=>({command,classification,passed})),executed:result.executed},null,2));
