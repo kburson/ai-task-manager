@@ -326,3 +326,29 @@ test('default GraphQL adapters create, read, update, and no-op through productio
     'no-op'
   );
 });
+
+test('correlated owned-comment reads retain large-id URLs without the deprecated Int field', async () => {
+  const { readIssueComment } = await import('../../../../task-tracker/lib/owned-comment.mjs');
+  const url = 'https://github.com/owner/repo/issues/42#issuecomment-6592547411';
+  const actual = await readIssueComment({
+    id: 'IC_large',
+    repository,
+    issue,
+    graphql: async ({ query }) => {
+      if (/\bdatabaseId\b/.test(query))
+        throw new Error('32-bit comment id cannot represent this node');
+      return {
+        data: {
+          node: {
+            id: 'IC_large',
+            body: 'bounded source',
+            url,
+            issue: { number: issue, repository: { nameWithOwner: repository } },
+          },
+        },
+      };
+    },
+  });
+  assert.equal(actual.id, 'IC_large');
+  assert.equal(actual.url, url);
+});

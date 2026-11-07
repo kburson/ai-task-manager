@@ -183,6 +183,7 @@ export const PREFLIGHT_MODE = {
   'plan-approve': 'target-required',
   'issue-body': 'target-required',
   comment: 'target-required',
+  'plan-analysis': 'target-required',
   'spike-deliverable': 'target-required',
   assign: 'target-required',
   transfer: 'target-required',
@@ -825,6 +826,11 @@ if (_isMain)
         case 'issue-body': {
           const { verbIssueBody } = await import('./verbs/issue-body.mjs');
           await verbIssueBody(ctx);
+          break;
+        }
+        case 'plan-analysis': {
+          const { verbPlanAnalysis } = await import('./verbs/plan-analysis.mjs');
+          await verbPlanAnalysis(ctx);
           break;
         }
         case 'comment': {

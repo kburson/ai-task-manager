@@ -522,6 +522,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "plan-analysis",
+      "canonical": "plan-analysis",
+      "route": "verbs/plan-analysis.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "plan-approve",
       "canonical": "plan-approve",
       "route": "verbs/plan-approve.mjs",
