@@ -245,6 +245,29 @@ export async function fetchConfiguredProjectItem({
   };
 }
 
+// Native relationship evidence is carried only after the existing inventory fence.
+function wbsNativeNode(node) {
+  const repository = node?.repository?.nameWithOwner;
+  if (
+    typeof repository !== 'string' ||
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ||
+    typeof node?.id !== 'string' ||
+    !node.id ||
+    node.id !== node.id.trim() ||
+    !Number.isSafeInteger(node.number) ||
+    node.number <= 0
+  )
+    return null;
+  return { repository: repository.toLowerCase(), nodeId: node.id, number: node.number };
+}
+function wbsIdentityTuple(node) {
+  return JSON.stringify([
+    node.id,
+    node.number,
+    node.repository?.nameWithOwner?.toLowerCase() ?? null,
+  ]);
+}
+
 export async function fetchAllSubIssueNodes({
   parentEpicNumber,
   repo,
@@ -262,6 +285,18 @@ export async function fetchAllSubIssueNodes({
   const seenCursors = new Set();
   let expectedTotalCount = null;
   let after = null;
+  let nativeParent;
+  const observeParent = (node) => {
+    const identity = wbsNativeNode(node);
+    if (
+      identity &&
+      (identity.repository !== repo.toLowerCase() || identity.number !== Number(parentEpicNumber))
+    )
+      throw new Error('wave-admission: parent identity mismatch');
+    if (nativeParent !== undefined && JSON.stringify(identity) !== JSON.stringify(nativeParent))
+      throw new Error('wave-admission: parent snapshot changed during verification');
+    nativeParent = identity;
+  };
 
   for (let page = 0; page < 1000; page++) {
     const data = await gqlFn(
@@ -269,11 +304,13 @@ export async function fetchAllSubIssueNodes({
     query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
+          id number repository { nameWithOwner }
           subIssues(first: 100, after: $after) {
             totalCount
             nodes {
               id
               number
+              repository { nameWithOwner }
               title
               state
               stateReason
@@ -310,6 +347,7 @@ export async function fetchAllSubIssueNodes({
     }`,
       { owner, repo: repoName, issue: Number(parentEpicNumber), after }
     );
+    observeParent(data?.repository?.issue);
     const connection = data?.repository?.issue?.subIssues;
     if (!connection) throw new Error('wave-admission: parent issue or sub-issues unreadable');
     if (!Array.isArray(connection.nodes) || !connection.pageInfo) {
@@ -369,12 +407,13 @@ export async function fetchAllSubIssueNodes({
         repoName,
         parentEpicNumber,
         gqlFn,
+        observeParent,
       });
-      const initialIdentities = nodes.map((node) => `${node.id}:${node.number}`).sort();
+      const initialIdentities = nodes.map(wbsIdentityTuple).sort();
       if (JSON.stringify(initialIdentities) !== JSON.stringify(verifiedIdentities)) {
         throw new Error('wave-admission: sub-issue snapshot changed during verification');
       }
-      return nodes;
+      return nodes.map((node) => ({ ...node, nativeWbsParent: nativeParent }));
     }
     const next = connection.pageInfo.endCursor;
     if (!next) throw new Error('wave-admission: sub-issue page missing end cursor');
@@ -385,7 +424,13 @@ export async function fetchAllSubIssueNodes({
   throw new Error('wave-admission: sub-issue pagination safety limit exceeded');
 }
 
-async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlFn } = {}) {
+async function fetchSubIssueIdentities({
+  owner,
+  repoName,
+  parentEpicNumber,
+  gqlFn,
+  observeParent,
+} = {}) {
   const identities = [];
   const seenIds = new Set();
   const seenNumbers = new Set();
@@ -398,9 +443,10 @@ async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlF
       `query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
           issue(number: $issue) {
+            id number repository { nameWithOwner }
             subIssues(first: 100, after: $after) {
               totalCount
-              nodes { id number }
+              nodes { id number repository { nameWithOwner } }
               pageInfo { hasNextPage endCursor }
             }
           }
@@ -408,6 +454,7 @@ async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlF
       }`,
       { owner, repo: repoName, issue: Number(parentEpicNumber), after }
     );
+    observeParent(data?.repository?.issue);
     const connection = data?.repository?.issue?.subIssues;
     if (!connection || !Array.isArray(connection.nodes) || !connection.pageInfo) {
       throw new Error('wave-admission: sub-issue verification unreadable');
@@ -431,7 +478,7 @@ async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlF
       }
       seenIds.add(id);
       seenNumbers.add(number);
-      identities.push(`${id}:${number}`);
+      identities.push(wbsIdentityTuple(node));
     }
     if (!connection.pageInfo.hasNextPage) {
       if (identities.length !== expectedTotalCount) {
@@ -601,6 +648,11 @@ export function mapSubIssueNodes(subs, cfgOrProjectId, { allowPlanProjection = f
     out.push({
       number: sub.number,
       title: String(sub.title || '').trim(),
+      rawTitle: typeof sub.title === 'string' ? sub.title : null,
+      nativeWbsIdentity:
+        wbsNativeNode(sub) && sub.nativeWbsParent
+          ? { ...wbsNativeNode(sub), parent: { ...sub.nativeWbsParent } }
+          : null,
       body: String(sub.body || ''),
       rank,
       state,
