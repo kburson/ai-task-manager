@@ -1,13 +1,143 @@
-// @story #1878 #2100
+// @story #2165 #1878 #2100
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records/canonical-json.mjs';
 import {
   createCloseReadOnlyPorts,
   evaluateCloseReadiness,
 } from '../../../../task-tracker/lib/action-decision/close.mjs';
 import { fixture, ISSUE, NOW } from '../../../helpers/close-v5-fixture.mjs';
+import { cumulativeProofFixture } from '../../../helpers/close-cumulative-proof-fixture.mjs';
+
+// Returning unavailable for a complete, physically matching prefix must fail.
+test('production cumulative v5 proof is ready without changing its receipt or Git', async () => {
+  const f = fixture({ cumulativePrefix: true });
+  try {
+    const before = f.snapshot();
+    const receipt = JSON.stringify(f.context.delivery.gateInput.records.matchingReceipt.record);
+    const result = await f.ports.runReadOnlyGuards('review', 'done', f.context, f.authority);
+    assert.equal(result.status, 'ready', JSON.stringify(result));
+    assert.equal(
+      JSON.stringify(f.context.delivery.gateInput.records.matchingReceipt.record),
+      receipt
+    );
+    assert.deepEqual(f.snapshot(), before);
+  } finally {
+    rmSync(f.dir, { recursive: true, force: true });
+  }
+});
+
+for (const kind of [
+  'unrelated content',
+  'unrelated mode',
+  'unrelated delete',
+  'unrelated rename',
+  'observed tree',
+  'observed parent',
+  'missing object',
+  'missing tree object',
+  'foreign prefix',
+  'incomplete inventory',
+  'incomplete chain',
+  'wrong inventory head',
+  'wrong accepted head',
+  'receipt mapping',
+  'contradictory final',
+]) {
+  test('production cumulative proof refuses ' + kind + ' without writes', async () => {
+    const f = cumulativeProofFixture(kind);
+    try {
+      if (kind.startsWith('unrelated ')) {
+        const tree = (sha) =>
+          execFileSync('git', ['show', '-s', '--format=%T', sha], {
+            cwd: f.dir,
+            encoding: 'utf8',
+          }).trim();
+        assert.equal(
+          tree(f.head),
+          tree(f.merged),
+          'equal final trees alone must not authorize lost integration changes'
+        );
+        assert.notEqual(tree(f.prefixHead), tree(f.integrationBase));
+      }
+      const before = f.snapshot();
+      let result, failure;
+      try {
+        result = await f.ports.runReadOnlyGuards('review', 'done', f.context, f.authority);
+      } catch (error) {
+        failure = error;
+      }
+      assert.ok(failure || ['blocked', 'indeterminate'].includes(result?.status), kind);
+      assert.deepEqual(f.snapshot(), before);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+}
+
+// Losing the observation binding must not authorize a changed source digest.
+for (const phase of ['comparison', 'prefix inspection']) {
+  test('production cumulative proof refuses observation drift during ' + phase, async () => {
+    const f = fixture({ cumulativePrefix: true });
+    try {
+      const g = f.context.delivery.gateInput;
+      const adversarialReceipt = structuredClone(g.records.matchingReceipt.record);
+      g.records.matchingReceipt.record = adversarialReceipt;
+      g.records.receipts[0].record = adversarialReceipt;
+      let changed = false;
+      const ports = createCloseReadOnlyPorts({
+        issue: ISSUE,
+        cfg: f.cfg,
+        projectDir: f.dir,
+        deps: {
+          run: async (command, args) => {
+            assert.equal(command, 'git');
+            assert.ok(['cat-file', 'show', 'merge-base', 'ls-tree', 'log'].includes(args[0]));
+            let stdout;
+            try {
+              stdout = execFileSync(command, args, { cwd: f.dir, encoding: 'utf8' });
+            } catch (error) {
+              if (error.code === undefined && Number.isInteger(error.status))
+                error.code = error.status;
+              throw error;
+            }
+            const target =
+              phase === 'comparison' ? args[0] === 'ls-tree' : args.includes('--format=%H%n%T%n%P');
+            if (!changed && target) {
+              g.pullRequest.sourceCommitEvidence[0].message += '\nChanged observation';
+              g.records.matchingReceipt.record.sourceDigest =
+                'sha256:' +
+                createHash('sha256')
+                  .update(canonicalRecordJson(g.pullRequest.sourceCommitEvidence))
+                  .digest('hex');
+              changed = true;
+            }
+            return { stdout };
+          },
+        },
+      });
+      const before = f.snapshot();
+      await assert.rejects(
+        ports.runReadOnlyGuards('review', 'done', f.context, f.authority),
+        (error) => {
+          assert.match(
+            error.cause?.message ?? error.message,
+            /close-readiness:content-proof-unavailable/
+          );
+          return true;
+        }
+      );
+      assert.equal(changed, true, 'must reach the selected comparison phase');
+      assert.deepEqual(f.snapshot(), before);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+}
+
 for (const advanced of [false, true]) {
   test(`production read-only v5 proof is ready on ${advanced ? 'disjoint advanced' : 'exact'} base and leaves Git and worktree bytes unchanged`, async () => {
     const f = fixture({ advanced });

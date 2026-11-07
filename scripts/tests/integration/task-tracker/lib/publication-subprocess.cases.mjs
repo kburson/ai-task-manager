@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installStubGh } from '../../../fixtures/stub-gh.mjs';
 import { freshUnitDir } from '../../../unit/task-tracker/lib/decomposition-authority-fixtures.mjs';
 import {
   withIssueLock,
@@ -26,7 +27,8 @@ export function registerPublicationSubprocessCases() {
         file = path.join(dir, 'provider.json');
       writeFileSync(file, JSON.stringify(initialProcessProviderState(mode)));
       const h = processPublicationHarness({ file, dir, mode }),
-        prior = process.env[ISSUE_LOCK_HELD_ENV];
+        prior = process.env[ISSUE_LOCK_HELD_ENV],
+        offline = installStubGh();
       try {
         await withIssueLock({ issue: 1987, verb: 'subprocess-proof', projDir: dir }, async () => {
           const owner = currentIssueLockOwner(1987);
@@ -53,7 +55,9 @@ export function registerPublicationSubprocessCases() {
           assert.ok(h.load().calls.every((call) => call.owned));
         });
         assert.equal(process.env[ISSUE_LOCK_HELD_ENV], prior);
+        assert.equal(offline.count(), 0, 'all reads must use the declared fixture transports');
       } finally {
+        offline.restore();
         rmSync(dir, { recursive: true, force: true });
       }
     });
@@ -61,7 +65,8 @@ export function registerPublicationSubprocessCases() {
     const dir = freshUnitDir('publication-interruption-'),
       file = path.join(dir, 'provider.json');
     writeFileSync(file, JSON.stringify(initialProcessProviderState('inflation')));
-    const h = processPublicationHarness({ file, dir, mode: 'inflation' });
+    const h = processPublicationHarness({ file, dir, mode: 'inflation' }),
+      offline = installStubGh();
     try {
       const child = spawnSync(process.execPath, [script, file, dir, 'kill-intent'], {
         cwd: dir,
@@ -85,7 +90,9 @@ export function registerPublicationSubprocessCases() {
       assert.equal(h.load().board.estimate, 25);
       assert.equal(readDecompositionRecords(h.load().body).publication.status, 'complete');
       assert.equal(h.load().comment.body.match(/Publication operation:/g).length, 1);
+      assert.equal(offline.count(), 0, 'interruption and retry must remain provider-isolated');
     } finally {
+      offline.restore();
       rmSync(dir, { recursive: true, force: true });
     }
   });

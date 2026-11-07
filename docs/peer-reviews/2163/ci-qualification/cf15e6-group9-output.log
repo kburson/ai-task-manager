@@ -1,0 +1,82 @@
+
+> @kburson/ai-task-manager@0.1.0 test:integration
+> node scripts/run-tests.mjs --lane integration --shard 9/9
+
+▶ lane=integration (33 files)
+
+▶ scripts/tests/integration/gh/gh-call-census.test.mjs ... ok (448ms)
+▶ scripts/tests/integration/meta/test-entrypoint-imports.test.mjs ... ok (279ms)
+▶ scripts/tests/integration/meta/test-tree-layout.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs ... ok (287ms)
+▶ scripts/tests/integration/task-tracker/first-child-epic-convergence.test.mjs ... ok (32.0s)
+▶ scripts/tests/integration/task-tracker/inflation/retired/after.test.mjs ... ok (459.5s)
+▶ scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs ... ok (1.0s)
+▶ scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs ... ok (1.2s)
+▶ scripts/tests/integration/task-tracker/lib/create-issue-gate-compliance.test.mjs ... ok (1.2s)
+▶ scripts/tests/integration/task-tracker/lib/create-issue-partial-success.test.mjs ... ok (781ms)
+▶ scripts/tests/integration/task-tracker/lib/defect-shape.test.mjs ... ok (1.4s)
+▶ scripts/tests/integration/task-tracker/lib/discover-promote-aged-bucket.test.mjs ... ok (275ms)
+▶ scripts/tests/integration/task-tracker/lib/discover-test-files.test.mjs ... ok (134ms)
+▶ scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-claim-races.integration.test.mjs ... ok (591ms)
+▶ scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-close.integration.test.mjs ... ok (188ms)
+▶ scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-gate-parity.integration.test.mjs ... ok (167ms)
+▶ scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation-projection.integration.test.mjs ... ok (165ms)
+▶ scripts/tests/integration/task-tracker/lib/estimation/adaptive-estimation.integration.test.mjs ... ok (813ms)
+▶ scripts/tests/integration/task-tracker/lib/evidence-v2/codec.test.mjs ... ok (300ms)
+▶ scripts/tests/integration/task-tracker/lib/fail-closed-gates.test.mjs ... ok (198ms)
+▶ scripts/tests/integration/task-tracker/lib/lock-env-leak-regression.test.mjs ... ok (1.2s)
+▶ scripts/tests/integration/task-tracker/lib/pr1866-review-regressions.test.mjs ... ok (995ms)
+▶ scripts/tests/integration/task-tracker/lib/story-cache/writer-claim.integration.test.mjs ... ok (2.1s)
+▶ scripts/tests/integration/task-tracker/lib/story-cache/writer-registry.integration.test.mjs ... ok (3.1s)
+▶ scripts/tests/integration/task-tracker/lib/switch-verb-noop.test.mjs ... ok (433ms)
+▶ scripts/tests/integration/task-tracker/lib/timing-actor-runtime.test.mjs ... ok (472ms)
+▶ scripts/tests/integration/task-tracker/lib/timing-concurrency.test.mjs ... ok (833ms)
+▶ scripts/tests/integration/task-tracker/lib/timing-degraded-write-visibility.test.mjs ... ok (448ms)
+▶ scripts/tests/integration/task-tracker/lib/timing-delivery-provenance.test.mjs ... ok (532ms)
+▶ scripts/tests/integration/task-tracker/lib/timing-unknown-cli.test.mjs ... ok (1.5s)
+▶ scripts/tests/integration/task-tracker/location-mutation-authority.test.mjs ... ok (1.6s)
+▶ scripts/tests/integration/task-tracker/verbs/close-trunk-delivery-gate.test.mjs ... ok (105ms)
+▶ scripts/tests/integration/task-tracker/verbs/switch-binding-generation.test.mjs ... ok (500ms)
+
+1 of 33 test file(s) failed:
+
+── scripts/tests/integration/meta/test-tree-layout.test.mjs ──
+✔ layout audit rejects a discovered test outside the canonical lane tree (89.775809ms)
+✔ layout audit rejects a test placed directly in a canonical lane root (58.140198ms)
+✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (67.849605ms)
+✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (135.382078ms)
+✔ feature-oriented files keep semantic ownership after their lane correction (2.550307ms)
+✔ current test-tree baseline is well formed (2.418551ms)
+✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.639676ms)
+✔ AC1: no *.test.mjs file remains directly in a lane root (0.468756ms)
+✖ AC2: every lane subdirectory has an explicit subsystem or integration owner (6.865171ms)
+✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (9.874627ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 382.543201
+
+✖ failing tests:
+
+test at scripts/tests/integration/meta/test-tree-layout.test.mjs:202:1
+✖ AC2: every lane subdirectory has an explicit subsystem or integration owner (6.865171ms)
+  AssertionError [ERR_ASSERTION]: scripts/tests/integration/task-tracker/inflation/active/retry.test.mjs: subdir "task-tracker/inflation/active" mirrors no source subsystem and is not core/meta
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/integration/meta/test-tree-layout.test.mjs:210:14)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+

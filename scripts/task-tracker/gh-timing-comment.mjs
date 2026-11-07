@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
-import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { serializeMarker, unescapeValue, validMarkerTimestamp } from './lib/marker-grammar.mjs';
 import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './lib/markers.mjs';
 import {
   ensureTimingRowFullMarkerCell,
@@ -26,7 +26,7 @@ import {
   isEmittableTimingEvent,
 } from './lib/timing-events/index.mjs';
 import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
-import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { normalizeStateId, stateIds } from './lib/lifecycle-policy/index.mjs';
 export { GH_TIMING_COMMENT_TIMEOUT_MS };
 const pexec = promisify(execFile);
 
@@ -444,6 +444,29 @@ export function readLastKnownState(body) {
   };
 }
 
+// Mutation admission cannot take the first match or silently erase a malformed
+// sibling. A legacy state without its optional timestamp is still readable.
+export function readUniqueLastKnownState(body) {
+  const starts = String(body).match(/<!--\s*aitm-last-known-state\b/gi) || [];
+  const count = (pattern) => [...String(body).matchAll(new RegExp(pattern.source, 'g'))].length;
+  const modern = count(LAST_KNOWN_STATE_NEW_RE);
+  const legacy = count(LAST_KNOWN_STATE_RE);
+  const dates = count(LAST_KNOWN_STATE_TS_RE);
+  const result = readLastKnownState(body);
+  const retiredStage =
+    legacy && ['development', 'groom', 'analyze', 'validate'].includes(result.state);
+  if (
+    starts.length &&
+    (modern + legacy !== 1 ||
+      starts.length !== modern + legacy + dates ||
+      dates > legacy ||
+      (!retiredStage && !stateIds().includes(result.state)) ||
+      ((modern || dates) && !validMarkerTimestamp(result.ts)))
+  )
+    throw new Error('malformed, duplicate or conflicting recorded state');
+  return result;
+}
+
 export function writeLastKnownState(body, state) {
   if (typeof state !== 'string' || !state.trim()) {
     throw new Error('writeLastKnownState: state must be a non-empty string');
@@ -457,9 +480,9 @@ export function writeLastKnownState(body, state) {
   // marker) before prepending the fresh single marker — guarantees exactly one
   // marker, no duplicates, last-write-wins, across mixed-grammar bodies.
   const stripped = src
-    .replace(new RegExp(LAST_KNOWN_STATE_NEW_RE.source + '\\s*\\n?', 'g'), '')
-    .replace(new RegExp(LAST_KNOWN_STATE_RE.source + '\\s*\\n?', 'g'), '')
-    .replace(new RegExp(LAST_KNOWN_STATE_TS_RE.source + '\\s*\\n?', 'g'), '');
+    .replace(new RegExp(LAST_KNOWN_STATE_NEW_RE.source + '(?:[ \\t]*\\r?\\n)?', 'g'), '')
+    .replace(new RegExp(LAST_KNOWN_STATE_RE.source + '(?:[ \\t]*\\r?\\n)?', 'g'), '')
+    .replace(new RegExp(LAST_KNOWN_STATE_TS_RE.source + '(?:[ \\t]*\\r?\\n)?', 'g'), '');
   return `${block}${stripped}`;
 }
 

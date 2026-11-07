@@ -56,12 +56,13 @@ const RECORDED_DEVELOP = writeLastKnownState(BASE, 'develop');
 // --- runReconcile dep harness ----------------------------------------------
 function makeDeps(overrides = {}) {
   const calls = { writes: [], mutations: [], moves: [], persists: [] };
+  let currentBody = overrides.body ?? BASE;
   return {
     calls,
     deps: {
       fetchIssueBody: async () => {
         if (overrides.fetchThrows) throw new Error('fetch boom');
-        return { body: overrides.body ?? BASE };
+        return { body: currentBody };
       },
       getLiveState: async () => overrides.live ?? null,
       writeIssueBody: async ({ body }) => {
@@ -73,9 +74,15 @@ function makeDeps(overrides = {}) {
       },
       persistTrackerState: (a) => calls.persists.push(a),
       mutateIssueBody: async ({ mutate }) => {
-        if (overrides.mutateThrows) throw new Error('mutate boom');
-        calls.mutations.push(mutate(overrides.body ?? BASE));
-        return { status: 'ok' };
+        const next = mutate(currentBody);
+        if (/<!-- aitm-(?:reconciled|reverted)\b/.test(next)) {
+          if (overrides.mutateThrows) throw new Error('mutate boom');
+          calls.mutations.push(next);
+        } else {
+          calls.writes.push(next);
+        }
+        currentBody = next;
+        return { status: 'ok', body: next };
       },
       ...(overrides.listComments ? { listComments: overrides.listComments } : {}),
       ...overrides.deps,

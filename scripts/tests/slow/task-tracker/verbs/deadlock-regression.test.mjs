@@ -63,12 +63,12 @@ test('AC5: reconcile accept-live resolves board/body drift via DI (no hand-edit)
     now: () => '2026-06-17T00:00:00Z',
     deps: {
       fetchIssueBody: async () => ({
-        body: '<!-- aitm-last-known-state: test -->\n\n## Body\n',
+        body: writtenBody ?? '<!-- aitm-last-known-state: test -->\n\n## Body\n',
       }),
       getLiveState: async () => 'develop',
-      writeIssueBody: async ({ body }) => {
-        writtenBody = body;
-        return { status: 'ok' };
+      mutateIssueBody: async ({ mutate }) => {
+        writtenBody = mutate(writtenBody ?? '<!-- aitm-last-known-state: test -->\n\n## Body\n');
+        return { status: 'ok', body: writtenBody };
       },
       persistTrackerState: ({ state }) => persisted.push(state),
       postTimingRow: async () => {},

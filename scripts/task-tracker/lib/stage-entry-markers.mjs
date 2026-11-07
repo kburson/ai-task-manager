@@ -7,9 +7,10 @@ import { promisify } from 'node:util';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { serializeMarker } from './marker-grammar.mjs';
+import { serializeMarker, validMarkerTimestamp } from './marker-grammar.mjs';
 import {
   ENTRY_MARKER_RE,
+  ENTRY_MARKER_START_RE,
   parseEntryMarker,
   parseEntryMarkers as parseGrammarEntryMarkers,
   serializeEntryMarker,
@@ -135,6 +136,30 @@ export function parseEntryMarkers(body) {
     visit,
     ts,
   }));
+}
+
+// Reconciliation must preserve the exact recorded visits; the tolerant history
+// readers can skip malformed comments and do not reject two first visits.
+export function readUniqueVisitMarkers(body) {
+  const markers = body.match(ENTRY_MARKER_RE) ?? [];
+  if (markers.length !== (body.match(ENTRY_MARKER_START_RE) ?? []).length)
+    throw new Error('malformed stage visit marker');
+  const visits = new Set();
+  for (const marker of markers) {
+    const entry = parseEntryMarker(marker, { uniqueAttributes: true });
+    if (
+      !entry ||
+      !validMarkerTimestamp(entry.ts) ||
+      entry.state !== entry.state.toLowerCase() ||
+      !Number.isSafeInteger(entry.visit) ||
+      entry.visit < 1
+    )
+      throw new Error('malformed stage visit marker');
+    const key = canonicalStage(entry.state) + '#' + entry.visit;
+    if (visits.has(key)) throw new Error('conflicting recorded visits: ' + key);
+    visits.add(key);
+  }
+  return markers;
 }
 
 // First-visit-only view as a `{stage: ts}` map. For callers that only need

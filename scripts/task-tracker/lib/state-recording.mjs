@@ -30,7 +30,7 @@ export class StateRecordingFailedError extends Error {
   }
 }
 
-async function defaultPostComment({ repo, issueNumber, body }) {
+export async function postStateRecordingComment({ repo, issueNumber, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
   });
@@ -70,7 +70,7 @@ export async function writeIssueBodyWithRetry({
   deps = {},
 } = {}) {
   if (!target) throw new Error('writeIssueBodyWithRetry: target is required');
-  const post = postComment || defaultPostComment;
+  const post = postComment || postStateRecordingComment;
 
   // Legacy path — kept until every verb migrates to the closure shape (commit 2
   // of #295). When the caller supplies a pre-baked `body` + `writeIssueBody`,

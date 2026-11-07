@@ -4,9 +4,66 @@ import { after } from 'node:test';
 import { mkdirSync, rmSync } from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
 import path from 'node:path';
+import assert from 'node:assert/strict';
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
 import { canonicalDecompositionJson } from '../../task-tracker/lib/decomposition-assessment.mjs';
 import { formatIssueFieldDb } from '../../task-tracker/issue-field-db.mjs';
+
+// @story #2163 — complete transport evidence for real inflation projection reads.
+export function estimationProjectionGraphql({
+  cfg,
+  issueNumber,
+  itemId,
+  getBody,
+  getProject,
+  getComments,
+}) {
+  return async ({ query, variables }) => {
+    const [owner, name] = cfg.repo.split('/');
+    assert.match(query, /query AitmEstimationProjection\(/);
+    assert.deepEqual(variables, { owner, name, issue: issueNumber });
+    const board = getProject();
+    return {
+      data: {
+        repository: {
+          issue: {
+            number: issueNumber,
+            repository: { nameWithOwner: cfg.repo },
+            body: getBody(),
+            comments: {
+              nodes: getComments().map((comment) => ({
+                __typename: 'IssueComment',
+                id: comment.node_id,
+                databaseId: comment.id,
+                body: comment.body,
+                createdAt: '2026-11-05T00:00:00Z',
+                updatedAt: '2026-11-05T00:00:00Z',
+                author: { login: 'fixture' },
+                issue: { number: issueNumber, repository: { nameWithOwner: cfg.repo } },
+              })),
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+            projectItems: {
+              nodes: [
+                {
+                  id: itemId,
+                  project: { id: cfg.projectId },
+                  fieldValues: {
+                    nodes: [
+                      { number: board.estimate, field: { id: cfg.fieldIds.estimate } },
+                      { name: board.size, field: { id: cfg.fieldIds.size } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+  };
+}
+
 export const estimationObservation = (value) => ({
   status: 'observed',
   value,

@@ -91,7 +91,10 @@ test('unavailable forecast cannot become exit-zero from current low board fields
 });
 
 import { verbKind } from '../../../../task-tracker/verbs/kind.mjs';
-import { governedFixture as kindFixture } from './decomposition-governed-fixtures.mjs';
+import {
+  governedFixture as kindFixture,
+  installEpicConvergenceFixturePorts,
+} from './decomposition-governed-fixtures.mjs';
 import { saveState } from '../../../../task-tracker/state.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -153,6 +156,7 @@ for (const broken of ['ownership', 'scope', 'plan'])
 
 test('story to epic preserves pending intent and cannot invent completion readiness', async () => {
   const f = await kindFixture(7);
+  installEpicConvergenceFixturePorts(f);
   const before = await f.runtime.collect(f.subject);
   const p = publication(before.inputDigest, { subject: f.subject });
   f.authority.body = replaceDecompositionRecords(f.authority.body, {
