@@ -39,15 +39,15 @@ function receipts() {
 const validate = (results) =>
   validateShardReceipts(results, { inventory, lane: 'integration', commit, total: 3 });
 
-test('twelve integration groups retain the complete canonical inventory exactly once', () => {
+test('thirteen integration groups retain the complete canonical inventory exactly once', () => {
   const canonical = laneFiles('integration');
-  const planned = planShards(canonical, 12);
-  assert.equal(planned.length, 12);
+  const planned = planShards(canonical, 13);
+  assert.equal(planned.length, 13);
   assert.ok(planned.every((files) => files.length > 0));
   const selected = planned.flat();
   assert.equal(new Set(selected).size, selected.length);
   assert.deepEqual(selected.sort(), [...canonical].sort());
-  assert.deepEqual(planShards([...canonical].reverse(), 12), planned);
+  assert.deepEqual(planShards([...canonical].reverse(), 13), planned);
 });
 
 test('three groups preserve suite families and cover every file once, independent of discovery order', () => {

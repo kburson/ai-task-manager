@@ -23,12 +23,12 @@ const inventories = Object.fromEntries(
   ['unit', 'integration', 'slow'].map((lane) => [
     lane,
     (lane === 'integration'
-      ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
+      ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm']
       : ['one', 'two', 'three']
     ).map((name) => `scripts/tests/${lane}/${name}.test.mjs`),
   ])
 );
-function lanes({ integration = 12, unit = 1, slow = 3 } = {}) {
+function lanes({ integration = 13, unit = 1, slow = 3 } = {}) {
   return Object.entries(inventories).map(([lane, inventory]) => {
     const total = { integration, unit, slow }[lane];
     return {
@@ -71,7 +71,7 @@ test('cloud acceptance requires successful exact-head CI from the owning reposit
     assert.throws(() => validateCloudRun({ ...run, ...change }, options), /cloud-receipt/);
 });
 test('all three lanes require exact attempt and complete successful test coverage', () => {
-  assert.equal(validateCloudLanes(lanes(), options).count, 18);
+  assert.equal(validateCloudLanes(lanes(), options).count, 19);
   assert.throws(() => validateCloudLanes(lanes().slice(1), options), /lane/);
   for (const change of [
     { runId: '41' },
@@ -94,11 +94,11 @@ test('all three lanes require exact attempt and complete successful test coverag
   assert.throws(() => validateCloudLanes(duplicated, options), /shard/);
 });
 
-test('complete twelve-group integration evidence includes every nonempty worker', () => {
+test('complete thirteen-group integration evidence includes every nonempty worker', () => {
   const records = lanes();
   assert.ok(records[1].results.every(({ timing }) => timing.count === 1));
-  assert.equal(validateCloudLanes(records, options).count, 18);
-  for (let index = 0; index < 12; index++) {
+  assert.equal(validateCloudLanes(records, options).count, 19);
+  for (let index = 0; index < 13; index++) {
     const missing = lanes();
     missing[1].results.splice(index, 1);
     assert.throws(() => validateCloudLanes(missing, options), /missing shard/);
@@ -113,9 +113,10 @@ test('complete twelve-group integration evidence includes every nonempty worker'
   }
 });
 
-test('integration refuses old three/nine-group, wrong-total, duplicate and foreign-head evidence', () => {
+test('integration refuses old three/nine/twelve-group, wrong-total, duplicate and foreign-head evidence', () => {
   assert.throws(() => validateCloudLanes(lanes({ integration: 3 }), options), /lane identity/);
   assert.throws(() => validateCloudLanes(lanes({ integration: 9 }), options), /lane identity/);
+  assert.throws(() => validateCloudLanes(lanes({ integration: 12 }), options), /lane identity/);
   assert.throws(() => validateCloudLanes(lanes({ integration: 8 }), options), /lane identity/);
   const wrongTotal = lanes();
   wrongTotal[1].results[8].timing.shard.total = 3;
@@ -128,8 +129,8 @@ test('integration refuses old three/nine-group, wrong-total, duplicate and forei
   assert.throws(() => validateCloudLanes(foreign, options), /lane identity/);
 });
 
-test('twelve-group integration leaves unit-one and slow-three contracts enforced', () => {
+test('thirteen-group integration leaves unit-one and slow-three contracts enforced', () => {
   assert.throws(() => validateCloudLanes(lanes({ unit: 3 }), options), /lane identity/);
   assert.throws(() => validateCloudLanes(lanes({ slow: 9 }), options), /lane identity/);
-  assert.equal(validateCloudLanes(lanes(), options).count, 18);
+  assert.equal(validateCloudLanes(lanes(), options).count, 19);
 });
