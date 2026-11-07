@@ -49,6 +49,11 @@
         "MD034": false
       },
       "combine": "merge"
+    },
+    {
+      "filter": ["docs/superpowers/reviews/2146/2026-11-05-2146-premature-reconstruction.md"],
+      "config": { "MD034": false },
+      "combine": "merge"
     }
   ],
   "globs": ["**/*.md", "!.tmp/**", "!.scratch/**"],

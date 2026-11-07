@@ -61,6 +61,24 @@
     {
       "filename": ["scripts/tests/fixtures/2026/aitm-2055-timing.json", "cspell.json"],
       "ignoreRegExpList": ["IC_kwDOSU6LgM8AAAABdrBCLA"]
+    },
+    {
+      "filename": [
+        "docs/reviews/2146/2026-11-07-2146-body-historical-review-metadata.md",
+        "cspell.json"
+      ],
+      "words": ["timeboxes", "ccedcea", "targete", "daddf", "deee", "aadb", "cfec", "cbec", "bccc"]
+    },
+    {
+      "filename": ["docs/superpowers/plans/2026-11-06-2146-first-z-closure.md", "cspell.json"],
+      "words": ["feec", "fbfebdeb", "unmodeled"]
+    },
+    {
+      "filename": [
+        "docs/superpowers/specs/2026-11-06-2146-first-z-closure-design.md",
+        "cspell.json"
+      ],
+      "words": ["cdeef", "fdeb", "aacba", "cdcf", "nonrelease", "ffdc", "Rtree", "Ztree"]
     }
   ],
   "ignorePaths": [
@@ -95,6 +113,17 @@
     "cspell-dictionary.txt",
     "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/XPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-bf339e74f46697b4da5d2d19cb3c822e/**",
     "docs/superpowers/reviews/aitm-mcp-adapter-architecture/XPR-first/SPR/spec/2026-09-20-2026-09-20-aitm-mcp-adapter-architecture-design-review-d25ab35478c17f6f87b2b8bc4c67190a/**",
-    ".ai-task-manager/runtime/test-fixtures/**"
+    ".ai-task-manager/runtime/test-fixtures/**",
+    "docs/superpowers/specs/2026-11-05-2146-archival-validation-design.md",
+    "docs/superpowers/plans/2026-11-05-2146-archival-validation.md",
+    "docs/superpowers/specs/2026-11-05-2146-original-carrier-amendment.md",
+    "docs/superpowers/plans/2026-11-05-2146-original-carrier-execution.md",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-archival-review-history.md",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-archive-inventory-review.md",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-premature-reconstruction.md",
+    "docs/archive/2146-native-recovery/index.json",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-original-carrier-amendment-review.md",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-original-carrier-authority-history.json",
+    "docs/superpowers/reviews/2146/2026-11-05-2146-archival-implementation-review.md"
   ]
 }
