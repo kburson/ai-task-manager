@@ -37,14 +37,30 @@ const ORPHAN_PROFILE = Object.freeze({
   commentId: 'IC_kwDOSU6LgM8AAAABdrBCLA',
   prefixBytes: 3075,
   prefixSha: '45dc750a5be6f0044aeef28b4ad3bdec660714d15dfa158cb9a2c0b71d625499',
+  actor: 'v1:e9361861aa5dfcb8f1597712f0524b6f6732246461222762796690e45fd35bcd',
+  words: '159',
+  fullWords: '19,562',
 });
-const orphanActor = 'v1:e9361861aa5dfcb8f1597712f0524b6f6732246461222762796690e45fd35bcd';
+// @story #2145 — retained original opener; recording time never invents its endpoint.
+const BRIDGE_ORPHAN_PROFILE = Object.freeze({
+  id: 'aitm-2145-2026-11-03',
+  repository: 'kburson/ai-task-manager',
+  issue: 2145,
+  commentId: 'IC_kwDOSU6LgM8AAAABicpVmw',
+  prefixBytes: 685,
+  prefixSha: '46b157160e90c26499e3f4f371aefcb7c5821a8e9a3407be951f3d1a4d4bcf6f',
+  actor: 'v1:68e116fec85fd2f53872162c7ebac004f3d5b9195bb3ef056617cef6e90848a1',
+  words: '32',
+  fullWords: '2,602',
+});
 const selectedProfile = (id) =>
   id === PROFILE.id
     ? PROFILE
     : id === ORPHAN_PROFILE.id
       ? ORPHAN_PROFILE
-      : refuse('profile-identity');
+      : id === BRIDGE_ORPHAN_PROFILE.id
+        ? BRIDGE_ORPHAN_PROFILE
+        : refuse('profile-identity');
 const RECOVERY =
   '| 2026-10-17 07:51:35 -05:00 | session-end-recovery | Unknown | Unknown | 0 | 10,977 | prior actor endpoint unavailable; original evidence retained; reviewed recovery AITM2026 | 374,099 | <!-- aitm-actor:v1 key=145e955d61862b8a64d1117f874ca2536480777b62d9ec2b1b3b06d01ad4fa17 -->';
 const refuse = (reason) => {
@@ -62,7 +78,8 @@ export function planActorEvidenceRecovery(body, { profile, repo, issueNumber, co
   )
     refuse('profile-identity');
   if (typeof body !== 'string') refuse('source');
-  if (selected === ORPHAN_PROFILE) return planOrphanRecovery(body, now);
+  if (selected === ORPHAN_PROFILE || selected === BRIDGE_ORPHAN_PROFILE)
+    return planOrphanRecovery(body, now, selected);
   const lines = body.split('\n');
   const recovered = lines.filter((line) => line === RECOVERY);
   if (recovered.length > 1) refuse('duplicate-recovery');
@@ -110,26 +127,30 @@ export function planActorEvidenceRecovery(body, { profile, repo, issueNumber, co
 }
 
 // Recording time is not an assertion about the missing endpoint.
-function orphanRecoveryRow(ms) {
+function orphanRecoveryRow(ms, profile) {
   const iso = new Date(ms).toISOString();
   const ts = iso.slice(0, 10) + ' ' + iso.slice(11, 19) + ' +00:00';
   return (
     '| ' +
     ts +
-    ' | session-end-recovery | Unknown | Unknown | 0 | 159 | prior actor endpoint unavailable; original evidence retained; reviewed recovery ' +
-    ORPHAN_PROFILE.id +
-    ' | 19,562 | <!-- aitm-actor:v1 key=' +
-    orphanActor.slice(3) +
+    ' | session-end-recovery | Unknown | Unknown | 0 | ' +
+    profile.words +
+    ' | prior actor endpoint unavailable; original evidence retained; reviewed recovery ' +
+    profile.id +
+    ' | ' +
+    profile.fullWords +
+    ' | <!-- aitm-actor:v1 key=' +
+    profile.actor.slice(3) +
     ' -->'
   );
 }
-function planOrphanRecovery(body, now) {
+function planOrphanRecovery(body, now, profile) {
   if (!Number.isSafeInteger(now) || !Number.isFinite(new Date(now).getTime()))
     refuse('recording-time');
   const bytes = Buffer.from(body);
-  if (timingBodySha(bytes.subarray(0, ORPHAN_PROFILE.prefixBytes)) !== ORPHAN_PROFILE.prefixSha)
+  if (timingBodySha(bytes.subarray(0, profile.prefixBytes)) !== profile.prefixSha)
     refuse('historical-source-mismatch');
-  const suffix = bytes.subarray(ORPHAN_PROFILE.prefixBytes).toString('utf8');
+  const suffix = bytes.subarray(profile.prefixBytes).toString('utf8');
   if (!suffix.startsWith('\n')) refuse('historical-source-mismatch');
   const lines = suffix.split('\n').filter((line) => line.trim());
   let recovered = null;
@@ -140,16 +161,16 @@ function planOrphanRecovery(body, now) {
     const ms = timingTimestampToMs(row.ts);
     if (!Number.isFinite(ms) || ms < previous) refuse('out-of-order');
     previous = ms;
-    if (row.actorKey !== orphanActor) continue;
+    if (row.actorKey !== profile.actor) continue;
     if (row.event !== 'session-end-recovery') refuse('conflicting-evidence');
     if (recovered) refuse('duplicate-recovery');
-    if (line !== orphanRecoveryRow(ms)) refuse('conflicting-recovery');
+    if (line !== orphanRecoveryRow(ms, profile)) refuse('conflicting-recovery');
     recovered = row;
   }
   if (now < previous || Math.floor(now / 1000) * 1000 < previous) refuse('recording-time');
   const candidate = recovered
     ? body
-    : body + (body.endsWith('\n') ? '' : '\n') + orphanRecoveryRow(now) + '\n';
+    : body + (body.endsWith('\n') ? '' : '\n') + orphanRecoveryRow(now, profile) + '\n';
   const rows = candidate
     .split('\n')
     .map(parseTimingRow)
