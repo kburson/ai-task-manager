@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import * as host from '../../../../../task-tracker/lib/workflow-policy/codex-host-source.mjs';
 import { hashAuthorizationStatement } from '../../../../../task-tracker/lib/workflow-policy/authority-resolver.mjs';
 
@@ -37,6 +39,7 @@ function fixture({
     notify: (method) => calls.push({ method }),
     close: () => closed++,
   });
+
   return {
     load: () =>
       host.createCodexHostSourceLoader({ expectedSessionId: 'session', transport })(source),
@@ -133,6 +136,7 @@ function processFixture(respond) {
   child.killed = false;
   child.kill = () => {
     child.killed = true;
+    child.emit('close');
   };
   child.stdin = new Writable({
     write(chunk, encoding, callback) {
@@ -163,7 +167,7 @@ test('production transport fixes command and protocol, refusing mutating RPCs', 
     await assert.rejects(client.request('thread/resume', {}), /method/);
     assert.throws(() => client.notify('turn/start'), /method/);
   } finally {
-    client.close();
+    await client.close();
   }
   assert.equal(f.child.killed, true);
 });
@@ -190,6 +194,44 @@ for (const [name, respond, options] of [
     const f = processFixture(respond);
     const client = host.createCodexHostTransport({ ...options, spawnProcess: f.spawnProcess });
     await assert.rejects(client.request('initialize', {}));
-    client.close();
+    await client.close();
     assert.equal(f.child.killed, true);
   });
+
+for (const mode of ['timeout', 'successful read']) {
+  test(`owned host ignoring SIGTERM is reaped after ${mode}`, async (t) => {
+    let child;
+    const spawnProcess = (_command, _args, options) => {
+      child = spawn(
+        process.execPath,
+        [
+          '--input-type=module',
+          '-e',
+          `
+        import readline from 'node:readline';
+        process.on('SIGTERM', () => {});
+        setInterval(() => {}, 1000);
+        for await (const line of readline.createInterface({input:process.stdin})) {
+          const request=JSON.parse(line);
+          if(request.method==='initialize')process.stdout.write(JSON.stringify({id:request.id,result:{ready:true}})+'\\n');
+        }
+      `,
+        ],
+        options
+      );
+      return child;
+    };
+    t.after(async () => {
+      if (child.exitCode === null && child.signalCode === null) {
+        const exited = once(child, 'close');
+        child.kill('SIGKILL');
+        await exited;
+      }
+    });
+    const client = host.createCodexHostTransport({ spawnProcess, timeoutMs: 300, shutdownMs: 30 });
+    assert.deepEqual(await client.request('initialize', {}), { ready: true });
+    if (mode === 'timeout') await assert.rejects(client.request('thread/read', {}), /timeout/);
+    await client.close();
+    assert.equal(child.signalCode, 'SIGKILL');
+  });
+}

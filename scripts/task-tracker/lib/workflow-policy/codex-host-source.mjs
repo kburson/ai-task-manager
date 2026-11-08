@@ -12,6 +12,7 @@ export function createCodexHostTransport({
   spawnProcess = spawn,
   timeoutMs = 30000,
   maxBytes = 8 * 1024 * 1024,
+  shutdownMs = 1000,
 } = {}) {
   const child = spawnProcess('codex', ['app-server', '--stdio'], {
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -22,19 +23,49 @@ export function createCodexHostTransport({
   let bytes = 0;
   let ended = false;
   let terminalError;
+  let closing;
+  let processClosed = false;
+  let finishShutdown;
   const close = (error = failure('closed')) => {
-    if (ended) return;
+    if (ended) return closing;
     ended = true;
     terminalError = error;
     clearTimeout(timer);
     for (const request of pending.values()) request.reject(error);
     pending.clear();
-    child.stdin.end();
-    child.kill();
+    closing = new Promise((resolve, reject) => {
+      let escalation;
+      let deadline;
+      finishShutdown = (shutdownError) => {
+        clearTimeout(escalation);
+        clearTimeout(deadline);
+        child.stdin.destroy();
+        child.stdout.destroy();
+        child.stderr.destroy();
+        child.unref?.();
+        if (shutdownError) reject(shutdownError);
+        else resolve();
+      };
+      if (processClosed) {
+        finishShutdown();
+        return;
+      }
+      escalation = setTimeout(() => child.kill('SIGKILL'), shutdownMs);
+      deadline = setTimeout(() => finishShutdown(failure('shutdown')), shutdownMs * 2);
+      child.stdin.end();
+      child.kill('SIGTERM');
+    });
+    // Event handlers initiate shutdown too; the loader still awaits and observes it.
+    closing.catch(() => {});
+    return closing;
   };
   const timer = setTimeout(() => close(failure('timeout')), timeoutMs);
   child.on('error', () => close(failure('process')));
   child.on('exit', () => close(failure('process-exit')));
+  child.on('close', () => {
+    processClosed = true;
+    finishShutdown?.();
+  });
   child.stdin.on('error', () => close(failure('input')));
   child.stderr.on('data', (chunk) => {
     bytes += chunk.length;
@@ -163,7 +194,7 @@ export function createCodexHostSourceLoader({
       }
       throw failure('page-limit');
     } finally {
-      client.close();
+      await client.close();
     }
   };
 }

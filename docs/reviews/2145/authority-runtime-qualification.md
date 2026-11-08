@@ -21,3 +21,9 @@ The package test packs the actual runtime, verifies archive integrity and select
 The transition-tail qualification reproduced a mixed-runtime defect: the installed operator selected the retained unscoped `task-tracker.mjs` for `end`, which dispatches Close and imports the old workflow-policy reader. The helpers now prefer the invoking runtime's own scripts, retaining the legacy fallback. The same package test verifies both tail selections, and existing cache/unpark integration tests pass.
 
 Package qualification is not yet live #2169 activation, Review, delivery or Close. Those require separate native operations against its unchanged approved source and existing bounded waiver.
+
+## Independent source review and correction
+
+Independent reviewer `/root/review_2169_authority_route` inspected `6e79002f5d52ae8e2f69800390846a14e5a0f665..dbc1cf889d0c0eecf5c909480cf63b08f70d439f`. It reported no Critical findings and one Important finding: SIGTERM alone did not bound the owned reader's lifetime. It reproduced a real synthetic child surviving the timeout. The remaining authority, shared-reader, delivery-v2 and package-selection checks were satisfactory; activation was not accepted with that defect outstanding.
+
+Two real-process regressions reproduced the leak after timeout and after a successful read. Both failed with a live child before the fix. Shutdown now awaits the owned process, escalates to SIGKILL after a bounded grace period, releases its streams, and refuses an unsuccessful bounded shutdown. Both regressions and the focused source/runtime suite pass. The final whole-story independent source review remains required.
