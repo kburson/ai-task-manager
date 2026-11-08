@@ -1,5 +1,7 @@
-// @story #1279
+// @story #1279 #2169
 import { visibleMetadataFieldValue } from './decomposition-policy.mjs';
+import { classifyDecompositionKind } from './decomposition-kind.mjs';
+import { EPIC_PREFIX, KIND_PREFIXES } from '../../gh/lib/kind-prefix.mjs';
 
 const SECTION = 'Plan Metadata';
 
@@ -10,7 +12,37 @@ export function parseWbsChildClaim(child = {}) {
     sourcePlan: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan'),
     sourcePlanCommit: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-commit'),
     sourcePlanSection: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-section'),
+    rawTitle: typeof child.rawTitle === 'string' ? child.rawTitle : null,
+    kindClassification: classifyDecompositionKind(child.body || ''),
+    nativeWbsIdentity: child.nativeWbsIdentity ?? null,
   };
+}
+
+function convertedBugTitle(task, claim, repository, parentIssueNumber) {
+  if (!task.title.startsWith(KIND_PREFIXES.bug)) return false;
+  const suffix = task.title.slice(KIND_PREFIXES.bug.length);
+  const identity = claim.nativeWbsIdentity;
+  const parent = identity?.parent;
+  const nodeId = (id) => typeof id === 'string' && id.length > 0 && id === id.trim();
+  const issueNumber = (number) => Number.isSafeInteger(number) && number > 0;
+  return Boolean(
+    suffix.trim() &&
+    claim.rawTitle === EPIC_PREFIX + suffix &&
+    claim.kindClassification.kind === 'epic' &&
+    claim.kindClassification.reasons.length === 0 &&
+    typeof repository === 'string' &&
+    /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) &&
+    identity?.repository === repository.toLowerCase() &&
+    parent?.repository === repository.toLowerCase() &&
+    nodeId(identity.nodeId) &&
+    nodeId(parent.nodeId) &&
+    identity.nodeId !== parent.nodeId &&
+    issueNumber(identity.number) &&
+    identity.number === claim.number &&
+    issueNumber(parent.number) &&
+    parent.number === parentIssueNumber &&
+    parent.number !== identity.number
+  );
 }
 
 function childRef(claim) {
@@ -58,6 +90,8 @@ export async function reconcileWbsCoverage({
   acceptedPlanText,
   children = [],
   readPlanAtCommit,
+  repository = null,
+  parentIssueNumber = null,
 } = {}) {
   if (!Array.isArray(tasks) || tasks.length === 0) {
     throw new Error('wbs-coverage: tasks are required');
@@ -141,7 +175,10 @@ export async function reconcileWbsCoverage({
         )}`
       );
     }
-    if (claim.title !== task.title) {
+    if (
+      claim.title !== task.title &&
+      !convertedBugTitle(task, claim, repository, parentIssueNumber)
+    ) {
       errors.push(
         `${childRef(claim)} title ${JSON.stringify(claim.title)} does not match ${JSON.stringify(
           task.title

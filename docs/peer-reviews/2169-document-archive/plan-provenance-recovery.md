@@ -1,0 +1,15 @@
+### Plan approval provenance correction — #2169
+
+The author agent invoked `npx --no-install aitm plan-approve 2169` without the explicit `TT_FULL_AUTO=1` environment flag. The native producer recorded approval at `2026-11-06T14:38:54Z` with `mode="human"`. No human approval occurred. This is an operator invocation error; neither Root's delegated Full-Auto authority nor its acceptance of the committed plan is represented as a human review.
+
+The owner stopped before Develop and paused the timer. Root source-verified and authorized the canonical recovery: normal resume, one registered `cancel-plan` transaction with the explicit correction reason, verified Ready-for-Planning recovery, a fresh Plan visit, and actual native approval under `TT_FULL_AUTO=1`. The existing current approval cannot be relabeled by an ordinary retry, and no raw marker edit, manufactured scope change, direct state move, guard override or retrospective human attestation is authorized.
+
+The cancellation action has no Explain evaluator (`explainReady=false`); `action-not-explain-ready` describes missing read-only Explain coverage for this registered action. Its dedicated public writer still owns binding, Plan-state agreement, refinement snapshot and board-field checks, lock, recovery publication and readback. This does not waive any cancellation guard. Root explicitly directed this supported path after inspecting source.
+
+The one registered cancellation completed as operation `fea98739-d94d-4242-a13d-cc03d79e2af4`. Native movement verified Ready for Planning with all eight tail checks. Readback showed all six publication effects confirmed, zero active Plan approval/deep-dive completion markers, and retained P0/L/6h/rank 1. The native recovery record preserves the incorrect marker and original estimate comment `6687129003`.
+
+The fresh Plan visit then entered normally, republished and mirrored the actual deep dive with all seven semantic answers, and recorded its real L/6h planned estimate. `TT_FULL_AUTO=1 npx --no-install aitm plan-approve 2169` succeeded at `2026-11-06T15:15:43Z` with `provenance=full-auto; Full-Auto audit=posted`. Fresh body/comment readback confirmed exactly one active approval, `mode="full-auto"`, the current linked-plan Story Intent/story digests, trunk `2e5a3feec6d6296778f767977cf8086f587d1967`, and the canonical audit at https://github.com/kburson/ai-task-manager/issues/2169#issuecomment-6688218185. The audit explicitly says no human reviewer approved the plan.
+
+The accepted implementation plan and relayed SAR remain unchanged at `37fda1a14a813046be4f10475f73017e46f558b2`. There have been no product edits or product tests as of this recovery record. The incorrect record is retained as history, not reused as approval. Normal current-decomposition and Plan-exit checks still apply before implementation.
+
+<!-- aitm-owned-comment key="plan-provenance-recovery-v1" -->
