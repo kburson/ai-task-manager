@@ -1,6 +1,5 @@
 // @story #2145
-// Reuse actual native hook/CLI admission fixtures; these remain offline tests.
-import './native-worktree-bootstrap.test.mjs';
+// Offline proof fixtures; native admission is qualified by its separate test entrypoint.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
