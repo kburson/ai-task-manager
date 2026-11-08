@@ -22,6 +22,53 @@ import {
 import { readDecompositionRecords as publicationRecords } from '../../../../task-tracker/lib/decomposition-records.mjs';
 import { runInflateEstimate as realInflate } from '../../../../task-tracker/verbs/inflate-estimate.mjs';
 
+// @story #2163 — use complete transport records with the production forecast reader.
+function installInflationProjection(f, cfg, comments) {
+  delete f.deps.readForecast;
+  f.deps.forecast = {
+    graphql: async ({ query, variables }) => {
+      assert.match(query, /query AitmEstimationProjection\(/);
+      assert.deepEqual(variables, { owner: 'o', name: 'r', issue: 1987 });
+      return {
+        data: {
+          repository: {
+            issue: {
+              body: f.body,
+              comments: {
+                nodes: comments().map((comment) => ({
+                  __typename: 'IssueComment',
+                  id: comment.node_id,
+                  databaseId: comment.id,
+                  body: comment.body,
+                  createdAt: '2026-11-05T00:00:00Z',
+                  updatedAt: '2026-11-05T00:00:00Z',
+                  author: { login: 'fixture' },
+                  issue: { number: 1987, repository: { nameWithOwner: cfg.repo } },
+                })),
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+              projectItems: {
+                nodes: [
+                  {
+                    id: 'PVTI_a',
+                    project: { id: cfg.projectId },
+                    fieldValues: {
+                      nodes: [
+                        { number: f.values.project.estimate, field: { id: 'F_EST' } },
+                        { name: f.values.project.size, field: { id: 'F_SIZE' } },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+    },
+  };
+}
+
 export function registerEstimatePublicationCases() {
   // @story #1988
 
@@ -217,12 +264,14 @@ export function registerEstimatePublicationCases() {
           const f = publicationFixture(10),
             dir = publicationDir('inflation-');
           f.body = f.body.replace('state="develop"', 'state="' + state + '"');
-          f.values.forecast = { ...f.values.forecast, estimate: 10, size: 'M' };
           let comment = {
             id: 99,
+            node_id: 'IC_refine',
+            issue_url: 'https://api.github.com/repos/o/r/issues/1987',
             body: '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n',
           };
           const cfg = { ...publicationCfg, fieldIds: { size: 'F_SIZE', estimate: 'F_EST' } };
+          installInflationProjection(f, cfg, () => [comment]);
           const deps = {
             decomposition: f.deps,
             projectDir: dir,
@@ -278,10 +327,16 @@ export function registerEstimatePublicationCases() {
   function recoveryInflationFixture() {
     const f = publicationFixture(10),
       dir = publicationDir('inflation-recovery-');
-    f.values.forecast = { estimate: null, size: null, recordId: null };
-    let comment = { id: 99, body: '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n' },
+    const additionalComments = [];
+    let comment = {
+        id: 99,
+        node_id: 'IC_refine',
+        issue_url: 'https://api.github.com/repos/o/r/issues/1987',
+        body: '<!-- aitm-refined-estimate: 1987 -->\n### Refine estimate\n',
+      },
       counts = { audit: 0, size: 0, estimate: 0, fields: 0 };
     const cfg = { ...publicationCfg, fieldIds: { size: 'F_SIZE', estimate: 'F_EST' } };
+    installInflationProjection(f, cfg, () => [comment, ...additionalComments]);
     const deps = {
       decomposition: f.deps,
       projectDir: dir,
@@ -319,6 +374,7 @@ export function registerEstimatePublicationCases() {
       cfg,
       deps,
       counts,
+      additionalComments,
       get comment() {
         return comment;
       },
@@ -485,17 +541,11 @@ export function registerEstimatePublicationCases() {
     const c = recoveryInflationFixture();
     c.args.estimate = '23';
     c.args.size = 'M';
-    c.f.values.forecast = {
-      ...c.f.values.forecast,
-      proposals: [
-        {
-          proposalId: 'comment:IC_human:human-attention',
-          hours: 25,
-          size: 'M',
-          sourceDigest: 'a'.repeat(64),
-        },
-      ],
-    };
+    c.additionalComments.push({
+      id: 100,
+      node_id: 'IC_human',
+      body: '### 🔁 Plan re-estimate\n\n**HUMAN ATTENTION** — not auto-applied\n\n| Field | Before | After |\n|---|---|---|\n| Size | M | M |\n| Estimate (h) | 10 | 25 |\n',
+    });
     try {
       const result = await realInflate(c.args, c.cfg, c.deps);
       assert.equal(result.status, 'recorded', result.reason);

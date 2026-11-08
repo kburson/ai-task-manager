@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { after } from 'node:test';
 import { rmSync } from 'node:fs';
+import { parseIssueFieldDb } from '../../../../task-tracker/issue-field-db.mjs';
 import { observed, fixture, freshUnitDir } from '../lib/decomposition-authority-fixtures.mjs';
 const directories = [];
 after(() => directories.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -92,6 +93,11 @@ const FIELD_DEFS = [
 ];
 
 function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
+  comments = comments.map((comment) => ({
+    ...comment,
+    node_id: `IC_${comment.id}`,
+    issue_url: 'https://api.github.com/repos/owner/repo/issues/42',
+  }));
   const patched = [],
     boardWrites = [],
     bodyWrites = [],
@@ -107,7 +113,63 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
     readBackIssue: async () => observed({ number: 42, body }),
     readProject: async () =>
       observed({ projectId: 'PVT_FAKE', projectItemId: 'ITEM_FAKE', ...values, children: [] }),
-    readForecast: async () => observed({ estimate: null, size: null, recordId: null }),
+    readForecast: async () =>
+      observed({
+        estimate: null,
+        size: null,
+        recordId: null,
+        payloadHash: null,
+        proposals: [],
+        observedProjections: [
+          { ...values },
+          {
+            size: parseIssueFieldDb(body).values.size,
+            estimate: parseIssueFieldDb(body).values.estimate,
+          },
+        ],
+      }),
+    forecast: {
+      graphql: async ({ query, variables }) => {
+        assert.match(query, /query AitmEstimationProjection\(/);
+        assert.deepEqual(variables, { owner: 'owner', name: 'repo', issue: 42 });
+        return {
+          data: {
+            repository: {
+              issue: {
+                body,
+                comments: {
+                  nodes: comments.map((comment) => ({
+                    __typename: 'IssueComment',
+                    id: comment.node_id,
+                    databaseId: comment.id,
+                    body: comment.body,
+                    createdAt: '2026-11-05T00:00:00Z',
+                    updatedAt: '2026-11-05T00:00:00Z',
+                    author: { login: 'fixture' },
+                    issue: { number: 42, repository: { nameWithOwner: 'owner/repo' } },
+                  })),
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'ITEM_FAKE',
+                      project: { id: 'PVT_FAKE' },
+                      fieldValues: {
+                        nodes: [
+                          { number: values.estimate, field: { id: 'F_EST' } },
+                          { name: values.size, field: { id: 'F_SIZE' } },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        };
+      },
+    },
     fetchBody: async () => body,
     pushBody: async (_repo, _issue, next) => {
       body = next;

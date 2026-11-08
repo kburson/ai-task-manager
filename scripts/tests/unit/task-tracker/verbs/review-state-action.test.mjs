@@ -1,4 +1,5 @@
-// @story #881 #1117 #1458 #1629
+// @story #881 #1117 #1458 #1629 #2153
+// cspell:ignore digestless
 //
 // The Agent Review Gate is the ACTION of the Review state — not an exit
 // condition of Test, and not an entry condition of Review. That framing fixes

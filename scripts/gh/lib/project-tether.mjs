@@ -6,9 +6,16 @@ import { gql } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
+import { assertProspectiveEpicParent } from '../../task-tracker/lib/decomposition-plan-exit-guard.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
+class ParentAuthorityRefusal extends Error {
+  constructor(cause) {
+    super(cause.message, { cause });
+    this.name = 'ParentAuthorityRefusal';
+  }
+}
 
 export const STATUS_CONFIG_KEYS = Object.freeze(
   Object.fromEntries(stateIds().map((state) => [state, stateConfigKey(state)]))
@@ -61,7 +68,8 @@ async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
       }`,
       { project: cfg.projectId, repo: repositoryId }
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof ParentAuthorityRefusal) throw error;
     // GitHub errors when the project is already linked or linkage is unavailable
     // for the token; project item verification below is the authoritative gate.
   }
@@ -554,9 +562,35 @@ async function tetherIssueToProjectOwned({
   throw new Error(failureMessage({ cfg, issueNumber, project: lastProject }));
 }
 
-export function tetherIssueToProject(args = {}) {
+export async function tetherIssueToProject(args = {}) {
   if (args.initialFrame) throw new Error('initial-project-fields:foreign-context');
   if (args.initialValues && args.context) throw new Error('initial-project-fields:foreign-context');
+  if (args.parentIssueNumber) {
+    const observeParent = () =>
+      assertProspectiveEpicParent({
+        parentIssueNumber: args.parentIssueNumber,
+        cfg: args.cfg,
+        projectDir: args.projectDir,
+        deps: args.deps,
+      });
+    const initialParent = await observeParent();
+    const run = args.runGql ?? defaultRunGql;
+    args = {
+      ...args,
+      runGql: async (query, variables) => {
+        if (/^\s*mutation\b/.test(query)) {
+          try {
+            const currentParent = await observeParent();
+            if (JSON.stringify(currentParent) !== JSON.stringify(initialParent))
+              throw new Error('convergence:prospective-parent-frame-drift');
+          } catch (error) {
+            throw new ParentAuthorityRefusal(error);
+          }
+        }
+        return run(query, variables);
+      },
+    };
+  }
   return args.initialValues
     ? withInitialProjectFields(args, (initialFrame) =>
         tetherIssueToProjectOwned({ ...args, initialFrame })

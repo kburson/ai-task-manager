@@ -1,0 +1,176 @@
+{
+  "schema": "aitm.2163-ci-qualification/v1",
+  "kind": "preserved-ci-timing-and-derived-budget-analysis",
+  "nativeReceipt": false,
+  "oldRun": {
+    "id": 42118894140,
+    "sourceHead": "3990a4b41d07980876d4044c123fc3d73094a292",
+    "job": 127565746019,
+    "artifactId": 13459023710,
+    "zipBytes": 11736,
+    "zipSha256": "6615047463557ec9ef57294604ba11b147fea5c5d0c752031cbf0b0c26ed3e21",
+    "exitCode": 1,
+    "reportedFailure": "assigned-state-residue.test.mjs; runner exited before ceiling evaluation"
+  },
+  "newRun": {
+    "id": 42122846359,
+    "sourceHead": "1a7f187c50598f95cf34d04ad1f344058668bc7c",
+    "artifacts": [
+      {
+        "group": 1,
+        "id": 13458599140,
+        "zipSha256": "c085e103c14244410cb9628f4a3b4094314afde52a38e73d173108d43715f2bc",
+        "zipBytes": 10812,
+        "exitCode": 0
+      },
+      {
+        "group": 2,
+        "id": 13459068375,
+        "zipSha256": "023d953eb598e2b47d4057a7570dda4f2514a0d0392c45d24c547fd6872a71a7",
+        "zipBytes": 10900,
+        "exitCode": 0
+      }
+    ]
+  },
+  "evaluator": {
+    "path": "scripts/run-tests-ceiling.mjs",
+    "sha256": "20899cf0ece9c511742b2010d6bbc8297e1d1d479f94920b7df024fe6ed61543",
+    "input": {
+      "lane": "integration",
+      "env": {},
+      "sections": [
+        {
+          "name": "serial",
+          "count": 99,
+          "elapsedMs": 1934152.8
+        }
+      ]
+    },
+    "result": {
+      "lane": "integration",
+      "sections": [
+        {
+          "name": "serial",
+          "count": 99,
+          "breached": true,
+          "exempt": false,
+          "ceilingMs": 600000,
+          "elapsedMs": 1934152.8,
+          "message": "run-tests: lane 'integration' section 'serial' ran 1934.2s, over the 600s section ceiling (fail-closed). Split the section (see #945) — do not relax the ceiling."
+        }
+      ],
+      "totalElapsedMs": 1934152.8,
+      "breached": true
+    }
+  },
+  "pins": [
+    {
+      "path": "3990a4-group3-timing.json",
+      "bytes": 36654,
+      "sha256": "507d99ac1bbf632125e3a48880e3ed7c3ef2ca689619a444a6879bd911417ae2"
+    },
+    {
+      "path": "3990a4-shard-plan.json",
+      "bytes": 50449,
+      "sha256": "7e7d4e6d365905037c9325fff2244de1ff19ed24a514c7b308ef93a2644322a8"
+    },
+    {
+      "path": "1a7f18-group1-timing.json",
+      "bytes": 36082,
+      "sha256": "94347c51666320791e18368bff745ea7d10896327428503a2a900f1d220c8ea0"
+    },
+    {
+      "path": "1a7f18-group2-timing.json",
+      "bytes": 36756,
+      "sha256": "5c1180629440211061efb10c3d48b8393df635182a7ed4a26d3a8901c5537fa8"
+    }
+  ],
+  "model": {
+    "kind": "mixed-run-per-file-replay-estimate-not-final-ci",
+    "renames": {
+      "scripts/tests/integration/task-tracker/inflate-estimate-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/authority.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-drift-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/drift.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-input-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/source/input.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-active-retry-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/active/retry.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retry-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/plain/before.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retry-after-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/plain/after.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/uninterrupted.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-before-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/before.test.mjs",
+      "scripts/tests/integration/task-tracker/inflate-estimate-retired-after-authority.test.mjs": "scripts/tests/integration/task-tracker/inflation/retired/after.test.mjs"
+    },
+    "groups": [
+      {
+        "group": 1,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/retired/before.test.mjs"
+        ],
+        "observedReplayMs": 390317.2
+      },
+      {
+        "group": 2,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/retired/uninterrupted.test.mjs"
+        ],
+        "observedReplayMs": 335885.1
+      },
+      {
+        "group": 3,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/source/authority.test.mjs"
+        ],
+        "observedReplayMs": 149183.8
+      },
+      {
+        "group": 4,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/source/drift.test.mjs"
+        ],
+        "observedReplayMs": 305814.6
+      },
+      {
+        "group": 5,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/source/input.test.mjs"
+        ],
+        "observedReplayMs": 127081.3
+      },
+      {
+        "group": 6,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/active/retry.test.mjs"
+        ],
+        "observedReplayMs": 427128.6
+      },
+      {
+        "group": 7,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/plain/after.test.mjs"
+        ],
+        "observedReplayMs": 242541.4
+      },
+      {
+        "group": 8,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/plain/before.test.mjs"
+        ],
+        "observedReplayMs": 211069.6
+      },
+      {
+        "group": 9,
+        "count": 33,
+        "inflation": [
+          "scripts/tests/integration/task-tracker/inflation/retired/after.test.mjs"
+        ],
+        "observedReplayMs": 388159.9
+      }
+    ]
+  }
+}

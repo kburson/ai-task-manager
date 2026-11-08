@@ -387,6 +387,22 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Reads the live Project Status without changing issue or tracker state.'],
     ['Prints the canonical live board state.']
   ),
+  'spike-deliverable': contract(
+    [
+      'An open Develop-state spike, exact active native binding/timer, singleton authenticated owner, clean tracked source and a current same-issue report are required.',
+    ],
+    [
+      'Adds only a validated deliverable URL/timestamp through governed fresh body mutation; preserves conflicts, history and accepted-source receipt ownership.',
+    ],
+    [
+      'Prints recorded or no-op only after current source/comment/marker readback; runtime refusals use spike-deliverable:<category>.',
+    ],
+    [
+      exit(1, 'native/source/comment authority or readback refused'),
+      exit(2, 'invalid command syntax'),
+      ...PREFLIGHT_TARGET_EXITS,
+    ]
+  ),
   'epic-reconcile': contract(
     [
       'The target must be a valid epic whose child delivery can be inspected; a supplied deliverable comment must belong to that issue in the configured repository.',
@@ -520,6 +536,18 @@ export const VERB_CONTRACTS = Object.freeze({
       'Evaluates one exact or named-section replacement against every fresh remote body through mutateIssueBody and verifies the persisted body.',
     ],
     ['Prints the mutation status and verified body version.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
+  'plan-analysis': contract(
+    [
+      'The exact native issue binding, active timer, worktree, owner and live Plan state must match; current complete decomposition and epic planning readiness are required.',
+    ],
+    [
+      'Publishes one fixed deep-dive comment, canonically mirrors and completes only that analysis, with fresh authority at each effect and exact correlated readback; retry retains comment identity.',
+    ],
+    [
+      'Prints the verified planning comment id and URL; ordinary deliverable and lifecycle completion authority remains unchanged.',
+    ],
     PREFLIGHT_TARGET_EXITS
   ),
   comment: contract(
@@ -735,6 +763,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   test: Object.freeze(['review', 'demote', 'promote']),
   reconcile: Object.freeze(['board', 'status', 'promote']),
   board: Object.freeze(['status', 'reconcile', 'fleet']),
+  'spike-deliverable': Object.freeze(['comment', 'promote', 'deliver']),
   'epic-reconcile': Object.freeze(['pull-next', 'promote', 'close']),
   'pull-next': Object.freeze(['plan', 'promote', 'epic-reconcile']),
   close: Object.freeze(['approve', 'review', 'commit-trace']),
@@ -753,6 +782,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
   'issue-body': Object.freeze(['comment', 'evidence-markers']),
   comment: Object.freeze(['issue-body', 'commit-trace']),
+  'plan-analysis': Object.freeze(['comment', 'mirror-deep-dive', 'plan']),
   'workflow-exception': Object.freeze(['comment', 'evidence', 'status']),
   'delivery-attribution-exception': Object.freeze(['deliver', 'workflow-exception', 'status']),
   'workflow-preflight': Object.freeze(['workflow-exception', 'status', 'evidence']),
@@ -847,6 +877,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Issue number whose recorded and live state differ.'),
   ]),
   board: Object.freeze([positional('[#N]', 'Optional issue number; defaults to the active task.')]),
+  'spike-deliverable': Object.freeze([
+    positional('<N>', 'Required spike issue number matching the active native binding.'),
+  ]),
   'epic-reconcile': Object.freeze([
     positional('[<N>]', 'Optional epic issue number; defaults to the active task.'),
   ]),
@@ -892,6 +925,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'issue-body': Object.freeze([
     positional('#N', 'Issue number whose fresh body will be transformed.'),
+  ]),
+  'plan-analysis': Object.freeze([
+    positional('#N', 'Exact active issue whose Plan analysis is published and mirrored.'),
   ]),
   comment: Object.freeze([
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),

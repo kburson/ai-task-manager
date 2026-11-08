@@ -29,12 +29,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 
-import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
+import {
+  readLastKnownState,
+  readUniqueLastKnownState,
+  writeLastKnownState,
+} from '../gh-timing-comment.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { appendAuditMarker } from '../lib/markers.mjs';
 import {
   findRecordingFailureFromComments,
+  postStateRecordingComment,
   writeIssueBodyWithRetry,
 } from '../lib/state-recording.mjs';
 import { splitRepo, gql, gh, projectItemForIssue } from '../../gh/lib/github-projects.mjs';
@@ -46,6 +51,7 @@ import {
   backfillEntryMarker,
   OPTIONAL_CONTIGUITY_STAGES,
   parseEntryMarkersFirstVisit,
+  readUniqueVisitMarkers,
   safeBackfillTs,
 } from '../lib/stage-entry-markers.mjs';
 import { forwardTarget, normalizeStateId, stateIds } from '../lib/lifecycle-policy/index.mjs';
@@ -53,15 +59,22 @@ import { getProjectDir } from '../paths.mjs';
 import { readMoveCompleteState } from '../lib/move-state/sentinel.mjs';
 import { STATE_TO_CONFIG_KEY } from '../lib/move-state/policy.mjs';
 import { runStatusWrite } from '../lib/move-state/github-mutation.mjs';
-// keep: recovery snapshot semantics intentional — reconcile force-rewrites the
-// body verbatim (no closure), so pushIssueBody is the correct primitive here.
+// keep: historical backfill still uses the snapshot writer.
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 const MODES = new Set(['accept-live', 'revert-to-recorded', 'revert-to-sentinel', 'backfill']);
-const DEMOTION_RECOVERY_SOURCES = new Set(['test', 'review']);
+const DEMOTION_RECOVERY_SOURCES = new Set(['test', 'validate', 'review']);
+
+function repairEvidence(body, demotion) {
+  const { state, ts } = readUniqueLastKnownState(body);
+  const criteria = demotion
+    ? body.split(/\r?\n/).filter((line) => /^\s*- \[[ x]\].*<!--\s*aitm-verified\b/.test(line))
+    : [];
+  return JSON.stringify([state, ts, readUniqueVisitMarkers(body), criteria]);
+}
 
 // ---------------------------------------------------------------------------
 // Default I/O — DI seams.
@@ -203,6 +216,19 @@ export async function runReconcile({
   const { body, createdAt } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: recorded } = readLastKnownState(body);
   const live = (await getLiveState({ issueNumber, cfg })) || null;
+
+  const demotion = live === 'develop' && DEMOTION_RECOVERY_SOURCES.has(recorded);
+  let before;
+  if (mode === 'accept-live') {
+    try {
+      before = repairEvidence(body, demotion);
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `reconcile accept-live #${issueNumber}: ${error.message}`,
+      };
+    }
+  }
 
   if (!live && !recorded) {
     return { status: 'error', message: `reconcile: no live or recorded state for #${issueNumber}` };
@@ -407,29 +433,111 @@ export async function runReconcile({
       };
     }
     const nowTs = now();
-    // #1037 — the supported recovery for a demotion interrupted after its
-    // board move must finish the evidence invalidation that normal demote
-    // performs. Keep this deliberately demotion-shaped: accept-live remains
-    // non-destructive for forward and unrelated external drift.
-    const invalidation =
-      live === 'develop' && DEMOTION_RECOVERY_SOURCES.has(recorded)
-        ? invalidateEvidence(body)
-        : { body, invalidated: [] };
-    const stamped = writeLastKnownState(invalidation.body, live);
-    // Visit-aware schema (#181): preserve forward markers as history.
-    // stampEntryMarker increments the visit suffix; the chain-integrity gate
-    // validates the resulting sequence against LEGAL_TRANSITIONS.
-    const stripped = invalidation.invalidated;
-    const withEntry = stampEntryMarker(stamped, live, nowTs);
-    await writeIssueBodyWithRetry({
+    let expected;
+    let stripped = [];
+    let conflict;
+    let repairObserved = false;
+    const requireEvidence = (base, allowed) => {
+      if (conflict) throw conflict;
+      try {
+        const observed = repairEvidence(base, demotion);
+        if (!allowed.includes(observed)) throw new Error('recorded state, visits or proof changed');
+        return observed;
+      } catch (error) {
+        // A transport retry cannot grant permission to forget an observed conflict.
+        conflict = error;
+        throw error;
+      }
+    };
+    const requireBoard = async () => {
+      try {
+        if ((await getLiveState({ issueNumber, cfg })) !== live)
+          throw new Error('live board state changed');
+      } catch (error) {
+        conflict = error;
+        throw error;
+      }
+    };
+    const recording = await writeIssueBodyWithRetry({
       issueNumber,
       repo: cfg.repo,
-      body: withEntry,
-      bodyBefore: body,
       target: live,
-      writeIssueBody: ({ body: b }) => writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
+      mutate: (base) => {
+        const observed = requireEvidence(base, [before, expected]);
+        // An earlier attempt may have landed despite losing its acknowledgement.
+        if (expected && observed === expected) return base;
+        const invalidation = demotion ? invalidateEvidence(base) : { body: base, invalidated: [] };
+        stripped = invalidation.invalidated;
+        const next = stampEntryMarker(writeLastKnownState(invalidation.body, live), live, nowTs);
+        expected = repairEvidence(next, demotion);
+        return next;
+      },
+      deps: {
+        mutateIssueBody: (options) =>
+          mutateBody({
+            ...options,
+            // Observe every provider body, including a lost-race verification
+            // or an overlapping edit rejected before the rebase callback.
+            observeRemoteBody: (remote) => {
+              const observed = requireEvidence(
+                remote,
+                repairObserved ? [expected] : [before, expected]
+              );
+              if (observed === expected) repairObserved = true;
+            },
+            // Demotion deliberately removes old execution evidence from every
+            // proven criterion. A large decrease can be the correct result.
+            allowLargeShrink: demotion,
+            // The versioned writer may rebase a previous edit without rerunning
+            // its transform. Recheck both sides of that edit on every attempt.
+            validateFreshBase: (base, next) => {
+              requireEvidence(base, [before, expected]);
+              requireEvidence(next, [expected]);
+            },
+            validateFreshBaseAsync: requireBoard,
+          }),
+      },
+      postComment: (comment) =>
+        (deps.postComment ?? postStateRecordingComment)({
+          ...comment,
+          body: repairObserved
+            ? `Reconcile observed the recorded state "${live}" for #${issueNumber}, but could not complete verification.\n\n<!-- aitm-reconcile-partial -->`
+            : comment.body,
+        }),
+      warn: (message) =>
+        (deps.warn ?? ((text) => process.stderr.write(text + '\n')))(
+          repairObserved && message.includes('FAILED')
+            ? `[reconcile] #${issueNumber} recorded state observed; verification incomplete`
+            : message
+        ),
     });
-    persistTrackerState({ issueNumber, state: live });
+    const partial = (error) => ({
+      status: 'partial',
+      exitCode: 8,
+      from: recorded,
+      to: live,
+      recording,
+      message: `partial: #${issueNumber} marker write to "${live}" confirmed; authoritative readback failed: ${error.message}`,
+    });
+    if (recording.status !== 'ok' && recording.status !== 'noop') {
+      if (repairObserved) return partial(new Error(recording.error));
+      return {
+        status: 'recording-failed',
+        exitCode: 8,
+        recording,
+        message: `recording-failed: #${issueNumber} write to "${live}" unconfirmed: ${recording.error}`,
+      };
+    }
+    const verifyRepair = async () => {
+      const verified = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+      requireEvidence(verified.body, [expected]);
+      await requireBoard();
+    };
+    try {
+      await verifyRepair();
+    } catch (error) {
+      return partial(error);
+    }
     try {
       const strippedNote = stripped.length > 0 ? `; stripped: ${stripped.join(', ')}` : '';
       let reason = 'external-mutation';
@@ -451,16 +559,32 @@ export async function runReconcile({
       await mutateBody({
         issueNumber,
         repo: cfg.repo,
-        mutate: (base) =>
-          appendAuditMarker(base, {
+        // An audit is append-only. Ambiguous acknowledgements must never
+        // rebase a second copy of this event onto a concurrent prose edit.
+        maxRetries: 1,
+        observeRemoteBody: (remote) => requireEvidence(remote, [expected]),
+        mutate: (base) => {
+          requireEvidence(base, [expected]);
+          return appendAuditMarker(base, {
             kind: 'reconciled',
             ts: nowTs,
             detail: `accept-live: recorded "${recorded ?? '∅'}" → live "${live}" (${reason})${strippedNote}`,
-          }),
+          });
+        },
+        validateFreshBase: (base) => requireEvidence(base, [expected]),
+        validateFreshBaseAsync: requireBoard,
       });
     } catch {
-      /* best-effort: failure must not abort the primary operation */
+      if (conflict) return partial(conflict);
+      // An optional audit write may fail after its fresh base has changed.
+      // Reconfirm the primary effect before publishing local success.
+      try {
+        await verifyRepair();
+      } catch (error) {
+        return partial(error);
+      }
     }
+    persistTrackerState({ issueNumber, state: live });
     return { status: 'reconciled', mode, from: recorded, to: live, stripped };
   }
 
@@ -632,6 +756,7 @@ export async function verbReconcile(rest, cfg, deps = {}) {
       process.stderr.write(`reconcile: ${result.message}\n`);
       process.exit(result.exitCode || 1);
     }
+    case 'partial':
     case 'recording-failed': {
       process.stderr.write(`reconcile: ${result.message}\n`);
       process.exit(result.exitCode || 8);

@@ -212,8 +212,16 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/issue-body.mjs',
     },
     {
+      verb: 'plan-analysis',
+      dispatch: 'verbs/plan-analysis.mjs',
+    },
+    {
       verb: 'comment',
       dispatch: 'verbs/comment.mjs',
+    },
+    {
+      verb: 'spike-deliverable',
+      dispatch: 'verbs/spike-deliverable.mjs',
     },
     {
       verb: 'workflow-exception',

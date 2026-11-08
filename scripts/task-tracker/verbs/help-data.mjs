@@ -344,6 +344,10 @@ export const VERB_REFERENCE = {
       { flag: '--reason <text>', desc: 'refinement rationale (required)' },
       { flag: '--rank <n>', desc: 'optional board Rank' },
       {
+        flag: '--supersede-pending',
+        desc: 'explicitly reconcile a pending Refine predecessor against current authority',
+      },
+      {
         flag: '--labels <name[,name...]>',
         desc: 'optional comma-separated labels to add',
       },
@@ -365,8 +369,12 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Record Plan approval with durable human or Full-Auto provenance, or reconstruct skipped Full-Auto provenance from strict later-stage evidence.',
-    usage: '/task plan-approve #N [--repair-from-evidence]',
+    usage: '/task plan-approve #N [--repair-from-evidence | --current-scope]',
     flags: [
+      {
+        flag: '--current-scope',
+        desc: 'Develop/Test/Review only: explicit TT_FULL_AUTO=1 approves current clean source and plan after authenticated policy-exempt development',
+      },
       {
         flag: '--repair-from-evidence',
         desc: 'Develop/Test/Review only: reconstruct Full-Auto approval after a revoked approval.plan exception',
@@ -374,11 +382,16 @@ export const VERB_REFERENCE = {
     ],
     exitCodes: [
       { code: 3, meaning: 'issue is not in Plan for ordinary approval' },
-      { code: 15, meaning: 'evidence-derived Full-Auto repair predicates were not satisfied' },
+      { code: 2, meaning: 'invalid, duplicate or conflicting arguments' },
+      {
+        code: 15,
+        meaning: 'current approval or evidence-derived repair predicates were not satisfied',
+      },
     ],
     examples: [
       '/task plan-approve 667',
       'TT_FULL_AUTO=1 /task plan-approve 667 --repair-from-evidence',
+      'TT_FULL_AUTO=1 /task plan-approve 667 --current-scope',
     ],
   },
   'plan-estimate': {
@@ -651,6 +664,20 @@ export const VERB_REFERENCE = {
     usage: '/task board [#N]',
     exitCodes: [{ code: 1, meaning: 'no target issue (no #N and no active bound issue)' }],
     examples: ['/task board', '/task board 900'],
+  },
+  'spike-deliverable': {
+    topic: 'evidence',
+    summary: 'Publish an existing same-issue report as a spike deliverable in Develop.',
+    usage: '/task spike-deliverable <N> --from-comment <id|url>',
+    flags: [{ flag: '--from-comment <id|url>', desc: 'required existing comment on this spike' }],
+    exitCodes: [
+      {
+        code: 1,
+        meaning: 'native/source/comment authority, marker conflict or verified readback refused',
+      },
+      { code: 2, meaning: 'missing, malformed, duplicate or unknown command arguments' },
+    ],
+    examples: ['/task spike-deliverable 2156 --from-comment 50'],
   },
   'epic-reconcile': {
     topic: 'board',
@@ -937,6 +964,18 @@ export const VERB_REFERENCE = {
       },
     ],
     examples: ['/task issue-body 667 --operation-file .scratch/gh/667-body-operation.json'],
+  },
+  'plan-analysis': {
+    topic: 'evidence',
+    summary: 'Publish and canonically mirror bounded Plan analysis without deliverable authority.',
+    usage: '/task plan-analysis #N --body-file <path>',
+    flags: [
+      {
+        flag: '--body-file <path>',
+        desc: 'grounded planning narrative without policy or proof markers',
+      },
+    ],
+    examples: ['/task plan-analysis 667 --body-file .scratch/gh/667-analysis.md'],
   },
   comment: {
     topic: 'evidence',

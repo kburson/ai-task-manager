@@ -36,6 +36,7 @@ import { PROTOCOL_MARKER_RE } from '../evidence-v2/protocol.mjs';
 import { isIssueResidentDeliveryKind, parseIssueKind } from '../issue-kind.mjs';
 import { findCommitTrailComment, parseCommitShas } from '../code-complete-gate.mjs';
 import { observeDependencyReadiness } from '../dependency-disposition.mjs';
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { runGuards } from '../guard-registry.mjs';
 import {
   hasUnauthorizedCloseRecoveryMarker,
@@ -48,8 +49,91 @@ import {
   partitionChildrenByDeliveryRequirement,
 } from '../epic-derived-commit-trail.mjs';
 
-// #1878: prove exact or disjoint tree deltas without a virtual merge or writes.
-async function compareReadOnlyDeliveryContent(input, output) {
+// #2165: bind the private proof to the selected observation consumed by v5.
+function sourceObservationIdentity(gateInput) {
+  const pr = gateInput?.pullRequest;
+  return canonicalRecordJson({
+    repository: gateInput?.repository ?? null,
+    issue: gateInput?.issueNumber ?? null,
+    acceptedSha: gateInput?.acceptedSha ?? null,
+    number: pr?.number ?? null,
+    base: pr?.baseRefName ?? null,
+    head: pr?.headRefName ?? null,
+    headSha: pr?.headRefOid ?? null,
+    complete: pr?.sourceCommitsComplete ?? null,
+    inventoryHead: pr?.sourceCommitsHeadSha ?? null,
+    commits: pr?.sourceCommits ?? null,
+    evidence: pr?.sourceCommitEvidence ?? null,
+  });
+}
+
+async function proveAppliedSourcePrefix(input, output, observation) {
+  const { sourceBase, sourceHead, integrationBase, integrationHead, method } = input;
+  const gateInput = observation?.value;
+  const pr = gateInput?.pullRequest;
+  if (
+    method === 'rebase-step' ||
+    !observation ||
+    gateInput?.acceptedSha !== sourceHead ||
+    pr?.headRefOid !== sourceHead ||
+    pr?.sourceCommitsComplete !== true ||
+    pr?.sourceCommitsHeadSha !== sourceHead ||
+    !Array.isArray(pr.sourceCommitEvidence) ||
+    !Array.isArray(pr.sourceCommits) ||
+    sourceObservationIdentity(gateInput) !== observation.identity
+  )
+    return false;
+  // The caller's v5 verifier has validated this exact inventory's closure and
+  // topology. Correlate its facts with physical objects before admitting it.
+  const evidence = structuredClone(pr.sourceCommitEvidence);
+  if (
+    pr.sourceCommits.length !== evidence.length ||
+    pr.sourceCommits.some((c, i) => (c?.oid ?? c) !== evidence[i]?.oid)
+  )
+    return false;
+  const inspect = async (commit) => {
+    const raw = await output('git', ['show', '-s', '--format=%H%n%T%n%P', commit]);
+    const match = /^([0-9a-f]{40})\n([0-9a-f]{40})\n([0-9a-f ]*)\n?$/.exec(raw);
+    if (!match || match[1] !== commit)
+      throw new TypeError('close-readiness:content-tree-unavailable');
+    return { tree: match[2], parents: match[3] ? match[3].split(' ') : [] };
+  };
+  const integratedBase = await inspect(integrationBase);
+  const integratedHead = await inspect(integrationHead);
+  const actual = new Map();
+  for (const commit of evidence) {
+    const facts = await inspect(commit.oid);
+    if (
+      facts.tree !== commit.tree ||
+      canonicalRecordJson(facts.parents) !== canonicalRecordJson(commit.parents)
+    )
+      return false;
+    actual.set(commit.oid, facts);
+  }
+  if (actual.get(sourceHead)?.tree !== integratedHead.tree) return false;
+  for (const [candidate, facts] of actual) {
+    if (candidate === sourceBase || candidate === sourceHead || facts.tree !== integratedBase.tree)
+      continue;
+    let interior = true;
+    for (const [ancestor, descendant] of [
+      [sourceBase, candidate],
+      [candidate, sourceHead],
+    ]) {
+      try {
+        await output('git', ['merge-base', '--is-ancestor', ancestor, descendant]);
+      } catch (error) {
+        if (Number(error.code) !== 1) throw error;
+        interior = false;
+        break;
+      }
+    }
+    if (interior && sourceObservationIdentity(gateInput) === observation.identity) return true;
+  }
+  return false;
+}
+
+// #1878/#2165: exact/disjoint deltas, or a complete physically proven prefix.
+async function compareReadOnlyDeliveryContent(input, output, observation) {
   const { method, sourceBase, sourceHead, integrationBase, integrationHead } = input;
   const identities = [sourceBase, sourceHead, integrationBase, integrationHead];
   if (
@@ -92,8 +176,10 @@ async function compareReadOnlyDeliveryContent(input, output) {
   for (const name of new Set([...base.keys(), ...source.keys()])) {
     if (base.get(name) === source.get(name)) continue;
     const current = integratedBase.get(name);
-    if (current !== base.get(name) && current !== source.get(name))
+    if (current !== base.get(name) && current !== source.get(name)) {
+      if (await proveAppliedSourcePrefix(input, output, observation)) return true;
       throw new TypeError('close-readiness:content-proof-unavailable');
+    }
     if (source.has(name)) expected.set(name, source.get(name));
     else expected.delete(name);
   }
@@ -390,6 +476,10 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
         receiptGate.receipt?.schema === 'aitm.delivery-receipt/v4'
           ? createDefaultDeliverDeps({ projectDir, cfg })
           : null;
+      const sourceObservation =
+        receiptGate.receipt?.schema === 'aitm.delivery-receipt/v5'
+          ? { value: gateInput, identity: sourceObservationIdentity(gateInput) }
+          : null;
       await verifyCloseDeliveryReceipt({
         gateInput,
         receiptGate,
@@ -398,7 +488,8 @@ export function createCloseReadOnlyPorts({ issue, cfg, projectDir, artifactSubje
           context.lifecycleEvidence?.expectedSha,
         acceptedReviewSha: gateInput.acceptedSha,
         deps: {
-          compareDeliveryContent: (input) => compareReadOnlyDeliveryContent(input, output),
+          compareDeliveryContent: (input) =>
+            compareReadOnlyDeliveryContent(input, output, sourceObservation),
           resolveTrunkHeadSha: async ({ branch }) => {
             if (branch !== gateInput.lineage.deliveryTarget)
               throw new TypeError('close-readiness:unobserved-target');

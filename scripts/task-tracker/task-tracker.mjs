@@ -183,6 +183,8 @@ export const PREFLIGHT_MODE = {
   'plan-approve': 'target-required',
   'issue-body': 'target-required',
   comment: 'target-required',
+  'plan-analysis': 'target-required',
+  'spike-deliverable': 'target-required',
   assign: 'target-required',
   transfer: 'target-required',
   unassign: 'target-required',
@@ -475,7 +477,35 @@ if (_isMain)
     }
     const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
     const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
-    const ctx = buildContext(foreignWorktree.argv, { executionContext });
+    let commandArgv = foreignWorktree.argv;
+    // Validate the closed grammar before comment IDs can be mistaken for issue targets.
+    if (foreignWorktree.argv[0] === 'spike-deliverable') {
+      const { parseSpikeDeliverableArgs } = await import('./lib/spike-deliverable.mjs');
+      try {
+        const parsed = parseSpikeDeliverableArgs(commandArgv.slice(1));
+        commandArgv = [
+          'spike-deliverable',
+          String(parsed.issueNumber),
+          '--from-comment',
+          parsed.commentReference,
+        ];
+      } catch (error) {
+        process.stderr.write(`${error.message}\n`);
+        process.exitCode = 2;
+        return;
+      }
+    }
+    const ctx = buildContext(commandArgv, { executionContext });
+    if (ctx.verb === 'spike-deliverable') {
+      const { parseSpikeDeliverableArgs } = await import('./lib/spike-deliverable.mjs');
+      try {
+        parseSpikeDeliverableArgs(ctx.rest, { repository: ctx.cfg?.repo });
+      } catch (error) {
+        process.stderr.write(`${error.message}\n`);
+        process.exitCode = 2;
+        return;
+      }
+    }
     const shouldAnnotate =
       admission.trust === 'project-owned-diverged' &&
       !ctx.SKIP_NETWORK &&
@@ -504,19 +534,35 @@ if (_isMain)
         : null;
     let annotationVerbResult;
     try {
-      await enforceNativeBranchRenewalEntry({
-        argv: process.argv.slice(2),
-        root: process.cwd(),
-        cfg: ctx.cfg,
-      });
+      const observeRenewal = (expectedLocation) =>
+        enforceNativeBranchRenewalEntry({
+          argv: process.argv.slice(2),
+          root: process.cwd(),
+          cfg: ctx.cfg,
+          expectedLocation,
+        });
+      const renewal = await observeRenewal();
       await enforceIssueWorktreeLocation({
         verb: ctx.verb,
         rest: ctx.rest,
         cfg: ctx.cfg,
         invokingDir: process.cwd(),
         confirmRelocation: relocation.confirmRelocation,
+        allowForeignWorktree: foreignWorktree.allowForeignWorktree,
+        renewal,
+        observeRenewal: renewal ? observeRenewal : undefined,
       });
     } catch (error) {
+      const { LocationPreflightError } = await import('./lib/location-mutation-authority.mjs');
+      if (error instanceof LocationPreflightError) {
+        const { refuseVerbPreflight } = await import('./lib/verb-preflight.mjs');
+        return refuseVerbPreflight(ctx.verb, error.verdict);
+      }
+      if (error instanceof ForeignWorktreeBindingError) {
+        process.stderr.write(error.message + '\n');
+        process.exitCode = 7;
+        return;
+      }
       if (!(error instanceof WorktreeRelocationRequiredError)) throw error;
       process.stdout.write(`${error.promptToken}\n`);
       process.stderr.write(`${error.message}\n`);
@@ -757,6 +803,11 @@ if (_isMain)
           await verbEpicReconcile(ctx);
           break;
         }
+        case 'spike-deliverable': {
+          const { verbSpikeDeliverable } = await import('./verbs/spike-deliverable.mjs');
+          await verbSpikeDeliverable(ctx);
+          break;
+        }
         case 'report': {
           const { verbReport } = await import('./verbs/report.mjs');
           await verbReport(ctx);
@@ -775,6 +826,11 @@ if (_isMain)
         case 'issue-body': {
           const { verbIssueBody } = await import('./verbs/issue-body.mjs');
           await verbIssueBody(ctx);
+          break;
+        }
+        case 'plan-analysis': {
+          const { verbPlanAnalysis } = await import('./verbs/plan-analysis.mjs');
+          await verbPlanAnalysis(ctx);
           break;
         }
         case 'comment': {

@@ -522,6 +522,14 @@
       "fixtureId": "invalid-tracked-override"
     },
     {
+      "token": "plan-analysis",
+      "canonical": "plan-analysis",
+      "route": "verbs/plan-analysis.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
       "token": "plan-approve",
       "canonical": "plan-approve",
       "route": "verbs/plan-approve.mjs",
@@ -661,6 +669,14 @@
       "token": "shelve",
       "canonical": "shelve",
       "route": "verbs/shelve.mjs",
+      "entrypoint": "scripts/task-tracker/task-tracker.mjs",
+      "alias": false,
+      "fixtureId": "invalid-tracked-override"
+    },
+    {
+      "token": "spike-deliverable",
+      "canonical": "spike-deliverable",
+      "route": "verbs/spike-deliverable.mjs",
       "entrypoint": "scripts/task-tracker/task-tracker.mjs",
       "alias": false,
       "fixtureId": "invalid-tracked-override"
@@ -2655,6 +2671,7 @@
       "command": "plan-approve",
       "staticImports": [
         "../lib/direct-guidance-admission.mjs",
+        "../lib/plan-approve-current-scope.mjs",
         "../../gh/lib/gh-client.mjs",
         "node:path",
         "node:url",

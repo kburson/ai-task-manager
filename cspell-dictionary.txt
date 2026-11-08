@@ -645,3 +645,9 @@ rerunnable
 preimplementation
 reparent
 reobserve
+autoupdater
+nonexecutable
+xhigh
+SYSTEMROOT
+WINDIR
+NOSYSTEM
