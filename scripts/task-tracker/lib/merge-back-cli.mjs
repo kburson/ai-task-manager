@@ -11,6 +11,7 @@ import { occupancyPath } from '../paths.mjs';
 import { withLock } from '../fleet-registry.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
+import { integrationEvidence } from './integration-retention.mjs';
 
 function argumentsFor(argv) {
   const positional = [];
@@ -102,6 +103,7 @@ export async function runMergeBackCli(argv, deps) {
   const occupancyFile = occupancyPath(main);
   const sid = currentSessionId();
   let parentDir, parentGit, temporary, targetHead, writerSnapshot;
+  let completed = false;
   const relevantWriters = () =>
     Object.values(readOccupancy(occupancyFile)).filter(
       (row) =>
@@ -190,7 +192,7 @@ export async function runMergeBackCli(argv, deps) {
       cfg,
       projectDir: childDir,
     });
-    return deps.mergeBack({
+    const result = deps.mergeBack({
       child,
       path: childDir,
       preserveWorktree,
@@ -204,11 +206,17 @@ export async function runMergeBackCli(argv, deps) {
         currentWorktreeHead: () => childGit(['rev-parse', 'HEAD']),
         assertIntegrationCheckout,
         withIntegrationLock,
+        onRetainedWorktree: (retained) =>
+          process.stderr.write(
+            `merge-back: retained evidence-bearing child checkout ${retained}\n`
+          ),
         captureIntegrationTarget: () => {
           targetHead = parentGit(['rev-parse', 'HEAD']);
         },
       },
     });
+    completed = true;
+    return result;
   } finally {
     if (temporary) {
       // Normal Git removal refuses dirty/conflicted checkouts. Preserve recovery
@@ -216,10 +224,11 @@ export async function runMergeBackCli(argv, deps) {
       try {
         withIntegrationLock(() => {
           assertWriters();
+          if (!completed) throw new Error('integration did not complete; preserve its checkout');
           const cleanupGit = realGit(parentDir);
           assertNoGitOperation(cleanupGit);
-          if (cleanupGit(['ls-files', '--others', '--ignored', '--exclude-standard', '-z']))
-            throw new Error('merge-back: ignored evidence remains in integration checkout');
+          if (integrationEvidence(cleanupGit))
+            throw new Error('merge-back: filesystem evidence remains in integration checkout');
           realGit(main)(['worktree', 'remove', parentDir]);
           rmdirSync(temporary);
         });

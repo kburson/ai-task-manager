@@ -1,11 +1,12 @@
 // @story #905 #1882 #1902
 // #905 — merge a child back into its epic (design: "Merge-back protocol").
 // Opportunistically sync the epic onto its parent (skip if already current),
-// rebase the child only when its epic tip is not contained, verify, then fast-forward
-// only. Refuse on rebase conflict or test failure; clean up on success. git +
+// merge the parent into the child only when its epic tip is not contained, verify, then fast-forward
+// only. Refuse on merge conflict or test failure; clean up on success. git +
 // graph + test-runner injected.
 
 import { test } from 'node:test';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -30,6 +31,9 @@ const GRAPH = {
 };
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
 
+const shaForRef = (ref) =>
+  /^[0-9a-f]{40}$/.test(ref) ? ref : createHash('sha1').update(ref).digest('hex');
+
 function makeGit({
   grandparentIsAncestor = true,
   childContainsParent = false,
@@ -39,6 +43,8 @@ function makeGit({
   const calls = [];
   const git = (args) => {
     calls.push(args);
+    if (args[0] === 'rev-parse' && args[1] === '--verify')
+      return shaForRef(args[2].replace(/\^\{commit\}$/, ''));
     if (
       args[0] === 'for-each-ref' &&
       args[1] === '--format=%(upstream)' &&
@@ -56,8 +62,8 @@ function makeGit({
       return '';
     }
     // rebase of the CHILD onto the epic: args = ['rebase','feature/epic/905','feature/child/910']
-    if (args[0] === 'rebase' && args[2] === 'feature/child/910' && rebaseChildFails) {
-      const e = new Error('rebase conflict in child');
+    if (args[0] === 'merge' && args[1] === '--no-ff' && rebaseChildFails) {
+      const e = new Error('merge conflict in child');
       e.status = 1;
       throw e;
     }
@@ -67,7 +73,7 @@ function makeGit({
   return git;
 }
 
-test('divergent child path: sync-skip, rebase child, test, ff, cleanup', () => {
+test('divergent child path: sync-skip, merge into child, test, ff, cleanup', () => {
   const git = makeGit(); // grandparent already ancestor → epic sync is a no-op
   const r = mergeBack({
     child: 910,
@@ -79,10 +85,19 @@ test('divergent child path: sync-skip, rebase child, test, ff, cleanup', () => {
   assert.equal(r.child, 'feature/child/910');
   const kinds = git.calls.map((c) => c.join(' '));
   // epic was NOT rebased onto trunk (grandparent unchanged) ...
-  assert.ok(!kinds.includes('rebase trunk feature/epic/905'));
+  assert.ok(
+    !git.calls.some(
+      (args) => args[0] === 'merge' && args[1] === '--no-ff' && args[2] === shaForRef('trunk')
+    )
+  );
   // ... but the child WAS rebased onto the epic, then ff-merged, then cleaned up.
-  assert.ok(kinds.includes('rebase feature/epic/905 feature/child/910'));
-  assert.ok(kinds.includes('merge --ff-only feature/child/910'));
+  assert.ok(
+    git.calls.some(
+      (args) =>
+        args[0] === 'merge' && args[1] === '--no-ff' && args[2] === shaForRef('feature/epic/905')
+    )
+  );
+  assert.ok(kinds.includes('merge --ff-only ' + shaForRef('HEAD')));
   assert.ok(kinds.includes('worktree remove /wt/910'));
   assert.ok(!kinds.includes('branch --unset-upstream feature/child/910'));
   assert.ok(kinds.some((k) => k.startsWith('branch -d feature/child/910')));
@@ -130,20 +145,29 @@ test('nested epic follows the same recursive merge-back path into its immediate 
   assert.deepEqual(tested, { path: '/wt/920', branch: 'feature/epic/920' });
 
   const kinds = git.calls.map((c) => c.join(' '));
-  assert.ok(kinds.includes('rebase feature/epic/905 feature/epic/920'));
-  assert.ok(kinds.includes('merge --ff-only feature/epic/920'));
+  assert.ok(
+    git.calls.some(
+      (args) =>
+        args[0] === 'merge' && args[1] === '--no-ff' && args[2] === shaForRef('feature/epic/905')
+    )
+  );
+  assert.ok(kinds.includes('merge --ff-only ' + shaForRef('HEAD')));
   assert.ok(kinds.includes('worktree remove /wt/920'));
   assert.ok(kinds.includes('branch -d feature/epic/920'));
 });
 
-test('grandparent advanced: epic is rebased onto trunk before the child merge', () => {
+test('grandparent advanced: grandparent is merged into the child before verified parent advancement', () => {
   const git = makeGit({ grandparentIsAncestor: false });
   mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } });
   const kinds = git.calls.map((c) => c.join(' '));
-  assert.ok(kinds.includes('rebase trunk feature/epic/905'));
+  assert.ok(
+    git.calls.some(
+      (args) => args[0] === 'merge' && args[1] === '--no-ff' && args[2] === shaForRef('trunk')
+    )
+  );
 });
 
-test('rebase conflict on the child refuses before any merge', () => {
+test('merge conflict on the child refuses before any merge', () => {
   const git = makeGit({ rebaseChildFails: true });
   assert.throws(
     () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } }),
@@ -153,7 +177,7 @@ test('rebase conflict on the child refuses before any merge', () => {
   assert.ok(!kinds.some((k) => k.startsWith('merge --ff-only')));
 });
 
-test('post-rebase test failure refuses the merge and skips cleanup', () => {
+test('post-merge test failure refuses the merge and skips cleanup', () => {
   const git = makeGit();
   assert.throws(
     () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => false } }),
@@ -446,7 +470,7 @@ const customChildGraph = (n) =>
       }
     : (GRAPH[n] ?? { parent: null, children: [] });
 
-test('#1601: a recorded custom child branch drives rebase, merge, and cleanup', () => {
+test('#1601: a recorded custom child branch drives additive merge, and cleanup', () => {
   const git = makeGit();
   const wtGit = makeGit();
   const result = mergeBack({
@@ -463,11 +487,11 @@ test('#1601: a recorded custom child branch drives rebase, merge, and cleanup', 
 
   assert.equal(result.child, 'codex/custom-child');
   assert.deepEqual(
-    wtGit.calls.find((args) => args[0] === 'rebase'),
-    ['rebase', 'cloud-test-automation', 'codex/custom-child']
+    wtGit.calls.find((args) => args[0] === 'merge' && args[1] === '--no-ff')?.slice(0, 3),
+    ['merge', '--no-ff', shaForRef('cloud-test-automation')]
   );
   const calls = git.calls.map((args) => args.join(' '));
-  assert.ok(calls.includes('merge --ff-only codex/custom-child'));
+  assert.ok(calls.includes('merge --ff-only ' + shaForRef('HEAD')));
   assert.ok(calls.includes('worktree remove /wt/custom-child'));
   assert.ok(calls.includes('branch -d codex/custom-child'));
 });
@@ -515,7 +539,7 @@ test('#1601: recorded child path and checked-out branch mismatches refuse before
   }
 });
 
-test('#1485: a recorded custom epic branch drives rebase, checkout, and fast-forward', () => {
+test('#1485: a recorded custom epic branch drives merge, checkout, and fast-forward', () => {
   const git = makeGit();
   const wtGit = makeGit();
   const result = mergeBack({
@@ -527,18 +551,18 @@ test('#1485: a recorded custom epic branch drives rebase, checkout, and fast-for
   assert.equal(result.child, 'feature/child/910');
   // The child rebases onto the opaque recorded ref, never a synthesized canon.
   assert.deepEqual(
-    wtGit.calls.find((args) => args[0] === 'rebase'),
-    ['rebase', 'cloud-test-automation', 'feature/child/910']
+    wtGit.calls.find((args) => args[0] === 'merge' && args[1] === '--no-ff')?.slice(0, 3),
+    ['merge', '--no-ff', shaForRef('cloud-test-automation')]
   );
   const kinds = git.calls.map((c) => c.join(' '));
   assert.ok(kinds.includes('checkout cloud-test-automation'));
-  assert.ok(kinds.includes('merge --ff-only feature/child/910'));
+  assert.ok(kinds.includes('merge --ff-only ' + shaForRef('HEAD')));
   assert.ok(!kinds.some((k) => k.includes('feature/epic/905')));
   // Cleanup still happens, and only after the merge.
   assert.ok(kinds.includes('worktree remove /wt/910'));
   assert.ok(kinds.includes('branch -d feature/child/910'));
   assert.ok(
-    kinds.indexOf('merge --ff-only feature/child/910') < kinds.indexOf('worktree remove /wt/910')
+    kinds.indexOf('merge --ff-only ' + shaForRef('HEAD')) < kinds.indexOf('worktree remove /wt/910')
   );
 });
 
@@ -602,10 +626,10 @@ test('#1882: preservation retains the child checkout, branch and upstream after 
   });
   assert.equal(result.merged, true);
   const calls = git.calls.map((args) => args.join(' '));
-  assert.ok(calls.includes('merge --ff-only feature/child/910'));
+  assert.ok(calls.includes('merge --ff-only ' + shaForRef('HEAD')));
   assert.ok(!calls.some((call) => call.startsWith('worktree remove ')));
   assert.ok(!calls.some((call) => call.startsWith('branch ')));
-  assert.ok(!calls.some((call) => call.startsWith('for-each-ref ')));
+  assert.ok(!calls.some((call) => call.startsWith('for-each-ref --format=%(upstream)')));
 });
 
 test('#1882: non-boolean verification cannot silently authorize a merge', () => {
@@ -620,7 +644,7 @@ test('#1882: non-boolean verification cannot silently authorize a merge', () => 
         }),
       /tests failed/
     );
-    assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+    assert.ok(!git.calls.some((args) => args[0] === 'merge' && args[1] === '--ff-only'));
     assert.ok(!git.calls.some((args) => args[0] === 'worktree'));
   }
 });
@@ -660,7 +684,7 @@ test('#1882: verification head drift refuses before parent integration', () => {
       }),
     /verified.*HEAD|HEAD.*changed/
   );
-  assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+  assert.ok(!git.calls.some((args) => args[0] === 'merge' && args[1] === '--ff-only'));
 });
 
 test('#1882: parent integration uses the verified commit rather than a movable child ref', () => {
@@ -696,7 +720,7 @@ test('#1902: contained-child verification race still refuses integration and cle
       }),
     /verified.*HEAD|HEAD.*changed/
   );
-  assert.ok(!git.calls.some((args) => args[0] === 'merge'));
+  assert.ok(!git.calls.some((args) => args[0] === 'merge' && args[1] === '--ff-only'));
   assert.ok(!git.calls.some((args) => args[0] === 'worktree'));
   assert.ok(!git.calls.some((args) => args[0] === 'rebase' && args[2] === 'feature/child/910'));
 });
