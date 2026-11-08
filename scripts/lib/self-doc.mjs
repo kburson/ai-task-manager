@@ -199,7 +199,7 @@ const ROUTABLE_SELF_DOC = {
     group: 'Epic Branching',
     path: 'scripts/task-tracker/merge-back.mjs',
     synopsis:
-      'Merge a child back into its epic: opportunistic epic sync, rebase child onto epic head, verify through the configured project provider or Node defaults, then `--ff-only` the verified commit. Refuses conflicts, failed verification, or checkout drift.',
+      'Merge a child back into its epic: retain original heads, additively integrate parent and trunk into the child, verify through the configured project provider or Node defaults, then `--ff-only` the verified commit. Refuses conflicts, failed verification, or checkout drift.',
     audience: 'Orchestrator landing a finished child. Keeps the epic a clean linear branch.',
     usage: 'aitm merge-back <child#> <worktree-path> [--preserve-worktree]',
   },
@@ -207,7 +207,7 @@ const ROUTABLE_SELF_DOC = {
     group: 'Epic Branching',
     path: 'scripts/task-tracker/sync-epic.mjs',
     synopsis:
-      'Re-sync an epic branch onto trunk (rebase, then push --force-with-lease unless noPushToOrigin). Keeps the epic a clean linear descendant of trunk.',
+      'Merge the recorded parent or trunk into the recorded epic checkout, retain original heads, verify the exact result, then push normally unless noPushToOrigin.',
     audience: 'Orchestrator/operator after trunk advances under a live epic.',
     usage: 'aitm sync-epic <epic#>',
   },
@@ -424,7 +424,9 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       'Retain the child checkout, branch and upstream for exact-head completion; otherwise clean up after integration.'
     ),
   ],
-  'sync-epic': [argument('<epic#>', 'Epic branch to rebase onto trunk.')],
+  'sync-epic': [
+    argument('<epic#>', 'Epic issue whose recorded branch and parent should be synchronized.'),
+  ],
 });
 
 const exitCode = (code, meaning) => Object.freeze({ code, meaning });
@@ -704,7 +706,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     output: ['Prints the child branch and epic branch after verified fast-forward integration.'],
     exitCodes: [
       exitCode(0, 'child verified and merged into its epic'),
-      exitCode(1, 'lineage, sync, rebase, tests, or fast-forward merge failed'),
+      exitCode(1, 'lineage, retained integration, tests, or fast-forward merge failed'),
       exitCode(2, 'child issue or worktree path is invalid'),
     ],
     examples: ['npx aitm merge-back 1023 .worktrees/1023-cli-help-defect --preserve-worktree'],
@@ -713,8 +715,8 @@ const ROUTABLE_CONTRACTS = Object.freeze({
   'sync-epic': routableContract({
     output: ['Prints the epic branch, resolved trunk base, and whether it was pushed.'],
     exitCodes: [
-      exitCode(0, 'epic rebased and required push completed'),
-      exitCode(1, 'lineage, fetch, rebase, or push failed'),
+      exitCode(0, 'epic integrated, verified and required ordinary push completed'),
+      exitCode(1, 'authority, fetch, retained integration, verification, or push failed'),
       exitCode(2, 'epic issue argument is invalid'),
     ],
     examples: ['npx aitm sync-epic 1005'],

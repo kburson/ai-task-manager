@@ -1,0 +1,4 @@
+<!-- aitm-worktree-location worktree="/Users/kpburson/.codex/worktrees/f7be/ai-task-manager" branch="HEAD" sid="01a1a1d9-519c-7db0-b41f-858ad4826d25" ts="2026-11-03T14:39:28.585Z" -->
+<!-- aitm-worktree-location worktree="/Users/kpburson/.codex/worktrees/f7be/ai-task-manager" branch="codex/2145-draft" sid="default-session" ts="2026-11-03T15:28:58.865Z" -->
+<!-- aitm-worktree-location worktree="/Users/kpburson/.codex/worktrees/2145-bounded-completion/ai-task-manager" branch="HEAD" sid="01a1b283-8514-7192-9ef4-5f878fd2f9ee" ts="2026-11-08T03:01:53.377Z" -->
+<!-- aitm-worktree-location worktree="/Users/kpburson/.codex/worktrees/f7be/ai-task-manager" branch="codex/2145-draft" sid="01a1b283-8514-7192-9ef4-5f878fd2f9ee" ts="2026-11-08T03:11:54.797Z" -->

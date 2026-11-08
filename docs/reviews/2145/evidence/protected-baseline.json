@@ -1,0 +1,150 @@
+[
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/README.md",
+    "sha256": "92aabc308eefafcd1c0a741ef90c4b8b21a45955fb298405748620d7b579e751"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/README.md",
+    "sha256": "a2cb57b23700a10bc96f1675060af76cbfb8c9a27185d46da57bdd0f60c657f6"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/response.r1.md",
+    "sha256": "aae66cb2e51caf5d995c1ca46a4b6b4aac34bbd1f50370b4ff678553ea81299c"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/response.r2.md",
+    "sha256": "b2212fcd13cec736fffef5bf98f6897271411196d5d2eb0eb21f1ca03c2aed83"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/spec.r0.md",
+    "sha256": "6d78c976cb2bfd3b77b8bc76315e90529c87677f7fed991f335164743a0a9809"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/spec.r1.md",
+    "sha256": "470bcfe70aff6709d62fe4ef9d4f14beb21dc0cc158024cae010bef65754a9bb"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SAR/spec.r2.md",
+    "sha256": "436b4db930ba993baa13a651a9b4dd2971835fb5dd28f42f4ba9a1bb40bf63d8"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-author-response-1.md",
+    "sha256": "d5608f4a48ab871be7acd1399bfa80a3091539f777ad1329ced2b2607195f5e3"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-author-response-2.md",
+    "sha256": "b3cc8863ed8eb939064acdf50a1ee38e07b46f1815915c237f4c2dcb3754b22e"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-author-response-3.md",
+    "sha256": "9234c4f2528bd5285aae4185e015680677c4e189611068f620b80a1a44fdfab9"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-author-startup.md",
+    "sha256": "ab10d39077ac498380ad71b9a6993530781294578f92a7a5e4381ef09395d275"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-reviewer-invitation.md",
+    "sha256": "0863bedfffbfb3857f4a76c5fe055562c96351146414c4e92c309889ff211083"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-reviewer-response-1.md",
+    "sha256": "d7878feeafcf9f28099050f7fd6cdc0bae78307ae53c0daee21da77744177408"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-reviewer-response-2.md",
+    "sha256": "3a8f7bcde08ec03413d7c4c7230879afbaf549240f9188e5d92f8fe32e907f72"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/SPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-be7b2b402812c7b0b907d578360783b9/review-be7b2b402812c7b0b907d578360783b9-reviewer-response-3.md",
+    "sha256": "66ad770afecbb8e0d443dbb8e6aee3b109b5504f9fd732a5939e606b210ed961"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-025b36b5f5eae23603c81998c80112ec/review-025b36b5f5eae23603c81998c80112ec-author-startup.md",
+    "sha256": "6ea17157b1a0df0adbd8e639d42604451b61820456619b1e4b85dc340a10e28a"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-025b36b5f5eae23603c81998c80112ec/review-025b36b5f5eae23603c81998c80112ec-reviewer-invitation.md",
+    "sha256": "abbf029cbcf4c4b41d6dba3397c0e5888ea861f68520a649145c8780f26b1c73"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-author-response-1.md",
+    "sha256": "6c51df8ee796c5d12fd66465c88a41dca681209d25068747d7a021ac72170739"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-author-response-2.md",
+    "sha256": "74d7bd683ec92229b5e2bf3eecea9220fc1952ec0f85b2f1b7fcb8d889a44053"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-author-response-3.md",
+    "sha256": "3205b7b16d7779faa399d8cd045c92b36eeda6ed918dc517a7da4afae66f8f01"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-author-startup.md",
+    "sha256": "b6762976b174e8cab4d9d1f408531349907d89312476f59ef8e0122bbe96c746"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-reviewer-invitation.md",
+    "sha256": "58007b6f6b497cc7c39bf6ded790d90533315b1aee88c5104e20f915d99bf808"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-reviewer-response-1.md",
+    "sha256": "926bc0ed4a6c5d4b514b79c7466a98c88978907fdb8aa65065c25701460c8ed0"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-reviewer-response-2.md",
+    "sha256": "714fb6e638e65f34d24d3812b590227d6918377c6e54e68ca758daf5473baf49"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/2026-11-03-sequential/XPR-recovered/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-5966b97fce2eba40ac8c0f146f8ad866/review-5966b97fce2eba40ac8c0f146f8ad866-reviewer-response-3.md",
+    "sha256": "a4f8b7e957f0bb72bae88671654256e7b876b107b9e1318f928e7e8332618f8f"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/extraction/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-ca8504528cfdbb6c23265376123a7400/review-ca8504528cfdbb6c23265376123a7400-author-startup.md",
+    "sha256": "0e4c324adb597fc4360d7dc80754dd1a7c8d3f03939379ecb77dec14818c3366"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/extraction/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-ca8504528cfdbb6c23265376123a7400/review-ca8504528cfdbb6c23265376123a7400-reviewer-invitation.md",
+    "sha256": "988b40d38034f3b4bb80f68f8301065d0c64424bcaad4782d955b40d0a0faf6d"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/extraction-authenticated/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-cd87b88763be4da59299b4f17404b063/review-cd87b88763be4da59299b4f17404b063-author-startup.md",
+    "sha256": "3848d2ec38de9415407efc5f7eadbbf527aed3aea3f4bed482b9bb428484de17"
+  },
+  {
+    "path": "2071/docs/superpowers/reviews/2071/extraction-authenticated/spec/2026-11-03-2026-11-02-2071-prerequisite-extraction-design-review-cd87b88763be4da59299b4f17404b063/review-cd87b88763be4da59299b4f17404b063-reviewer-invitation.md",
+    "sha256": "c8c311c1a7c85300ce8ed1fa739c0bb387302cfdf9a1aa1f0d108a0b8eabea46"
+  },
+  {
+    "path": "2071/docs/superpowers/specs/2026-11-02-2071-prerequisite-extraction-design.md",
+    "sha256": "624729dc6a355ce24b21decff70b4cb93963bb827eb332e83246c72fee4f20f9"
+  },
+  {
+    "path": "2071/scripts/tests/unit/task-tracker/lib/story-cache/public-activation.test.mjs",
+    "sha256": "48a351ff49d3fcc15ddc2f3bc9093a6c11855221a3f9c2c482a0be320f26b0e7"
+  },
+  {
+    "path": "2071/scripts/tests/helpers/native-plan-neutral-cases.mjs",
+    "sha256": "7e699f8ca9d4530e3cd935b91782ba0414118ec78ae7671461a99d6ccb34877a"
+  },
+  {
+    "path": "2071/scripts/tests/unit/task-tracker/lib/story-cache/native-plan-neutral.test.mjs",
+    "sha256": "337b663e87b9ecd99b0819ab8f8fa3ffb5effaecef3037c0190ad3e7e3bcc78f"
+  },
+  {
+    "path": "2145/.tmp/aitm/app/codex/session-tracking/01a1a1d9-519c-7db0-b41f-858ad4826d25.json",
+    "sha256": "b9560cbbdab25ba2ff814179857b04138db0bc1e341f11e4f28ff8320e901b1c"
+  },
+  {
+    "path": "2145/.tmp/aitm/draft-branch/2145.json",
+    "sha256": "d50a933c67effc70d0988c5e095abc8cfa1f773489b6fbf6f9eb6aabb2621aaa"
+  },
+  {
+    "path": "2145/.tmp/aitm/sessions/01a1a1d9-519c-7db0-b41f-858ad4826d25/active-task.json",
+    "sha256": "20df7a6a967e6dd0bc18ad489ada095b0f1d4e243163a6a0a36861fd4f383ea1"
+  },
+  {
+    "path": "2145/.tmp/aitm/sessions/01a1a1d9-519c-7db0-b41f-858ad4826d25/timing/68e116fec85fd2f53872162c7ebac004f3d5b9195bb3ef056617cef6e90848a1.json",
+    "sha256": "e8e3dda781833a4d42178e1b44963fd3a4a06ceafef38da9d52671f934aa7eda"
+  }
+]

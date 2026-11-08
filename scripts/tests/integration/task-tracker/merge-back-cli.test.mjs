@@ -219,7 +219,7 @@ test('#1902: contained merge history remains exact when configured verification 
   assert.equal(existsSync(path.join(f.parent, 'feature.txt')), false);
 });
 
-test('#1902: divergent child still rebases onto the current parent before verification', async (t) => {
+test('#1902: divergent child retains original ancestry and merges the parent before verification', async (t) => {
   const f = fixture(t, headVerifier);
   const original = f.git(f.child, 'rev-parse', 'HEAD');
   writeFileSync(path.join(f.parent, 'parent.txt'), 'divergent parent contribution');
@@ -230,7 +230,8 @@ test('#1902: divergent child still rebases onto the current parent before verifi
   const integrated = f.git(f.parent, 'rev-parse', 'HEAD');
   assert.notEqual(integrated, original);
   assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), integrated);
-  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^'), parentTip);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^1'), original);
+  assert.equal(f.git(f.child, 'rev-parse', 'HEAD^2'), parentTip);
   assert.equal(readFileSync(path.join(f.child, 'verified.txt'), 'utf8'), integrated);
   assert.equal(readFileSync(path.join(f.parent, 'feature.txt'), 'utf8'), 'child contribution');
   assert.equal(
@@ -239,14 +240,14 @@ test('#1902: divergent child still rebases onto the current parent before verifi
   );
 });
 
-test('#1902: divergent rebase conflict still refuses verification and parent integration', async (t) => {
+test('#1902: divergent merge conflict still refuses verification and parent integration', async (t) => {
   const f = fixture(t);
   const original = f.git(f.child, 'rev-parse', 'HEAD');
   writeFileSync(path.join(f.parent, 'feature.txt'), 'conflicting parent contribution');
   f.git(f.parent, 'add', 'feature.txt');
   f.git(f.parent, 'commit', '-qm', 'conflicting parent advancement');
   const parentTip = f.git(f.parent, 'rev-parse', 'HEAD');
-  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /rebase conflict/);
+  await assert.rejects(run(['910', f.child, '--preserve-worktree'], f.deps), /merge conflict/);
   assert.equal(f.git(f.parent, 'rev-parse', 'HEAD'), parentTip);
   assert.equal(f.git(f.child, 'rev-parse', 'refs/heads/codex/fixture-child'), original);
   assert.equal(
@@ -255,8 +256,8 @@ test('#1902: divergent rebase conflict still refuses verification and parent int
   );
   assert.equal(existsSync(path.join(f.child, 'verified.txt')), false);
   assert.ok(existsSync(f.child));
-  // Abort only this disposable fixture's real failed rebase after asserting refusal.
-  f.git(f.child, 'rebase', '--abort');
+  // Abort only this disposable fixture's real failed merge after asserting refusal.
+  f.git(f.child, 'merge', '--abort');
   assert.equal(f.git(f.child, 'rev-parse', 'HEAD'), original);
 });
 

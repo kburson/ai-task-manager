@@ -7,9 +7,9 @@ enforceDirectGuidance(import.meta.url, 'merge-back');
 //
 // The protocol keeps the epic a clean fast-forward integration branch:
 //   1. Opportunistic epic sync — if the epic's parent (grandparent of the child;
-//      trunk for a root epic) has advanced, rebase the epic onto it first. If the
+//      trunk for a root epic) has advanced, incorporate that tip into the child. If the
 //      epic already contains that tip, this is a no-op.
-//   2. Rebase the child only if it does not already contain the epic head.
+//   2. Additively merge tips the child does not already contain.
 //      Otherwise preserve its reviewed commit and merge ancestry. Conflicts refuse.
 //   3. Run the child's tests in its worktree. A failure refuses the merge.
 //   4. `git merge --ff-only` the verified child commit into the epic.
@@ -20,6 +20,14 @@ enforceDirectGuidance(import.meta.url, 'merge-back');
 // (git + graph + test-runner); the CLI wires the real ones.
 
 import { resolve as resolvePath } from 'node:path';
+import {
+  integrationHead,
+  retainIntegrationHeads,
+  assertIntegrationHeads,
+  assertNoIntegrationOperation,
+  assertNoIncomingEvidence,
+  integrationEvidence,
+} from './lib/integration-retention.mjs';
 
 import { buildGraphNodeAuthority, fetchParentIssueBody } from './lib/graph-node-authority.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
@@ -56,7 +64,7 @@ export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) 
     throw new Error('merge-back: deps.runTests() runner is required');
   }
   const git = deps.git;
-  // The child branch is checked out in its own worktree, so its rebase must run
+  // The child branch is checked out in its own worktree, so its synchronization must run
   // from inside that worktree — git refuses to check out a branch that is active
   // in another worktree from the main tree. `deps.worktreeGit` is git bound to
   // the child's worktree path; it falls back to `deps.git` for unit tests that
@@ -112,54 +120,68 @@ export function mergeBack({ child, path, preserveWorktree = false, deps } = {}) 
 
   const integrate = deps.withIntegrationLock || ((fn) => fn());
   let verifiedHead;
+  let targets;
   integrate(() => {
     deps.assertIntegrationCheckout?.();
-    // 1. Opportunistic epic sync (skip when already current).
-    if (grandparent && !isAncestor(git, grandparent, epicBranch)) {
-      git(['rebase', grandparent, epicBranch]);
-    }
-    deps.captureIntegrationTarget?.();
-
-    // 2. Synchronize only when the child does not already contain the epic head.
-    // Preserve reviewed merge topology when no rebase is needed; conflict → refuse.
-    if (!isAncestor(wtGit, epicBranch, childBranch)) {
-      try {
-        wtGit(['rebase', epicBranch, childBranch]);
-      } catch (err) {
-        throw new Error(
-          `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
-        );
+    assertNoIntegrationOperation(wtGit);
+    const original = integrationHead(wtGit, childBranch);
+    targets = [
+      integrationHead(git, epicBranch),
+      ...(grandparent ? [integrationHead(git, grandparent)] : []),
+    ];
+    retainIntegrationHeads({ git, heads: [original, ...targets] });
+    // Qualify all incoming paths before either checkout is changed.
+    for (const target of targets) assertNoIncomingEvidence(wtGit, target.sha);
+    for (const target of [original, ...targets.slice(1)]) assertNoIncomingEvidence(git, target.sha);
+    deps.assertIntegrationCheckout?.();
+    assertIntegrationHeads({ git, heads: [original, ...targets] });
+    // Only the child changes before verification. Its additive merges preserve
+    // both the parent's and grandparent's original commits and recovery context.
+    for (const target of targets) {
+      if (!isAncestor(wtGit, target.ref, childBranch)) {
+        try {
+          wtGit([
+            'merge',
+            '--no-ff',
+            target.sha,
+            '-m',
+            `[#${child}] Integrate ${target.ref} while preserving original history`,
+          ]);
+        } catch (error) {
+          throw new Error(`merge-back: merge conflict integrating ${target.ref}: ${error.message}`);
+        }
       }
     }
-
-    // Pin the synchronized commit so branch movement cannot integrate unverified code.
-    verifiedHead = deps.currentWorktreeHead?.();
+    deps.captureIntegrationTarget?.();
+    verifiedHead = deps.currentWorktreeHead?.() || integrationHead(wtGit, 'HEAD').sha;
   });
 
-  // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).
   if (deps.runTests({ path, branch: childBranch }) !== true) {
     throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
   }
 
   integrate(() => {
-    if (verifiedHead && deps.currentWorktreeHead() !== verifiedHead) {
+    if ((deps.currentWorktreeHead?.() || integrationHead(wtGit, 'HEAD').sha) !== verifiedHead) {
       throw new Error('merge-back: verified HEAD changed; refusing parent integration');
     }
     deps.assertIntegrationCheckout?.();
-    // 4. Fast-forward in the actual target checkout so its index and files move
-    // with the branch. Revalidate after acquiring exclusion, never before a wait.
+    assertIntegrationHeads({ git, heads: targets });
+    assertNoIncomingEvidence(git, verifiedHead);
     git(['checkout', epicBranch]);
-    git(['merge', '--ff-only', verifiedHead || childBranch]);
-  });
+    git(['merge', '--ff-only', verifiedHead]);
 
-  // 5. Cleanup on success.
-  if (!preserveWorktree) {
-    if (path) git(['worktree', 'remove', path]);
-    if (hasConfiguredUpstream(git, childBranch)) {
-      git(['branch', '--unset-upstream', childBranch]);
+    // Cleanup stays under the same exclusion and never discards filesystem evidence.
+    if (!preserveWorktree) {
+      assertNoIntegrationOperation(wtGit);
+      if (integrationEvidence(wtGit)) {
+        deps.onRetainedWorktree?.(path);
+        return;
+      }
+      if (path) git(['worktree', 'remove', path]);
+      if (hasConfiguredUpstream(git, childBranch)) git(['branch', '--unset-upstream', childBranch]);
+      git(['branch', '-d', childBranch]);
     }
-    git(['branch', '-d', childBranch]);
-  }
+  });
 
   return { merged: true, epic: epicBranch, child: childBranch };
 }
@@ -219,7 +241,7 @@ export async function loadMergeBackGraph({ child, cfg, deps = {} } = {}) {
 
 export async function realGraphNode(issue, cfg, deps = {}) {
   const fetchParent =
-    deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssue;
+    deps.fetchParentIssue || (await import('./lib/fetch-parent-issue.mjs')).fetchParentIssueStrict;
   const fetchChildren =
     deps.fetchEpicChildren || (await import('./lib/epic-children-gate.mjs')).fetchEpicChildren;
   const fetchBody =

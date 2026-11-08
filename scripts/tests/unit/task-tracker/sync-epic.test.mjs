@@ -1,108 +1,103 @@
-// @story #905
-// #905 — re-sync an epic onto trunk (design: "Epic↔trunk re-sync"). Rebase the
-// epic onto trunk, then republish with --force-with-lease. Also exposes the
-// opportunistic is-ancestor check merge-back consults before a child merge. git +
-// graph injected; the test asserts argv and the ancestor-driven branch.
-
+// @story #905 #927 #2145
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-
 import { syncEpic, epicNeedsSync } from '../../../task-tracker/sync-epic.mjs';
-
-const GRAPH = {
-  905: { parent: null, children: [910] }, // root epic
-  910: { parent: 905, children: [] }, // child
-};
-function makeGit({ ancestor = true, rebaseFails = false } = {}) {
+const graph = (n) =>
+  n === 905 ? { parent: null, children: [910] } : { parent: 905, children: [] };
+function fixture({ ancestor = false, conflict = false } = {}) {
   const calls = [];
+  let head = 'a'.repeat(40);
+  const retained = new Map();
   const git = (args) => {
     calls.push(args);
-    if (args[0] === 'merge-base' && args.includes('--is-ancestor')) {
-      if (!ancestor) {
-        const e = new Error('not an ancestor');
-        e.status = 1;
-        throw e;
-      }
+    if (args[0] === 'rev-parse') return args[2]?.startsWith('origin/trunk') ? 'b'.repeat(40) : head;
+    if (args[0] === 'for-each-ref') return retained.get(args[2]) || '';
+    if (args[0] === 'update-ref') {
+      retained.set(args[1], args[2]);
       return '';
     }
-    if (args[0] === 'rebase' && rebaseFails) {
-      const e = new Error('rebase conflict');
-      e.status = 1;
-      throw e;
+    if (args[0] === 'merge-base' && !ancestor) throw Error('not ancestor');
+    if (args[0] === 'merge') {
+      if (conflict) throw Error('merge conflict');
+      head = 'c'.repeat(40);
     }
     return '';
   };
-  git.calls = calls;
-  return git;
+  return {
+    calls,
+    deps: {
+      graph,
+      git,
+      runTests: () => true,
+      assertIntegrationCheckout: () => {},
+      withIntegrationLock: (fn) => fn(),
+    },
+  };
 }
-const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
-
-test('syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes', () => {
-  const git = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git } });
-  assert.equal(r.branch, 'feature/epic/905');
-  assert.equal(r.pushed, true);
-  assert.equal(r.rebasedOnto, 'origin/trunk');
-  assert.deepEqual(git.calls, [
-    ['rebase', 'origin/trunk', 'feature/epic/905'],
-    ['push', '--force-with-lease', 'origin', 'feature/epic/905'],
+test('sync retains heads, merges and ordinarily pushes the exact verified SHA', () => {
+  const f = fixture();
+  const result = syncEpic({ epic: 905, deps: f.deps });
+  assert.deepEqual(result, {
+    branch: 'feature/epic/905',
+    mergedOnto: 'origin/trunk',
+    pushed: true,
+  });
+  assert.ok(f.calls.some((args) => args[0] === 'update-ref'));
+  assert.ok(f.calls.some((args) => args[0] === 'merge' && args[1] === '--no-ff'));
+  assert.deepEqual(f.calls.at(-1), [
+    'push',
+    'origin',
+    `${'c'.repeat(40)}:refs/heads/feature/epic/905`,
   ]);
+  assert.ok(!f.calls.some((args) => args[0] === 'rebase' || args.includes('--force-with-lease')));
 });
-
-test('syncEpic skips the push when noPushToOrigin is set (rebase-only)', () => {
-  const git = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git, noPushToOrigin: true } });
-  assert.equal(r.pushed, false);
-  assert.deepEqual(git.calls, [['rebase', 'origin/trunk', 'feature/epic/905']]);
+test('no-push retains locally and conflicts never publish', () => {
+  const local = fixture();
+  assert.equal(
+    syncEpic({ epic: 905, deps: { ...local.deps, noPushToOrigin: true } }).pushed,
+    false
+  );
+  assert.ok(!local.calls.some((args) => args[0] === 'push'));
+  const conflict = fixture({ conflict: true });
+  assert.throws(() => syncEpic({ epic: 905, deps: conflict.deps }), /merge conflict/);
+  assert.ok(!conflict.calls.some((args) => args[0] === 'push'));
 });
-
-test('#927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref', () => {
-  const rebaseGit = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git: rebaseGit, trunk: 'origin/trunk' } });
-  assert.equal(r.rebasedOnto, 'origin/trunk');
-  assert.deepEqual(rebaseGit.calls[0], ['rebase', 'origin/trunk', 'feature/epic/905']);
-
-  // The same injected ref is the ref epicNeedsSync checks ancestry against —
-  // the two functions must agree (the #927 pre-fix disagreement was the bug).
-  const ancestorGit = makeGit({ ancestor: false });
-  epicNeedsSync({ epic: 905, deps: { graph, git: ancestorGit, trunk: 'origin/trunk' } });
-  assert.deepEqual(ancestorGit.calls[0], [
-    'merge-base',
-    '--is-ancestor',
-    'origin/trunk',
-    'feature/epic/905',
-  ]);
+test('verification and physical authority are required before mutation', () => {
+  const f = fixture();
+  assert.throws(
+    () => syncEpic({ epic: 905, deps: { ...f.deps, runTests: undefined } }),
+    /verification runner/
+  );
+  assert.throws(
+    () => syncEpic({ epic: 905, deps: { ...f.deps, withIntegrationLock: undefined } }),
+    /physical integration/
+  );
+  assert.deepEqual(f.calls, []);
 });
-
-test('syncEpic surfaces a rebase conflict rather than pushing a bad state', () => {
-  const git = makeGit({ rebaseFails: true });
-  assert.throws(() => syncEpic({ epic: 905, deps: { graph, git } }), /rebase/i);
-  // never reached the push
-  assert.ok(!git.calls.some((c) => c[0] === 'push'));
+test('ancestor check uses the same resolved root or nested target', () => {
+  for (const ancestor of [true, false]) {
+    const f = fixture({ ancestor });
+    assert.equal(epicNeedsSync({ epic: 905, deps: f.deps }), !ancestor);
+    assert.deepEqual(f.calls[0], [
+      'merge-base',
+      '--is-ancestor',
+      'origin/trunk',
+      'feature/epic/905',
+    ]);
+  }
+  const f = fixture();
+  epicNeedsSync({
+    epic: 905,
+    deps: {
+      ...f.deps,
+      graph: () => ({ parent: 900, children: [910], parentAuthoritativeBranch: 'custom-parent' }),
+    },
+  });
+  assert.equal(f.calls[0][2], 'custom-parent');
 });
-
-test('syncEpic refuses a non-epic issue', () => {
-  const git = makeGit();
-  assert.throws(() => syncEpic({ epic: 910, deps: { graph, git } }), /not an epic/i);
-});
-
-test('epicNeedsSync: true when origin/trunk is NOT yet an ancestor of the epic', () => {
-  const git = makeGit({ ancestor: false });
-  assert.equal(epicNeedsSync({ epic: 905, deps: { graph, git } }), true);
-  assert.deepEqual(git.calls[0], [
-    'merge-base',
-    '--is-ancestor',
-    'origin/trunk',
-    'feature/epic/905',
-  ]);
-});
-
-test('epicNeedsSync: false when the epic already contains origin/trunk', () => {
-  const git = makeGit({ ancestor: true });
-  assert.equal(epicNeedsSync({ epic: 905, deps: { graph, git } }), false);
-});
-
-test('requires an issue and injected git', () => {
-  assert.throws(() => syncEpic({ deps: { graph, git: makeGit() } }), /epic/i);
-  assert.throws(() => syncEpic({ epic: 905, deps: { graph } }), /git/i);
+test('non-epics, missing issue and missing git refuse', () => {
+  const f = fixture();
+  assert.throws(() => syncEpic({ epic: 910, deps: f.deps }), /not an epic/);
+  assert.throws(() => syncEpic({ deps: f.deps }), /epic/);
+  assert.throws(() => syncEpic({ epic: 905, deps: { graph } }), /git/);
 });

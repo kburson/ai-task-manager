@@ -1,0 +1,29 @@
+{
+  "schema": "aitm.native-binding-proof/v1",
+  "matches": true,
+  "bound": true,
+  "healthy": true,
+  "nonce": "21450000000000000000000000000002",
+  "cli": {
+    "sessionId": "01a1b283-8514-7192-9ef4-5f878fd2f9ee",
+    "root": "/Users/kpburson/.codex/worktrees/f7be/ai-task-manager",
+    "branch": "codex/2145-draft",
+    "sourceHead": "67c3d320af2e5545b024ff98349f078ae0668731",
+    "issue": "#2145",
+    "bindingGenerationId": "58856eaf-eae5-4708-9fc8-3c56491a41f3",
+    "state": "develop",
+    "entryStartTs": "2026-11-08T03:28:36.297Z"
+  },
+  "hook": {
+    "sessionId": "01a1b283-8514-7192-9ef4-5f878fd2f9ee",
+    "root": "/Users/kpburson/.codex/worktrees/f7be/ai-task-manager",
+    "branch": "codex/2145-draft",
+    "sourceHead": "67c3d320af2e5545b024ff98349f078ae0668731",
+    "issue": "#2145",
+    "bindingGenerationId": "58856eaf-eae5-4708-9fc8-3c56491a41f3",
+    "state": "develop",
+    "entryStartTs": "2026-11-08T03:28:36.297Z"
+  },
+  "mismatches": [],
+  "provenance": "Local hook diagnostic transport; retain the genuine native tool invocation as origin evidence. This is not a mutation authority or cryptographic attestation."
+}

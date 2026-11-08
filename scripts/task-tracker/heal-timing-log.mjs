@@ -492,7 +492,9 @@ export async function main(argv, deps = {}) {
       args.continuitySession !== null ||
       args.rebaselineSession !== null ||
       args.expectedTranscriptSha !== null ||
-      !['aivc-63-2026-10-17', 'aitm-2055-2026-10-21'].includes(args.actorEvidenceRecovery) ||
+      !['aivc-63-2026-10-17', 'aitm-2055-2026-10-21', 'aitm-2145-2026-11-03'].includes(
+        args.actorEvidenceRecovery
+      ) ||
       (args.apply &&
         (!/^[a-f0-9]{64}$/.test(args.expectedSourceSha ?? '') || !args.expectedCommentId?.trim())))
   ) {

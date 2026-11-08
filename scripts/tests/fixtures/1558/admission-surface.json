@@ -2349,6 +2349,7 @@
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
         "node:path",
+        "./lib/integration-retention.mjs",
         "./lib/graph-node-authority.mjs",
         "./lib/resolve-epic-lineage.mjs",
         "../lib/self-doc.mjs",
@@ -2483,8 +2484,10 @@
       "command": "sync-epic",
       "staticImports": [
         "./lib/direct-guidance-admission.mjs",
-        "node:child_process",
         "./lib/resolve-epic-lineage.mjs",
+        "./lib/integration-retention.mjs",
+        "./lib/sync-epic-cli.mjs",
+        "./merge-back.mjs",
         "../lib/self-doc.mjs"
       ],
       "firstPotentialEffect": "direct entrypoint main invocation",

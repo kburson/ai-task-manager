@@ -1,0 +1,52 @@
+
+up to date in 157ms
+Already on 'codex/retained-parent'
+
+up to date in 156ms
+Already on 'codex/retained-parent'
+merge-back: retained evidence-bearing child checkout /Users/kpburson/.codex/worktrees/f7be/ai-task-manager/.scratch/retained-integration-GwifJF/child
+Preparing worktree (checking out 'codex/retained-parent')
+
+up to date in 159ms
+merge-back: verification refused: Command failed: node verify.mjs
+merge-back: retained integration checkout /Users/kpburson/.codex/worktrees/f7be/ai-task-manager/.scratch/retained-integration-XEfPo0/parent/.tmp/aitm/integration/905-DrgYRE/checkout: integration did not complete; preserve its checkout
+✔ additive merge-back retains original commits, refs and bytes (1546.362625ms)
+✔ ignored incoming collision refuses before either head changes (826.64025ms)
+✔ successful integration retains an evidence-bearing child even without preserve flag (1560.809166ms)
+✔ failed verification retains original child and any temporary parent checkout (1368.907375ms)
+✔ conflicts retain original commits and merge recovery state without parent advancement (1084.600458ms)
+✔ retention refuses conflicting create-only ref before branch mutation (211.646167ms)
+✔ retention refuses stale source before branch mutation (181.183958ms)
+
+up to date in 154ms
+
+up to date in 157ms
+
+up to date in 150ms
+merge-back: verification refused: Command failed: node verify.mjs
+
+up to date in 150ms
+
+up to date in 149ms
+To /Users/kpburson/.codex/worktrees/f7be/ai-task-manager/.scratch/retained-integration-tbDVoU/remote.git
+   3950916..f1135b5  f1135b53a9b3f991c0d7d47c662a4460dc2948a6 -> feature/epic/905
+✔ direct sync uses custom recorded checkout, merges additively and verifies exact head (991.291542ms)
+✔ direct nested sync chooses its authoritative parent rather than trunk (1005.790792ms)
+✔ direct sync refuses wrong branch before merge (250.16575ms)
+✔ direct sync refuses dirty before merge (297.345084ms)
+✔ direct sync refuses active operation before merge (286.678209ms)
+✔ direct sync refuses ambiguous authority before merge (212.506125ms)
+✔ failed exact-head verification prevents push and retains merged original history (878.232375ms)
+✔ target movement during verification prevents publication (965.128042ms)
+✔ registered sync CLI uses live recorded authority (unreadable parent: false) (1723.114792ms)
+✔ registered sync CLI uses live recorded authority (unreadable parent: true) (685.426084ms)
+✔ canonical fallback sync publishes the verified head by ordinary fast-forward push (1064.32025ms)
+✔ a foreign occupied integration checkout is refused without source changes (297.746417ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8792.111958
