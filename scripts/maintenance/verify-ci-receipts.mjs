@@ -9,7 +9,7 @@ import { configPath } from '../task-tracker/paths.mjs';
 import { validateShardReceipts } from '../run-tests-shards.mjs';
 
 const LANES = ['unit', 'integration', 'slow'];
-const LANE_GROUPS = Object.freeze({ unit: 1, integration: 12, slow: 3 });
+const LANE_GROUPS = Object.freeze({ unit: 1, integration: 13, slow: 3 });
 function fail(reason) {
   throw new Error(`cloud-receipt:${reason}`);
 }

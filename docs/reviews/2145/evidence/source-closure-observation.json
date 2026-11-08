@@ -1,0 +1,415 @@
+{
+  "schema": "aitm.bridge-source-inspection/v1",
+  "observedAt": "2026-11-08T04:06:53.590Z",
+  "source": "bb1ac9ba1bf189addbe31df7de48bcdefa5318f7",
+  "target": "3b71ed83e9cb9348cf58032c500231e53f0d9720",
+  "seeds": [
+    "scripts/task-tracker/lib/story-cache/batch.mjs",
+    "scripts/task-tracker/lib/story-cache/body-template.mjs",
+    "scripts/task-tracker/lib/story-cache/completion-receipt.mjs",
+    "scripts/task-tracker/lib/story-cache/journal.mjs",
+    "scripts/task-tracker/lib/story-cache/publisher.mjs",
+    "scripts/task-tracker/lib/story-cache/recovery.mjs",
+    "scripts/task-tracker/lib/story-cache/retention.mjs",
+    "scripts/task-tracker/lib/story-cache/snapshot-compare.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-body.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-comment.mjs",
+    "scripts/task-tracker/lib/story-cache/timing-authority.mjs",
+    "scripts/task-tracker/lib/story-cache/transition-batch.mjs",
+    "scripts/task-tracker/lib/story-cache/view-payloads.mjs",
+    "scripts/task-tracker/lib/story-cache/views.mjs",
+    "scripts/task-tracker/lib/story-cache/writer-handoff-bindings.mjs",
+    "scripts/task-tracker/lib/story-cache/writer-handoff.mjs",
+    "scripts/task-tracker/lib/story-cache/store.mjs"
+  ],
+  "files": [
+    {
+      "path": "scripts/task-tracker/lib/story-cache/batch.mjs",
+      "sourceBlob": "a2bacc4ee98e29282927cf85e5de75b4f0ff9ec7",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/body-template.mjs",
+      "sourceBlob": "8fcf26c9235699c0a630458a5ab7752c816881b4",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/completion-receipt.mjs",
+      "sourceBlob": "3e848e8a0ad5eab97322ccf95abce0ab2a3d0ee7",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/journal.mjs",
+      "sourceBlob": "0b22826bf1e20c4ab938b6e5e08491208bf514b3",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/publisher.mjs",
+      "sourceBlob": "eff6eb4944639c582642f4d14ede7b8d6e4606a6",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/recovery.mjs",
+      "sourceBlob": "83a022058a72dba579474645ba3f9a998dff9bd7",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/retention.mjs",
+      "sourceBlob": "4c1b110303ef2e91cdfddd8a10ded3c8160d64a2",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/snapshot-compare.mjs",
+      "sourceBlob": "2352a9a0dbaec6ad173393f11d85b3e5e8300dc8",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/stage-body.mjs",
+      "sourceBlob": "55ee7448c1c95d9323e680d3d95443b268141045",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs",
+      "sourceBlob": "c95ca6263284aa6e45df721c6558e5e6d5d627aa",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/stage-comment.mjs",
+      "sourceBlob": "f9ebfc2aaf8930d1150fb67e522bb89aa07d6dc2",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/timing-authority.mjs",
+      "sourceBlob": "6a92eb5106018a2a2424c8859a747bda915c0339",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/transition-batch.mjs",
+      "sourceBlob": "63e95e38c8b7be8f52ec3a013798c8ce07e1c880",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/view-payloads.mjs",
+      "sourceBlob": "ae4e6dd9d0d3ec77fe79ebaf60fb8d010144087e",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/views.mjs",
+      "sourceBlob": "30ec341cb420ccf78f45a95894d6bb9fb9153225",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/writer-handoff-bindings.mjs",
+      "sourceBlob": "dad1eba894da823edd5f75df05a16afd5f9b9730",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/writer-handoff.mjs",
+      "sourceBlob": "d95b44329036172b7f028a1478c1bb156344a669",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/story-cache/store.mjs",
+      "sourceBlob": "5e1e098609bb09a73fccad190b87070a27154014",
+      "targetBlob": "59564d1194cd286f3838e4f0bad9d48408532d47"
+    },
+    {
+      "path": "scripts/task-tracker/lib/github-records/record-envelope.mjs",
+      "sourceBlob": "ca4dcdb3f2d823429494d92f8bc58a202407c468",
+      "targetBlob": "39903aab139e9194caed913f10f3517b990c5f56"
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-approval-staging.mjs",
+      "sourceBlob": "0dfd9e77e6bdc1d4c36e71ef65de5e9507b067c9",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/body-invariants.mjs",
+      "sourceBlob": "e35d6cd8e607f3d11250489b03ba5207d6026b55",
+      "targetBlob": "808a30f89255d3ffa1a7eed3ec4682de84e800cc"
+    },
+    {
+      "path": "scripts/task-tracker/lib/markers.mjs",
+      "sourceBlob": "a35a797d1c4d194199af76ea4a8686b29df5be7d",
+      "targetBlob": "66cedd534e62c9cb9c31dfad913769e1acbb1b66"
+    },
+    {
+      "path": "scripts/task-tracker/lib/move-state/guard-execution.mjs",
+      "sourceBlob": "2b407271225d9cbaff846cda85eaef15869e2683",
+      "targetBlob": "faf49560c68574fc71d275ad85879b54538be46f"
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-transition-native.mjs",
+      "sourceBlob": "2bf4f094ecd4f82a8311514ab97c575518b57655",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-native-guard-execution.mjs",
+      "sourceBlob": "41f4d07678815c65b91d68c5885012f01e1872d7",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-approval-markers.mjs",
+      "sourceBlob": "bd615df509b112c8d2b298a678d6b9d678bed155",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/forecast-v3.mjs",
+      "sourceBlob": "5738988d01ba50241cf53d6804f787790c9d6c17",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/verbs/plan-approve.mjs",
+      "sourceBlob": "9e7a2c0a1f88a3c15df92e2da1685887295e45ca",
+      "targetBlob": "9fda65ed930db2826d3388f8cf69c3f5e8399e24"
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-child-inventory.mjs",
+      "sourceBlob": "925d9b57c24599ea04393984b61d3bb32bb6f24e",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+      "sourceBlob": "0ed8660ef79ddb05a403c282100e1b95ac9bab8f",
+      "targetBlob": "073351bcc38520bfbc37a26ffb950740246c298b"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/native-plan-selection.mjs",
+      "sourceBlob": "33c8f73bd5db100b7d0998c5c0bafb5438495671",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-approval-audit.mjs",
+      "sourceBlob": "e2b373c59027365c32f56a7ea78b77614a4d717e",
+      "targetBlob": "8d4d2a6567052ece1985ef0a0e053b06d539f657"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-projection.mjs",
+      "sourceBlob": "0373b5fdef92867cdd18dd40e3a439c1d002c150",
+      "targetBlob": "af2b0ff93920719b055f715528acc1366ffd22e3"
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-decomposition-projection.mjs",
+      "sourceBlob": "83e42d3d18dda62dc6886b0907a5bc04e65360ee",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-transition-authority.mjs",
+      "sourceBlob": "365f050ac774b134162c4fb0bdeb3e30646ad5b1",
+      "targetBlob": "11a136349380981aa4c1e8c2bd5423382a58c895"
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+      "sourceBlob": "0022570c14e7912eb23894d05f76a17fcb32ce06",
+      "targetBlob": "0aa100d5ebaf1d9f4fd52803ce1c50d86a18e18c"
+    },
+    {
+      "path": "scripts/task-tracker/config.mjs",
+      "sourceBlob": "634d895288b1c6f534b1fb701d01a557b5ff0d75",
+      "targetBlob": "f29a8b463b4462cbf957c4fa2928a591e42a201c"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/local-evidence.mjs",
+      "sourceBlob": "0c8fe06fc35c46c78917f2fcf3503ef9cda12ab2",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/task-tracker.mjs",
+      "sourceBlob": "9c572c3f9c0acd13665656b2468a9a5772be71e9",
+      "targetBlob": "7db4e2cbbfa703c55054ae997b74f188a270eb91"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/local-runtime.mjs",
+      "sourceBlob": "84a8ae75382a43df6c7b308c91ce7194a8d9a457",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/plan-decomposition-staging.mjs",
+      "sourceBlob": "2ab39666a5407ad1a24c4d0b050b0edb72b05362",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-authority.mjs",
+      "sourceBlob": "2ee3e7fb32ca45db25d2235c1d14b1de2ff64b41",
+      "targetBlob": "92081079ca4e0e28be3a5a43d12665b2e9d8876f"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/deliver.mjs",
+      "sourceBlob": "fb3c60ab6bf76516fb65f0af1e8a872a9fa96c35",
+      "targetBlob": "cf3ffc5d33173c6815da65d065b65123a736969b"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/test.mjs",
+      "sourceBlob": "a29bfbefdd859460bf6e3f854576cba210580d2b",
+      "targetBlob": "dfadc2d772bdd221f99ce6dff73b67e2ddf25757"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/contract.mjs",
+      "sourceBlob": "70bd8fdebc1ff81bf070a8ccb826c5c587990ebc",
+      "targetBlob": "e2f83d6b817ce6ecbfa70a1eb0c459a3e184f282"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/session.mjs",
+      "sourceBlob": "818afcbdea47c2dbcdc2af575034fd77ad077894",
+      "targetBlob": "e50e87879c9966947249643a6cdaee4ac9620d26"
+    },
+    {
+      "path": "scripts/task-tracker/lib/action-decision/test.mjs",
+      "sourceBlob": "0df0db6da0f88e1a308671544d08473281759b11",
+      "targetBlob": "6308b161fe682ece861f40b246bea725bcb86748"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/runtime-adapter.mjs",
+      "sourceBlob": "d99760fc2f677e014db0f59262e77a8fff1af046",
+      "targetBlob": "d38d403f56ff563e80de951e86edbc4254f37700"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/forecast-lineage.mjs",
+      "sourceBlob": "db2ab23e7e720434931f222d9f6b8889371dcc91",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/forecast-legacy.mjs",
+      "sourceBlob": "06e6c9df911f69bcc32632a16f37bbb7ea027b3c",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/local-evidence-store.mjs",
+      "sourceBlob": "9bb1c55801503f962afe6ab8d567f848e4f9cffd",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/timing-ladder.mjs",
+      "sourceBlob": "d8111698bba8364c9c5e6bc8cd426531e7bb5417",
+      "targetBlob": "63e7d1bec367c263cf09b5aeb92129a01982aeae"
+    },
+    {
+      "path": "scripts/task-tracker/runtime.mjs",
+      "sourceBlob": "10a25de728038e47e7330212fcaed2d267579aaf",
+      "targetBlob": "d987d81037c6a7540f5e74b6c9b9f2c5b43595b1"
+    },
+    {
+      "path": "scripts/task-tracker/lib/native-rebase-pause.mjs",
+      "sourceBlob": "451ff9b68a3035effaf1c7903d79c3d10e546db5",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/task-tracker/lib/worktree-relocation-guard.mjs",
+      "sourceBlob": "1ae121d6cd6d05781944ee5b4436a311533603d9",
+      "targetBlob": "19bb5489bdeaa4c2e805d68ae356caf25d4b993b"
+    },
+    {
+      "path": "scripts/task-tracker/lib/verb-preflight.mjs",
+      "sourceBlob": "6f52c4283d8e55a2a09f122cb2c1028dacd3cb88",
+      "targetBlob": "36076cf2a658cf45684afff2274905e4852b8aca"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/explain.mjs",
+      "sourceBlob": "e5959322dad298909125447248e49729f4a64ab6",
+      "targetBlob": "06c53199d8ec4ace34bf66e59de94c07ed124ff9"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/pause.mjs",
+      "sourceBlob": "e4f48e029c5f5ff9834ff1ece919f7993000e08f",
+      "targetBlob": "4182a64d40d5ee52ab2cec311f104bf2613798b9"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/inflate-estimate.mjs",
+      "sourceBlob": "a0576625a921518c22c139395b23668b813b9911",
+      "targetBlob": "3a442f4fd0172e96a1a3f36cf0695d0e15fc7407"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/forecast-model.mjs",
+      "sourceBlob": "df0c3a2e0bb4bccc90974ac8c1c2199972cd2a6d",
+      "targetBlob": "c3ccba866ab983c31537de564c4228181a2cb32a"
+    },
+    {
+      "path": "scripts/task-tracker/lib/worktree-binding-lifecycle.mjs",
+      "sourceBlob": "56e8482517ad742f3ae796edcaf449124fbe48ec",
+      "targetBlob": "ac3ab102ff1021088b69fedbe6bf5bc1b0996bc6"
+    },
+    {
+      "path": "scripts/task-tracker/lib/issue-worktree-location.mjs",
+      "sourceBlob": "d0c9f2a15095c85941e9944a00904a4c89cd6a20",
+      "targetBlob": "d0c9f2a15095c85941e9944a00904a4c89cd6a20"
+    },
+    {
+      "path": "scripts/task-tracker/lib/review-approval-timing.mjs",
+      "sourceBlob": "d43e701e36b6d6d3bdbb718f3b58f82a7e6bb4d0",
+      "targetBlob": "44852df3810d66f60a624f266e143c6b2e1eea1c"
+    },
+    {
+      "path": "scripts/task-tracker/timing-rollup.mjs",
+      "sourceBlob": "753ff340191752f4809d358b94c7ff2f5535c3f8",
+      "targetBlob": "d541fd1ad3e39b1b6a2e54d04ad800c46c9e7f1d"
+    },
+    {
+      "path": "scripts/task-tracker/lib/verification-receipt-retirement.mjs",
+      "sourceBlob": "4a79a19ff4dc2f7eaab8cbc7a3cd5c315846ce2a",
+      "targetBlob": "c1718a0affe46bc869c462e3327112614b3fc97a"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs",
+      "sourceBlob": "16c59b774d88d35bcbc98db93f49046c530eeddf",
+      "targetBlob": "9cd519356c1fe5e53600b3db482b171354d78c65"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/renderers.mjs",
+      "sourceBlob": "5b9dc9818b4c1515bc7730776c748e9b91ffb64c",
+      "targetBlob": "f58b4906eee7eb250bfdd1db23a854790e33aa38"
+    },
+    {
+      "path": "scripts/task-tracker/lib/estimation/forecast-reader.mjs",
+      "sourceBlob": "566e90f2958169cd78c56a1996fabbfa0dbe2744",
+      "targetBlob": null
+    },
+    {
+      "path": "guidance/cache.mjs",
+      "sourceBlob": "e4bc2aaae1b9a39c734117d2f927c37dd980a156",
+      "targetBlob": "c7182c4aab015e5286d41918b8caa039f59d77ac"
+    },
+    {
+      "path": "scripts/task-tracker/verbs/help-data.mjs",
+      "sourceBlob": "39609c67fd747229ca094a23329157663c964e7b",
+      "targetBlob": "ebc353bb7b4b35c71d215aa15f700b53aec81942"
+    },
+    {
+      "path": "scripts/task-tracker/lib/command-surface/catalog.mjs",
+      "sourceBlob": "b53eae7708480bb3762aff0bc76893c847d435f6",
+      "targetBlob": "b3497312c0066a0a45b73c33c9cb763b7677e11e"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+      "sourceBlob": "b69f3e72d0a50c9234403a4074290dbb8f05239b",
+      "targetBlob": "a4451a9f2a66f7778db410e64e9db8f9bdb315e5"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-inflation-audit.mjs",
+      "sourceBlob": "17ea08eb442a1ef33732c4aede472311f92214fc",
+      "targetBlob": null
+    },
+    {
+      "path": "scripts/lib/self-doc.mjs",
+      "sourceBlob": "b02086431d5eac3b7127ce3787b92299117a37b4",
+      "targetBlob": "221b7f233c72ff7aa25bf3a6ed7e734a1d392efc"
+    },
+    {
+      "path": "scripts/task-tracker/lib/move-state/move-state-core.mjs",
+      "sourceBlob": "9059f34ff4a4fa47b4a054a3bacf8cef8c214812",
+      "targetBlob": "9663e6e718bd4c55f26d31824e65e4541a39c322"
+    },
+    {
+      "path": "scripts/task-tracker/lib/native-bootstrap-inputs.mjs",
+      "sourceBlob": "c42c3fcece663a3aaf7669439b01ee2370394638",
+      "targetBlob": "980634c12ed80324ac0d0bacae364e602a054e68"
+    },
+    {
+      "path": "scripts/task-tracker/lib/decomposition-hook-authority.mjs",
+      "sourceBlob": "84d5d22883ba877a262bc95a8f3a88fa8082e4d5",
+      "targetBlob": "9c23421d3709f3edfb7a353be4bfd46ae7f4f16c"
+    }
+  ],
+  "status": "INCOMPLETE",
+  "reason": "Historical import inventory was rechecked against actual Git blobs. Exact review linkage and mixed-tree runtime closure are not established by this support story."
+}

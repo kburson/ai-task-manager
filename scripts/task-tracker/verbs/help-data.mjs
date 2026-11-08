@@ -344,6 +344,10 @@ export const VERB_REFERENCE = {
       { flag: '--reason <text>', desc: 'refinement rationale (required)' },
       { flag: '--rank <n>', desc: 'optional board Rank' },
       {
+        flag: '--supersede-pending',
+        desc: 'explicitly reconcile a pending Refine predecessor against current authority',
+      },
+      {
         flag: '--labels <name[,name...]>',
         desc: 'optional comma-separated labels to add',
       },
@@ -960,6 +964,18 @@ export const VERB_REFERENCE = {
       },
     ],
     examples: ['/task issue-body 667 --operation-file .scratch/gh/667-body-operation.json'],
+  },
+  'plan-analysis': {
+    topic: 'evidence',
+    summary: 'Publish and canonically mirror bounded Plan analysis without deliverable authority.',
+    usage: '/task plan-analysis #N --body-file <path>',
+    flags: [
+      {
+        flag: '--body-file <path>',
+        desc: 'grounded planning narrative without policy or proof markers',
+      },
+    ],
+    examples: ['/task plan-analysis 667 --body-file .scratch/gh/667-analysis.md'],
   },
   comment: {
     topic: 'evidence',

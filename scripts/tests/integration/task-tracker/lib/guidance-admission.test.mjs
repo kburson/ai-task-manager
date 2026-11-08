@@ -348,8 +348,8 @@ test('admission inventory accounts for every canonical command, alias, and class
     }
     if (entry.gateCall === null) assert.ok(entry.exception, entry.path);
   }
-  // #2156 adds exactly one registered spike publication command.
-  assert.equal(VERBS.size, 76);
+  // #2143 adds exactly one registered bounded planning-analysis command.
+  assert.equal(VERBS.size, 77);
   // #1848 adds the bounded draft-branch standalone route.
   assert.equal(Object.keys(SCRIPTS).length, 24);
   assert.deepEqual(

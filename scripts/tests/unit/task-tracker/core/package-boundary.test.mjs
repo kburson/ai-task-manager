@@ -527,8 +527,17 @@ test('package-boundary: total entry count stays under the ceiling', () => {
     1 + // #2026: exactly one closed historical actor-evidence recovery module.
     2 + // #2073: shared strict kind classifier and exact-target observer, two runtime entries.
     4 + // #2096: immutable subject, native source execution and stamp declaration validation.
+    1 + // #2143: exactly one registered bounded Plan analysis operation.
     1 + // #2161: shared pure governed mutation-session assertion, exactly one runtime leaf.
-    1; // #2163: pure inflation audit intent and bounded retry validation, one runtime leaf.
+    1 + // #2163: pure inflation audit intent and bounded retry validation, one runtime leaf.
+    3; // #2145: canonical host source, retained integration and recorded sync CLI.
+  for (const entry of [
+    'scripts/task-tracker/lib/workflow-policy/codex-host-source.mjs',
+    'scripts/task-tracker/lib/integration-retention.mjs',
+    'scripts/task-tracker/lib/sync-epic-cli.mjs',
+  ])
+    assert.ok(files.includes(entry), 'required #2145 runtime entry missing: ' + entry);
+  assert.ok(!files.includes('scripts/maintenance/verify-bridge-proof.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/inflation-intent.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/governed-mutation-session.mjs'));
   assert.ok(!files.includes('scripts/tests/fixtures/first-child-epic-provider.mjs'));
@@ -554,6 +563,7 @@ test('package-boundary: total entry count stays under the ceiling', () => {
   ])
     assert.ok(files.includes('scripts/task-tracker/lib/' + module + '.mjs'));
   assert.ok(files.includes('scripts/task-tracker/lib/action-decision/decomposition.mjs'));
+  assert.ok(files.includes('scripts/task-tracker/verbs/plan-analysis.mjs'));
   assert.ok(files.includes('scripts/run-tests-shards.mjs'));
   assert.ok(!files.includes('scripts/maintenance/ci-test-shards.mjs'));
   assert.ok(

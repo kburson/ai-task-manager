@@ -538,6 +538,18 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the mutation status and verified body version.'],
     PREFLIGHT_TARGET_EXITS
   ),
+  'plan-analysis': contract(
+    [
+      'The exact native issue binding, active timer, worktree, owner and live Plan state must match; current complete decomposition and epic planning readiness are required.',
+    ],
+    [
+      'Publishes one fixed deep-dive comment, canonically mirrors and completes only that analysis, with fresh authority at each effect and exact correlated readback; retry retains comment identity.',
+    ],
+    [
+      'Prints the verified planning comment id and URL; ordinary deliverable and lifecycle completion authority remains unchanged.',
+    ],
+    PREFLIGHT_TARGET_EXITS
+  ),
   comment: contract(
     [
       'The target must be the active issue with an open timing session, matching assignee, matching worktree, a stable key, and a readable body file.',
@@ -770,6 +782,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
   'issue-body': Object.freeze(['comment', 'evidence-markers']),
   comment: Object.freeze(['issue-body', 'commit-trace']),
+  'plan-analysis': Object.freeze(['comment', 'mirror-deep-dive', 'plan']),
   'workflow-exception': Object.freeze(['comment', 'evidence', 'status']),
   'delivery-attribution-exception': Object.freeze(['deliver', 'workflow-exception', 'status']),
   'workflow-preflight': Object.freeze(['workflow-exception', 'status', 'evidence']),
@@ -912,6 +925,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'issue-body': Object.freeze([
     positional('#N', 'Issue number whose fresh body will be transformed.'),
+  ]),
+  'plan-analysis': Object.freeze([
+    positional('#N', 'Exact active issue whose Plan analysis is published and mirrored.'),
   ]),
   comment: Object.freeze([
     positional('#N', 'Issue number whose marker-owned comment will be upserted.'),

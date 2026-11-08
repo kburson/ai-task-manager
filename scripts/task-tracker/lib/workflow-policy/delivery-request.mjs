@@ -193,6 +193,9 @@ export function parseDeliveryWaiverRequest(input, { action } = {}) {
   } catch {
     fail('authorization-source');
   }
+  if (value.authorizationSource.adapter !== 'codex-session/v1') {
+    fail('authorization-adapter-unsupported');
+  }
   const expectedDigest = deliveryProposalDigest({
     ...value,
     repository: built.scope.repository,

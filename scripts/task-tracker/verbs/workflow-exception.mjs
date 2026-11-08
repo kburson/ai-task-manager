@@ -51,6 +51,7 @@ import {
 } from '../lib/workflow-policy/delivery-request.mjs';
 import { validateConstraints, validateWaiverIds } from '../lib/workflow-policy/catalog.mjs';
 import { aiAppName, currentSessionId, jsonlPath } from '../word-counter.mjs';
+import { createCodexHostSourceLoader } from '../lib/workflow-policy/codex-host-source.mjs';
 
 const pexec = promisify(execFile);
 const ACTIONS = new Set(['prepare', 'record', 'show', 'revise', 'revoke']);
@@ -188,6 +189,10 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
     transcriptPath,
     expectedSessionId: sessionId,
   });
+  const loadHostSource = createCodexHostSourceLoader({
+    expectedSessionId: sessionId,
+    transport: deps.authorityTransport,
+  });
   const deliver = deps.deliver ?? createDefaultDeliverDeps(ctx);
   return Object.freeze({
     async fetchIssue(issue) {
@@ -206,7 +211,7 @@ export function createWorkflowExceptionRuntime(ctx, deps = {}) {
       return resolveWorkflowExceptionAuthority({
         source,
         recordingActor: `${aiAppName()}/session:${sessionId}`,
-        loadSource,
+        loadSource: source?.adapter === 'codex-app-server/v1' ? loadHostSource : loadSource,
       });
     },
     resolveTranscriptPath(sourceSessionId) {

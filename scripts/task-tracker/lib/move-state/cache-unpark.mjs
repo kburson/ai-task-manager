@@ -151,8 +151,8 @@ export async function syncEventFields(ctx) {
   if (SKIP_NETWORK) return;
   const repoRoot = getProjectDir();
   const eventScriptCandidates = [
-    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
     path.resolve(__dir, 'update-event-fields.mjs'),
+    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
   ];
   const eventScript = eventScriptCandidates.find((s) => existsSync(s));
   if (eventScript) {
@@ -176,8 +176,8 @@ export function endTaskTracking(ctx) {
   if (!(stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK)) return;
   const repoRoot = getProjectDir();
   const ttScriptCandidates = [
-    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
+    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs'),
   ];
   const ttScript = ttScriptCandidates.find((s) => existsSync(s));
   // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.

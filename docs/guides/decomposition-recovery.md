@@ -39,6 +39,22 @@ Registered writers persist bounded pending intent before their first estimate/hi
 
 Retry the exact original `npx aitm inflate-estimate ...` invocation when its transport is usable; retry adaptive `npx aitm plan-estimate ...` with the same evidence/intent. Use current help and diagnostics. Never construct a publication marker, effect ID or supersession record manually. Cancellation and Shelve retain their journal/restore semantics; empty fields or Backlog alone do not erase pending intent.
 
+## Explicit recovery of a pending Refine publication
+
+If current scope or epic children changed after a Refine publication started,
+normal exact retry retains its drift refusal. Inspect the current issue and
+predecessor effects first. When the current Refine intent is authorized, invoke
+`npx aitm refine <issue> --size <size> --estimate <hours> --priority <priority> --rank <rank> --reason "<current rationale>" --supersede-pending`.
+
+The explicit option creates a distinct operation even when the field values and
+rationale match the predecessor. It requires complete current authority and can
+supersede only a pending Refine writer. Every predecessor effect is read through
+its registered reader and retained, with its observed result, under the new
+publication's `supersedes` record. It does not manufacture a completed snapshot
+or waive ownership, source, effect-readback or stage gates. A repeated identical
+recovery invocation resumes the new operation; omit the option for ordinary
+retries. Other writers' pending publications require their owning recovery route.
+
 ## Governed decomposition and partial creation
 
 Inspect current source and existing children before `npx aitm split-plan 1908 --dry-run`. Review every intent, bounded scope, verifier and pinned provenance; confirm only the reviewed proposal with `npx aitm split-plan 1908 --confirm`. Source, plan and ownership must be usable even while publication convergence is pending. A low old estimate alone does not make an otherwise bounded plan splittable; current plan signals must justify the proposal.
@@ -56,3 +72,39 @@ This is a cooperative CLI/hook boundary. Registered writers share issue locks, p
 The checks do not globally serialize arbitrary hosts or make multi-resource GitHub writes atomic. They do not protect arbitrary shell bypasses. An allowed check applies to that invocation, not later writes.
 
 See [adapter and verifier census](decomposition-adapter-census.md) for actual seams and source-backed exclusions. Archived waiver examples remain historical evidence; current waiver prose is not admission.
+
+## Required planning analysis before epic completion
+
+`npx aitm plan-analysis #N --body-file .scratch/gh/N-analysis.md` publishes one
+fixed owned planning comment and mirrors its exact contents through the canonical
+deep-dive writer. It completes only the deep-dive signals. It requires the actual
+active native binding, timer, owner, worktree and branch, live Plan state, complete
+current authority and planning-ready epic children. Product completion can remain
+false. Ordinary `comment` effects retain their existing deliverable restriction.
+
+The narrative uses `### Story Intent` with source-grounded Beneficiary, Capability,
+Need and Value or failure prevented bullets. Include substantive diagnosis,
+implementation, dependencies and risks sections: `### Diagnosis and bounded design`,
+`### Files and steps`, `### Dependency Map`, and `### Risks and limits`. Equivalent
+existing foundation headings are accepted by the operational validator. HTML,
+policy/proof markers, checked completion boxes, fenced payloads and unrelated
+headings refuse before publication. Structural checks do not replace semantic
+review or verify the truth of narrative claims.
+
+Retry the same command after a partial comment/mirror failure. It rechecks current
+authority, retains the fixed comment identity and verifies exact comment and body
+readback. No caller key, force flag or decomposition-policy change grants admission.
+
+The command normalizes line endings and blank lines, preflights the actual native
+deep-dive gate and verifies the entire canonical section after writing. It derives
+the comment number from the freshly correlated authenticated node URL, supporting
+current IDs above 32-bit bounds without requesting the deprecated Int field. A
+completed canonical analysis is immutable through this bounded operation: changed
+prose refuses before the owned comment is changed.
+
+Each invocation is a fresh planning submission against current authority; its
+returned input digest is traceability, not durable recovery permission across
+process restarts. Before retrying a partial submission, the operator must review
+its prose against current Scope. Structural validation cannot perform that review.
+The live native binding and generation own the actor; durable worktree history
+constrains path and branch independently of its historical session identifier.

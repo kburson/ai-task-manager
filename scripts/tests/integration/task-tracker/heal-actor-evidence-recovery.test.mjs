@@ -1,4 +1,5 @@
 // @story #2082
+// cspell:ignore Bicp
 // cspell:ignore BCLA
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,23 +32,34 @@ const stages = ['refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review']
 const issueBody = stages
   .map((stage) => `<!-- aitm-entered-${stage} ts="2026-10-21T14:00:00Z" -->`)
   .join('\n');
-function transport(t) {
+function transport(
+  t,
+  selected = options,
+  initial = original,
+  nodeId = commentNodeId,
+  clock = '2026-10-21T18:00:00.123Z'
+) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), '2082-recovery-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const now = Date.parse('2026-10-21T18:00:00.123Z');
+  const now = Date.parse(clock);
   const state = {
-    body: original,
+    body: initial,
     writes: 0,
     reads: 0,
     binding: {
-      issue: '#2055',
+      issue: '#' + selected.issueNumber,
       entryStartTs: new Date(now - 1000).toISOString(),
       worktreePath: dir,
     },
   };
   const source = () => ({
     status: 'found',
-    source: { repository: options.repo, issue: 2055, commentNodeId, body: state.body },
+    source: {
+      repository: selected.repo,
+      issue: selected.issueNumber,
+      commentNodeId: nodeId,
+      body: state.body,
+    },
   });
   const deps = {
     getProjectDir: () => dir,
@@ -56,8 +68,8 @@ function transport(t) {
     aiAppName: () => 'codex',
     getActiveTask: () => state.binding,
     readRecoveryIssue: async () => ({
-      number: 2055,
-      repository_url: 'https://api.github.com/repos/' + options.repo,
+      number: selected.issueNumber,
+      repository_url: 'https://api.github.com/repos/' + selected.repo,
       body: issueBody,
     }),
     readCanonicalTimingSource: async () => {
@@ -65,8 +77,8 @@ function transport(t) {
       return source();
     },
     updateTimingComment: async (id, repo, candidate) => {
-      assert.equal(id, commentNodeId);
-      assert.equal(repo, options.repo);
+      assert.equal(id, nodeId);
+      assert.equal(repo, selected.repo);
       state.writes++;
       state.body = candidate;
     },
@@ -212,4 +224,84 @@ test('active operator opener refuses until a genuine update-style engagement sea
   assert.ok(state.body.includes(opener + '\n' + update + '\n'));
   assert.deepEqual(result.accounting.incompleteActors, []);
   assert.equal(state.binding.entryStartTs, '2026-10-21T17:59:00.000Z');
+});
+
+// @story #2145 — exact historical orphan, through the public repair entrypoint.
+const source2145 = JSON.parse(
+  readFileSync(new URL('../../fixtures/2026/aitm-2145-timing.json', import.meta.url), 'utf8')
+).body;
+const options2145 = {
+  issueNumber: 2145,
+  repo: options.repo,
+  actorEvidenceRecovery: 'aitm-2145-2026-11-03',
+};
+const comment2145 = 'IC_kwDOSU6LgM8AAAABicpVmw';
+const trial2145 = (t) =>
+  transport(t, options2145, source2145, comment2145, '2026-11-08T06:00:00.123Z');
+test('2145 registered CLI dry-run and exact apply preserve original evidence and Unknown accounting', async (t) => {
+  const { state, deps } = trial2145(t);
+  let locks = 0;
+  let output = '';
+  const exits = [];
+  const invoke = async (args) => {
+    output = '';
+    await main(['2145', '--actor-evidence-recovery', options2145.actorEvidenceRecovery, ...args], {
+      ...deps,
+      loadConfig: async () => ({ repo: options.repo }),
+      withLock: async (_path, action) => {
+        locks++;
+        return action();
+      },
+      out: { write: (text) => (output += text) },
+      err: { write: (text) => (output += text) },
+      exit: (code) => exits.push(code),
+    });
+    assert.deepEqual(exits, []);
+    return JSON.parse(output);
+  };
+  const preview = await invoke([]);
+  assert.equal(preview.status, 'dry-run');
+  assert.equal(state.writes, 0);
+  const result = await invoke([
+    '--apply',
+    '--expected-source-sha',
+    preview.sourceSha,
+    '--expected-comment-id',
+    preview.commentId,
+  ]);
+  assert.equal(result.status, 'healed');
+  assert.equal(locks, 2);
+  assert.equal(state.writes, 1);
+  assert.equal(readFileSync(path.join(result.evidenceDir, 'before.md'), 'utf8'), source2145);
+  assert.equal(readFileSync(path.join(result.evidenceDir, 'candidate.md'), 'utf8'), state.body);
+  assert.equal(result.accounting.complete, false);
+  assert.deepEqual(result.accounting.incompleteActors, []);
+  assert.deepEqual(
+    timingFieldProjection(rollupTotals(parseTimingRows(state.body), 5, state.body)).values,
+    { engagedTime: null, sessionTime: null, reviewTime: null, planTime: null }
+  );
+  assert.equal((await invoke([])).status, 'already-canonical');
+  assert.equal(state.writes, 1);
+});
+test('2145 fresh source and comment identity drift refuse publication', async (t) => {
+  for (const kind of ['source', 'comment']) {
+    const { state, deps, source } = trial2145(t);
+    deps.readCanonicalTimingSource = async () => {
+      if (++state.reads === 2 && kind === 'source') state.body += '\n';
+      const result = source();
+      if (kind === 'comment') result.source.commentNodeId = 'IC_wrong';
+      return result;
+    };
+    await assert.rejects(
+      runHeal({
+        ...options2145,
+        apply: true,
+        expectedSourceSha: sha(source2145),
+        expectedCommentId: comment2145,
+        deps,
+      }),
+      new RegExp('source-drift|canonical-source')
+    );
+    assert.equal(state.writes, 0);
+  }
 });
