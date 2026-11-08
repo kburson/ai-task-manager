@@ -180,6 +180,16 @@ console.log(JSON.stringify({status:'verified',cwd:process.cwd(),origin:resolved.
       assert.ok(loaded.includes(pathToFileURL(path.join(packageRoot, file)).href), file);
     assert.equal(run('git', ['rev-parse', 'HEAD'], subject).trim(), head);
     assert.equal(run('git', ['status', '--porcelain'], subject).trim(), '');
+    console.log(
+      'AITM_PACKED_RUNTIME_QUALIFIED:' +
+        JSON.stringify({
+          schema: 1,
+          sourceHead: run('git', ['rev-parse', 'HEAD'], project).trim(),
+          sha256: createHash('sha256').update(readFileSync(archive)).digest('hex'),
+          integrity: packed.integrity,
+          filename: packed.filename,
+        })
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
