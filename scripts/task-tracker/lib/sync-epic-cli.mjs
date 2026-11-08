@@ -7,7 +7,7 @@ import { resolveEpicLineage } from './resolve-epic-lineage.mjs';
 import { createMergeBackTestRunner } from './merge-back-verification.mjs';
 import { assertNoIntegrationOperation } from './integration-retention.mjs';
 import { readOccupancy } from './occupancy.mjs';
-import { occupancyPath } from '../paths.mjs';
+import { occupancyPath, RUNTIME_REL } from '../paths.mjs';
 import { withLock } from '../fleet-registry.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
@@ -19,7 +19,7 @@ export async function runSyncEpicCli(argv, deps) {
   if (argv.length !== 1 || !Number.isSafeInteger(epic) || epic <= 0)
     throw new TypeError('usage: sync-epic <epic#>');
   const projectDir = realpathSync(deps.projectDir || process.cwd());
-  const projectPath = path.join(projectDir, '.ai-task-manager/task-tracker.json');
+  const projectPath = path.join(projectDir, RUNTIME_REL.config);
   const raw = JSON.parse(readFileSync(projectPath, 'utf8'));
   if (!raw || typeof raw !== 'object' || Array.isArray(raw))
     throw new TypeError('sync-epic: invalid project config');
