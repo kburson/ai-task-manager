@@ -1,0 +1,27 @@
+{
+  "schema": "aitm.bridge-proof/v1",
+  "issue": 2145,
+  "sessionId": "01a1b283-8514-7192-9ef4-5f878fd2f9ee",
+  "sourceHead": "67c3d320af2e5545b024ff98349f078ae0668731",
+  "originalHead": "2fd89e1103a0ee1976e0e1a1210c2d4e1bb57de0",
+  "baselineHead": "3b71ed83e9cb9348cf58032c500231e53f0d9720",
+  "retention": {
+    "ref": "refs/aitm/retained/2145/pre-continuation/2fd89e1103a0ee1976e0e1a1210c2d4e1bb57de0",
+    "sha": "2fd89e1103a0ee1976e0e1a1210c2d4e1bb57de0"
+  },
+  "artifacts": {
+    "historical-closure-input.json": "7820376a82129edbe01ab8a141462e42826a6f917cc9efe676d701234d5822f5",
+    "historical-protected-baseline.json": "554dadbb4c2f0cc2fe7f00d643193f8bf38e8576269febe510296eb209b8e1ab",
+    "historical-protected-observation.txt": "27259dfbc0b674a94b36394a69eb54e4c8c6ad781dd8cab7851eb9f7440d861d",
+    "native-binding-output.txt": "e310e9b28061709945b388c2f1eb739b0cfec4246c4ee78dba2b60cee697264f",
+    "native-binding.json": "9f52290f22dccc672b662162b92e094591fa6444dc3aefdee215058adfe7b2a0",
+    "native-location-markers.txt": "58c57e7f9ac02c2d0a146fa94b16c052f97b491063213ce253b7290ca9f5a032",
+    "native-runtime-hook-observation.json": "476ddb0b91b5d625c03f8fac5dd5053501c5779bb3bb2bdfd88f5c8863a80d59",
+    "preintegration-inventory.json": "08b7d173539d3df5fafcd4c04116ff184438ba8df3b1884a4b70723382abfadf",
+    "protected-baseline.json": "85c01f4df2110234c6766fbfd35511d87b254e47b32c2ea325927fbc67111aba",
+    "protected-observation.txt": "8c63c32583e4e6fb89b65d2169d30e7c7f2d54acdd698bcd376eeaaaee9673d0",
+    "rehearsal-output.txt": "23146f8ec10f0c4b0fce769dff838766a50a57962a61061c9ede8e8273a3fd56",
+    "retained-ref-observation.txt": "388f585efaba8d0b1758f5d9d97e5aa597ad1adf8bb19d222267b5eb20bd9f40",
+    "source-closure-observation.json": "f9576d64544560b984c9893d509d4102f467a8a4100d9a4c87dd3830602ba910"
+  }
+}

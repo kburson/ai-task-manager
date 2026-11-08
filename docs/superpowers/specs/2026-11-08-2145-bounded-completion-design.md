@@ -24,7 +24,7 @@ Preserve failed and evidence-bearing worktrees. Detect untracked/ignored path co
 
 ## Explicit source-preserving delivery-tool amendment
 
-#2169's authentic bounded human waiver is unreadable by the current transcript-ID loader; the original multiline statement is also rejected by record validation. Add a narrow read-only Codex app-server source adapter. This supports the owner's existing delivery program and is not itself completion of #2145's bridge criteria.
+The authentic bounded human approval for #2169 waiver is unreadable by the current transcript-ID loader; the original multiline statement is also rejected by record validation. Add a narrow read-only Codex app-server source adapter. This supports the owner's existing delivery program and is not itself completion of #2145's bridge criteria.
 
 A real feasibility probe succeeded with codex app-server --stdio: after initialize, thread/items/list returned userMessage 01a1b78b-3da5-7bb3-bdf0-a0f5e6cd36a9 in turn 01a1b78b-3bce-7dd3-a1d7-c9bdbfbfda46, and thread/read confirmed thread/session 01a1b283-8514-7192-9ef4-5f878fd2f9ee. The text is the existing bounded waiver. No thread was resumed and no message was sent. The unavailable default daemon proxy is not selected.
 

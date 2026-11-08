@@ -651,3 +651,5 @@ xhigh
 SYSTEMROOT
 WINDIR
 NOSYSTEM
+objectname
+preintegration

@@ -1,0 +1,71 @@
+{
+  "schema": "aitm.preintegration-inventory/v1",
+  "observedAt": "2026-11-08T03:15:41.332Z",
+  "head": "2fd89e1103a0ee1976e0e1a1210c2d4e1bb57de0",
+  "branch": "codex/2145-draft",
+  "trackedStatus": "?? docs/superpowers/plans/2026-11-08-2145-bounded-completion.md\n?? docs/superpowers/specs/2026-11-08-2145-bounded-completion-design.md",
+  "ignoredCount": 7062,
+  "ignoredPathDigest": "1720a797eba92a1d05cb2841ac10cedf5735936619b20a94fef9445f32c9299c",
+  "evidence": [
+    {
+      "path": ".tmp/aitm/app/codex/session-tracking/01a1a1d9-519c-7db0-b41f-858ad4826d25.json",
+      "size": 328,
+      "sha256": "b9560cbbdab25ba2ff814179857b04138db0bc1e341f11e4f28ff8320e901b1c"
+    },
+    {
+      "path": ".tmp/aitm/app/codex/session-tracking/01a1b283-8514-7192-9ef4-5f878fd2f9ee.json",
+      "size": 335,
+      "sha256": "37409ded1c9276a99c9aab5af6b03aa4104a95e8883be824378c837e28fd78f6"
+    },
+    {
+      "path": ".tmp/aitm/draft-branch/2145.json",
+      "size": 211,
+      "sha256": "d50a933c67effc70d0988c5e095abc8cfa1f773489b6fbf6f9eb6aabb2621aaa"
+    },
+    {
+      "path": ".tmp/aitm/guidance-cache/agent-index.v1.json",
+      "size": 10678,
+      "sha256": "7f742d2c15883c827c76ce5175ed430007faac201128ce6bb72abdd85e17dfe3"
+    },
+    {
+      "path": ".tmp/aitm/guidance-cache/human-catalog.v1.json",
+      "size": 22464,
+      "sha256": "05f59b98f665f7dc5ed678eed751a74c275d46f37de57dc76c1e0a3adabdc7b8"
+    },
+    {
+      "path": ".tmp/aitm/guidance-cache/manifest.v1.json",
+      "size": 9844,
+      "sha256": "0559b18578e425369b80f14ade5624c47e46910d45906fb19419d64b4d1c33c0"
+    },
+    {
+      "path": ".tmp/aitm/sessions/01a1a1d9-519c-7db0-b41f-858ad4826d25/active-task.json",
+      "size": 380,
+      "sha256": "20df7a6a967e6dd0bc18ad489ada095b0f1d4e243163a6a0a36861fd4f383ea1"
+    },
+    {
+      "path": ".tmp/aitm/sessions/01a1a1d9-519c-7db0-b41f-858ad4826d25/timing/68e116fec85fd2f53872162c7ebac004f3d5b9195bb3ef056617cef6e90848a1.json",
+      "size": 482,
+      "sha256": "e8e3dda781833a4d42178e1b44963fd3a4a06ceafef38da9d52671f934aa7eda"
+    },
+    {
+      "path": ".tmp/aitm/sessions/01a1b283-8514-7192-9ef4-5f878fd2f9ee/active-task.json",
+      "size": 394,
+      "sha256": "c4f470a7c8b6db1fd28205eca78d8a764a1d45dd634c4e6e87942839c91b8de7"
+    },
+    {
+      "path": ".tmp/aitm/sessions/01a1b283-8514-7192-9ef4-5f878fd2f9ee/timing/d10c16f408eb2de645023d5a4a2acabab0d8c3a6c3c194998d51f7980ebf69ac.json",
+      "size": 490,
+      "sha256": "1b620d133f8625a649be01bc6ccc8c44acd5a0929343996dcc5e4d2cd7fdde03"
+    },
+    {
+      "path": ".tmp/aitm/state/task-tracker-queue.json",
+      "size": 54,
+      "sha256": "238b0cd4a44bc4baa1ef8179e8745f9c59acf22da8499a37cecf2d033e6ca8ef"
+    },
+    {
+      "path": ".tmp/aitm/state/task-tracker-state.json",
+      "size": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    }
+  ]
+}

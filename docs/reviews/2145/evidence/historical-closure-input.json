@@ -1,0 +1,487 @@
+{
+  "ref": "bb1ac9ba1bf189addbe31df7de48bcdefa5318f7",
+  "seeds": [
+    "scripts/task-tracker/lib/story-cache/batch.mjs",
+    "scripts/task-tracker/lib/story-cache/body-template.mjs",
+    "scripts/task-tracker/lib/story-cache/completion-receipt.mjs",
+    "scripts/task-tracker/lib/story-cache/journal.mjs",
+    "scripts/task-tracker/lib/story-cache/publisher.mjs",
+    "scripts/task-tracker/lib/story-cache/recovery.mjs",
+    "scripts/task-tracker/lib/story-cache/retention.mjs",
+    "scripts/task-tracker/lib/story-cache/snapshot-compare.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-body.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs",
+    "scripts/task-tracker/lib/story-cache/stage-comment.mjs",
+    "scripts/task-tracker/lib/story-cache/timing-authority.mjs",
+    "scripts/task-tracker/lib/story-cache/transition-batch.mjs",
+    "scripts/task-tracker/lib/story-cache/view-payloads.mjs",
+    "scripts/task-tracker/lib/story-cache/views.mjs",
+    "scripts/task-tracker/lib/story-cache/writer-handoff-bindings.mjs",
+    "scripts/task-tracker/lib/story-cache/writer-handoff.mjs",
+    "scripts/task-tracker/lib/story-cache/store.mjs"
+  ],
+  "files": [
+    {
+      "file": "scripts/task-tracker/lib/story-cache/batch.mjs",
+      "sourceBlob": "a2bacc4ee98e29282927cf85e5de75b4f0ff9ec7",
+      "sha256": "5d5cf1ffc9f75c69060679bc9386a8919204a1e9c490e199f95c2d01cf5f653f",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/body-template.mjs",
+      "sourceBlob": "8fcf26c9235699c0a630458a5ab7752c816881b4",
+      "sha256": "dcdf4dc7c1c674bca259ca20b9c714d85daa48a5ed6b03fc0025c29c51b78fba",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/completion-receipt.mjs",
+      "sourceBlob": "3e848e8a0ad5eab97322ccf95abce0ab2a3d0ee7",
+      "sha256": "b2d3e98813aa6d7c89281ab98f57b2db210ad9743fd0345a6783d7ab3ed491da",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/journal.mjs",
+      "sourceBlob": "0b22826bf1e20c4ab938b6e5e08491208bf514b3",
+      "sha256": "24fc48054626a947f38454829a4b65f93dce7f181c4f1b664c314c758eeb0cb8",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/publisher.mjs",
+      "sourceBlob": "eff6eb4944639c582642f4d14ede7b8d6e4606a6",
+      "sha256": "d3660cef64e5a1f286018571a0296d2ff61f9a98bbb31d5509cbc24471ac8e29",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/recovery.mjs",
+      "sourceBlob": "83a022058a72dba579474645ba3f9a998dff9bd7",
+      "sha256": "8bbf35a43e392388e22f5ba64c8ec8f49fb02cd12cbea29d49d51a34a394854c",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/retention.mjs",
+      "sourceBlob": "4c1b110303ef2e91cdfddd8a10ded3c8160d64a2",
+      "sha256": "7174124ce531a79993c033e106b9a9afe2e479e9811901faf9f3ef8c335f8983",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/snapshot-compare.mjs",
+      "sourceBlob": "2352a9a0dbaec6ad173393f11d85b3e5e8300dc8",
+      "sha256": "98da741ff810fd7086882540cbe7d1a3eab36956336796ecbd22de45404fa7c5",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/stage-body.mjs",
+      "sourceBlob": "55ee7448c1c95d9323e680d3d95443b268141045",
+      "sha256": "120ef533b3bd7802d0487874497cd45a36108a991608c3f1e49a62456425abc7",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/stage-capabilities.mjs",
+      "sourceBlob": "c95ca6263284aa6e45df721c6558e5e6d5d627aa",
+      "sha256": "e4dc001ad59e51ceee71471606b36f34afc82431765b4bf297e4c186484e0784",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/stage-comment.mjs",
+      "sourceBlob": "f9ebfc2aaf8930d1150fb67e522bb89aa07d6dc2",
+      "sha256": "972f63d843e9c691d82ad2ce99b06a3b75ada154b2b9c9a3d26a4203a30368f7",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/timing-authority.mjs",
+      "sourceBlob": "6a92eb5106018a2a2424c8859a747bda915c0339",
+      "sha256": "edaa39f43a820b9f3b0b3159d8ef9fbff194867f23f2e3173e3b8a79e7c300ee",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/transition-batch.mjs",
+      "sourceBlob": "63e95e38c8b7be8f52ec3a013798c8ce07e1c880",
+      "sha256": "385a5ced0f5516758f16f3dde0cd0c3a7e29f7070693002606b9f357a903004b",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/view-payloads.mjs",
+      "sourceBlob": "ae4e6dd9d0d3ec77fe79ebaf60fb8d010144087e",
+      "sha256": "fb1e9001649db883f00fa15180f16a3b180471d3aa5ec4b406f92862ce81442e",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/views.mjs",
+      "sourceBlob": "30ec341cb420ccf78f45a95894d6bb9fb9153225",
+      "sha256": "2fccc297a4960cc1c1940139f710d35503e02ae2577dfc40a1e88629b1a1235e",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/writer-handoff-bindings.mjs",
+      "sourceBlob": "dad1eba894da823edd5f75df05a16afd5f9b9730",
+      "sha256": "7e8d1b7dd490dad157c7b099e1c844760483ec48754d3c217fe0ebeaf522d713",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/writer-handoff.mjs",
+      "sourceBlob": "d95b44329036172b7f028a1478c1bb156344a669",
+      "sha256": "e3f910ac5a81ad4ba05d66ad2b6fece2548957b2cd3a1d553b0fc8eba0593bdf",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/story-cache/store.mjs",
+      "sourceBlob": "5e1e098609bb09a73fccad190b87070a27154014",
+      "sha256": "2c73eec46e476013a85f9d43d8e7b75936726ef6fb90a75f25f7915be1ece381",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/github-records/record-envelope.mjs",
+      "sourceBlob": "ca4dcdb3f2d823429494d92f8bc58a202407c468",
+      "sha256": "42b4cd28cb0a7222a9635ac9c05f68d0f6e92c3a32c7f6bc59673cac82409374",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-approval-staging.mjs",
+      "sourceBlob": "0dfd9e77e6bdc1d4c36e71ef65de5e9507b067c9",
+      "sha256": "8e8069b716f9295960a89fb04834192b4935f8a6a8451d31b86075f20b939955",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/body-invariants.mjs",
+      "sourceBlob": "e35d6cd8e607f3d11250489b03ba5207d6026b55",
+      "sha256": "37d93d52a33d2e4ce65f9858b54996a4699257d6975da08a7b35e324b7f71539",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/markers.mjs",
+      "sourceBlob": "a35a797d1c4d194199af76ea4a8686b29df5be7d",
+      "sha256": "5c9824ab340baeb7c88c71d3a6ff9b552d64fa92ce27b447df40517ae4c63ec1",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/move-state/guard-execution.mjs",
+      "sourceBlob": "2b407271225d9cbaff846cda85eaef15869e2683",
+      "sha256": "432c205c805877418db33a91593dc0a1c57e43d35cff5462f31e8775df30c566",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-transition-native.mjs",
+      "sourceBlob": "2bf4f094ecd4f82a8311514ab97c575518b57655",
+      "sha256": "8b852f03c374caa5319f7a3748c767b8f5e2260073e6a27b5de99980c8b3486c",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-native-guard-execution.mjs",
+      "sourceBlob": "41f4d07678815c65b91d68c5885012f01e1872d7",
+      "sha256": "2b12cf088261757386889748e7696d02a11c9a34166ca4d20efb8cb39fd96c13",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-approval-markers.mjs",
+      "sourceBlob": "bd615df509b112c8d2b298a678d6b9d678bed155",
+      "sha256": "a608292a8f768595729c212eecc5ec6406144eca287ebc0e2642aac8f74f6721",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/forecast-v3.mjs",
+      "sourceBlob": "5738988d01ba50241cf53d6804f787790c9d6c17",
+      "sha256": "bc6479828f9257d0f02a706cf7849e4f95028b1d0d16d5a58640172b0f59a97d",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/plan-approve.mjs",
+      "sourceBlob": "9e7a2c0a1f88a3c15df92e2da1685887295e45ca",
+      "sha256": "09344ca86d57e604de0056571b6425f9410d553696c70fd7077338ebbb35d9a5",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-child-inventory.mjs",
+      "sourceBlob": "925d9b57c24599ea04393984b61d3bb32bb6f24e",
+      "sha256": "a3caaacec0ef2ce16c472347dbb7936f2161604c21b0631f9981173d7dae1e86",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-approved-guard.mjs",
+      "sourceBlob": "0ed8660ef79ddb05a403c282100e1b95ac9bab8f",
+      "sha256": "4090a6ad9b4b3de86ec36313bf9a1d9888f6aa6f74045f79ece31f4e57d23778",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/native-plan-selection.mjs",
+      "sourceBlob": "33c8f73bd5db100b7d0998c5c0bafb5438495671",
+      "sha256": "728164a5847e2bf2a977440140016f5569ba4b1f30a395795b3cf2f956338ed7",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-approval-audit.mjs",
+      "sourceBlob": "e2b373c59027365c32f56a7ea78b77614a4d717e",
+      "sha256": "81a175698d91fb170bfe9c6b482198beeb47162e242d8bce4516aad0b390398e",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/decomposition-projection.mjs",
+      "sourceBlob": "0373b5fdef92867cdd18dd40e3a439c1d002c150",
+      "sha256": "206318b7690c8ee2649cf952ba0d9d375818c62036f5e13ed9ffe41665d67074",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-decomposition-projection.mjs",
+      "sourceBlob": "83e42d3d18dda62dc6886b0907a5bc04e65360ee",
+      "sha256": "6cf844e1ab655eb07aa54a046035997819e5e282f9111ce8d3da0ee9179044e5",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-transition-authority.mjs",
+      "sourceBlob": "365f050ac774b134162c4fb0bdeb3e30646ad5b1",
+      "sha256": "1fd8d9e3e671b8b62ca465c051fa6c17969f9f75d89781c20296b7ec14e4ff0a",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-exit-planned-estimate-guard.mjs",
+      "sourceBlob": "0022570c14e7912eb23894d05f76a17fcb32ce06",
+      "sha256": "1f7d001b7cedde0b7ecdabcfca2076df5752fdcc575531a3fcefd2a33430d062",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/config.mjs",
+      "sourceBlob": "634d895288b1c6f534b1fb701d01a557b5ff0d75",
+      "sha256": "83ff99808bcdf3f654cb9848855f163a1c5e1a206a365957c16e711d00bcad35",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/local-evidence.mjs",
+      "sourceBlob": "0c8fe06fc35c46c78917f2fcf3503ef9cda12ab2",
+      "sha256": "1241e5385b05bcf43aebcb258e25b16aae1daed2505e6b37df41b64bb9dc7829",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/task-tracker.mjs",
+      "sourceBlob": "9c572c3f9c0acd13665656b2468a9a5772be71e9",
+      "sha256": "bb4653d4b4e978d4bf2d316473adbe891d4d08349e2494f56e7686d2da0bc170",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/local-runtime.mjs",
+      "sourceBlob": "84a8ae75382a43df6c7b308c91ce7194a8d9a457",
+      "sha256": "f9cdd14510b2d58a7306c6dbda804bfd05e13720c5ccbecdf5b5a9df53c59300",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/plan-decomposition-staging.mjs",
+      "sourceBlob": "2ab39666a5407ad1a24c4d0b050b0edb72b05362",
+      "sha256": "bff22980c3af2257695892843b5b30d529d011a268ea5027fc90d3b1ebc9dcef",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/decomposition-authority.mjs",
+      "sourceBlob": "2ee3e7fb32ca45db25d2235c1d14b1de2ff64b41",
+      "sha256": "4d93cca286a6046f930a490b0a52df4a23e0cefd699a8968313bf7cddf7ae789",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/deliver.mjs",
+      "sourceBlob": "fb3c60ab6bf76516fb65f0af1e8a872a9fa96c35",
+      "sha256": "058b11481597b7420816194b1766a55b45006337c7b904924621753fc5692236",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/test.mjs",
+      "sourceBlob": "a29bfbefdd859460bf6e3f854576cba210580d2b",
+      "sha256": "dc943a6ff89cf6263c28373ba252d597795b801e4768b9a1b8811ee308cc28dd",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/action-decision/contract.mjs",
+      "sourceBlob": "70bd8fdebc1ff81bf070a8ccb826c5c587990ebc",
+      "sha256": "f4686d1ae8b76b5d5f8fa9a6b75dcec92f9ff6bc7bb513562cfde150cffecb26",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/action-decision/session.mjs",
+      "sourceBlob": "818afcbdea47c2dbcdc2af575034fd77ad077894",
+      "sha256": "f3e8e938bf114ad584b2b85c4d686a67a3f31e4b1f570169d2ecc9a14440ca11",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/action-decision/test.mjs",
+      "sourceBlob": "0df0db6da0f88e1a308671544d08473281759b11",
+      "sha256": "1d94ca91fd3a44419df9478fc96b07e2b5b688bd7f4c2b6644fed547b308b848",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/runtime-adapter.mjs",
+      "sourceBlob": "d99760fc2f677e014db0f59262e77a8fff1af046",
+      "sha256": "3ba405a5884c8e9604c8ccd4e628f47836202f1f9ebb8f871c13c7e8471156b8",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/forecast-lineage.mjs",
+      "sourceBlob": "db2ab23e7e720434931f222d9f6b8889371dcc91",
+      "sha256": "f51dc6e0dc95828c4a61d522da0ba325f9ed82ee9ce4481be19429e5456f7407",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/forecast-legacy.mjs",
+      "sourceBlob": "06e6c9df911f69bcc32632a16f37bbb7ea027b3c",
+      "sha256": "91ed38ee3f6b2f96f9d7c185ac3c456bbbc51a36b25516a21ba88434f3a5fb60",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/local-evidence-store.mjs",
+      "sourceBlob": "9bb1c55801503f962afe6ab8d567f848e4f9cffd",
+      "sha256": "6c641a88d401a5e16909c0a310d26d8881a1bdfb32569d7408e8886c48359846",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/timing-ladder.mjs",
+      "sourceBlob": "d8111698bba8364c9c5e6bc8cd426531e7bb5417",
+      "sha256": "3269a606d1cb80522b6ea6128cd7c638e303d6cdd4acf70313a56ba2cecc788b",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/runtime.mjs",
+      "sourceBlob": "10a25de728038e47e7330212fcaed2d267579aaf",
+      "sha256": "0dcf87621e647582e631d2b6e14f6258c80e9bd53999f67228e45ba70c7153ca",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/native-rebase-pause.mjs",
+      "sourceBlob": "451ff9b68a3035effaf1c7903d79c3d10e546db5",
+      "sha256": "2bf29a154d0ade872253790639aabeaafd0cc59240d6d3669baa0aa2c75cc9c7",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/worktree-relocation-guard.mjs",
+      "sourceBlob": "1ae121d6cd6d05781944ee5b4436a311533603d9",
+      "sha256": "808f8243f1d716ea34cd84966c20a63e5280dcedabdc6bb47ccca3da4b8c294a",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/verb-preflight.mjs",
+      "sourceBlob": "6f52c4283d8e55a2a09f122cb2c1028dacd3cb88",
+      "sha256": "ced147fdbbe35afe59d221cd8a2012f3698d62fcbe94961112ec2914587a5c3b",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/explain.mjs",
+      "sourceBlob": "e5959322dad298909125447248e49729f4a64ab6",
+      "sha256": "c8816cd947f353025373b6c30f92f69a1f4822b9c1c9bbb8be21ce6216646434",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/pause.mjs",
+      "sourceBlob": "e4f48e029c5f5ff9834ff1ece919f7993000e08f",
+      "sha256": "ed49e27f8e495471f3eb1b5ec2f49f75e87a9e01aaa2057b549e8794423f10e9",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/inflate-estimate.mjs",
+      "sourceBlob": "a0576625a921518c22c139395b23668b813b9911",
+      "sha256": "a3680e20154279d6f29e3524b0fa785fbaa5ecc7ccb42563b7c1096db095fe0f",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/forecast-model.mjs",
+      "sourceBlob": "df0c3a2e0bb4bccc90974ac8c1c2199972cd2a6d",
+      "sha256": "9a678f5415610bcc5dd51b4ceb8e5bee511a45c64c79a476d6802a68f34ee750",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/worktree-binding-lifecycle.mjs",
+      "sourceBlob": "56e8482517ad742f3ae796edcaf449124fbe48ec",
+      "sha256": "7d94c9c9eab7fa2606a82a9c714b87accd218386a41c3536b8a6f69533435dc8",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/issue-worktree-location.mjs",
+      "sourceBlob": "d0c9f2a15095c85941e9944a00904a4c89cd6a20",
+      "sha256": "fa97a14dbbc52815bf2317c43e7f8f47b72eb255865d38bc148836cf2325aeb5",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/review-approval-timing.mjs",
+      "sourceBlob": "d43e701e36b6d6d3bdbb718f3b58f82a7e6bb4d0",
+      "sha256": "bb8c773c78ef176fafc17e81ad75b33a52cdf534d7b89fc57f1da26558b1d4e4",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/timing-rollup.mjs",
+      "sourceBlob": "753ff340191752f4809d358b94c7ff2f5535c3f8",
+      "sha256": "7ec3f67c1b772a34025e68b61836ce26eec453f28c17c5176d69038367fd5c6e",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/verification-receipt-retirement.mjs",
+      "sourceBlob": "4a79a19ff4dc2f7eaab8cbc7a3cd5c315846ce2a",
+      "sha256": "4c9de4c49266c29f1393e049624a2c1cf5f5f6052c6b9e3d3f36e0adfe4ae253",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs",
+      "sourceBlob": "16c59b774d88d35bcbc98db93f49046c530eeddf",
+      "sha256": "55388c168f4b1b3ad4483cdcf9235e571ba6d25d1fc1c87a04b280efba76da06",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/renderers.mjs",
+      "sourceBlob": "5b9dc9818b4c1515bc7730776c748e9b91ffb64c",
+      "sha256": "6b3b3cbe616121e2eacb94cc76d59660a7ca9b94925100fd4fb6c0945a38b0b8",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/estimation/forecast-reader.mjs",
+      "sourceBlob": "566e90f2958169cd78c56a1996fabbfa0dbe2744",
+      "sha256": "3512b64d7377373ae1c223e3e961f3c3afd60546b6982f2b510a3a84af52ea49",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "guidance/cache.mjs",
+      "sourceBlob": "e4bc2aaae1b9a39c734117d2f927c37dd980a156",
+      "sha256": "1e7f0f1131bb49ae0bca8e244d74f0199375035361213a3ea8d1791a7def8330",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/verbs/help-data.mjs",
+      "sourceBlob": "39609c67fd747229ca094a23329157663c964e7b",
+      "sha256": "5ad203440352845c51e3b50e53eebeae4be620f99f77e0f2bd3150058b44b118",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/command-surface/catalog.mjs",
+      "sourceBlob": "b53eae7708480bb3762aff0bc76893c847d435f6",
+      "sha256": "229f149fa1506732878f4e6e7132b78140be8c5e7befe03a74e5d9d2198fa2a9",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs",
+      "sourceBlob": "b69f3e72d0a50c9234403a4074290dbb8f05239b",
+      "sha256": "0b437109946ab3a58dc36adc4a22d7a3aed7de847ef88ccd14c0875c7739828f",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/decomposition-inflation-audit.mjs",
+      "sourceBlob": "17ea08eb442a1ef33732c4aede472311f92214fc",
+      "sha256": "7cb49667a67e5cb431d06d2431da6cd65225e017f8cb2fddc979deea03e4fa2f",
+      "classification": "absent-from-trunk"
+    },
+    {
+      "file": "scripts/lib/self-doc.mjs",
+      "sourceBlob": "b02086431d5eac3b7127ce3787b92299117a37b4",
+      "sha256": "21feef81d8be763d3de5a61c1abcdaa6ee6c582af034b0e69b47c5a747155cc2",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/move-state/move-state-core.mjs",
+      "sourceBlob": "9059f34ff4a4fa47b4a054a3bacf8cef8c214812",
+      "sha256": "745725870162295739e8df14d6ef41d1a35d1bc4bdbb6e1adceea63920105516",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/native-bootstrap-inputs.mjs",
+      "sourceBlob": "c42c3fcece663a3aaf7669439b01ee2370394638",
+      "sha256": "ace58384b9b43d5ac04755e83a381e0981300edd86a32a01373f713bbcce604c",
+      "classification": "differs-from-trunk"
+    },
+    {
+      "file": "scripts/task-tracker/lib/decomposition-hook-authority.mjs",
+      "sourceBlob": "84d5d22883ba877a262bc95a8f3a88fa8082e4d5",
+      "sha256": "a256e39141a82e72e68755a63482335d2dee7be50eb754b713b5f372ae112f25",
+      "classification": "differs-from-trunk"
+    }
+  ]
+}
