@@ -10,7 +10,7 @@ The previous 39–52-hour design introduced a general operation-evidence framewo
 
 The reviewer estimates **14–24 hours remaining for complete Task 30**, including one focused validation, independent review, and delivery cycle. This is a planning estimate, not measured execution time or an accepted replacement estimate. It does not support relabeling the unchanged issue M/8h. The published XL/52h assessment remains an unresolved state to correct through the governed workflow; it is not implementation permission.
 
-A source-qualified subset can fit Medium, but it would leave public activation incomplete and cannot close #2071 under its present acceptance criterion. No behavior has been silently moved to #2050 or #2051. A final bounded review is assessing whether explicitly replanning those three existing issues together could preserve all their behavior without exceeding the Medium limit.
+A source-qualified subset can fit Medium, but it would leave public activation incomplete and cannot close #2071 under its present acceptance criterion. No behavior has been silently moved to #2050 or #2051. A second bounded review rejected redistribution among the three existing issues as an executable Medium-only plan on the current evidence; its findings follow below.
 
 ## Live authority checked on November 8
 
@@ -107,6 +107,20 @@ This assumes reuse behaves as its source indicates and excludes unrelated defect
 The smallest independently useful subset plausibly within Medium is additive bounded transport and observation primitives: `gqlRaw`, shared snapshot budgeting, creation/field decoders, comment provenance, and focused validation. It leaves public writers and callers unchanged and therefore fails Task 30's coordinated activation and no-immediate-write requirements. It cannot be presented as completion of #2071.
 
 The reviewer performed no writes, tests, imports, or protected-working-tree reads, and made no runtime correctness, test-pass, final-plan acceptance, or merge-readiness claim.
+
+## Review of redistribution among existing issues
+
+The same independent reviewer assessed explicit redistribution among #2071, #2050, and #2051 without creating any issue. The result was rejection on the current evidence, not an approved alternative plan.
+
+Task 30 requires 14–24h remaining. The original remaining scopes of #2050 and #2051 each require 3.5h, giving **21–31h total before redistribution overhead**, against three Medium envelopes totaling 24h. The two smaller stories provide at most 9h spare capacity, while Task 30 would need to transfer 6–16h. The identified producer and caller changes do not justify narrowing Task 30 to 14–17h just to make that arithmetic fit.
+
+Moving native coordinator/graph integration into #2050 creates a dependency problem: activation needs that implementation, while final whole-transition budget acceptance needs activated public paths. Moving privileged producers into #2051 similarly makes activation depend on those producers while final migration acceptance needs default staging to be active. Either requires an explicit staged integration protocol and revised final acceptance; partial fixtures cannot stand in for those outcomes.
+
+Moving all public activation into #2051 would leave its original 3.5h plus 3–5h of public writer/caller work, already 6.5–8.5h before privileged adapters and integration review. Renaming responsibilities does not remove work.
+
+Any redistribution would require reviewed changes to each open story's AC, estimate, ownership of every original obligation, integration order, and open-task plan binding. The pinned outer-plan/whole-plan relationship is an additional unresolved prerequisite: no supported governed revision was established that changes the open-task bindings while preserving closed siblings' original authority. Historical records must not be rewritten to make the new plan appear previously approved.
+
+This follow-up involved no additional source inspection or mutation. It supplies no accepted partition, implementation permission, or waiver of the user's maximum story size.
 
 ## Continuation boundary
 
