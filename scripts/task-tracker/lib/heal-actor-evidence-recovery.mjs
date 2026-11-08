@@ -1,3 +1,4 @@
+// cspell:ignore Bicp
 // @story #2026
 // cspell:ignore BCLA
 // One reviewed historical ambiguity, not a pattern-based timing reconstruction.

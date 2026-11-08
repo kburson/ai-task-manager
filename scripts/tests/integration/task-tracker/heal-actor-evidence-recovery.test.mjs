@@ -1,3 +1,4 @@
+// cspell:ignore Bicp
 // @story #2082
 // cspell:ignore BCLA
 import test from 'node:test';

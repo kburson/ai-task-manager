@@ -1,3 +1,5 @@
+<!-- cspell:ignore Bicp -->
+
 # #2145 historical actor recovery amendment
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. This is one bounded amendment to Task 3 of the existing #2145 plan, not a new story.

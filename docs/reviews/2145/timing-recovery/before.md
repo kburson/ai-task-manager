@@ -1,3 +1,5 @@
+<!-- cspell:ignore Bicp -->
+
 # Retained canonical timing source — #2145
 
 Observed 2026-11-08 during native Review recovery. Comment IC_kwDOSU6LgM8AAAABicpVmw, numeric 6606706075. Original payload below is preserved verbatim.

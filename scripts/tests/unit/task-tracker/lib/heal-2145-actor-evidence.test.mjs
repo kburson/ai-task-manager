@@ -1,3 +1,4 @@
+// cspell:ignore Bicp
 // @story #2145
 import test from 'node:test';
 import assert from 'node:assert/strict';
