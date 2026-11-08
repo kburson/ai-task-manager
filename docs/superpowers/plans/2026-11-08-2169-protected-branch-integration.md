@@ -1,5 +1,7 @@
 # #2169 Protected-Branch Integration Plan
 
+<!-- cspell:ignore WYWPDW YWYHKX -->
+
 > **For agentic workers:** Use executing-plans inline for this existing issue's delivery recovery.
 
 **Goal:** Prepare #2169 for strict protected-branch delivery while preserving its accepted artifact and every prior outcome.
