@@ -353,3 +353,17 @@ test('expired, stale-scope, and revoked heads never project evaluator authority'
     assert.equal(result.active, null);
   }
 });
+
+test('canonical host authority cannot enter a delivery-v2 envelope', () => {
+  assert.throws(
+    () =>
+      deliveryEnvelope({
+        authorization: {
+          ...authorization,
+          origin: 'codex-app-server',
+          reference: 'codex://threads/thread/turns/turn/messages/message?session=session',
+        },
+      }),
+    /workflow-exception:delivery-authorization-adapter/
+  );
+});

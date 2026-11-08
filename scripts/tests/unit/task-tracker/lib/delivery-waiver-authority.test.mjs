@@ -194,3 +194,28 @@ test('resolver distinguishes missing authority from ambiguous evidence', async (
   assert.equal(error.outcome, 'indeterminate');
   assert.equal(error.requirementId, 'delivery.verification.waiver-authority');
 });
+
+test('canonical host adapter is refused for delivery-v2 before a record can be written', () => {
+  const prepared = prepareDeliveryWaiver({
+    input,
+    facts,
+    ids: { exceptionId: 'delivery-2145', deliveryOperationId: ulid(1) },
+  });
+  const authorizationSource = {
+    schema: 'aitm.authorization-source/v2',
+    adapter: 'codex-app-server/v1',
+    threadId: 'thread',
+    turnId: 'turn',
+    sessionId: 'session',
+    messageId: 'message',
+    statementHash: `sha256:${'f'.repeat(64)}`,
+  };
+  assert.throws(
+    () =>
+      parseDeliveryWaiverRequest(
+        { ...prepared.request, authorizationSource },
+        { action: 'record' }
+      ),
+    /delivery-request:authorization-adapter-unsupported/
+  );
+});

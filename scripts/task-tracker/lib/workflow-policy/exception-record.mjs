@@ -68,7 +68,7 @@ function exact(value, keys, category) {
   }
 }
 
-function opaque(value) {
+function opaque(value, { multiline = false } = {}) {
   return (
     typeof value === 'string' &&
     value.trim() === value &&
@@ -76,6 +76,7 @@ function opaque(value) {
     value.length <= 4096 &&
     ![...value].some((character) => {
       const code = character.charCodeAt(0);
+      if (multiline && (code === 10 || code === 13)) return false;
       return code <= 0x1f || code === 0x7f;
     })
   );
@@ -92,18 +93,22 @@ function canonicalInstant(value) {
 function validateAuthorization(value) {
   exact(value, AUTHORIZATION_KEYS, 'authorization-keys');
   if (
-    value.origin !== 'codex-session-transcript' ||
+    !['codex-session-transcript', 'codex-app-server'].includes(value.origin) ||
     value.verificationLevel !== 'host-verified-user-message'
   ) {
     fail('unsupported-authority');
   }
   if (
     typeof value.reference !== 'string' ||
-    !/^codex:\/\/sessions\/[^/\s]+\/messages\/[^/\s]+$/.test(value.reference)
+    !(
+      value.origin === 'codex-app-server'
+        ? /^codex:\/\/threads\/[-_a-zA-Z0-9]+\/turns\/[-_a-zA-Z0-9]+\/messages\/[-_a-zA-Z0-9]+\?session=[-a-zA-Z0-9]+$/
+        : /^codex:\/\/sessions\/[^/\s]+\/messages\/[^/\s]+$/
+    ).test(value.reference)
   ) {
     fail('authorization-reference');
   }
-  if (!opaque(value.statement)) fail('authorization-statement');
+  if (!opaque(value.statement, { multiline: true })) fail('authorization-statement');
   if (value.principal !== null && !opaque(value.principal)) fail('authorization-principal');
   if (!opaque(value.recordingActor)) fail('recording-actor');
 }
@@ -178,6 +183,12 @@ export function validateWorkflowExceptionEnvelope(
     fail('reason');
   }
   validateAuthorization(payload.approvalEvidence);
+  if (
+    payload.schema === WORKFLOW_EXCEPTION_SCHEMA_V2 &&
+    payload.approvalEvidence.origin !== 'codex-session-transcript'
+  ) {
+    fail('delivery-authorization-adapter');
+  }
   if (envelope.authority.actor !== payload.approvalEvidence.recordingActor) {
     fail('recording-actor-mismatch');
   }

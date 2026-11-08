@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { isInjection } from '../../word-counter.mjs';
 
 const SOURCE_KEYS = ['adapter', 'messageId', 'schema', 'sessionId', 'statementHash'];
+const HOST_SOURCE_KEYS = [...SOURCE_KEYS, 'threadId', 'turnId'];
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 
 function exact(value, keys) {
@@ -28,10 +29,15 @@ export function hashAuthorizationStatement(statement) {
 }
 
 export function validateAuthorizationSource(source) {
+  const host = source?.schema === 'aitm.authorization-source/v2';
   if (
-    !exact(source, SOURCE_KEYS) ||
-    source.schema !== 'aitm.authorization-source/v1' ||
-    source.adapter !== 'codex-session/v1' ||
+    !exact(source, host ? HOST_SOURCE_KEYS : SOURCE_KEYS) ||
+    source.schema !== (host ? 'aitm.authorization-source/v2' : 'aitm.authorization-source/v1') ||
+    source.adapter !== (host ? 'codex-app-server/v1' : 'codex-session/v1') ||
+    (host &&
+      ![source.threadId, source.turnId].every(
+        (value) => typeof value === 'string' && /^[-_a-zA-Z0-9]+$/.test(value)
+      )) ||
     typeof source.sessionId !== 'string' ||
     !/^[-a-zA-Z0-9]+$/.test(source.sessionId) ||
     typeof source.messageId !== 'string' ||
@@ -77,11 +83,15 @@ export async function resolveWorkflowExceptionAuthority({
   return Object.freeze({
     status: 'verified',
     authority: Object.freeze({
-      reference: `codex://sessions/${source.sessionId}/messages/${source.messageId}`,
+      reference:
+        source.adapter === 'codex-app-server/v1'
+          ? `codex://threads/${source.threadId}/turns/${source.turnId}/messages/${source.messageId}?session=${source.sessionId}`
+          : `codex://sessions/${source.sessionId}/messages/${source.messageId}`,
       statement: observed.statement,
       principal: observed.principal,
       recordingActor,
-      origin: 'codex-session-transcript',
+      origin:
+        source.adapter === 'codex-app-server/v1' ? 'codex-app-server' : 'codex-session-transcript',
       verificationLevel: 'host-verified-user-message',
     }),
   });
@@ -93,6 +103,8 @@ export function createCodexSessionSourceLoader({ transcriptPath, expectedSession
   }
   return async (source) => {
     validateAuthorizationSource(source);
+    if (source.adapter !== 'codex-session/v1')
+      throw new TypeError('workflow-exception-authority:adapter');
     if (source.sessionId !== expectedSessionId) {
       throw new TypeError('workflow-exception-authority:foreign-session');
     }
