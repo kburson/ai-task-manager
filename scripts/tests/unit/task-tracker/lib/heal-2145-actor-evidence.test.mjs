@@ -1,5 +1,5 @@
-// cspell:ignore Bicp
 // @story #2145
+// cspell:ignore Bicp
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

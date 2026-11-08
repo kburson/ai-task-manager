@@ -1,5 +1,5 @@
-// cspell:ignore Bicp
 // @story #2082
+// cspell:ignore Bicp
 // cspell:ignore BCLA
 import test from 'node:test';
 import assert from 'node:assert/strict';
