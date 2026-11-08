@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import * as api from '../../../task-tracker/sync-epic.mjs';
+import { PROJECT_ROOT_ALIASES } from '../../../task-tracker/lib/runtime-storage.mjs';
 import { retainedIntegrationFixture } from '../../helpers/retained-integration-fixture.mjs';
 import { serializeIssueWorktreeLocationMarker } from '../../../task-tracker/lib/issue-worktree-location.mjs';
 
@@ -113,12 +114,16 @@ for (const unreadableParent of [false, true])
     });
     writeFileSync(fixturePath, JSON.stringify({ body, trace, unreadableParent }));
     const command = fileURLToPath(new URL('../../../task-tracker/sync-epic.mjs', import.meta.url));
+    // The spawned CLI owns the fixture repository, not the outer native Test sandbox.
+    const fixtureEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([key]) => !PROJECT_ROOT_ALIASES.includes(key))
+    );
     const result = spawnSync(process.execPath, [command, '905'], {
       cwd: f.parent,
       encoding: 'utf8',
       timeout: 30000,
       env: {
-        ...process.env,
+        ...fixtureEnv,
         PATH: bin + path.delimiter + process.env.PATH,
         AITM_SYNC_CLI_FIXTURE: fixturePath,
         AITM_SYNC_CLI_PROVIDER: provider,

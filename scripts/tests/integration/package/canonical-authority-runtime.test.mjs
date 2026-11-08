@@ -7,7 +7,12 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { createRuntimeRootFixture } from '../../helpers/runtime-root-fixture.mjs';
+import { PROJECT_ROOT_ALIASES } from '../../../task-tracker/lib/runtime-storage.mjs';
 
+// Fixture subprocesses own their repository even inside native Test sandboxes.
+const fixtureEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !PROJECT_ROOT_ALIASES.includes(key))
+);
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const run = (command, args, cwd, extra = {}) =>
   execFileSync(command, args, { cwd, encoding: 'utf8', timeout: 60000, ...extra });
@@ -139,14 +144,14 @@ console.log(JSON.stringify({status:'verified',cwd:process.cwd(),origin:resolved.
     const observed = JSON.parse(
       run(process.execPath, [probe], subject, {
         env: {
-          ...process.env,
+          ...fixtureEnv,
           PATH: bin + path.delimiter + process.env.PATH,
           NODE_V8_COVERAGE: coverage,
         },
       })
     );
     assert.deepEqual(observed, { status: 'verified', cwd: subject, origin: 'codex-app-server' });
-    const env = { ...process.env, NODE_V8_COVERAGE: coverage };
+    const env = { ...fixtureEnv, NODE_V8_COVERAGE: coverage };
     const help = run(
       process.execPath,
       [path.join(packageRoot, 'bin/aitm.mjs'), 'workflow-exception', 'help'],
