@@ -1,0 +1,21 @@
+✔ all fields + labels present, no children → ok (1.917584ms)
+✔ missing rank → blocker names rank (0.391459ms)
+✔ empty labels → blocker (0.126459ms)
+✔ missing startTime → blocker (0.257375ms)
+✔ #245 — epic whose child is in backlog now PASSES (child-not-at-refine check removed) (0.145375ms)
+✔ #245 — kept checks still fire: missing rank yields refine-exit-missing even for an epic (0.161042ms)
+✔ compound CLI command in AC marker → refine-exit-forbidden-command blocker (1.054375ms)
+✔ missing Pickup Directive heading → refine-exit-pickup-directive-missing blocker (0.598ms)
+✔ Pickup Directive heading present → no pickup-directive blocker (0.165291ms)
+✔ Pickup Directive heading only inside <details> → still blocked (0.215625ms)
+✔ AC with a {tbd}-sentinel verifier → refine-exit-demonstrable names the malformed verifier, not "no verifier" (0.83025ms)
+✔ waived AC alongside a bare code AC → only the bare code AC is flagged demonstrable (0.221708ms)
+✔ multiple missing fields produces multiple blockers (0.076625ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.181083

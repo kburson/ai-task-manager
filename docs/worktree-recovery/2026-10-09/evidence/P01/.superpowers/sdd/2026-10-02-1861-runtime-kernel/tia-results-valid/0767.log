@@ -1,0 +1,19 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30
+  if (index < 0) throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Runtime writes require the exact durable store owner');
+                       ^
+
+RuntimeRootError: Runtime writes require the exact durable store owner
+    at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+    at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+    at saveMarker (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/word-counter.mjs:210:10)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/word-counter.test.mjs:53:3
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+    at withRuntimeRootAdapters (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:159:30)
+    at withUnitRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-root.mjs:42:10)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/word-counter.test.mjs:26:7
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25) {
+  code: 'RUNTIME_OVERRIDE_UNSAFE'
+}
+
+Node.js v26.8.1

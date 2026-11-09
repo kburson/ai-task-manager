@@ -1,0 +1,38 @@
+✔ the production lifecycle keeps eight states and canonically names Ready for Planning (0.792458ms)
+✔ the factory machine projects navigation only through lifecycle policy (0.122833ms)
+✔ the baseline names the canonical eight states in production order (0.065084ms)
+✔ all three lifecycle projections explicitly cover all 64 ordered pairs (0.170792ms)
+✔ the executable matrix matches pre-refactor transition validation for every pair (0.399708ms)
+✔ the entry-history matrix matches the current marker-history edge set (0.117208ms)
+✔ the timing-history matrix matches the current strict timing walk (2.671208ms)
+✔ same-state requests are executable no-ops but remain valid history rows (0.162833ms)
+✔ reverse and history-only distinctions remain explicit (0.097334ms)
+✔ action eligibility and delegation match current verb exports (0.147917ms)
+✔ refine entry and self-run policy match injected production behavior (2.743084ms)
+✖ bootstrap policy resolves live state and refuses a missing board item (127.723291ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 11
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.437417
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs:227:1
+✖ bootstrap policy resolves live state and refuses a missing board item (127.723291ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/state-engine-policy-characterization.test.mjs:232:25)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }

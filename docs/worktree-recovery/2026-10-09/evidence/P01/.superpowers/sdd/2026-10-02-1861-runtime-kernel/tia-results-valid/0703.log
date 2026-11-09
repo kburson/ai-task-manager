@@ -1,0 +1,13 @@
+✔ scratch ignore boundary tracks only the contract README (0.830625ms)
+✔ scratch README declares disposability and helper graduation (0.584292ms)
+✔ operator guidance distinguishes disposable scratch from runtime output (1.817917ms)
+✔ governed issue-record and plan guidance follows the two-bucket contract (3.170917ms)
+✔ durable memory points disposable work to .scratch (0.958875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.791375

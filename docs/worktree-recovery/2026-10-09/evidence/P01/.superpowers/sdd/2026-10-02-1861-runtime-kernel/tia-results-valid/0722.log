@@ -1,0 +1,26 @@
+✔ Review cursor preserves waived resident outcomes as a distinct terminal status (0.842833ms)
+✔ movement intent is evidence-free, normalized, and immutable (0.256667ms)
+✔ move context freezes the final snapshot and skipped-action audit (0.110792ms)
+✔ confirmed movement selects the target from all five signals (0.223542ms)
+✔ no single move-completion signal may be omitted (0.107042ms)
+✔ marker-ahead-of-board is an incomplete move that must be replayed (0.061834ms)
+✔ Status at target without the terminal sentinel remains incomplete (0.080667ms)
+✔ sentinel post-condition contradiction is drift (0.072542ms)
+✔ modern visit identity selects the marker transition ID and diagnoses missing commit provenance (0.187875ms)
+✔ legacy visit identity uses state, visit suffix, and durable occurrence but not timestamp (0.134875ms)
+✔ snapshot freshness is field-scoped and immutable (0.277958ms)
+✔ provenance copies and deeply freezes details (0.088042ms)
+✔ ledger codecs are canonical, strict, and preserve inline heads (1.28675ms)
+✔ spill collection race retries once from the fresh body pointer (1.481375ms)
+✔ current-attempt hydration follows at most three point-read links (0.786917ms)
+✔ a still-current missing spill is an observation diagnostic, not a hydration throw (0.215792ms)
+✔ offline hydration performs no GitHub operation (0.186792ms)
+✔ spill-head comments round-trip independently of body pointers (0.090959ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.255542

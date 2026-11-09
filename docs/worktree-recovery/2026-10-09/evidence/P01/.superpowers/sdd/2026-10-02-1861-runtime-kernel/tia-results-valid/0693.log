@@ -1,0 +1,14 @@
+✔ Review probe policy rejects standard full commands and semantic aliases (1.638375ms)
+✔ Review probe policy allows a focused test command (0.494834ms)
+✔ Review probe policy allows exact-file read-only lint and format probes (0.146875ms)
+✔ #1458 — targeted probe execution remains command policy, not a resident action (0.158459ms)
+✔ Review probe mode validates the complete request before executing any command (0.781417ms)
+✔ Review probe mode rejects a non-allowlisted command before execution or persistence (0.182917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.6795

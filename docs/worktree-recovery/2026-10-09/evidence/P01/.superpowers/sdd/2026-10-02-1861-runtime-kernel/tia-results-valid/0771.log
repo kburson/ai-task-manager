@@ -1,0 +1,17 @@
+✔ v2 delivery envelope round trips with its exact scope and digest (6.06975ms)
+✔ v2 refuses scope, kind, capability, expiry, and authority drift (4.186666ms)
+✔ a valid record preserves closed authority, policy, identity, and lifecycle fields (0.448417ms)
+✔ the schema rejects unknown keys, versions, authority claims, and invalid policy (0.420625ms)
+✔ repository, issue, scope, timestamps, revisions, dispositions, and links fail closed (1.306209ms)
+✔ an active effective record projects exactly the evaluator authority shape (1.071541ms)
+✔ a linear revision supersedes immutable history and becomes the sole active head (0.62325ms)
+✔ concurrent successors are ambiguous and are never combined (8.250958ms)
+✔ expired, stale-scope, and revoked heads never project evaluator authority (1.025875ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27.137125
