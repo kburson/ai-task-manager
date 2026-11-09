@@ -1,0 +1,33 @@
+▶ unitTestPath
+  ✔ maps a lib source file to its unit test path (0.449208ms)
+  ✔ maps a root-level source file (0.073708ms)
+  ✔ maps a verb source file (0.06475ms)
+  ✔ returns null for a test file (no self-discovery) (0.054ms)
+  ✔ returns null for any path ending in .test.mjs (1.001ms)
+  ✔ two source files in different dirs with the same basename map to distinct tests (0.126416ms)
+  ✔ maps a package-root module into the core bucket (0.0865ms)
+✔ unitTestPath (2.541417ms)
+▶ findUnitTests
+  ✔ exposes source-to-test matches for explainable selector composition (1.341458ms)
+  ✔ returns repo-root-relative paths for source files whose unit test exists (0.381875ms)
+  ✔ silently skips source files whose unit test does not exist (0.299875ms)
+  ✔ handles mixed present/absent cases (0.260292ms)
+  ✔ ignores test files in the input list (0.238417ms)
+  ✔ deduplicates when two source files map to the same test (0.478417ms)
+  ✔ returns empty array for empty input (1.357583ms)
+  ✔ resolves a subsystem-nested unit test by basename (#868 nesting-aware) (0.082666ms)
+  ✔ prefers the complete source-relative canonical match over a basename collision (0.075541ms)
+  ✔ rejects ambiguous basename fallback matches (0.20075ms)
+✔ findUnitTests (5.014375ms)
+▶ merge + dedup with direct test files
+  ✔ direct test already in diff — discovered duplicate is suppressed (0.826ms)
+  ✔ discovered test not in direct diff — appended after direct changes (0.25975ms)
+✔ merge + dedup with direct test files (1.147209ms)
+ℹ tests 19
+ℹ suites 3
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46.722209

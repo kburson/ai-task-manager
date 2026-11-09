@@ -1,0 +1,603 @@
+✔ aggregate parity matrix covers every lifecycle action and required scenario (2.498959ms)
+✖ aggregate parity executes the seven action suites, not only their metadata (4003.027459ms)
+✖ authority cost evidence matches fresh physical reads before A2 certification (191.851792ms)
+✔ legacy refusal and warning fallbacks remain inventoried and fail closed (3.82775ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 2
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4216.90725
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:82:1
+✖ aggregate parity executes the seven action suites, not only their metadata (4003.027459ms)
+  AssertionError [ERR_ASSERTION]: ✔ production child reader retains complete paginated child identity and refuses malformed pages (2.983833ms)
+  ✔ production worktree reader compares binding identity and observes dirty paths without writing (0.861625ms)
+  ✔ production delivery reader uses canonical parent lineage and current receipt evidence (3.2195ms)
+  ✔ production delivery rejects evidence-v2 without invoking its mutating close runner (0.176125ms)
+  ✔ production guard adapter reads dependencies and refuses missing local commit objects (0.545292ms)
+  ✔ production close reaches ready with fresh authority and only read transports (17.823208ms)
+  ✔ production close collector and terminal authority guard refuse changed delivery after ready (5.816041ms)
+  ✔ production close observes workflow policy when a guard requires enrichment (13.358375ms)
+  ✔ production close cannot select ordinary completion for a CLOSED GitHub issue in Review (2.901459ms)
+  ✔ production close refuses issue-body changes even when semantic scope is unchanged (1.2395ms)
+  ✔ production close refuses a changed issue revision with byte-identical body (0.910958ms)
+  ✔ production close cannot bypass pending recovery on an OPEN issue in Review (5.16575ms)
+  ✔ production close retains immutable initial and current issue revisions (5.662375ms)
+  ✔ ordinary close collects current authority without effects (2.39125ms)
+  ✔ close fails closed on missing objects and retains independent guard blockers (3.65275ms)
+  ✔ close cannot convert a missing receipt or child read into readiness (4.498416ms)
+  ✔ production close adapter fails closed without read-only delivery and guard seams (0.732459ms)
+  ✔ production guards pin both child and epic delivery proofs to the verified immutable tip (1.496625ms)
+  ✔ collector preserves all seven fields on read failure and does not execute effects (0.396041ms)
+  ✔ epic child refusals and independent child approval requests survive close collection (0.77775ms)
+  ✔ close preserves approval requests alongside attribution investigation (0.906792ms)
+  ✔ incorporated and malformed evidence-v2 authority cannot select a special close lane (0.899833ms)
+  ✔ a current Review state selects sanctioned close navigation (0.064375ms)
+  ✔ Done remains terminal and cannot select another close (0.049541ms)
+  ✔ Review promotion delegates to the close collector (1.60375ms)
+  ✔ close retains approval and investigation requests simultaneously (1.127333ms)
+  ✔ missing workflow-policy reader is a typed indeterminate result (0.579833ms)
+  ✔ execution refreshes authority after intent write before emitting provider action (11.823167ms)
+  ✔ execution refuses a same-ID ledger edit after intent readback (3.149375ms)
+  ✔ open PR with a matching receipt is blocked in explanation as execution refuses it (96.948ms)
+  ✔ merged execution refuses a changed PR head before posting a receipt (3.959042ms)
+  ✔ merged execution rechecks trunk reachability before posting a receipt (3.786375ms)
+  ✔ open-PR delivery explanation shares actual preflight and performs no effects (14.361959ms)
+  ✔ stale PR head is blocked by the same exact-head preflight as execution (4.185125ms)
+  ✔ missing provider capability blocks without shell merge guidance (1.201791ms)
+  ✔ an unreadable delivery authority observation is indeterminate (0.832125ms)
+  ✔ simultaneous unreadable sources retain both typed causes (0.701208ms)
+  ✔ merged PR without a delivery receipt cannot claim ready from PR state alone (1.329375ms)
+  ✔ merged PR reconstruction does not infer a provider action (1.041167ms)
+  ✔ merged PR with a live intent and exact read-only trunk proof is explainable (9.92175ms)
+  ✔ merged PR without an intent is explainable when read-only external proof succeeds (23.013375ms)
+  ✔ merged external proof retains source-attribution metadata warnings (3.981667ms)
+  ✔ merged PR with a matching receipt remains explainable without new records (9.57125ms)
+  ✔ default merged proof ports observe remote and local trunk without fetching refs (0.595709ms)
+  ✔ default delivery dependency advertises only the configured provider-action capability (0.12675ms)
+  ✔ a stale local trunk mirror cannot prove merged delivery readiness (5.297333ms)
+  ✔ merged intent cannot explain ready after configured method diverges (4.604916ms)
+  ✔ issue-resident no-commit delivery is explainable without a merge provider (4.870958ms)
+  ✔ production reader selects the current head among historical branch PRs (1.184417ms)
+  ✔ production reader reports an unavailable initial issue without throwing or effects (0.706ms)
+  ✔ delivery body drift between observed issue and preflight snapshot is indeterminate (0.560292ms)
+  ✔ delivery snapshot cannot claim ready at a different observed worktree HEAD (0.489125ms)
+  ✔ missing exact-head human PR approval is a typed request, not ready (0.887875ms)
+  ✔ ineligible manual code reviewer blocks rather than becoming indeterminate (0.552042ms)
+  ✔ missing complete delivery-record inventory cannot explain ready (0.494833ms)
+  ✔ historical recovery is not silently offered as a ready default delivery (0.862792ms)
+  ✔ malformed v2 evidence marker cannot fall through to v1 delivery readiness (1.209583ms)
+  ✔ an existing intent whose authorized merge method diverges cannot explain ready (0.955667ms)
+  ✔ a prior-head intent may be superseded by fresh exact-head execution (0.832709ms)
+  ✔ an existing no-commit delivery record with a different accepted head blocks readiness (1.694541ms)
+  ✔ execution refuses a changed PR head after a prior ready explanation (6.149084ms)
+  ✔ execution refuses revoked review authorization after a prior ready explanation (0.920417ms)
+  ✔ execution refuses withdrawn exact-head human PR approval after explanation (1.20875ms)
+  ✔ execution refuses changed CI after a prior ready explanation (0.808125ms)
+  ✔ execution refuses changed ledger after a prior ready explanation (6.054625ms)
+  ✔ execution refreshes PR head after preflight and before posting an intent (0.482708ms)
+  ✔ execution refreshes lineage before posting an intent (0.347417ms)
+  ✔ ready execution persists the current projection with proof-introduction authority and verified readback (4.424042ms)
+  ✔ the versioned mutation callback remains synchronous so proof guards inspect its body (1.6915ms)
+  ✔ the real versioned body boundary rejects the same proof-introducing edit without evidenceStamp (4.581083ms)
+  ✔ blocked fresh readiness preserves its envelope with pending normalization (0.415167ms)
+  ✔ blocked fresh readiness preserves its envelope without pending normalization (0.09925ms)
+  ✔ indeterminate fresh readiness preserves its envelope with pending normalization (0.160709ms)
+  ✔ indeterminate fresh readiness preserves its envelope without pending normalization (0.081042ms)
+  ✔ real registry completeness labels survive normalization (0.141667ms)
+  ✔ indeterminate readiness on a fresh versioned base is retained before persistence (0.448291ms)
+  ✔ malformed non-ready envelope is invalid with normalization (0.296459ms)
+  ✔ malformed non-ready envelope is invalid without normalization (0.07575ms)
+  ✔ successful normalization keeps persisted truth when readback becomes blocked (0.6115ms)
+  ✔ a thrown fresh authority evaluation is drift, not a write transport failure (0.40075ms)
+  ✔ post-write readback failure refuses while preserving the fact that a write occurred (0.2895ms)
+  ✔ write transport failure is named and stops before post-write authority or later effects (0.170417ms)
+  ✔ changed execution HEAD refuses even if projected decision intent would be identical (0.097542ms)
+  ✔ a changed HEAD during a versioned retry refuses before another push (0.847167ms)
+  ✔ an empty authority body is a failed readback, never an idempotent no-op (0.12425ms)
+  ✔ a version conflict re-evaluates the fresh body and refuses a now-blocked retry (0.963708ms)
+  ✔ a non-overlapping version conflict recomputes and preserves the concurrent edit (1.68525ms)
+  ✔ readback rejects a proof marker attributed to the wrong execution HEAD (1.664875ms)
+  ✔ test-to-review rescan preserves projected refusal before any derived write (2.300583ms)
+  ✔ a concurrent HEAD change wins over an otherwise valid blocked retry (0.361333ms)
+  ✔ remaining projection drift wins over a blocked post-write guard (0.325833ms)
+  ✔ normalization retains warnings and human requests separately from normalization warnings (0.944542ms)
+  ✖ production resume collector and guarded preflight refuse a post-ready migration freeze (4.519542ms)
+  ✔ direct Review and Test-state Promote share ready evidence without effects (25.226291ms)
+  ✔ Review routing uses its complete collector even when generic guards are available (2.834291ms)
+  ✔ Review guards receive project config and a read-only dependency reconciliation port (0.953834ms)
+  ▶ Review explanation refuses stale HEAD, unreadable evidence, and board drift
+    ✔ stale HEAD (3.372125ms)
+    ✔ unreadable preflight (0.952625ms)
+    ✔ board drift (2.997625ms)
+  ✔ Review explanation refuses stale HEAD, unreadable evidence, and board drift (7.859583ms)
+  ✔ Review preserves simultaneous typed preflight refusals without exposing prose (2.027417ms)
+  ✔ Review retains independent preflight and completeness blockers together (0.776208ms)
+  ✔ Review does not accept a contradictory successful preflight carrying refusals (0.678583ms)
+  ✔ Review refuses a stale exact-HEAD Test receipt even when preflight and guards pass (1.461625ms)
+  ✖ Review execution refuses a stale Test receipt after a ready collector decision (139.781166ms)
+  ✔ Review refuses a preflight computed from a different issue-body revision (2.60775ms)
+  ✔ Review reports a projected Functional DoD normalization without persistence (3.400625ms)
+  ✔ Review guards receive the current directory-backed Test evidence from preflight (0.724208ms)
+  ✔ Review refuses contradictory directory Test evidence read at one boundary (0.753083ms)
+  ✔ real Test-to-Review guards refuse missing exact-HEAD Test proof and incomplete ACs (79.062334ms)
+  ✔ Review resident reruns only incomplete evidence and does not recommend close (1.100541ms)
+  ✔ Review-state Promote delegates to Close rather than a Review rerun (1.906708ms)
+  ✔ live Review read adapter refreshes issue, board, HEAD, and preflight at this boundary (1.088125ms)
+  ✔ live Review-state adapter selects a rerun only after current semantic policy is read (1.8085ms)
+  ✔ live Review-state policy read failure is typed indeterminate, never a rerun grant (0.8185ms)
+  ✔ initial Review authority read failure is typed indeterminate (0.098875ms)
+  ✔ resident ledger comment reader fetches the exact GitHub comment read-only (0.134541ms)
+  ✔ active semantic waiver with failed Review marker selects self-rerun (1.214875ms)
+  ✔ Review re-entry with a clean older ledger head still selects current resident work (2.144042ms)
+  ✔ rebind remains a cursor trigger, not a session action (1.087583ms)
+  ✔ read-only bind reports skipped required authority as indeterminate (2.01475ms)
+  ✔ the execution TT_SKIP_NETWORK setting skips required explanation reads (0.706792ms)
+  ✔ disabled assignee match remains ready only with complete matching board and marker (3.050084ms)
+  ✔ disabled assignee match does not conceal a missing board read (0.613583ms)
+  ✔ a body without a last-known-state marker is indeterminate (0.662167ms)
+  ✔ a board and body-marker disagreement blocks bind readiness (0.471ms)
+  ✔ a mismatched worktree blocks bind readiness (0.616333ms)
+  ✔ an unreadable worktree match is indeterminate, not ready (0.4505ms)
+  ✔ a conflicting occupancy blocks bind before any claim (0.527667ms)
+  ✔ an implicit resume cannot target a different active issue (1.084708ms)
+  ✔ no-argument resume is not ready without a paused session (3.431208ms)
+  ✔ no-argument resume is ready for its paused last issue (0.576083ms)
+  ✔ migration freeze blocks a complete session decision without a side effect (0.483958ms)
+  ✔ enabled ownership check blocks a foreign owner (0.581958ms)
+  ✔ enabled ownership check blocks multiple owners and treats unknown identity as indeterminate (1.385167ms)
+  ✔ a conflicting local configuration observation cannot yield a ready decision (0.739333ms)
+  ✔ missing repository configuration is indeterminate even with a complete board fixture (1.830541ms)
+  ✔ observed state drift and migration freeze agree with the execution preflight (2.215208ms)
+  ✖ production session reads and execution refresh the same changed board authority (2.870084ms)
+  ✖ cold numeric bind, switch, and explicit resume select the same fresh target (0.870334ms)
+  ✖ foreign ownership blocks both production explanation and execution preflight (0.789083ms)
+  ✖ another issue occupying the target worktree blocks readiness and the real claim (124.698708ms)
+  ✔ a body changing between scope selection and observation is indeterminate (1.075292ms)
+  ✔ a readable stub body without scope sections is an issue-body authority failure (2.145458ms)
+  ✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (129.240417ms)
+  ✖ early promotion readiness retains an unmapped complete-guard refusal (186.629875ms)
+  ✖ typed plan approval remediation survives complete guard projection (149.2195ms)
+  ✔ unknown and conflicting early state authority never yields a target grant (0.774625ms)
+  ✖ early promotion readiness follows all four canonical forward edges (141.543875ms)
+  ✔ a migration freeze discovered after explanation blocks early promotion readiness (0.473125ms)
+  ✔ terminal Done has no executable early promotion target (0.088875ms)
+  ✔ later promotion delegate stays pending with a valid navigation blocker (0.10025ms)
+  ✔ skipped remote authority cannot yield ready early promotion (0.087209ms)
+  ✔ TT_SKIP_NETWORK also skips early promotion authority without a caller flag (0.081625ms)
+  ✖ read-only dependency readiness does not reconcile disposition (159.683ms)
+  ✖ a ready early explanation is not a grant after dependency readiness changes (137.907958ms)
+  ✔ a migration freeze activated before locked execution refuses without reading or moving (0.494042ms)
+  ✔ early readiness shares execution session policy and story-intent resolver (0.425459ms)
+  ✔ a real plan-approval guard refuses the same missing marker in explanation and execution (1.884834ms)
+  ✔ complete production early registry retains field, parent, dependency, contiguity, and plan refusals (1765.672458ms)
+  ✔ production evaluator routes a complete bind collector and finishes one v2 attempt (2.582167ms)
+  ✖ production evaluator routes complete early promotion without an effect (200.746834ms)
+  ✔ production evaluator routes explicit resume through complete session authority (0.757458ms)
+  ✔ v2 navigation rejects rebind and unresolved state while keeping Done terminal (4.441375ms)
+  ✔ terminal Done refuses an effect, stale authority, and rebind without a false grant (1.279875ms)
+  ✖ a ready v2 explanation never authorizes stale promotion execution (158.834542ms)
+  ✖ v2 early promotion preserves typed plan-approval remediation and human request (165.392041ms)
+  ✖ matching recorded and live state selects one canonical early edge (162.681ms)
+  ✔ missing effect ledger does not erase unknown navigation authority (0.99475ms)
+  ✔ session navigation refuses a stale proposed state despite internally matching board and marker (0.648792ms)
+  ✔ network-skipped early promotion emits valid v2 uncertainty without remote reads (0.335084ms)
+  ▶ direct Test and Develop Promote explain the same ready entry without effects
+    ✔ direct Test from Develop (7.460125ms)
+    ✔ direct Test self-rerun from Test (1.517ms)
+    ✔ Promote from Develop (0.882542ms)
+  ✔ direct Test and Develop Promote explain the same ready entry without effects (10.512958ms)
+  ✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (2.23075ms)
+  ✔ Review-state Test request is not advertised as runnable (1.087416ms)
+  ✔ Test entry needs an explicit project directory for command and provider authority (1.633458ms)
+  ✔ Test entry resolves the bound project directory when the caller omits it (0.673084ms)
+  ✔ Test explanation reports missing Verification Commands without effects (0.709ms)
+  ✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.834416ms)
+  ✔ Test entry aggregates independent binding and declaration blockers (0.754125ms)
+  ▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+    ✔ worktree HEAD (4.645ms)
+    ✔ session binding (0.756375ms)
+    ✔ claimed receipt (8.537458ms)
+  ✔ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (14.3125ms)
+  ✔ Test explanation names an unavailable required authority read and makes no effects (0.674ms)
+  ✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.292708ms)
+  ✔ malformed observed HEAD is indeterminate, not blocked or ready (0.446875ms)
+  ✔ a required workflow-policy read failure remains indeterminate for Test entry (0.6335ms)
+  ✔ a configured provider rejected by execution is blocked in Test explanation (19.206083ms)
+  ✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (886.326083ms)
+  ✔ Test entry retains registered guard warnings while remaining blocked (1.048625ms)
+  ✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.694208ms)
+  ✔ a ready Test explanation does not predetermine a later red locked execution (2.907125ms)
+  ✔ production Test read adapter rechecks live body and board at a fresh boundary (0.658458ms)
+  ✔ production adapter rejects directory evidence whose accepted record epoch is stale (0.68775ms)
+  ✔ the locked Test wrapper supplies the production preflight by default (0.071916ms)
+  ✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.112417ms)
+  ✔ a refusing guard cannot return an empty refusal collection (1.230583ms)
+  ✔ a successful guard cannot carry a refusal (0.173041ms)
+  ✔ a successful guard cannot carry malformed refusals (0.140708ms)
+  ✔ a refusing guard cannot carry a sparse refusal collection (0.135625ms)
+  ✔ a successful guard cannot carry a sparse warning collection (0.183834ms)
+  ✔ a successful guard cannot carry a human request (0.1395ms)
+  ✔ a guard cannot impersonate a guidance-admission warning producer (0.388792ms)
+  ✔ the refusal lint freezes constructor call sites inside registered guards (5.292417ms)
+  ✔ the refusal lint freezes imported constructor call sites (2.229959ms)
+  ✔ the lifecycle registry enumerates the complete bare action vocabulary (0.199667ms)
+  ✔ the remediation registry is closed and rejects bypasses (0.407125ms)
+  ✔ the decision vocabulary exposes its version and reserved boundary producers (1.949167ms)
+  ✔ authority resources include honest local session sources while remaining closed (0.084542ms)
+  ✔ observed session and worktree mismatches are valid closed v2 blockers (0.288917ms)
+  ✔ an inventoried legacy refusal normalizes without interpreting its reason (0.2045ms)
+  ✔ action navigation fails closed for non-ready and unknown actions (0.065042ms)
+  ✔ unknown action ids remain explicit in an indeterminate decision envelope (1.772584ms)
+  ✔ typed remediation failures never fall back to the legacy adapter (0.108625ms)
+  ✔ manual-only blocker codes reject executable remediations (0.073667ms)
+  ✔ the vocabulary digest changes when a canonical definition changes (4.489708ms)
+  ✔ ready decisions require explicit empty operational collections (0.328125ms)
+  ✔ blocked decisions bind typed remediation to the matching human request (0.683917ms)
+  ✔ authority failures require typed unique subjects when one source has multiple targets (0.464667ms)
+  ✔ snapshot evidence is unique, in-window, issue-bound, and digest-bound (1.287458ms)
+  ✔ terminal decisions use null action and terminal guidance without inventing execution (0.418875ms)
+  ✔ functional DoD normalizations enforce their closed ordered decision contract (0.650458ms)
+  ✔ operational warnings preserve order and reject cross-domain code reuse (0.389583ms)
+  ✔ decision blockers reject producers outside the frozen guard inventory (0.08325ms)
+  ✔ the guard boundary preserves multiple typed refusals and human requests (0.385125ms)
+  ✔ a frozen multi-branch legacy guard emits one conservative manual refusal (0.308792ms)
+  ✔ thrown guards become guard-error (0.147583ms)
+  ✔ malformed guards become guard-result-invalid (0.086ms)
+  ✔ the parser-based refusal lint freezes added and edited legacy sites (3.726625ms)
+  ✔ the refusal lint rejects undeclared and cross-domain codes (2.721375ms)
+  ✔ close exposes a fresh authority comparison for terminal effects (0.444625ms)
+  ✔ a derived body marker alone does not invalidate a fresh close delivery gate (0.441416ms)
+  ✔ revoked review authority refuses before a terminal close effect (0.273291ms)
+  ✔ same intent ID with changed authorized bytes refuses before a terminal close effect (0.132458ms)
+  ✔ changed PR head or delivery receipt refuses before a terminal close effect (0.332125ms)
+  ℹ tests 238
+  ℹ suites 0
+  ℹ pass 222
+  ℹ fail 16
+  ℹ cancelled 0
+  ℹ skipped 0
+  ℹ todo 0
+  ℹ duration_ms 3947.895042
+  
+  ✖ failing tests:
+  
+  test at scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs:22:1
+  ✖ production resume collector and guarded preflight refuse a post-ready migration freeze (4.519542ms)
+    AssertionError [ERR_ASSERTION]: {"status":"indeterminate","blockers":[{"args":{"reason":"unavailable","source":"occupancy","subject":{"issue":1750}},"code":"authority-read-failed","guardId":"authority-collection","noAutomaticRemediation":{"reason":"authority-investigation-required"}}],"effectiveConfig":{"gateAssigneeMatch":false},"observations":[{"boundaryId":"action:resume:1750","digest":"sha256:8624c636dbf2ea250191b32d04b4106796929225e67fe0ed2f6e5f28ad195f5c","identity":"local-config:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"local-config","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"gateAssigneeMatch":false,"projectId":"project-1","repo":"example/project"}},{"boundaryId":"action:resume:1750","digest":"sha256:968542f4f7ecdccb42c970bb283b97f3104c164a069309c4089bdd8eb1348da9","identity":"session-state:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"session-state","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"active":null,"lastActive":"#1750","paused":true}},{"boundaryId":"action:resume:1750","digest":"sha256:4f2d185b5cc7a28651783447f0cb85c0a22b86318bb8125ade969dc01b39dc13","identity":"worktree:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"worktree","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"matches":true}},{"boundaryId":"action:resume:1750","cause":{"args":{"reason":"unavailable","source":"occupancy","subject":{"issue":1750}},"code":"authority-read-failed","guardId":"authority-collection","noAutomaticRemediation":{"reason":"authority-investigation-required"}},"digest":"sha256:945ff1191e84234774f164a87df7feef568a48c66b075cc1287bcb664ac52eeb","identity":"occupancy:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","provenance":{"detail":"Project root does not exist: /issue-worktree"},"repository":"example/project","resource":"occupancy","scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"indeterminate"},{"boundaryId":"action:resume:1750","digest":"sha256:d7950ce7f3c498a7f2197ece39f21423e0615a50cae5f00ddb1f619e23e1b6f0","identity":"migration-journal:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"migration-journal","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"active":false}},{"boundaryId":"action:resume:1750","digest":"sha256:bf3322f699fe93a02a4c4bcf7dcf5578a9b207044c4afa5226060ce1622d020d","identity":"issue:1750:2","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"project-board","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"assignees":[],"state":"plan"}},{"boundaryId":"action:resume:1750","digest":"sha256:8a309a93e7b7f62bf849acae814f8198242dff7c85936efa383d1d2adf2fd509","identity":"issue:1750:1","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"issue-body","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"body":"## User Story\nAs an operator\nI want to resume a paused session\nSo that execution refreshes its authority\n\n## Scope\nRead-only resume readiness for the selected issue.\n\n## Acceptance Criteria\n- [ ] Resume is ready.\n\n<!-- aitm-last-known-state state=\"plan\" ts=\"2026-09-21T16:00:00Z\" -->","number":1750}}],"bundle":{"boundaryId":"action:resume:1750","completedAt":"2026-09-21T16:00:00.000Z","digest":"sha256:10c50c0b8964e5509a65d2f31f7ea77950a2ccc32707f7339aa060495e4747c2","issue":1750,"normalizationInputs":[],"observations":[{"boundaryId":"action:resume:1750","digest":"sha256:8624c636dbf2ea250191b32d04b4106796929225e67fe0ed2f6e5f28ad195f5c","identity":"local-config:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"local-config","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"gateAssigneeMatch":false,"projectId":"project-1","repo":"example/project"}},{"boundaryId":"action:resume:1750","digest":"sha256:968542f4f7ecdccb42c970bb283b97f3104c164a069309c4089bdd8eb1348da9","identity":"session-state:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"session-state","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"active":null,"lastActive":"#1750","paused":true}},{"boundaryId":"action:resume:1750","digest":"sha256:4f2d185b5cc7a28651783447f0cb85c0a22b86318bb8125ade969dc01b39dc13","identity":"worktree:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"worktree","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"matches":true}},{"boundaryId":"action:resume:1750","cause":{"args":{"reason":"unavailable","source":"occupancy","subject":{"issue":1750}},"code":"authority-read-failed","guardId":"authority-collection","noAutomaticRemediation":{"reason":"authority-investigation-required"}},"digest":"sha256:945ff1191e84234774f164a87df7feef568a48c66b075cc1287bcb664ac52eeb","identity":"occupancy:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","provenance":{"detail":"Project root does not exist: /issue-worktree"},"repository":"example/project","resource":"occupancy","scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"indeterminate"},{"boundaryId":"action:resume:1750","digest":"sha256:d7950ce7f3c498a7f2197ece39f21423e0615a50cae5f00ddb1f619e23e1b6f0","identity":"migration-journal:1750","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"migration-journal","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"active":false}},{"boundaryId":"action:resume:1750","digest":"sha256:bf3322f699fe93a02a4c4bcf7dcf5578a9b207044c4afa5226060ce1622d020d","identity":"issue:1750:2","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"project-board","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"assignees":[],"state":"plan"}},{"boundaryId":"action:resume:1750","digest":"sha256:8a309a93e7b7f62bf849acae814f8198242dff7c85936efa383d1d2adf2fd509","identity":"issue:1750:1","issue":1750,"observedAt":"2026-09-21T16:00:00.000Z","repository":"example/project","resource":"issue-body","revision":null,"scope":"sha256:cac6fce28adc567eeae3d08108da54b5a066c9ade6cd70cfd8136140cc24fbb9","status":"observed","value":{"body":"## User Story\nAs an operator\nI want to resume a paused session\nSo that execution refreshes its authority\n\n## Scope\nRead-only resume readiness for the selected issue.\n\n## Acceptance Criteria\n- [ ] Resume is ready.\n\n<!-- aitm-last-known-state state=\"plan\" ts=\"2026-09-21T16:00:00Z\" -->","number":1750}}],"repository":"example/project","startedAt":"2026-09-21T16:00:00.000Z"}}
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-resume-parity.test.mjs:49:10)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-review.test.mjs:254:1
+  ✖ Review execution refuses a stale Test receipt after a ready collector decision (139.781166ms)
+    AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+    
+    Caught error:
+    
+    RuntimeRootError: Runtime writes require the exact durable store owner
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-review.test.mjs:274:5)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: RuntimeRootError: Runtime writes require the exact durable store owner
+          at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+          at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+          at verbReview (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/review.mjs:891:13)
+          at async waitForActual (node:assert:615:5)
+          at async strict.rejects (node:assert:738:25)
+          at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-review.test.mjs:274:5)
+          at async Test.run (node:internal/test_runner/test:1409:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:974:7),
+      operator: 'rejects',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:529:1
+  ✖ production session reads and execution refresh the same changed board authority (2.870084ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:558:10)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:591:1
+  ✖ cold numeric bind, switch, and explicit resume select the same fresh target (0.870334ms)
+    AssertionError [ERR_ASSERTION]: #1750
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:644:12)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:649:1
+  ✖ foreign ownership blocks both production explanation and execution preflight (0.789083ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'blocked'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:685:10)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'blocked',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:693:1
+  ✖ another issue occupying the target worktree blocks readiness and the real claim (124.698708ms)
+    Error [RuntimeRootError]: Runtime writes require the exact durable store owner
+        at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+        at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+        at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/fleet-registry.mjs:8:10)
+        at claimOccupancy (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/occupancy.mjs:66:10)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:697:5)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12) {
+      code: 'RUNTIME_OVERRIDE_UNSAFE'
+    }
+  
+  test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:804:1
+  ✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (129.240417ms)
+    AssertionError [ERR_ASSERTION]: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30
+      if (index < 0) throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Runtime writes require the exact durable store owner');
+                           ^
+    
+    RuntimeRootError: Runtime writes require the exact durable store owner
+        at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+        at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-session-executor-fixture.mjs:24:16 {
+      code: 'RUNTIME_OVERRIDE_UNSAFE'
+    }
+    
+    Node.js v26.8.1
+    
+    
+    1 !== 0
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:813:14)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19)
+        at Test.run (node:internal/test_runner/test:1467:12)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 1,
+      expected: 0,
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/helpers/action-early-promote-cases.mjs:12:3
+  ✖ early promotion readiness retains an unmapped complete-guard refusal (186.629875ms)
+    Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+        at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-early-promote-cases.mjs:38:20)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+  test at scripts/tests/helpers/action-early-promote-cases.mjs:76:3
+  ✖ typed plan approval remediation survives complete guard projection (149.2195ms)
+    Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+        at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-early-promote-cases.mjs:93:20)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+  test at scripts/tests/helpers/action-early-promote-cases.mjs:173:3
+  ✖ early promotion readiness follows all four canonical forward edges (141.543875ms)
+    Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+        at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-early-promote-cases.mjs:201:22)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+  test at scripts/tests/helpers/action-early-promote-cases.mjs:338:3
+  ✖ read-only dependency readiness does not reconcile disposition (159.683ms)
+    Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+        at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-early-promote-cases.mjs:359:20)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+  test at scripts/tests/helpers/action-early-promote-cases.mjs:389:3
+  ✖ a ready early explanation is not a grant after dependency readiness changes (137.907958ms)
+    Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+        at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+        at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+        at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-early-promote-cases.mjs:428:25)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+  
+  test at scripts/tests/helpers/action-navigation-cases.mjs:71:3
+  ✖ production evaluator routes complete early promotion without an effect (200.746834ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-navigation-cases.mjs:104:12)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/helpers/action-navigation-cases.mjs:266:3
+  ✖ a ready v2 explanation never authorizes stale promotion execution (158.834542ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-navigation-cases.mjs:306:12)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/helpers/action-navigation-cases.mjs:328:3
+  ✖ v2 early promotion preserves typed plan-approval remediation and human request (165.392041ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'blocked'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-navigation-cases.mjs:375:12)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'blocked',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  test at scripts/tests/helpers/action-navigation-cases.mjs:386:3
+  ✖ matching recorded and live state selects one canonical early edge (162.681ms)
+    AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'indeterminate'
+    - 'ready'
+    
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-navigation-cases.mjs:423:12)
+        at async Test.run (node:internal/test_runner/test:1409:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+      generatedMessage: true,
+      code: 'ERR_ASSERTION',
+      actual: 'indeterminate',
+      expected: 'ready',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:99:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:111:1
+✖ authority cost evidence matches fresh physical reads before A2 certification (191.851792ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async measure (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:86:18)
+      at async Promise.all (index 2)
+      at async measureFixedActionAuthorityReads (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:103:14)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/action-parity.test.mjs:113:20) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }

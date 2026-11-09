@@ -1,0 +1,107 @@
+✔ runMoveStateHost is an importable function (module load has no host side effect) (0.419833ms)
+✔ runMoveStateHost returns 1 on an unknown state without exiting the process (36.6295ms)
+✔ runMoveStateHost returns 1 on missing args (usage) without exiting the process (32.991333ms)
+✔ unauthenticated direct movement is refused before guard selection (58.128459ms)
+✖ the complete guard pipeline runs while the issue boundary lock is held (250.021917ms)
+▶ host boundary authorizes Shelve guard selection only for the exact exported capability
+  ✖ environment-only Shelve context is unauthorized (280.637583ms)
+  ✖ a freshly forged Symbol is unauthorized (278.717125ms)
+  ✖ the exact exported capability is authorized (262.840375ms)
+✖ host boundary authorizes Shelve guard selection only for the exact exported capability (822.746083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 4
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1208.667583
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:67:1
+✖ the complete guard pipeline runs while the issue boundary lock is held (250.021917ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:71:3)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Function (anonymous)],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13
+✖ environment-only Shelve context is unauthorized (280.637583ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Function (anonymous)],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13
+✖ a freshly forged Symbol is unauthorized (278.717125ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Function (anonymous)],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:13
+✖ the exact exported capability is authorized (262.840375ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:110:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/gh/move-state-host-returns.test.mjs:107:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [RuntimeRootError],
+    expected: [Function (anonymous)],
+    operator: 'rejects',
+    diff: 'simple'
+  }
+Unknown state: bogus-state
+States: backlog | refine | ready-for-plan | plan | develop | test | review | done
+Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede] [--force]
+States: backlog | refine | ready-for-plan | plan | develop | test | review | done
+--supersede: bypass the matrix + guard pipeline (reserved for the `supersede` verb — "abandoned")
+--force: bypass the matrix + guard pipeline for a delivered operator override (reserved for `close --force`)
+move-state.mjs is internal; agents must reach it through the verb pipeline.
+Use /task shelve for backlog, or pass --out-of-band <reason> to record an emergency move.
+For one-off manual recovery from a non-TTY shell, set AITM_VERB_CONTEXT=<verb> (or AITM_INTERNAL=1) to confirm.

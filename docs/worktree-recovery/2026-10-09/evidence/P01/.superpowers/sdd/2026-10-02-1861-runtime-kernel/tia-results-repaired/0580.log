@@ -1,0 +1,23 @@
+✔ detectLinkedWorktree: git-dir under /worktrees/ → true; plain .git → false (0.934542ms)
+✔ makeCloseTrunkRefResolver: worktree → origin/trunk, main → trunk, cfg.trunkRef wins (0.159959ms)
+✔ resolveOpenPrNumber: parses the first open PR head match; null on none/error (0.244208ms)
+✔ enableFullAutoMergeForClose: not full-auto → skipped, no gh calls (0.70125ms)
+✔ enableFullAutoMergeForClose: missing PR never implies a local lane (0.21225ms)
+✔ enableFullAutoMergeForClose: child delivery skips before inspecting the epic PR (0.105ms)
+✔ enableFullAutoMergeForClose: unknown lineage fails closed before PR discovery (2.646875ms)
+✔ enableFullAutoMergeForClose: PR present + fullAutoMerge unconfigured → fail-closed (0.259209ms)
+✔ fetchParentIssueStrict returns the live parent and propagates lookup failure (0.94825ms)
+✔ close no longer imports or calls the legacy PR executor (2.007625ms)
+✔ enableFullAutoMergeForClose: provider action refuses direct execution (0.353792ms)
+✔ enableFullAutoMergeForClose: retired gh-auto-merge fails closed without merge execution (0.295ms)
+✔ enableFullAutoMergeForClose: local-trunk-lane authorized → local-lane (no gh merge) (0.40425ms)
+✔ enableFullAutoMergeForClose: unauthorized local lane fails without PR discovery (0.150208ms)
+✔ enableFullAutoMergeForClose: retired gh route is never reached (0.461292ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.428709

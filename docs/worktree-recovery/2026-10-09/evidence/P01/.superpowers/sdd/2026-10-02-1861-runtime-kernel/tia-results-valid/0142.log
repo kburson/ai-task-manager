@@ -1,0 +1,56 @@
+✖ generates current paired artifacts while preserving the frozen comparison (1043.0045ms)
+✖ public meter certifies final installed bytes and the paired report (126.174125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1172.878334
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs:25:1
+✖ generates current paired artifacts while preserving the frozen comparison (1043.0045ms)
+  RuntimeRootError: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async measure (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:86:18)
+      at async Promise.all (index 2)
+      at async measureFixedActionAuthorityReads (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/action-authority-cost.mjs:103:14) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs:57:1
+✖ public meter certifies final installed bytes and the paired report (126.174125ms)
+  AssertionError [ERR_ASSERTION]: Error: paired context: final capture identity drift
+      at buildPairedContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/guidance-paired-context.mjs:216:13)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/measure-guidance-context.mjs:355:7
+      at Array.map (<anonymous>)
+      at buildGuidanceContextReport (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/measure-guidance-context.mjs:353:25)
+      at async main (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/measure-guidance-context.mjs:533:18)
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/guidance-preslim-report.test.mjs:60:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

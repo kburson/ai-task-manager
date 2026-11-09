@@ -1,0 +1,29 @@
+Closed #9184. Delivery merge-method waived (requirement=delivery.verification.merge-method).
+✔ no grant preserves the original merged method refusal without terminal writes (8.032625ms)
+✔ exact grant produces one v3 intent, immutable burn, one v4 receipt, and idempotent retry (32.196625ms)
+✔ synthetic historical waiver reaches the close receipt gate with method visibly waived (351.665458ms)
+✔ grant expiry after v3 intent readback refuses the burn and leaves no receipt (8.680875ms)
+✔ revocation observed at the effect boundary leaves the confirmed intent unburned (7.565917ms)
+✔ two independent verification failures refuse before intent reservation (2.426ms)
+✔ scope drift before intent reservation prevents any journal write (3.34575ms)
+✔ fresh approval after pre-reservation issue re-scoping selects the revised grant (12.198542ms)
+✔ scope drift after v3 readback leaves approval unburned and no receipt (5.021125ms)
+✔ confirmed burn and receipt remain replayable after the grant expires (21.173958ms)
+✔ advanced local HEAD still replays the pinned v4 receipt without publication (18.457208ms)
+✔ advanced local HEAD resumes an exact confirmed burn before receipt publication (16.649875ms)
+✔ completed receipt uses pinned provider observation when retry read omits it (19.103875ms)
+✔ revocation recorded after the burn leaves the historical receipt verifiable (20.93475ms)
+✔ unresolved receipt publication burns approval and never posts on retry (20.966666ms)
+✔ two concurrent deliver contenders project one v3 successor and one burn (16.805875ms)
+✔ lost v3 intent response is resolved from exact comment readback (11.547041ms)
+✔ another host completing v4 between intent confirmation and readback is adopted exactly (20.146833ms)
+✔ two authorized operations naming one predecessor refuse before either reserves it (2.512542ms)
+✔ stale per-host grant views for distinct operations still reserve one predecessor (14.499583ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 618.291292

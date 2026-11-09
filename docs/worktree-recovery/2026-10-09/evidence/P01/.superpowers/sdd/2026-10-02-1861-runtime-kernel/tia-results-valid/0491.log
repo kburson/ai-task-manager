@@ -1,0 +1,90 @@
+coverage-reconcile.test.mjs: defined
+✔ runReconcile: throws without issueNumber (1.001208ms)
+✔ runReconcile: throws without cfg (0.094792ms)
+✔ runReconcile: missing mode → error status (0.172708ms)
+✔ runReconcile: unknown mode → error status (0.1105ms)
+✔ runReconcile: no live and no recorded → error (0.275333ms)
+✔ runReconcile: backfill with no holes → no-holes (0.36175ms)
+✔ runReconcile: backfill fills a hole → backfilled (0.830208ms)
+✔ runReconcile: recorded === live and no cache gap → no-drift-refused (204.670917ms)
+✔ runReconcile: accept-live with no live → error (0.168959ms)
+✔ runReconcile: accept-live reconciled (external-mutation reason) (0.383791ms)
+✔ runReconcile: accept-live reason from recording-failure comment (0.276333ms)
+✔ runReconcile: accept-live tolerates listComments throwing (0.162ms)
+✔ runReconcile: accept-live tolerates audit-marker write throwing (0.105583ms)
+✔ runReconcile: revert with no recorded → error (0.085ms)
+✔ runReconcile: revert transition-failed when move-state non-zero (0.096875ms)
+✔ runReconcile: revert reconciled when move-state succeeds (0.104042ms)
+✔ runReconcile: revert tolerates audit-marker write throwing (0.101291ms)
+✔ runReconcile: revert refuses when recorded is BEHIND live (wrong-direction, #740) (0.085416ms)
+✔ runReconcile: default persistTrackerState runs without a session (117.882916ms)
+✔ verbReconcile: missing issue number → usage, exit 1 (0.450041ms)
+✔ verbReconcile: missing mode → usage, exit 1 (0.112208ms)
+✔ verbReconcile: fetch failure → generic error, exit 1 (196.243625ms)
+✖ verbReconcile: no drift → refused, exit 4 (195.41425ms)
+✖ verbReconcile: backfill with no holes → stdout, no exit (179.205625ms)
+✖ verbReconcile: revert wrong-direction → exit 5, names accept-live (#740) (186.959916ms)
+✔ runReconcile: default read helpers fetch body + live state via gh (431.352375ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 23
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1555.678417
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:322:1
+✖ verbReconcile: no drift → refused, exit 4 (195.41425ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 4
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:325:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:328:1
+✖ verbReconcile: backfill with no holes → stdout, no exit (179.205625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== null
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:331:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: null,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:334:1
+✖ verbReconcile: revert wrong-direction → exit 5, names accept-live (#740) (186.959916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 5
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/lib/coverage-reconcile.test.mjs:338:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+[reconcile] cache-seed attempt failed: Partial runtime loss requires registered recovery
+[reconcile] cache-seed attempt failed: Partial runtime loss requires registered recovery

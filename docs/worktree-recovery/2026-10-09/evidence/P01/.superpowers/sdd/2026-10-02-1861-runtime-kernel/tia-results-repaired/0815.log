@@ -1,0 +1,26 @@
+Closed #1624.
+#1624 is already fully closed; no terminal writes were repeated.
+✔ production authority readers verify the owned audit report and live recovery issue (4.714ms)
+✔ sources audited no-commit and current delivery evidence before body replacement (6.492958ms)
+✔ derives and verifies the protected-base integration topology before mutation (1.8375ms)
+✔ refuses an integration head whose trunk parent is not reachable (0.40575ms)
+✔ refuses when gate-resolved test authority differs from the accepted transaction (0.854625ms)
+✔ refuses when a missing recorded worktree makes clean inspection unavailable (0.817375ms)
+✔ refuses when a git inspection error makes clean inspection unavailable (1.4755ms)
+✔ requires the fresh target body to remain epic with the recorded deliverable URL (1.555875ms)
+✔ revalidates no-commit authority against the fresh versioned-mutation base (1.568542ms)
+✔ reuses a durable correction record after interruption without a second comment (2.78125ms)
+✔ resumes the durable replacement after board and issue transitions (3.4045ms)
+✔ a completed correction retry is idempotent after binding ownership is gone (1.461375ms)
+✔ a completed correction retry still requires exact replacement and current SHA authority (1.799458ms)
+✔ a completed correction retry rejects a duplicate recovery identity (2.57ms)
+✔ the close verb replaces the audited transaction and resumes the unchanged saga (604.89275ms)
+✔ false-delivery evidence permits outcome correction only for its replacement (1.88975ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 642.687334

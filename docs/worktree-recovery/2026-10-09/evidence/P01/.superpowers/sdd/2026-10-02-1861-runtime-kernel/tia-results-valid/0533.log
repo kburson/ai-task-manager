@@ -1,0 +1,10 @@
+✔ Develop exit consumes only a fresh Develop action receipt (4.976458ms)
+✔ Develop exit refuses a receipt whose live Verification Commands changed (0.585917ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.241583

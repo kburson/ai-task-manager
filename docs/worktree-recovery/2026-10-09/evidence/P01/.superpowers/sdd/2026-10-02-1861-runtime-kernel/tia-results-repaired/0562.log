@@ -1,0 +1,18 @@
+✔ no forecast is a legacy skip and epics remain eligible orchestration outcomes (1.344791ms)
+✔ writer appends and read-backs exactly one immutable outcome (0.142833ms)
+✔ concurrent closes share one logical outcome claim and append exactly once (12.6135ms)
+✔ repeated close and partially written retries return the existing outcome (0.191084ms)
+✔ repeated close refuses an existing outcome whose immutable payload differs (0.311417ms)
+✔ an explicitly authorized reopened close supersedes a differing active outcome (0.228584ms)
+✔ reopened correction refuses when the historical outcome is missing (0.131417ms)
+✔ reopened correction refuses when a cross-lineage successor already superseded its predecessor (0.157208ms)
+✔ concurrent reopened corrections append one globally active successor (13.753458ms)
+✔ duplicate or conflicting outcome records fail closed (0.226542ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32.156208

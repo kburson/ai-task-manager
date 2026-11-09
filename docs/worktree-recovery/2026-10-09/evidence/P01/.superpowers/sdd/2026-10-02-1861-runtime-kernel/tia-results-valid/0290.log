@@ -1,0 +1,178 @@
+orchestrators.test.mjs: ok
+✔ move-state: agent-context call (no env, no TTY) is refused with exit 3 (187.694958ms)
+✖ move-state: chokepoint call (AITM_INTERNAL=1) moves and prints confirmation (161.096875ms)
+✔ move-state: illegal matrix transition is refused with exit 5 (173.254834ms)
+✖ move-state: valid forward transition (refine → ready-for-plan) succeeds (166.040125ms)
+✖ promote: recorded=done is terminal-refused (forward-only) (113.381958ms)
+✖ promote: board/recorded divergence is drift-refused with both states (129.500458ms)
+✖ promote: no recorded marker and no live board item is an error (159.40425ms)
+✖ promote: unknown recorded state is an error (322.366291ms)
+✔ promote: delegate-timeout policy — test gets none, close gets a bounded budget (0.222709ms)
+✖ close: no active task and no target prints "no active task" and does nothing (32.016042ms)
+✖ close: an active review issue runs the terminal done move after the wrap rows (32.982708ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 3
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1482.605167
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:119:1
+✖ move-state: chokepoint call (AITM_INTERNAL=1) moves and prints confirmation (161.096875ms)
+  Error: Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs 123 refine
+  move-state-cli.mjs: RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs:19:1
+      at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+      at async node:internal/modules/esm/loader:650:26
+  
+      at genericNodeError (node:internal/errors:999:15)
+      at wrappedFn (node:internal/errors:544:14)
+      at ChildProcess.exithandler (node:child_process:417:12)
+      at ChildProcess.emit (node:events:514:20)
+      at maybeClose (node:internal/child_process:1125:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:305:5) {
+    code: 1,
+    killed: false,
+    signal: null,
+    cmd: '/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs 123 refine',
+    stdout: '',
+    stderr: 'move-state-cli.mjs: RuntimeRootError: Explicit runtime migration or initialization required\n    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)\n    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)\n    at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)\n    at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)\n    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)\n    at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)\n    at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)\n    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs:19:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:143:1
+✖ move-state: valid forward transition (refine → ready-for-plan) succeeds (166.040125ms)
+  Error: Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs 123 ready-for-plan --from refine
+  move-state-cli.mjs: RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)
+      at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)
+      at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)
+      at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs:19:1
+      at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+      at async node:internal/modules/esm/loader:650:26
+  
+      at genericNodeError (node:internal/errors:999:15)
+      at wrappedFn (node:internal/errors:544:14)
+      at ChildProcess.exithandler (node:child_process:417:12)
+      at ChildProcess.emit (node:events:514:20)
+      at maybeClose (node:internal/child_process:1125:16)
+      at Socket.<anonymous> (node:internal/child_process:497:11)
+      at Socket.emit (node:events:514:20)
+      at Pipe.<anonymous> (node:net:362:12) {
+    code: 1,
+    killed: false,
+    signal: null,
+    cmd: '/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/unit-runtime-entrypoint.mjs /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs 123 ready-for-plan --from refine',
+    stdout: '',
+    stderr: 'move-state-cli.mjs: RuntimeRootError: Explicit runtime migration or initialization required\n    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)\n    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)\n    at withRuntimeWrite (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:141:3)\n    at withRuntimeOperation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:135:10)\n    at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/locks.mjs:44:20)\n    at withIssueLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/issue-mutator-lock.mjs:137:18)\n    at runMoveStateHost (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/gh/move-state.mjs:445:18)\n    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/helpers/move-state-cli.mjs:19:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:182:1
+✖ promote: recorded=done is terminal-refused (forward-only) (113.381958ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:183:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:192:1
+✖ promote: board/recorded divergence is drift-refused with both states (129.500458ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:193:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:203:1
+✖ promote: no recorded marker and no live board item is an error (159.40425ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:204:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:213:1
+✖ promote: unknown recorded state is an error (322.366291ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPromote (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/promote.mjs:292:68)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:214:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:298:1
+✖ close: no active task and no target prints "no active task" and does nothing (32.016042ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/close.mjs:2261:24)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:303:7
+      at captureStdout (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:260:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:302:23)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:312:1
+✖ close: an active review issue runs the terminal done move after the wrap rows (32.982708ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbClose (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/close.mjs:2261:24)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:326:7
+      at captureStdout (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:260:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs:325:17)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

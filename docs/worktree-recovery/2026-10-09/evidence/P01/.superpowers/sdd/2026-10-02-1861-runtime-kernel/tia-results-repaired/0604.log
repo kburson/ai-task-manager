@@ -1,0 +1,30 @@
+✔ strict UTF-8 decoding rejects malformed byte sequences before YAML parsing (1.325125ms)
+✔ position index counts UTF-16 code units after emoji and normalizes CRLF and lone CR (0.365125ms)
+✔ event parser retains raw nested field ranges independently of decoded scalar values (1.849959ms)
+✔ event parser rejects duplicate mapping keys before construction loses the first value (0.205708ms)
+✔ event parser rejects anchors, aliases, tags, and quoted or plain merge keys (0.373917ms)
+✔ quoted field ranges include raw quotes after a folded block scalar (0.334125ms)
+✔ validator reports independent unknown fields with exact UTF-16 field positions (1.153167ms)
+✔ validator rejects duplicate IDs and unregistered agent operations without dropping either error (0.428833ms)
+✔ value-level diagnostics use raw instruction-key and binding-value positions (20.77575ms)
+✔ an instruction cannot query or execute a registered action outside its entry binding (16.444125ms)
+✔ documentation references resolve shipped paths and reject traversal (1.241791ms)
+✔ validator checks registry bindings, typed examples and documentation anchors independently (1.593208ms)
+✔ source byte limit is checked before a syntactically malformed oversized document is parsed (0.406166ms)
+✔ five fingerprints isolate agent, human, semantic and raw-file edits (0.988791ms)
+✔ packaged seed validates offline with all core IDs, five digests and catalog headroom (15.263625ms)
+✔ packaged genesis provenance names the empty v1 semantic baseline rather than a placeholder (13.386125ms)
+✔ parser, schema and seed are in the published production package contract (0.646833ms)
+✔ active source profile refuses an untracked or misplaced override while candidate stays inspectable (35.723083ms)
+✔ fatal source diagnostics retain the requested source profile (0.182ms)
+✔ duplicate registered bindings are rejected even though both references resolve (13.315584ms)
+✔ field and proxy budgets emit independent limit diagnostics (2.143208ms)
+✔ each structural limit rejects its limit-plus-one catalog (472.603125ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 609.497959

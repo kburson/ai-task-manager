@@ -1,0 +1,41 @@
+✔ Plan guards accept only their explicitly waived requirements (1.489792ms)
+✔ deep-dive waiver retains the independent Pickup Directive gate (0.341875ms)
+✔ Planned Estimate and forecast waivers remain independent (0.667708ms)
+✔ adaptive Plan exit refuses when ready forecast drifted after approval freeze (0.425083ms)
+✔ adaptive Plan exit refuses a ready forecast that was never frozen at approval (0.171291ms)
+✔ v1 Plan projection requires one ready forecast matching board and body authority (0.218666ms)
+✔ configured adaptive Plan refuses marker-free exit even when the legacy appendix is valid (0.111334ms)
+✔ v1 Plan projection uses production raw-comment pagination when no reader is injected (6.507542ms)
+✔ planApprovedGuard: body with marker → ok (0.122625ms)
+✔ planApprovedGuard: missing marker, toState=develop → refuse (0.128292ms)
+✔ planApprovedGuard: missing marker, toState=refine (rollback) → ok (0.075167ms)
+✔ planApprovedGuard: missing marker, toState absent → falls through (refuse) (0.062167ms)
+✔ planApprovedGuard: empty/undefined body → refuse (0.044209ms)
+✔ planApprovedGuard follows documented automatic/manual session precedence (0.064208ms)
+✔ planEpicChildrenGuard: toState=refine (rollback) → ok regardless of children (0.0805ms)
+✔ planEpicChildrenGuard: missing cfg/issueNumber → fail-open (0.098583ms)
+✔ planEpicChildrenGuard: solo issue (no children) → ok (0.11925ms)
+✔ planEpicChildrenGuard: epic with all children at R4P → ok (0.386458ms)
+✔ planEpicChildrenGuard: epic with backlog child → refuse (0.091792ms)
+✔ planExitVcPresenceGuard: body with a parseable VC entry → ok (0.209041ms)
+✔ planExitVcPresenceGuard: no VC section, toState=develop → refuse (0.073292ms)
+✔ planExitVcPresenceGuard: VC heading present but no parseable entry → refuse (0.043875ms)
+✔ planExitVcPresenceGuard: unchecked entry still passes (presence, not completion) (0.0715ms)
+✔ planExitVcPresenceGuard: toState=refine (rollback) → ok regardless of body (0.027959ms)
+✔ planExitVcPresenceGuard: undefined body → fail-open (0.028625ms)
+✔ STATES.plan.exitGuards: includes plan-exit-vc-presence (0.037792ms)
+✔ runGuards(plan,develop): no VC section → surfaces plan-exit-vc-presence refusal (11.55375ms)
+✔ STATES.plan.exitGuards: includes plan-exit-plan-approved (0.083375ms)
+✔ STATES.plan.exitGuards: includes plan-exit-epic-children-r4p-or-beyond (0.067ms)
+✔ STATES.plan.exitGuards: blockedBy runs before plan-exit guards (0.055333ms)
+✔ runGuards(plan,develop): missing plan-approved marker → refusal (169.94675ms)
+✔ runGuards(plan,refine): rollback bypasses plan-exit guards (0.301708ms)
+✔ runGuards(plan,develop): marker present + solo issue → ok (3.970625ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.117625

@@ -1,0 +1,13 @@
+✔ guidance legacy transport rejects an empty positive ledger (0.990333ms)
+✔ preload intercepts callback, promise, sync, spawn, nested Node and HTTP lanes (153.875208ms)
+✔ caught undeclared subprocesses still fail the outer capture with ledger evidence (68.13225ms)
+✔ ledger reconciliation detects a restored native custom-promisify bypass (0.135917ms)
+✔ restoring a native custom symbol fails the positive local canary (68.306166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 295.064833

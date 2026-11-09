@@ -1,0 +1,73 @@
+✖ preflight permits unassigned team work through Plan without Full-Auto claiming (134.820333ms)
+✖ preflight blocks foreign multiple and lost in-flight ownership (120.189ms)
+✖ reconcile ownership-only preflight blocks foreign ownership but permits drift repair (145.291209ms)
+✔ Plan exit Full-Auto defers notice and assignment until the post-guard commit boundary (1.015209ms)
+✔ Plan exit always schedules under-lock revalidation for an existing local owner (0.12825ms)
+✔ Plan exit refuses stale non-Plan snapshots before and under the issue lock (0.284083ms)
+✔ Plan exit under-lock revalidation refuses ownership changed after guard aggregation (0.140959ms)
+✔ Plan exit interactive mode prompts with zero assignment mutation (0.116667ms)
+✔ interactive Plan revalidation never turns a lost owner into a Full-Auto claim (0.111458ms)
+✔ Plan revalidation refreshes authenticated identity under lock (0.158667ms)
+✔ Plan exit refuses a foreign or multiple owner before notice or mutation (0.137ms)
+✔ Plan exit commit treats thrown assignment transport as ambiguous despite matching read-back (2.698833ms)
+✔ source edits in Develop require the exact singleton local owner (0.859625ms)
+✔ foreign-owner source-edit recovery renders an executable issue argument (0.114375ms)
+✔ raw gh assignee edits are refused in favor of governed ownership verbs (2.290917ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 12
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 412.405333
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:30:1
+✖ preflight permits unassigned team work through Plan without Full-Auto claiming (134.820333ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/verb-preflight.mjs:136:7)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:33:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:51:1
+✖ preflight blocks foreign multiple and lost in-flight ownership (120.189ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/verb-preflight.mjs:136:7)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:60:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:71:1
+✖ reconcile ownership-only preflight blocks foreign ownership but permits drift repair (145.291209ms)
+  RuntimeRootError: Explicit runtime migration or initialization required
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-storage.mjs:324:5)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadReadyForPlanMigrationJournal (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:14:10)
+      at isReadyForPlanMigrationActive (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/ready-for-plan-migration-freeze.mjs:18:19)
+      at runPreflight (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/verb-preflight.mjs:136:7)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/lib/ownership-boundaries.integration.test.mjs:72:23)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'RUNTIME_MIGRATION_REQUIRED'
+  }

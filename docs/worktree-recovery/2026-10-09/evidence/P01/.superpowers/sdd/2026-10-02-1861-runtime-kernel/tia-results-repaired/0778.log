@@ -1,0 +1,16 @@
+✔ foreign invocation refuses with both identities and a literal corrective cd command (1.507125ms)
+✔ entry wiring enforces the guard before verb preflight reads task state (0.774333ms)
+✔ Test commands bind their project-dir override to the detached sandbox worktree (0.416083ms)
+✔ explicit override proceeds only after a durable audit is recorded (0.197917ms)
+✔ override fails closed when its audit write fails (0.136875ms)
+✔ bound worktree and its subdirectories are unaffected (0.10475ms)
+✔ an actually unbound command retains the existing startup path (0.158709ms)
+✔ the override is one explicit CLI flag with no ambient form (0.493584ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.646167

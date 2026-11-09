@@ -1,0 +1,32 @@
+✔ unauthorized-close recovery uses exact structured attributes and preserves field DB (1.849708ms)
+✔ unauthorized-close recovery ignores fenced examples (0.133792ms)
+✔ unauthorized-close recovery replaces only the top-level marker without duplication (0.234541ms)
+✔ four-backtick recovery examples are ignored by reads and top-level upserts (0.156083ms)
+✔ four-tilde recovery examples are ignored by reads and top-level upserts (0.138959ms)
+✔ backtick in a candidate info string does not hide a later top-level recovery (0.121542ms)
+✔ unticked labels round-trip JSON punctuation exactly (0.086083ms)
+✔ unauthorized-close recovery rejects phases outside the durable phase machine (0.18725ms)
+✔ unauthorized-close recovery rejects structurally incomplete transaction state (0.085792ms)
+✔ unauthorized-close writer rejects every incomplete recovery field (0.173167ms)
+✔ unauthorized-close reader rejects empty required attributes (0.149125ms)
+✔ upsertProgressMarker rejects an empty or non-string kind (0.072541ms)
+✔ fresh invocation resumes after intent write failure (0.724417ms)
+✔ fresh invocation resumes after reopen failure (0.29175ms)
+✔ fresh invocation resumes after reopened write failure (0.186875ms)
+✔ fresh invocation resumes after Review move failure (0.204834ms)
+✔ fresh invocation resumes after review write failure (0.183333ms)
+✔ fresh invocation resumes after timing post failure (0.220834ms)
+✔ fresh invocation resumes after timing write failure (0.198083ms)
+✔ fresh invocation resumes after complete write failure (0.398458ms)
+✔ queued timing result fails and leaves durable phase at review (0.262917ms)
+✔ a completed recovery is an idempotent recovered no-op (0.1205ms)
+✔ executor refuses a pending-recovery decision mismatch without taking policy authority (0.149334ms)
+✔ executor validates a complete recovery before calling the phase writer (0.101458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.545292

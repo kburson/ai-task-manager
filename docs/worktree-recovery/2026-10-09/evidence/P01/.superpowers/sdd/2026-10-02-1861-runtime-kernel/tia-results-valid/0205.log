@@ -1,0 +1,52 @@
+✔ reviewNeedsAgentReview is true only for review + no pass evidence (1.279791ms)
+✔ reviewNeedsAgentReview is false for a complete review (0.0775ms)
+✔ reviewNeedsAgentReview is false for any non-review state (0.069459ms)
+✔ formatReviewRemediationHint names /task review and warns against demote (0.254417ms)
+✔ formatReviewRemediationHint distinguishes the review-failed cause (0.712125ms)
+✔ reviewRemediationHint returns null when the hint does not apply (0.507333ms)
+▶ verbResume review-remediation hints
+  ✖ verbResume prints the review-remediation hint when the seed attaches one (0.765375ms)
+  ✖ verbResume stays silent when the seed attaches no hint (0.205041ms)
+✖ verbResume review-remediation hints (4.546ms)
+ℹ tests 8
+ℹ suites 1
+ℹ pass 6
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 111.191833
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/verbs/bind.test.mjs:135:3
+✖ verbResume prints the review-remediation hint when the seed attaches one (0.765375ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:282:13)
+      at captureResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/verbs/bind.test.mjs:109:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/verbs/bind.test.mjs:139:23)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at node:internal/test_runner/test:1903:71
+      at node:internal/per_context/primordials:504:82 {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/verbs/bind.test.mjs:150:3
+✖ verbResume stays silent when the seed attaches no hint (0.205041ms)
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/state.mjs:191:17)
+      at verbResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/task-tracker/verbs/resume.mjs:282:13)
+      at captureResume (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/verbs/bind.test.mjs:109:11)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/scripts/tests/integration/task-tracker/verbs/bind.test.mjs:153:23)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }

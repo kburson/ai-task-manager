@@ -1,0 +1,17 @@
+✔ help route emits self-doc and exits 0 (1.028375ms)
+✔ missing issue → usage, exit 2 (0.21325ms)
+✔ non-numeric issue → invalid, exit 2 (0.110958ms)
+✔ no repo configured → config-not-found, exit 2 (0.122083ms)
+✔ skipNetwork happy path: flips board, posts no timing row (0.122375ms)
+✔ network happy path: flips board and posts a start timing row (1.16325ms)
+✔ non-zero move exit: reports and exits with the move code, posts no row (0.184333ms)
+✔ parseArgs strips leading # and reads --description (0.0905ms)
+✔ parseArgs defaults description and marks help (0.101833ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.280542

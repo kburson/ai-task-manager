@@ -1,0 +1,13 @@
+✔ live project board options use canonical incident-ledger state slugs (0.752375ms)
+✔ read-only verifier accepts only convergence issue 1381 and known phases (0.274667ms)
+✔ sub-issue pagination is bounded, correlated, and fail-closed (0.327709ms)
+✔ production pre-close orchestration preserves every record and performs reads only (2.296709ms)
+✔ production terminal orchestration preserves every record and performs reads only (0.645667ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.742917

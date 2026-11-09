@@ -1,0 +1,10 @@
+timing-rollup.test.mjs: all passed
+✔ attributed rollup uses actor intervals even without raw body and excludes inferred waits (1.808958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.414708

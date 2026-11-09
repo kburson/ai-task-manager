@@ -1,0 +1,11 @@
+✔ canonical record bytes roundtrip and reject changed bytes, fields and identities (5.123291ms)
+✔ canonical JSON rejects values erased or coerced by ordinary JSON (0.259625ms)
+✔ strict protocol projections preserve identity and reject unsupported mutation (1.519375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.084333

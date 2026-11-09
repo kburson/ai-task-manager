@@ -1,0 +1,16 @@
+✔ reviewed audit records action-free delivery and reuses exact readback (4.7785ms)
+✔ no-commit delivery refuses an issue-body change before posting its record (0.879042ms)
+✔ review-waived audit records action-free delivery without pass evidence (1.773334ms)
+✔ no-commit delivery refuses invalid semantic-review waiver authority before mutation (0.766083ms)
+✔ code-kind issue never enters the no-commit delivery path (0.326917ms)
+✔ root epic without a PR cannot enter the no-commit delivery path (0.136583ms)
+✔ epic with a pull request uses provider delivery instead of no-commit delivery (0.184667ms)
+✔ no-commit delivery fails closed without exact deliverable evidence (0.33525ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.153416

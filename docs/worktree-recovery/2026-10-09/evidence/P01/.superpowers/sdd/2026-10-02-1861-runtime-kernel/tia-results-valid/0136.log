@@ -1,0 +1,35 @@
+✔ fresh processes reject an old identity after a tracked override enters the index (463.565417ms)
+✔ cold compile and fresh-process agent load do not require human artifact (267.073625ms)
+✔ fresh manifest and human loads skip parser and validator calls (834.189792ms)
+✔ invalid ordinary load is manifest-only while explicit diagnostics load remains warm (1025.747041ms)
+✔ a corrupted invalid manifest cannot authorize an operational route (413.842834ms)
+✔ a valid manifest missing required fingerprints is rebuilt (208.847125ms)
+✔ missing, corrupt, schema-mismatched, and digest-mismatched artifacts rebuild (725.723583ms)
+✔ a missing or truncated human artifact rebuilds only on explicit human demand (322.414084ms)
+✔ an artifact changed just after manifest publication cannot be accepted as a mixed generation (337.276ms)
+✔ a source changed on both cold read attempts refuses indeterminate without publishing (938.628708ms)
+✔ operational admission uses a warm manifest without validator calls (394.813958ms)
+✔ explicit validation loads warm diagnostics without invoking the validator (397.015417ms)
+✔ explicit refresh bypasses a warm manifest and parses exactly once (346.825625ms)
+✔ source replacement with preserved mtime changes the cache identity (32.170875ms)
+✔ chmod changes source ctime even when catalog bytes are unchanged (31.915166ms)
+✔ source observation detects project override adoption without reading YAML (69.647333ms)
+✔ override adoption and deletion invalidate an earlier package result (406.342667ms)
+✔ an explicitly selected Git index cannot reuse the default index identity (90.285417ms)
+✔ a linked .git file resolves its own effective worktree index (172.957208ms)
+✔ a split-index shared file change invalidates the worktree index identity (105.22875ms)
+✔ candidate validation identity never equals active-project validation identity (72.428375ms)
+✔ runtime and published-digest changes invalidate an otherwise identical source (103.183583ms)
+✔ a candidate path cannot reuse active package validation (112.20075ms)
+✔ CI cache budgets reject a timing that consumes the reserved headroom (1.18075ms)
+✔ nested package preferences help is a recovery route before cache admission (0.054834ms)
+✔ concurrent cold writers leave one digest-consistent warm generation (434.966333ms)
+✔ one process memoizes a verified agent index without sharing mutable results (171.889666ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8484.150875
