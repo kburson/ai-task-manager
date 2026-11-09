@@ -1,0 +1,15 @@
+coverage-config.test.mjs: defined
+✔ no args → prints formatted config (0.745916ms)
+✔ init → prints interview guidance (0.11775ms)
+✔ get known key → prints value + source (0.098125ms)
+✔ get unknown key → error, exit 1 (0.11975ms)
+✔ set valid key → writes via setConfigValue, prints value (1.658ms)
+✔ set unknown key → setConfigValue throws → error, exit 1 (0.153875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.3795

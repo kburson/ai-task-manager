@@ -1,0 +1,11 @@
+✔ fixtures modeled on #1127/#1133/#1134 derive uninterrupted formatted growth (1.218541ms)
+✔ fixture modeled on #1138 repairs a missing resume before phase open (16.000666ms)
+✔ an unresolved Codex transcript is explicitly unavailable (0.196291ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20.699875

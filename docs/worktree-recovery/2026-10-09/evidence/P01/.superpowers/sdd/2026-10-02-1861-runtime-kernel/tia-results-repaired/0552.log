@@ -1,0 +1,12 @@
+✔ missing-link → heals, ends seeded, exit 0, no additionalContext (27.446958ms)
+✔ foreign-link → replaced, resolves to worktree not the foreign tree (40.91625ms)
+✔ --check (heal:false) on missing-link → reports, creates nothing, exit 0 (20.744458ms)
+✔ consumer deps-missing → non-fatal, emits npm ci remedy in additionalContext (20.079834ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 113.631208

@@ -1,0 +1,17 @@
+✔ #664: writeCache leaves task-tracker.json byte-identical (85.307375ms)
+✔ #664: writeCache persists to the .cache sidecar (31.036209ms)
+✔ #664: readCache returns the entry on a fresh hit (26.061625ms)
+✔ #1212: a warm metadata cache never reuses stale ownership (44.262417ms)
+✔ #1211: legacy On Deck cache entries read as Ready for Planning and new writes are canonical (25.998833ms)
+✔ #664: readCache returns null on a miss (no sidecar) (33.922917ms)
+✔ #664: readCache returns null when the bound issue differs (29.104125ms)
+✔ #664: readCache returns null when the entry is older than the TTL (28.113833ms)
+✔ #664: the .cache sidecar directory is gitignored (12.699333ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 320.747208

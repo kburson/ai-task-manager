@@ -1,0 +1,10 @@
+✔ capture, run, inspect and dispose preserve a retained ineligible report (20737.453584ms)
+✔ recorded-only execution and exact run confirmation fail closed (436.530208ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21177.474208

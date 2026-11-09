@@ -1,0 +1,17 @@
+▶ epic R4P admission and terminal delivery (#1216)
+  ✔ R4P → Plan passes when every child is currently refined and parked at R4P (1.834917ms)
+  ✔ R4P → Plan refuses when any child remains in Backlog (0.394083ms)
+  ✔ develop → test refuses while children are still at Review (315.66775ms)
+  ✔ develop → test passes once every child is terminally delivered (105.204958ms)
+  ✔ review → done passes once every child is terminally delivered (19.400625ms)
+✔ epic R4P admission and terminal delivery (#1216) (443.562958ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 445.683208
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 860) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }
+stub-gh: refused api graphql -f query=query { repository(owner: "owner", name: "name") { issue(number: 860) { parent { number body } subIssues(first: 100) { nodes { number title stateReason } } } } }

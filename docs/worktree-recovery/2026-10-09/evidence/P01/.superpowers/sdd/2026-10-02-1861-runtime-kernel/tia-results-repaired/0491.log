@@ -1,0 +1,9 @@
+About to write 1 issue(s): #1
+#1: refine:start -> refine:started
+Report written: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-heal-backlog-tDvLU8/.scratch/timing-slug-rename-2026-10-03T06-52-00-020Z.md
+APPLIED: scanned=1 rewritten=1 rewrites=1 no-log=0 errors=0
+Report written: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-heal-backlog-IhOaQB/.scratch/timing-slug-rename-2026-10-03T06-52-00-040Z.md
+DRY-RUN: scanned=0 rewritten=0 rewrites=0 no-log=0 errors=0
+Report written: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/aitm-heal-backlog-IhOaQB/.scratch/timing-slug-rename-2026-10-03T06-52-00-041Z.md
+DRY-RUN: scanned=2 rewritten=0 rewrites=0 no-log=1 errors=1
+coverage-heal-backlog-cli.test.mjs: ok

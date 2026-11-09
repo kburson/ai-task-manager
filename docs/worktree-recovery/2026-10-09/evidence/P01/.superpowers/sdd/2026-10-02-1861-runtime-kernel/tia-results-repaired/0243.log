@@ -1,0 +1,12 @@
+✔ AC lacking a verifier blocks Refine→Plan with one refine-exit-demonstrable line (1.596875ms)
+✔ one BLOCKED line per offending AC (0.565583ms)
+✔ AC tagged invalid — non-demonstrable passes the demonstrable check (1.520292ms)
+✔ npm run test:all as the sole verifier is rejected as non-demonstrable (0.27075ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.714666

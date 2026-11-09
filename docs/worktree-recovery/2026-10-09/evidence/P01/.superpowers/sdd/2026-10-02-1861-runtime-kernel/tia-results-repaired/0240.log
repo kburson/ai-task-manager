@@ -1,0 +1,27 @@
+✔ normalized timing identity deduplicates exact events but admits later timestamps (1094.994458ms)
+✔ timestamp-less lifecycle events remain runnable instead of becoming session-global duplicates (829.966791ms)
+✔ stamp write failure skips the timing flush and fails closed (206.751833ms)
+✔ SessionStart: no active and no paused → "No active task." (467.440292ms)
+✔ SessionStart: no active, lastActive present but no fleet entry → "No active task." (506.253708ms)
+✔ SessionStart: discover bucket active → "Discovery bucket active." (507.670875ms)
+✔ SessionStart: active task with stale entryStartTs → recovery banner (2102.005458ms)
+✔ SessionStart: active task with no entryStartTs → active banner, no recovery time (606.56875ms)
+✔ SessionStart banks an open session cursor tail exactly once (2642.402125ms)
+✔ SessionStart orphan recovery rows use the freshly banked marker pair (1293.722833ms)
+✔ PreCompact: active with entryStartTs → flush path runs (exit 0) (612.333875ms)
+✔ PreCompact: bound-but-paused (no entryStartTs) → early return (#407) (308.172083ms)
+✔ PreCompact: nothing active → early return (284.829208ms)
+✔ PostCompact: active → resume row path (exit 0) (344.261791ms)
+✔ PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor (1148.856083ms)
+✔ PostCompact banks a tail preserved by an unavailable PreCompact exactly once (1359.036916ms)
+✔ PostCompact: nothing active → early return (277.2045ms)
+✔ malformed stdin → JSON.parse catch, no handler dispatched, exit 0 (192.888875ms)
+✔ unknown event → no handler dispatched, exit 0 (202.997333ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15017.527792

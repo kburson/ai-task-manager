@@ -1,0 +1,20 @@
+✔ row builders preserve unavailable estimates and explicit current actor interval (17.641125ms)
+✔ first attributed flush keeps own word delta after larger unrelated legacy cursor (1.923417ms)
+✔ different actors may start independently and immutable replay appends only once (0.455375ms)
+✔ queue freezes original evidence before failed publication and never reattributes it (0.26375ms)
+✔ builder second-resolution timestamp retains exact millisecond interval for accounting (0.59525ms)
+✔ whole-issue terminal suppression remains unconditional for attributed rows (0.27225ms)
+✔ same interval with a different lifecycle event is a conflict, not a dropped replay (0.694833ms)
+✔ canonical timing source requires a complete unambiguous issue comment census (0.394667ms)
+✔ canonical timing source ignores quoted heading mentions in unrelated records (0.147167ms)
+✔ attributed publication reconciles ambiguous success against canonical exact-row replay (0.810458ms)
+✔ attributed publication refuses ambiguous census and unobserved writes (0.455416ms)
+✔ attributed creation requires fresh unique canonical identity and matching issue (0.993416ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 29.073917

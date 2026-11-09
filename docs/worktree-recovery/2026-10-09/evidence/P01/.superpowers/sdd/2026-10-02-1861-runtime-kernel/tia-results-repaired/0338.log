@@ -1,0 +1,16 @@
+✔ pure-forward chain: no illegal arcs (1.95225ms)
+✔ one-loop case (review→develop re-entry): not flagged (0.238041ms)
+✔ multi-loop case: not flagged (0.126583ms)
+✔ illegal arc detection: backlog→develop direct (0.119458ms)
+✔ illegal arc detection: done→backlog without intermediate (0.083083ms)
+✔ legacy single-visit chain (no visit suffixes): no illegal arcs (0.061958ms)
+✔ empty body returns empty (0.059458ms)
+✔ checkOnlyExitCode: illegal-arcs result exits 1 (0.094125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.021541

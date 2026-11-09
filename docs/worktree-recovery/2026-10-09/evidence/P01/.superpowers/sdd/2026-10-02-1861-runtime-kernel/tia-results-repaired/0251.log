@@ -1,0 +1,10 @@
+✔ frozen histories use independent object storage and protection checks detect change (21071.130667ms)
+✔ capture refuses dirty sources and disposal refuses escapes or unreported work (18937.509916ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 40012.924125

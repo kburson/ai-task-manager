@@ -1,0 +1,20 @@
+✔ AC2: a mid-chain hole refuses the next forward move (develop → test) (3.455708ms)
+✔ AC2: reconcile accept-live returns no-drift-refused when board == recorded (153.589459ms)
+✔ AC3: stampEntryMarkers posts a failure-audit comment on stamp failure (0.739083ms)
+✔ Plan → Develop scope drift from the real marker writer is never swallowed (0.948083ms)
+✔ Plan → Develop scope validation reruns after a non-overlapping conflict rebase (2.806291ms)
+✔ AC3: failure-comment body names the stage, error and recovery command (0.109375ms)
+✔ AC3: postStampFailureAudit degrades (no throw) when the post itself fails (0.132959ms)
+✔ AC4: reconcile backfill fills the missing prior-stage markers (1.243542ms)
+✔ AC4: reconcile backfill is a no-op when the chain is already contiguous (0.247083ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.7
+[reconcile] cache-seed attempt failed: Partial runtime loss requires registered recovery
+[move-state] #544: marker stamp failed: gh view exploded
+[move-state] #1: stamp-failure audit comment post FAILED: comment API down

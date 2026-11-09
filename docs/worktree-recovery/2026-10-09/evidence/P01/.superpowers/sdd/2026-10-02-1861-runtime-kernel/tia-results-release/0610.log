@@ -1,0 +1,18 @@
+✔ typed burn and receipt pin the issue, grant, operation, SHA, refs, and burn OID (2.98025ms)
+✔ journal projection refuses changed burn, duplicate grant owner, and incomplete history (0.611792ms)
+✔ first close burns once, publishes one exact receipt, and completes before Done (1.935083ms)
+✔ without-barrier revision observed after CAS prevents receipt publication and Done (0.65175ms)
+✔ without-barrier revision during receipt POST leaves journal incomplete and blocks Done (0.705709ms)
+✔ exact completed retry reuses receipt after expiry without another live grant (1.88175ms)
+✔ revocation before first burn and different issue or operation cannot consume authority (1.408292ms)
+✔ uncertain publication is read back; a competing host cannot post again (1.202541ms)
+✔ tampered receipt and incomplete journal refuse historical retry (1.293084ms)
+✔ Close accepts only a completed exact local receipt and discloses its distinct result (2.669375ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.114709

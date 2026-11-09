@@ -1,0 +1,19 @@
+✔ all governed lifecycle mutators route through exclusive-ownership preflight (0.55775ms)
+✔ direct and warm switch-style binds preflight the requested issue ownership (0.740166ms)
+✔ canonicalLogins normalizes case and preserves invalid duplicate ownership evidence (0.137458ms)
+✔ unassigned team work is allowed through Plan without claiming (0.201083ms)
+✔ a singleton local owner is authorized in every lifecycle state (0.254209ms)
+✔ a foreign singleton owner blocks the current session in every state (0.140583ms)
+✔ multiple assignees are invalid even when one login matches the current session (0.100625ms)
+✔ Plan to Develop claims only an unassigned Full-Auto story (0.092042ms)
+✔ interactive Plan to Develop prompts instead of silently claiming (0.088917ms)
+✔ lost in-flight ownership blocks Full-Auto and requires human coordination (0.121541ms)
+✔ unverifiable identity or ownership fails closed (0.07225ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.994583

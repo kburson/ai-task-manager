@@ -1,0 +1,34 @@
+coverage-approve.test.mjs: defined
+✔ runApprove: throws without issueNumber (0.968125ms)
+✔ runApprove: throws without cfg (0.092834ms)
+✔ runApprove: assertBound may throw (0.10875ms)
+✔ runApprove: wrong-state when not in review (0.238916ms)
+✔ runApprove: already-approved when marker present (88.658291ms)
+✔ runApprove: human path with drivers posts Review Notes (77.527292ms)
+✔ runApprove: human path with no drivers posts nothing (72.987792ms)
+✔ runApprove: full-auto path inserts footnote and posts auto notes (83.311708ms)
+✔ runApprove: review-notes post failure does not block approval (77.148125ms)
+✔ runApprove: lifecycle-noop warns but still approves (75.506917ms)
+✔ runApprove: default fetch/comment/project helpers run offline (412.3525ms)
+✔ runApprove: default promptDrivers resolves [] off a TTY (126.787458ms)
+✔ detectFullAuto: not fired when reviewer set, interactive, no CI (0.145042ms)
+✔ detectFullAuto: fired via reviewer-unset (0.147875ms)
+✔ detectFullAuto: fired via TT_FULL_AUTO (0.104541ms)
+✔ detectFullAuto: fired via tty=false (0.094791ms)
+✔ detectFullAuto: fired via CI (0.052625ms)
+✔ verbApprove: no issue number → usage, exit 1 (0.417459ms)
+✔ verbApprove: TT_SKIP_NETWORK=1 → exit 1 (0.120458ms)
+✔ verbApprove: IssueLockError → exit 7 (0.186167ms)
+✔ verbApprove: generic error → exit 1 (0.099875ms)
+✔ verbApprove: wrong-state → exit 3 (0.121125ms)
+✔ verbApprove: approved → stdout, no exit (77.012792ms)
+✔ verbApprove: already-approved → stdout, no exit (75.076791ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1174.334042
+⚠ approve: review-notes post failed: comment boom

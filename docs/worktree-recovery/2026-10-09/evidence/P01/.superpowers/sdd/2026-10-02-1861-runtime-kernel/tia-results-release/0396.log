@@ -1,0 +1,11 @@
+✔ bound issue + absent cache → message includes repair command (0.512167ms)
+✔ no active issue + no state → no-active-task message (0.074333ms)
+✔ non-null state + disallowed activity → message suggests promote/demote (0.119834ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4.153209

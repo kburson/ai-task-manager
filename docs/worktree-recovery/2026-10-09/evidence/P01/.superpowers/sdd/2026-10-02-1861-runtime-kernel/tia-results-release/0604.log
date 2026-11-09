@@ -1,0 +1,17 @@
+✔ AC1/AC2: location marker records worktree and branch when session id is unavailable (1.18875ms)
+✔ AC1/AC6: marker-free issues append an initial location before the fields trailer (0.288416ms)
+✔ AC5: the same normalized worktree and branch is an idempotent no-op (0.135958ms)
+✔ AC1/AC4: a changed location appends history and never rewrites the prior entry (0.131375ms)
+✔ AC1: body invariants reject deletion of append-only location history (1.517083ms)
+✔ #1284: marker-free issues retain the canonical epic-branch fallback (0.125417ms)
+✔ #1284: the final append-only location record is the current branch authority (0.081791ms)
+✔ #1284: malformed present worktree authority fails closed (0.217708ms)
+✔ #1284: conflicting records at the current timestamp fail closed (0.124958ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.557083

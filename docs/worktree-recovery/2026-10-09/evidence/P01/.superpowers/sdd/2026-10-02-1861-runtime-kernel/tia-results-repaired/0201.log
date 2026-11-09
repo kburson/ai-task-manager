@@ -1,0 +1,19 @@
+✔ terminal ledger persists atomically at the main fleet authority path (1772.298125ms)
+✔ malformed terminal entries fail closed instead of reviving a binding (835.116667ms)
+✔ terminal authority refuses a fallback linked-worktree anchor (0.183792ms)
+✔ terminal timestamp closes only records that were bound before it (0.11275ms)
+✔ terminal release observation accepts the ledger unless a newer binding exists (110.605458ms)
+✔ terminal release resume reuses original ledger authority and clears only stale residue (0.440708ms)
+✔ closed candidate loses to a live binding even when the closed record is newer (36.65725ms)
+✔ a closed-only candidate set resolves to null (44.639584ms)
+✔ release marks terminal authority then clears every matching worktree only (0.403791ms)
+✔ release CAS preserves a concurrent rebind to another issue or a reopened issue (0.203375ms)
+✔ clearing live B cannot resurrect terminal A (37.190334ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2843.949208

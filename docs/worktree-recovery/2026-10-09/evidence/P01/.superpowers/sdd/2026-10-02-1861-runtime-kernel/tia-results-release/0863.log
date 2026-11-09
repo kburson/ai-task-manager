@@ -1,0 +1,28 @@
+✔ parseArgs extracts planned/current/rationale and strips trailing h (1.0905ms)
+✔ parseArgs omits absent current keys and falls back to active issue (0.113834ms)
+✔ parseArgs selects v1 evidence or explicit legacy compatibility mode (0.082333ms)
+✔ runPlanEstimate delegates evidence-file execution to adaptive authority (0.148833ms)
+✔ legacy planned flags require explicit compatibility mode (0.277ms)
+✔ resolveTargetIssue prefers explicit positional over active (0.062042ms)
+✔ runPlanEstimate rejects missing target (0.083709ms)
+✔ runPlanEstimate rejects missing cfg.repo (0.1135ms)
+✔ runPlanEstimate rejects empty planned column (0.085208ms)
+✔ runPlanEstimate appends with explicit current (no board read) (0.274375ms)
+✔ compatibility Plan normalizes explicit Refine and Plan projections (0.133792ms)
+✔ compatibility Plan normalizes a board-derived Refine projection (0.162166ms)
+✔ compatibility Plan treats a null current projection as board-derived (0.316ms)
+✔ runPlanEstimate sources current from the board when --current-* omitted (0.10375ms)
+✔ runPlanEstimate mirrors planned when board read is empty (0.075666ms)
+✔ runPlanEstimate mirrors planned when board read throws (0.111708ms)
+✔ runPlanEstimate skips board read when projectId is absent (0.061833ms)
+✔ runPlanEstimate heals an empty appendix via repopulate on duplicate (0.066042ms)
+✔ runPlanEstimate surfaces no-refine-comment from append (0.046583ms)
+✔ plan-estimate is registered in the command catalog (0.09675ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.676041

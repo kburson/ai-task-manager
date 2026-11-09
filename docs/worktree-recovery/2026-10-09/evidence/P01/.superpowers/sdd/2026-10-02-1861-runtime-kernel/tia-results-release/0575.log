@@ -1,0 +1,21 @@
+▶ guard-parity: review→done
+  ✔ accept fixture: skipped — see fixture _reason (0.886875ms)
+  ✔ refuse fixture: markerPresentGate refuses missing dod-verified marker (0.561083ms)
+✔ guard-parity: review→done (2.054167ms)
+▶ guard-parity: backlog→refine via-state-objects
+  ✔ accept fixture: state-object walk passes when Priority is set (2.681916ms)
+  ✔ missing Priority does not block entry into active Refine (0.692417ms)
+  ✔ parity: state-object refusal set equals registry refusal set (1.16125ms)
+✔ guard-parity: backlog→refine via-state-objects (4.889041ms)
+▶ guard-parity: refine→ready-for-plan via-state-objects
+  ✔ refuse fixture: aggregate state-object refusals match library refusals (3.119916ms)
+  ✔ parity: state-object refusal set equals registry refusal set (1.025167ms)
+✔ guard-parity: refine→ready-for-plan via-state-objects (4.40375ms)
+ℹ tests 7
+ℹ suites 3
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.628917

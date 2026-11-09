@@ -1,0 +1,11 @@
+✔ removes every exact legacy unbounded Full-Auto footnote (1.250208ms)
+✔ preserves fenced lookalikes, delimited blocks, prose mentions, and unrelated blockquotes (0.294834ms)
+✔ is idempotent when no canonical legacy footnote is present (0.261042ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.410625

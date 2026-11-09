@@ -1,0 +1,15 @@
+✔ AC with a targeted aitm-verified cmd verifier is not flagged (1.495208ms)
+✔ AC lacking both a verifier and the invalid tag is flagged with reason no-verifier (0.23675ms)
+✔ AC tagged "invalid — non-demonstrable" is excluded from the offender list (0.709292ms)
+✔ AC whose only verifier is npm run test:all is flagged with reason test-all-verifier (0.210125ms)
+✔ an AC mixing test:all with a targeted verifier is not flagged (0.120417ms)
+✔ checkbox lines outside the Acceptance Criteria section are ignored (0.423875ms)
+✔ multiple offenders are all reported with their line indices (0.129125ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.389542

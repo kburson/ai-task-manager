@@ -1,0 +1,33 @@
+▶ states-skeleton: raw factory definitions
+  ✔ exports only the three active method lists plus the canonical id (0.807792ms)
+  ✔ builds one immutable machine in lifecycle order (0.136416ms)
+✔ states-skeleton: raw factory definitions (1.603167ms)
+▶ states-skeleton: STATES map
+  ✔ contains exactly the eight kanban states (0.18ms)
+  ✔ STATES map is frozen (0.060375ms)
+  ✔ getState returns each state and throws on unknown (0.211875ms)
+  ✔ factory and compatibility surfaces preserve one guard identity (0.081ms)
+✔ states-skeleton: STATES map (0.682125ms)
+▶ states-skeleton: per-state container shape
+  ✔ backlog: exports { name, entryGuards, exitGuards, onEnter } (0.18375ms)
+  ✔ refine: exports { name, entryGuards, exitGuards, onEnter } (0.051625ms)
+  ✔ ready-for-plan: exports { name, entryGuards, exitGuards, onEnter } (0.057042ms)
+  ✔ plan: exports { name, entryGuards, exitGuards, onEnter } (0.074959ms)
+  ✔ develop: exports { name, entryGuards, exitGuards, onEnter } (0.041084ms)
+  ✔ test: exports { name, entryGuards, exitGuards, onEnter } (0.062209ms)
+  ✔ review: exports { name, entryGuards, exitGuards, onEnter } (0.040833ms)
+  ✔ done: exports { name, entryGuards, exitGuards, onEnter } (0.047208ms)
+  ✔ done is terminal: no exit guards (0.043459ms)
+  ✔ enforces open blockers only when work leaves Ready for Planning or later (0.065208ms)
+✔ states-skeleton: per-state container shape (0.897ms)
+▶ states-skeleton: FORWARD_CHAIN
+  ✔ covers every forward edge in the kanban (0.064458ms)
+✔ states-skeleton: FORWARD_CHAIN (0.100042ms)
+ℹ tests 17
+ℹ suites 4
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.95875

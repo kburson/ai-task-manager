@@ -1,0 +1,18 @@
+✔ audit + deliverable + waived ACs ⇒ ok, no trail fetch (2.01125ms)
+✔ audit + deliverable + a normally-verified AC ⇒ ok (verified-by still honored) (0.302083ms)
+✔ audit but MISSING deliverable ⇒ blocked on deliverable-missing (0.157958ms)
+✔ audit: a ticked AC that is neither verified nor waived is still blocked (0.114167ms)
+✔ audit: a waived-but-UNTICKED AC is still blocked (waive ≠ tick) (0.099708ms)
+✔ AC4 REGRESSION: code-kind body with NO commit trail is still refused (0.15125ms)
+✔ #500 epic-kind: deliverable + waived ACs + reconciled ⇒ ok, no trail fetch (0.159417ms)
+✔ #887 epic-kind: deliverable present but NOT reconciled ⇒ blocked (0.168083ms)
+✔ #500 epic-kind: MISSING deliverable ⇒ blocked on deliverable-missing (0.116375ms)
+✔ code-kind regression: properly verified AC + valid trail still passes (0.414166ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.796084
