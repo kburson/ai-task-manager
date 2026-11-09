@@ -1,0 +1,17 @@
+{
+  "bin": "npx",
+  "args": [
+    "aitm",
+    "start",
+    "1899",
+    "--role",
+    "agent",
+    "--allow-foreign-worktree"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage",
+  "startedAt": "2026-10-05T22:52:29.448Z",
+  "endedAt": "2026-10-05T22:53:06.078Z",
+  "status": 0,
+  "stdout": "Started #1899.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1899 --role agent --allow-foreign-worktree\n[task-tracker] WARNING: timing row start for #1899 queued, not posted (Command failed: gh api graphql -f query=query($owner:String!,$name:String!,$issue:Int!,$after:String){repository(owner:$owner,name:$name){nameWithOwner issue(number:$issue){number comments(first:100,after:$after){totalCount nodes{id body} pageInfo{hasNextPage endCursor}}}}} -f owner=kburson -f name=ai-task-manager -F issue=1899\n)\n"
+}

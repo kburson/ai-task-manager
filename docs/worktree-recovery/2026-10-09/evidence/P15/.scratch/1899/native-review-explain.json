@@ -1,0 +1,5 @@
+{
+  "status": 0,
+  "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1899,\"actionId\":\"review\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[{\"normalizerId\":\"functional-dod-derived/v1\",\"decisions\":[{\"key\":\"acs\",\"derivationRule\":\"derive-acs/v1\",\"stamp\":true,\"tick\":true},{\"key\":\"checkboxes\",\"derivationRule\":\"derive-checkboxes/v1\",\"stamp\":true,\"tick\":true}],\"disposition\":\"persist-on-execute\"}],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.review\",\"digest\":\"sha256:640b0fc35317634c36002c66c981390db7bf7818d665dc61a3aed7b7684cdb40\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"review\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"review\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' review 1899 --explain --json\n"
+}

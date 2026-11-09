@@ -1,0 +1,15 @@
+{
+  "args": [
+    "run",
+    "list",
+    "--branch",
+    "codex/1899-cloud-coverage",
+    "--limit",
+    "5",
+    "--json",
+    "databaseId,headSha,status,conclusion,workflowName,event"
+  ],
+  "status": 0,
+  "stdout": "[{\"conclusion\":\"\",\"databaseId\":37386340077,\"event\":\"pull_request\",\"headSha\":\"c254618a6e756697f395c42bf40a60583e7276bc\",\"status\":\"queued\",\"workflowName\":\"CI\"},{\"conclusion\":\"success\",\"databaseId\":37384898357,\"event\":\"pull_request\",\"headSha\":\"ecc0e1dfe9f9984de602488c6e85c534d35bc31a\",\"status\":\"completed\",\"workflowName\":\"CI\"}]\n",
+  "stderr": ""
+}

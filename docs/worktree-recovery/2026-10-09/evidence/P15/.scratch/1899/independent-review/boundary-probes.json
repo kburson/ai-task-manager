@@ -1,0 +1,111 @@
+[
+  {
+    "name": "quoted-argument-boundaries",
+    "status": "planned",
+    "steps": [
+      {
+        "classification": "test-cloud-complete",
+        "argv": [
+          "node",
+          "scripts/maintenance/verify-ci-receipts.mjs"
+        ]
+      },
+      {
+        "classification": "test-targeted-1",
+        "argv": [
+          "npm",
+          "test",
+          "alpha",
+          "beta"
+        ]
+      }
+    ],
+    "derived": [
+      {
+        "classification": "test-covered-1",
+        "command": "npm test \"alpha beta\"",
+        "requires": [
+          "test-cloud-complete"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "derived-classification-reservation",
+    "status": "planned",
+    "steps": [
+      {
+        "classification": "test-covered-1",
+        "argv": [
+          "node",
+          "scripts/maintenance/verify-ci-receipts.mjs"
+        ]
+      }
+    ],
+    "derived": [
+      {
+        "classification": "test-covered-2",
+        "command": "npm test",
+        "requires": [
+          "test-covered-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "rejected-uncovered-metachar",
+    "status": "planned",
+    "steps": [
+      {
+        "classification": "test-cloud-complete",
+        "argv": [
+          "node",
+          "scripts/maintenance/verify-ci-receipts.mjs"
+        ]
+      },
+      {
+        "classification": "test-targeted-1",
+        "argv": [
+          "npm test; git push"
+        ],
+        "rejected": "forbidden semicolon (;)"
+      }
+    ],
+    "derived": []
+  },
+  {
+    "name": "unknown-requirement-unused-entry",
+    "status": "refused",
+    "error": "verification-provider-invalid: unknown coverage requirement: missing"
+  },
+  {
+    "name": "configured-targeted-classification",
+    "status": "planned",
+    "steps": [
+      {
+        "classification": "test-targeted-1",
+        "argv": [
+          "node",
+          "scripts/maintenance/verify-ci-receipts.mjs"
+        ]
+      },
+      {
+        "classification": "test-targeted-1",
+        "argv": [
+          "node",
+          "--test",
+          "scripts/tests/unit/task-tracker/lib/markers.test.mjs"
+        ]
+      }
+    ],
+    "derived": [
+      {
+        "classification": "test-covered-1",
+        "command": "npm test",
+        "requires": [
+          "test-targeted-1"
+        ]
+      }
+    ]
+  }
+]

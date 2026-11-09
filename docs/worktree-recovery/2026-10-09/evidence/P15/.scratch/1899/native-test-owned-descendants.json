@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-05T23:13:23.648Z",
+  "descendants": [
+    {
+      "pid": 15150,
+      "ppid": 85468,
+      "elapsed": "00:16",
+      "command": "npm run format:check   "
+    },
+    {
+      "pid": 15188,
+      "ppid": 15150,
+      "elapsed": "00:15",
+      "command": "node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/.ai-task-manager/runtime/test-sandboxes/.task-test-1899-c254618a-85468-35ce2966/node_modules/.bin/prettier --check ."
+    },
+    {
+      "pid": 67882,
+      "ppid": 66891,
+      "elapsed": "02:41",
+      "command": "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/scripts/task-tracker/task-tracker.mjs promote 1899"
+    },
+    {
+      "pid": 85468,
+      "ppid": 67882,
+      "elapsed": "02:32",
+      "command": "/Users/kpburson/.nvm/versions/node/v26.8.1/bin/node /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage/scripts/task-tracker/task-tracker.mjs test 1899"
+    }
+  ]
+}

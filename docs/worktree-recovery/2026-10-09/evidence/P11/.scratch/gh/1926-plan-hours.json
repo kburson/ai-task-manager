@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **Estimate**: 4 hours",
+  "replacement": "- **Estimate**: 8 hours (converged Plan forecast; 4-hour base work breakdown plus calibrated risk/test impact)"
+}

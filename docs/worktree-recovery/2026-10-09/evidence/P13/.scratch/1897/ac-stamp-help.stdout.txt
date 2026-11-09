@@ -1,0 +1,29 @@
+/task ac-stamp — Run an AC's declared verifier and stamp its `aitm-ac-evidence` marker (refuses on non-zero exit).
+
+  Purpose: Run an AC's declared verifier and stamp its `aitm-ac-evidence` marker (refuses on non-zero exit).
+  Usage:  /task ac-stamp "<acceptance criterion label>"
+
+  Arguments:
+    "<acceptance criterion label>"
+        Exact acceptance-criterion label to verify.
+
+  Preconditions:
+    The active issue must contain the exact criterion and its declared verifier command.
+
+  Effects:
+    Runs the verifier and writes the criterion evidence marker only after exit 0.
+
+  Output:
+    Streams verifier output and prints the evidence marker result.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  no matching AC, or the verifier command exited non-zero
+    2  usage error / unknown verb
+
+  Examples:
+    /task ac-stamp "Top-level /task help groups verbs by topic"
+
+  Related:
+    ensureChecked
+    evidence-markers

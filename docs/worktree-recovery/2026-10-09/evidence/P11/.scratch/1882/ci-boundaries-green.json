@@ -1,0 +1,37 @@
+{
+  "schema": "issue1882.execution/v1",
+  "runId": "f99dfc17-cfbf-4ab0-9f94-84be30687247",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1882,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/unit/meta/unit-lane-purity.test.mjs",
+    "scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+    "scripts/tests/unit/task-tracker/merge-back.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+    "scripts/tests/integration/task-tracker/merge-back-verification.test.mjs"
+  ],
+  "sourceCommit": "112988f8e68b59ac3080e775ad97c5507f263eb8",
+  "dirtyPaths": [
+    "M scripts/tests/unit/task-tracker/core/package-boundary.test.mjs",
+    " D scripts/tests/unit/task-tracker/merge-back-cli.test.mjs",
+    " D scripts/tests/unit/task-tracker/merge-back-verification.test.mjs",
+    "?? scripts/tests/integration/task-tracker/merge-back-cli.test.mjs",
+    "?? scripts/tests/integration/task-tracker/merge-back-verification.test.mjs"
+  ],
+  "dirtyDiffSHA256": "bce2541effea626cfcfe3f54c975ee5f5729a31295364278b99fe0c0ab091d72",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T00:46:16.874Z",
+  "stdout": ".scratch/1882/ci-boundaries-green.log",
+  "finishedAt": "2026-10-05T00:46:24.838Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "642e31aeec954f027db26ee34b1c8f72fdcbfbc1073f2f322ad7a5b3fb0d013f"
+}

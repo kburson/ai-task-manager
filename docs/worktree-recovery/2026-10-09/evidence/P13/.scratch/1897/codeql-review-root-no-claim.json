@@ -1,0 +1,11 @@
+{
+  "args": [
+    "aitm",
+    "occupancy",
+    "--release",
+    "1897"
+  ],
+  "status": 0,
+  "stdout": "Occupancy #1897: no claim found.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' occupancy --release 1897\n"
+}

@@ -1,0 +1,10 @@
+{
+  "args": [
+    "aitm",
+    "plan-approve",
+    "1899"
+  ],
+  "status": 0,
+  "stdout": "✓ Plan approved for #1899 at 2026-10-05T22:41:28Z (provenance=full-auto; Full-Auto audit=posted). `/task promote #1899` to move to Develop.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan-approve 1899\n"
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "issue1887.execution/v1",
+  "runId": "96060e45-9e90-4307-9b71-e2bd9ef87843",
+  "repository": "kburson/ai-task-manager",
+  "issue": 1887,
+  "worktree": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration",
+  "command": [
+    "npm",
+    "run",
+    "format:check"
+  ],
+  "sourceCommit": "469593566084c14e821f1493299ca0763ad2d0c8",
+  "dirtyPaths": [
+    "M scripts/task-tracker/lib/verification-receipt-retirement.mjs"
+  ],
+  "dirtyDiffSHA256": "6145c60d68e14183575b3bec3845abda9151483b945a1bbb55838fea9f217dc7",
+  "runtime": {
+    "node": "26.8.1",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "executedAt": "2026-10-05T02:21:54.049Z",
+  "stdout": ".scratch/1887/format-correction.log",
+  "finishedAt": "2026-10-05T02:22:15.627Z",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "stdoutSHA256": "b392eb6b8170d6c5db2aeb8ffb615329b86b3dc4055a29d58e2a73208fdb4a77"
+}

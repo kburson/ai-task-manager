@@ -1,0 +1,97 @@
+▶ direct Test and Develop Promote explain the same ready entry without effects
+  ✔ direct Test from Develop (7.227916ms)
+  ✔ direct Test self-rerun from Test (1.061917ms)
+  ✔ Promote from Develop (0.69475ms)
+✔ direct Test and Develop Promote explain the same ready entry without effects (9.608709ms)
+✔ accepted directory-backed Test evidence does not require legacy VCs or sandbox (1.076541ms)
+✔ Review-state Test request is not advertised as runnable (0.568792ms)
+✔ Test entry needs an explicit project directory for command and provider authority (0.717917ms)
+✔ Test entry resolves the bound project directory when the caller omits it (0.524042ms)
+✔ Test explanation reports missing Verification Commands without effects (1.316583ms)
+✔ Test entry preserves simultaneous declaration and Develop-exit refusals (0.722709ms)
+✔ Test entry aggregates independent binding and declaration blockers (0.524833ms)
+▶ Test explanation reports mismatched HEAD, binding, and malformed receipt authority
+  ✔ worktree HEAD (0.455792ms)
+  ✔ session binding (0.38325ms)
+  ✖ claimed receipt (0.627333ms)
+✖ Test explanation reports mismatched HEAD, binding, and malformed receipt authority (1.685375ms)
+✔ Test explanation names an unavailable required authority read and makes no effects (0.577667ms)
+✔ network-skipped Test entry is indeterminate without an empty observation attempt (0.292167ms)
+✔ malformed observed HEAD is indeterminate, not blocked or ready (0.4825ms)
+✔ a required workflow-policy read failure remains indeterminate for Test entry (0.659917ms)
+✔ a configured provider rejected by execution is blocked in Test explanation (0.492625ms)
+✔ real Develop-exit guards explain the affected AC and repair on Test and Promote (4127.641917ms)
+✔ Test entry retains registered guard warnings while remaining blocked (1.096417ms)
+✔ a missing Develop-final receipt is runnable resident work, not completed proof (0.758459ms)
+✔ a ready Test explanation does not predetermine a later red locked execution (4.345333ms)
+✔ production Test read adapter rechecks live body and board at a fresh boundary (0.8975ms)
+✔ production adapter rejects directory evidence whose accepted record epoch is stale (1.006209ms)
+✔ the locked Test wrapper supplies the production preflight by default (0.107833ms)
+✔ locked Test execution refuses a freshly blocked entry before any sandbox effect (0.142834ms)
+✖ rebased Test readiness audits the projected body without changing observed authority (2.625375ms)
+✖ current wrong-tree Test provenance remains a readiness refusal (1.008708ms)
+✔ retires stale claimed Test evidence before finalization or worktree creation (34.157ms)
+✔ retires stale claimed Test evidence from Develop before replacement verification (11.730583ms)
+✔ stops all execution when receipt retirement fails (1.107166ms)
+✔ refuses malformed claimed Test evidence before execution (0.262334ms)
+✔ refuses malformed generic receipt claims before execution (0.218416ms)
+✔ refuses live command drift introduced by the fresh evidence mutation (10.083083ms)
+✔ reports invalid fresh-base command authority without throwing (9.260584ms)
+✔ refuses command drift reported by the persisted write response (7.950125ms)
+✔ fresh entry is rechecked after stale retirement before finalization (9.601917ms)
+✔ a new entry blocker after retirement prevents finalization and sandbox effects (0.561333ms)
+✔ retires only the exact stage and receipt identity (3.28525ms)
+✔ is idempotent when the exact identity is already absent (0.666583ms)
+✔ fails closed on wrong issue, duplicate target, malformed claim, and missing identity (0.750375ms)
+✔ governed retirement mutates a fresh base and verifies write plus fresh read-back (0.659417ms)
+✔ governed retirement refuses failed writes and either read-back retaining the target (0.617416ms)
+ℹ tests 45
+ℹ suites 0
+ℹ pass 41
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4298.787208
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-test.test.mjs:268:13
+✖ claimed receipt (0.627333ms)
+  TypeError: action-decision:blockers[1].code:domain
+      at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:481:9)
+      at validateBlocker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:605:5)
+      at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:986:5
+      at Array.forEach (<anonymous>)
+      at validateActionDecision (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:985:18)
+      at evaluateCompletedAction (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/evaluate.mjs:866:24)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/action-test.test.mjs:270:24)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/action-test.test.mjs:268:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+
+test at scripts/tests/integration/task-tracker/lib/action-test.test.mjs:629:1
+✖ rebased Test readiness audits the projected body without changing observed authority (2.625375ms)
+  TypeError: action-decision:blockers[0].code:domain
+      at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:481:9)
+      at validateBlocker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:605:5)
+      at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:986:5
+      at Array.forEach (<anonymous>)
+      at validateActionDecision (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:985:18)
+      at evaluateCompletedAction (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/evaluate.mjs:866:24)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/action-test.test.mjs:631:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts/tests/integration/task-tracker/lib/action-test.test.mjs:638:1
+✖ current wrong-tree Test provenance remains a readiness refusal (1.008708ms)
+  TypeError: action-decision:blockers[0].code:domain
+      at fail (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:481:9)
+      at validateBlocker (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:605:5)
+      at file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:986:5
+      at Array.forEach (<anonymous>)
+      at validateActionDecision (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/contract.mjs:985:18)
+      at evaluateCompletedAction (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/task-tracker/lib/action-decision/evaluate.mjs:866:24)
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/integration/task-tracker/lib/action-test.test.mjs:640:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

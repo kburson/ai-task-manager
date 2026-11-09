@@ -1,0 +1,39 @@
+/task plan-approve — Record Plan approval with durable human or Full-Auto provenance, or reconstruct skipped Full-Auto provenance from strict later-stage evidence.
+
+  Purpose: Record Plan approval with durable human or Full-Auto provenance, or reconstruct skipped Full-Auto provenance from strict later-stage evidence.
+  Usage:  /task plan-approve #N [--repair-from-evidence]
+
+  Arguments:
+    #N
+        Required issue number whose plan approval is recorded.
+    --repair-from-evidence
+        Develop/Test/Review only: reconstruct Full-Auto approval after a revoked approval.plan exception
+
+  Preconditions:
+    Ordinary approval requires Plan; explicit evidence repair requires Develop, Test, or Review, TT_FULL_AUTO=1, complete planning/lifecycle evidence, a revoked exception chain that covered approval.plan, and GitHub edit history proving no semantic scope drift.
+
+  Effects:
+    Records the human or Full-Auto plan-approval marker used by the Plan-to-Develop gate; evidence repair additionally posts a canonical audit naming its revoked exception record.
+
+  Output:
+    Prints approval provenance or a prompt explaining the missing approval prerequisite.
+
+  Exit codes:
+    0  success (or idempotent no-op)
+    1  runtime error (message on stderr)
+    2  usage error / unknown verb
+    3  issue is not in Plan for ordinary approval
+    7  target differs from the active issue binding
+    9  live board state differs from the recorded state marker
+    10  issue assignee is mismatched, absent, or unverifiable
+    12  plan evidence preflight failed
+    14  linked plan violates governed issue-record or scratch policy
+    15  evidence-derived Full-Auto repair predicates were not satisfied
+
+  Examples:
+    /task plan-approve 667
+    TT_FULL_AUTO=1 /task plan-approve 667 --repair-from-evidence
+
+  Related:
+    plan-estimate
+    promote

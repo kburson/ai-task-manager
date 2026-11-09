@@ -1,0 +1,70 @@
+npm error code ENOTCACHED
+npm error request to https://registry.npmjs.org/yargs/-/yargs-18.2.0.tgz failed: cache mode is 'only-if-cached' but no cached response is available.
+npm error A complete log of this run can be found in: /Users/kpburson/.npm/_logs/2026-10-05T04_42_56_371Z-debug-0.log
+✔ source real native bind satisfies production rank-wave parent check and tampering remains refused (957.427375ms)
+✖ packed real native bind satisfies production rank-wave parent check and tampering remains refused (16110.899584ms)
+✔ own generation survives state round trip and never enters shared state (243.590209ms)
+✔ explicit absent claim clears a prior same-issue generation (48.393458ms)
+✔ another actor cannot inherit generation from shared state or a foreign binding (53.460042ms)
+Started #107.
+already active: #107
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+Resumed #107.
+Started #107.
+Paused #107: +0 active min, +0 words. Use "/task resume" to resume.
+[resume] #107: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+Started #107.
+Started #107.
+Resumed #107.
+Started #107.
+✔ native start persists real claim and active rebind preserves generation and live timer (454.72975ms)
+✔ paused native resume [] retains occupancy generation (572.589041ms)
+✔ paused native resume ["#107"] retains occupancy generation (2517.526792ms)
+✔ explicit same-issue timer reopening transports the existing claim (1744.525125ms)
+✔ failed fresh bind rolls back the real claim and leaves no active authority (314.316917ms)
+✔ failed reopening restores prior generation and closed timer on unchanged claim (478.568709ms)
+✔ foreign occupancy collision prevents bind without importing its generation (88.822209ms)
+Started #107.
+Active: #144. Previous: #107 ended (+0 min, +0 words).
+Started #107.
+Active: #107 (already bound; no-op).
+Started #107.
+✔ real native issue switch replaces the old claim generation with the target claim (683.287ms)
+✔ native self switch preserves actual generation and does not post duplicate timing (418.545084ms)
+✔ failed cross-issue bind restores the prior generation and occupancy (3822.171291ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 14
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17375.793
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/native-bind-rank-wave.test.mjs:15:3
+✖ packed real native bind satisfies production rank-wave parent check and tampering remains refused (16110.899584ms)
+  Error: Command failed: npm install --offline --ignore-scripts --no-audit --no-fund --package-lock=false /Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1889-binding-generation/.scratch/test/binding-home-QM7AW0/pack/kburson-ai-task-manager-0.1.0.tgz
+  npm error code ENOTCACHED
+  npm error request to https://registry.npmjs.org/yargs/-/yargs-18.2.0.tgz failed: cache mode is 'only-if-cached' but no cached response is available.
+  npm error A complete log of this run can be found in: /Users/kpburson/.npm/_logs/2026-10-05T04_42_56_371Z-debug-0.log
+  
+      at genericNodeError (node:internal/errors:999:15)
+      at wrappedFn (node:internal/errors:544:14)
+      at checkExecSyncError (node:child_process:942:11)
+      at execFileSync (node:child_process:978:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1889-binding-generation/scripts/tests/integration/task-tracker/lib/native-bind-rank-wave.test.mjs:46:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    status: 1,
+    signal: null,
+    output: [ null, '', "npm error code ENOTCACHED\nnpm error request to https://registry.npmjs.org/yargs/-/yargs-18.2.0.tgz failed: cache mode is 'only-if-cached' but no cached response is available.\nnpm error A complete log of this run can be found in: /Users/kpburson/.npm/_logs/2026-10-05T04_42_56_371Z-debug-0.log\n" ],
+    pid: 32368,
+    stdout: '',
+    stderr: "npm error code ENOTCACHED\nnpm error request to https://registry.npmjs.org/yargs/-/yargs-18.2.0.tgz failed: cache mode is 'only-if-cached' but no cached response is available.\nnpm error A complete log of this run can be found in: /Users/kpburson/.npm/_logs/2026-10-05T04_42_56_371Z-debug-0.log\n"
+  }

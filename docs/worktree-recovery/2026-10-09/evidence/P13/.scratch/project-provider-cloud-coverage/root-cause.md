@@ -1,0 +1,1 @@
+Project planTest passes every declared command to appendTargeted; only exact command matches against configured steps are deduplicated. Registry permits no explicit declaration that a configured verifier covers another declared command. Node provider has derived compatibility results, but project provider does not.

@@ -1,0 +1,45 @@
+✔ continuous nine-hour session is repaired without changing original rows or actor accounting (9.524084ms)
+✔ continuity recovery refuses wrong session before writing (0.917875ms)
+✔ continuity recovery refuses duplicate metadata before writing (0.878417ms)
+✔ continuity recovery refuses unexplained gap before writing (1.004333ms)
+✔ continuity recovery refuses real terminal before writing (0.727708ms)
+✔ continuity recovery refuses user interruption before writing (0.809416ms)
+✔ continuity recovery refuses non-monotonic before writing (0.481958ms)
+✔ continuity recovery refuses malformed timestamp before writing (0.427125ms)
+✔ continuity recovery refuses truncated evidence before writing (0.517333ms)
+✔ apply requires dry-run source, comment and transcript identities (2.152542ms)
+✔ canonical source or completed transcript drift refuses before mutation (2.39ms)
+✔ unexplained gaps and general backdating remain forbidden (0.310792ms)
+✔ concurrent canonical or transcript change is refused under the apply boundary (5.948834ms)
+✔ append-only events beyond the completed window preserve the accepted evidence (3.54575ms)
+✔ remote readback failure cannot report a healed log (2.505792ms)
+✔ ambiguous timing actor windows refuse rather than inventing observations (0.4145ms)
+✔ late insertion of historical transcript records cannot escape the pinned prefix (0.426417ms)
+✔ duplicate tool observation identity refuses an ambiguous evidence window (0.47325ms)
+✔ conflicting repair modes refuse before reading or writing (0.308709ms)
+✔ canonical source is checked after the last transcript await before publishing (2.001959ms)
+✖ an empty continuity session cannot become a legacy repair request (1.536167ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 20
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 228.489709
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:339:1
+✖ an empty continuity session cannot become a legacy repair request (1.536167ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1882-child-ci-integration/scripts/tests/unit/task-tracker/lib/heal-timing-continuity.test.mjs:341:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /timing-continuity|Invalid timing actor/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

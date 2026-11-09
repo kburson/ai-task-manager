@@ -1,0 +1,51 @@
+{
+  "head": "0f92be933dcdd867d6fd12469db86744053f6784",
+  "method": "Pure temp in-memory base source with only import URLs rebound to unchanged dependencies; no live source mutation",
+  "probes": [
+    {
+      "name": "backtick",
+      "body": "# Acceptance Criteria\n- [ ] Actual legacy AC <!-- aitm-verified cmd=\"`node real.mjs`\" -->\n## Scope\n```markdown\n## Acceptance Criteria\n- [ ] Literal example AC <!-- aitm-verified cmd=\"`node example.mjs`\" -->\n```\n## Verification Commands\n- [ ] `node real.mjs` <!-- id=1 -->\n- [ ] `node example.mjs` <!-- id=2 -->",
+      "baseLabels": [
+        "Actual legacy AC"
+      ],
+      "headLabels": [
+        "Literal example AC"
+      ],
+      "actualCheckboxFound": false,
+      "currentActualGate": {
+        "kind": "pass"
+      },
+      "currentActualStamp": "stampAcEvidenceMarker: no evidence-bearing AC line matching \"Actual legacy AC\" found"
+    },
+    {
+      "name": "tilde",
+      "body": "# Acceptance Criteria\n- [ ] Actual legacy AC <!-- aitm-verified cmd=\"`node real.mjs`\" -->\n## Scope\n~~~markdown\n## Acceptance Criteria\n- [ ] Literal example AC <!-- aitm-verified cmd=\"`node example.mjs`\" -->\n~~~\n## Verification Commands\n- [ ] `node real.mjs` <!-- id=1 -->\n- [ ] `node example.mjs` <!-- id=2 -->",
+      "baseLabels": [
+        "Actual legacy AC"
+      ],
+      "headLabels": [
+        "Literal example AC"
+      ],
+      "actualCheckboxFound": false,
+      "currentActualGate": {
+        "kind": "pass"
+      },
+      "currentActualStamp": "stampAcEvidenceMarker: no evidence-bearing AC line matching \"Actual legacy AC\" found"
+    },
+    {
+      "name": "html-comment",
+      "body": "# Acceptance Criteria\n- [ ] Actual legacy AC <!-- aitm-verified cmd=\"`node real.mjs`\" -->\n## Scope\n<!--\n## Acceptance Criteria\n- [ ] Literal example AC <!-- aitm-verified cmd=\"`node example.mjs`\" -->\n-->\n## Verification Commands\n- [ ] `node real.mjs` <!-- id=1 -->\n- [ ] `node example.mjs` <!-- id=2 -->",
+      "baseLabels": [
+        "Actual legacy AC"
+      ],
+      "headLabels": [
+        "Literal example AC"
+      ],
+      "actualCheckboxFound": false,
+      "currentActualGate": {
+        "kind": "pass"
+      },
+      "currentActualStamp": "stampAcEvidenceMarker: no evidence-bearing AC line matching \"Actual legacy AC\" found"
+    }
+  ]
+}

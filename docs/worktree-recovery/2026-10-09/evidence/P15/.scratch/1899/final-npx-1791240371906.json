@@ -1,0 +1,16 @@
+{
+  "cmd": "npx",
+  "args": [
+    "prettier",
+    "--write",
+    "scripts/task-tracker/lib/verification-provider-registry.mjs",
+    "scripts/task-tracker/lib/verification-providers/project.mjs",
+    "scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs",
+    "docs/guides/non-javascript-verification.md",
+    ".ai-task-manager/task-tracker.json"
+  ],
+  "status": 0,
+  "stdout": "scripts/task-tracker/lib/verification-provider-registry.mjs 65ms\nscripts/task-tracker/lib/verification-providers/project.mjs 4ms\nscripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs 16ms\nscripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs 25ms\ndocs/guides/non-javascript-verification.md 31ms (unchanged)\n.ai-task-manager/task-tracker.json 2ms\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'prettier' --write scripts/task-tracker/lib/verification-provider-registry.mjs scripts/task-tracker/lib/verification-providers/project.mjs scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs docs/guides/non-javascript-verification.md .ai-task-manager/task-tracker.json\n"
+}

@@ -1,0 +1,14 @@
+{
+  "args": [
+    "aitm",
+    "comment",
+    "1899",
+    "--key",
+    "deep-dive.analysis-v1",
+    "--body-file",
+    ".scratch/1899/deep-dive.md"
+  ],
+  "status": 0,
+  "stdout": "comment: created id=IC_kwDOSU6LgM8AAAABZeZzQQ\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' comment 1899 --key deep-dive.analysis-v1 --body-file .scratch/1899/deep-dive.md\n"
+}

@@ -1,0 +1,2 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'aitm' plan 1902

@@ -1,0 +1,12 @@
+{
+  "bin": "node",
+  "args": [
+    ".scratch/1899/independent-review/classification-collision-probe.mjs"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1899-cloud-coverage",
+  "startedAt": "2026-10-05T22:55:03.858Z",
+  "endedAt": "2026-10-05T22:55:04.032Z",
+  "status": 0,
+  "stdout": "{\n  \"status\": \"failed\",\n  \"results\": [\n    {\n      \"command\": \"npm run lint\",\n      \"classification\": \"lint-full\",\n      \"passed\": true\n    },\n    {\n      \"command\": \"npm run format:check\",\n      \"classification\": \"format-full\",\n      \"passed\": true\n    },\n    {\n      \"command\": \"node scripts/maintenance/verify-ci-receipts.mjs\",\n      \"classification\": \"test-targeted-1\",\n      \"passed\": false\n    },\n    {\n      \"command\": \"node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs\",\n      \"classification\": \"test-targeted-1\",\n      \"passed\": true\n    },\n    {\n      \"command\": \"npm test\",\n      \"classification\": \"test-covered-1\",\n      \"passed\": true\n    },\n    {\n      \"command\": \"npm run test:slow\",\n      \"classification\": \"test-covered-2\",\n      \"passed\": true\n    }\n  ],\n  \"executed\": [\n    \"node scripts/maintenance/verify-ci-receipts.mjs\",\n    \"node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs\"\n  ]\n}\n",
+  "stderr": ""
+}

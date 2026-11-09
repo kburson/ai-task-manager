@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-05T22:48:38.389Z",
+  "paths": [
+    ".ai-task-manager/task-tracker.json",
+    "docs/guides/non-javascript-verification.md",
+    "docs/superpowers/plans/2026-10-05-1899-project-provider-cloud-coverage.md",
+    "scripts/task-tracker/lib/verification-provider-registry.mjs",
+    "scripts/task-tracker/lib/verification-providers/project.mjs",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs",
+    "scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs"
+  ],
+  "hashes": {
+    ".ai-task-manager/task-tracker.json": "009819cf7ffc786ab810cafea8559d61195cf441f1592d70c40d67b7b0d14b3a",
+    "docs/guides/non-javascript-verification.md": "66987063974b3c16df244552fca36015016d5c4fd993dcd9acc72d56fa24215b",
+    "docs/superpowers/plans/2026-10-05-1899-project-provider-cloud-coverage.md": "284610111f768ece2dd6a77b46aa521892ed09be39a1927c4169eefa1ebcd0ab",
+    "scripts/task-tracker/lib/verification-provider-registry.mjs": "b4caaf921f8aee51dd4f352c07ad225902b4184b0050c47d55b3a43edf36482d",
+    "scripts/task-tracker/lib/verification-providers/project.mjs": "8842d31755d7bc52b2309f5e131c4332331a7340d4450a35c8759abc20d6d04d",
+    "scripts/tests/unit/task-tracker/lib/verification-provider-registry.test.mjs": "0615a8d7d4c85c204a46c9362bcdd418a28bf5597ab123b27e230b3650f1e4e4",
+    "scripts/tests/unit/task-tracker/lib/test-verb-receipt-reuse.test.mjs": "f836bfed52db4f7c800320759cbec008a2cac736b97b0cabab59c6b48dbf5c2b"
+  },
+  "diffCheck": {
+    "status": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+}

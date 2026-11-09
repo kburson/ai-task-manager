@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-05T22:02:31.253Z",
+  "rows": [
+    {
+      "args": [
+        "aitm",
+        "start",
+        "1897",
+        "--role",
+        "orchestrator"
+      ],
+      "status": 0,
+      "stdout": "Resumed #1897.\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1897 --role orchestrator\n"
+    },
+    {
+      "args": [
+        "aitm",
+        "explain",
+        "1897",
+        "--json"
+      ],
+      "status": 0,
+      "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[{\"code\":\"test-develop-finalization-pending\",\"args\":{}}],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+      "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --json\n"
+    }
+  ]
+}

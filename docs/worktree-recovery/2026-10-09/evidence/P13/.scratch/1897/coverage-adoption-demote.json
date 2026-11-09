@@ -1,0 +1,5 @@
+{
+  "status": 0,
+  "stdout": "✓ Issue #1897 moved to: develop\n✓ move #1897 test→develop complete\n  exit flush  : test row closed (verified)\n  entry stamp : aitm-entered-develop present (verified)\n  entry row   : develop row opened (verified)\n  status      : Status == Develop (verified)\n  sentinel    : aitm-move-complete state=develop (written last)\n  tail        : 8/8 best-effort steps ok\n✓ #1897 demoted: test → develop\n  evidence invalidated (3 item(s) — will re-verify on next promote):\n   - A canonical Acceptance Criteria section after embedded lower-level source headings is found and its exact vc-list commands resolve.\n   - Stamping and evidence-gated checking target the canonical AC while preserving source Scope and citation bytes.\n   - Existing supported legacy heading and declaration forms retain their behavior.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' demote 1897 --rework Replay the two reviewed #1897 commits onto landed #1899 project CI coverage support, preserving owned implementation and approved plan bytes, then regenerate exact-head evidence.\n"
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "command": [
+      "npx",
+      "aitm",
+      "explain",
+      "1897",
+      "--json"
+    ],
+    "startedAt": "2026-10-05T21:28:46.665Z",
+    "finishedAt": "2026-10-05T21:28:57.111Z",
+    "status": 0,
+    "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":\"promote\",\"status\":\"blocked\",\"blockers\":[{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\",\"args\":{},\"noAutomaticRemediation\":{\"reason\":\"legacy-guard-requires-human-investigation\"}}],\"normalizations\":[],\"warnings\":[],\"humanDecision\":{\"requests\":[{\"kind\":\"manual-investigation\",\"actor\":\"human-operator\",\"subject\":{\"issue\":1897,\"actionId\":\"promote\"},\"args\":{\"guardId\":\"plan-exit-planned-estimate\",\"code\":\"unclassified-refusal\"}}]}},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --json\n",
+    "mode": null
+  },
+  {
+    "command": [
+      "npx",
+      "aitm",
+      "plan-approve",
+      "1897"
+    ],
+    "startedAt": "2026-10-05T21:28:57.113Z",
+    "finishedAt": "2026-10-05T21:29:05.722Z",
+    "status": 0,
+    "stdout": "✓ Plan approved for #1897 at 2026-10-05T21:29:01Z (provenance=full-auto; Full-Auto audit=posted). `/task promote #1897` to move to Develop.\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' plan-approve 1897\n",
+    "mode": "explicit-public-TT_FULL_AUTO=1"
+  },
+  {
+    "command": [
+      "npx",
+      "aitm",
+      "explain",
+      "1897",
+      "--json"
+    ],
+    "startedAt": "2026-10-05T21:29:05.722Z",
+    "finishedAt": "2026-10-05T21:29:12.109Z",
+    "status": 0,
+    "stdout": "{\"schema\":\"aitm.action-explanation/v2\",\"result\":{\"issue\":1897,\"actionId\":\"promote\",\"status\":\"ready\",\"blockers\":[],\"normalizations\":[],\"warnings\":[],\"humanDecision\":null},\"guidance\":[{\"id\":\"action.promote\",\"digest\":\"sha256:5333329fe234b578f1b60fed8c65d3107a38812dd6adeb2a1ad098d1a9342cfc\",\"status\":\"expanded\",\"agent\":{\"instruction\":[{\"query\":\"promote\"},{\"require_status\":\"ready\"},{\"if_blocked\":\"use_returned_remediation_ids\"},{\"execute\":\"promote\"},{\"never\":\"bypass_guard\"},{\"execution_revalidates\":true}]}}]}\n",
+    "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' explain 1897 --json\n",
+    "mode": null
+  }
+]

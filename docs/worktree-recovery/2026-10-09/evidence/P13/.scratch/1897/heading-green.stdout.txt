@@ -1,0 +1,31 @@
+✔ canonical H2 precedes embedded H1 for parser and checkbox lookup (3.099ms)
+✔ canonical unstamped AC remains gated after embedded H1 (0.279167ms)
+✔ canonical stamp after embedded H1 preserves every other line and citations (1.178625ms)
+✔ canonical H2 precedes embedded H3 for parser and checkbox lookup (0.150166ms)
+✔ canonical unstamped AC remains gated after embedded H3 (0.089417ms)
+✔ canonical stamp after embedded H3 preserves every other line and citations (0.261625ms)
+✔ canonical H2 precedes embedded H4 for parser and checkbox lookup (0.119375ms)
+✔ canonical unstamped AC remains gated after embedded H4 (0.064958ms)
+✔ canonical stamp after embedded H4 preserves every other line and citations (0.268458ms)
+✔ supported H1 with literal declaration is preserved without another canonical H2 (0.593333ms)
+✔ supported H1 with by-id declaration is preserved without another canonical H2 (0.205458ms)
+✔ supported H2 with literal declaration is preserved without another canonical H2 (0.145167ms)
+✔ supported H2 with by-id declaration is preserved without another canonical H2 (0.108125ms)
+✔ supported H3 with literal declaration is preserved without another canonical H2 (0.113542ms)
+✔ supported H3 with by-id declaration is preserved without another canonical H2 (0.109125ms)
+✔ supported H4 with literal declaration is preserved without another canonical H2 (0.10175ms)
+✔ supported H4 with by-id declaration is preserved without another canonical H2 (0.097ms)
+✔ retired ordinal declaration remains unresolved under H1 (0.273917ms)
+✔ retired ordinal declaration remains unresolved under H2 (0.06775ms)
+✔ retired ordinal declaration remains unresolved under H3 (0.058791ms)
+✔ retired ordinal declaration remains unresolved under H4 (0.053084ms)
+✔ canonical heading retains existing case-insensitive suffix behavior (1.208458ms)
+✔ missing AC heading keeps empty lookup and stamping refusal (0.069292ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.525167
