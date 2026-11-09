@@ -1,0 +1,80 @@
+✖ AC1: buildContext decomposes into named capability objects (22.615583ms)
+✔ AC2: assembleCapabilities groups flat members by reference (0.29825ms)
+✔ strict sub-issue capability fetches project identity and Status name in one query (0.781125ms)
+✖ strict sub-issue capability reports a thrown GraphQL query as unknown (16.09975ms)
+✖ legacy fetchSubIssues delegates and preserves numeric issue numbers only for ok snapshots (16.528625ms)
+✔ AC2: verbClose is migrated to the narrow capability interface (0.551584ms)
+✖ AC3: verbClose runs against a narrow fixture (no active task path) (36.46725ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 3
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.51275
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:30:1
+✖ AC1: buildContext decomposes into named capability objects (22.615583ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/runtime.mjs:314:22)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:36:17)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:157:1
+✖ strict sub-issue capability reports a thrown GraphQL query as unknown (16.09975ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/runtime.mjs:314:22)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:168:26)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:179:1
+✖ legacy fetchSubIssues delegates and preserves numeric issue numbers only for ok snapshots (16.528625ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/runtime.mjs:314:22)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:186:17)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:219:1
+✖ AC3: verbClose runs against a narrow fixture (no active task path) (36.46725ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/.ai-task-manager/runtime/test-fixtures/aitm-561-WAmIUx
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at planRuntimeMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-migration-plan.mjs:84:20)
+      at activateRuntimeRootFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/runtime-root-fixture.mjs:53:22)
+      at async createActivatedRuntimeRootFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/helpers/runtime-root-fixture.mjs:10:5)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs:220:15)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

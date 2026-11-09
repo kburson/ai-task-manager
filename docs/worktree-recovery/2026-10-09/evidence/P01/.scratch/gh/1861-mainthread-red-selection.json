@@ -1,0 +1,28 @@
+{
+  "base": "d8f885592c6dc24a3418861802768fc2efbf742b",
+  "changedPaths": [
+    "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "test": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  }
+}

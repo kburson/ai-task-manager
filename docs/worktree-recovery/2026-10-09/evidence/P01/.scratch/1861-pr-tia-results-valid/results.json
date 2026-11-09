@@ -1,0 +1,331 @@
+[
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 3888,
+    "log": "0000.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 37595,
+    "log": "0001.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-bootstrap-cli.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 2856,
+    "log": "0002.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1087,
+    "log": "0003.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 7680,
+    "log": "0004.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2590,
+    "log": "0005.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 1591,
+    "log": "0006.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 790,
+    "log": "0007.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-successor-timing.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1789,
+    "log": "0008.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration-transaction.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 23869,
+    "log": "0009.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-migration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1825,
+    "log": "0010.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-operation-lock.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 1495,
+    "log": "0011.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 79,
+    "log": "0012.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+    "status": 1,
+    "signal": null,
+    "durationMs": 2313,
+    "log": "0013.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-storage.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2302,
+    "log": "0014.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1338,
+    "log": "0015.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/lib/runtime-capabilities.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1382,
+    "log": "0016.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-migration-timing.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 235,
+    "log": "0017.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-process-census.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 87,
+    "log": "0018.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-record-catalog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 77,
+    "log": "0019.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-capture-catalog.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 60,
+    "log": "0020.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/runtime-writer-census.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 80,
+    "log": "0021.log"
+  },
+  {
+    "file": "scripts/tests/integration/dev-env/verify-local-worktree.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 447,
+    "log": "0022.log"
+  },
+  {
+    "file": "scripts/tests/integration/fixtures/feature-fixtures.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 362,
+    "log": "0023.log"
+  },
+  {
+    "file": "scripts/tests/integration/gh/gh-call-census.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 1062,
+    "log": "0024.log"
+  },
+  {
+    "file": "scripts/tests/integration/maintenance/done-delivery-audit.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 142,
+    "log": "0025.log"
+  },
+  {
+    "file": "scripts/tests/integration/maintenance/markdownlint-review-artifact-policy.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4607,
+    "log": "0026.log"
+  },
+  {
+    "file": "scripts/tests/integration/maintenance/markdownlint-runtime-ignore.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 473,
+    "log": "0027.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/audit-story-tags.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 670,
+    "log": "0028.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/captured-commit-bytes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 376,
+    "log": "0029.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/test-entrypoint-imports.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 330,
+    "log": "0030.log"
+  },
+  {
+    "file": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 826,
+    "log": "0031.log"
+  },
+  {
+    "file": "scripts/tests/integration/package/doctor-cli.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 4743,
+    "log": "0032.log"
+  },
+  {
+    "file": "scripts/tests/integration/package/install-health.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 354,
+    "log": "0033.log"
+  },
+  {
+    "file": "scripts/tests/integration/package/install-manifest.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 207,
+    "log": "0034.log"
+  },
+  {
+    "file": "scripts/tests/integration/providers/transcript-resolver.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 324,
+    "log": "0035.log"
+  },
+  {
+    "file": "scripts/tests/integration/review/peer-review-decommission.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 566,
+    "log": "0036.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/assert-file-excludes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 368,
+    "log": "0037.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/field-config-warn.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 162,
+    "log": "0038.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/project-fields.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 111,
+    "log": "0039.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/project-tmp-dir.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 247,
+    "log": "0040.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/run-tests-lanes.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 277,
+    "log": "0041.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/run-tests-pool.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 778,
+    "log": "0042.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/self-bind-resume.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 265,
+    "log": "0043.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/core/templates.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 443,
+    "log": "0044.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/delivery-content-comparison.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 2904,
+    "log": "0045.log"
+  },
+  {
+    "file": "scripts/tests/integration/task-tracker/delivery-real-1784.integration.test.mjs",
+    "status": 0,
+    "signal": null,
+    "durationMs": 297,
+    "log": "0046.log"
+  }
+]

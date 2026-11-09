@@ -1,0 +1,15 @@
+✔ parseBenchmarkArgs accepts refs, repeated files, samples, and output verbatim (0.801625ms)
+✔ parseBenchmarkArgs supports different old and new cluster compositions (0.085458ms)
+✔ buildSampleSchedule alternates ref order and pairs cold then warm samples (0.12175ms)
+✔ summaries and comparison enforce median and P80 threshold (0.154083ms)
+✔ failed samples are rejected instead of discarded (0.192542ms)
+✔ runBenchmark owns explicit worktrees, alternates samples, and cleans both refs (1.894958ms)
+✔ runBenchmark retains partial samples, failure detail, and cleanup in JSON shape (0.696584ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.630458

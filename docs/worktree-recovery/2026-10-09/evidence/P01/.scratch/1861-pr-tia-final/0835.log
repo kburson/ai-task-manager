@@ -1,0 +1,15 @@
+✔ #1490: external default-squash recovery writes one intent and one receipt (16.700125ms)
+✔ #1583: secondary external recovery writes exactly one intent and one receipt (3.440708ms)
+✔ #1583: unauthorized carrier title writes zero records (1.122875ms)
+✔ #1490: a refused external default-squash recovery writes zero records (0.592667ms)
+✔ #1490: an indented canonical-looking trailer writes zero records (1.444208ms)
+✔ #1490: the harness rejects an unexpected squash-parent ancestry question (0.838917ms)
+✔ #1490: an unauthorized attribution token writes zero records (0.6315ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30.500709

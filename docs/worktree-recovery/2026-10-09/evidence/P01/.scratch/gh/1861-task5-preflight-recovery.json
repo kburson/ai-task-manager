@@ -1,0 +1,11 @@
+{
+  "head": "ad03f5a3d8c495798bc93358eb8d7b41e9e17f38",
+  "restored": [
+    "scripts/task-tracker/lib/runtime-batch.mjs",
+    "scripts/tests/fixtures/1558/admission-surface.json",
+    "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs"
+  ],
+  "preexistingPaths": 349,
+  "indexPreserved": true,
+  "refsPreserved": true
+}

@@ -1,0 +1,62 @@
+✖ #221: default (no --status) stamps aitm-entered-backlog on the posted body (24.6765ms)
+✖ #272: --status flag is rejected (all issues born in backlog) (22.735708ms)
+✖ #272: --status develop is rejected (no backdoor to other stages on create) (18.938333ms)
+✔ #221: stampEntryMarker is idempotent — pre-existing marker is not duplicated (15.214125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 1
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.556958
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:130:1
+✖ #221: default (no --status) stamps aitm-entered-backlog on the posted body (24.6765ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at setup (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:65:16)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:131:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:143:1
+✖ #272: --status flag is rejected (all issues born in backlog) (22.735708ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at setup (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:65:16)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:144:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:154:1
+✖ #272: --status develop is rejected (no backdoor to other stages on create) (18.938333ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at setup (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:65:16)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/create-issue-entry-marker.test.mjs:155:15)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

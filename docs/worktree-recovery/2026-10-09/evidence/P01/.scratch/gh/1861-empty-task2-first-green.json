@@ -1,0 +1,193 @@
+{
+  "base": "914ae88921ee28a662a7d6fadcdbe047b2b1233c",
+  "changedPaths": [
+    "scripts/task-tracker/lib/runtime-empty-record.mjs",
+    "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+    "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+    "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+    "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs"
+  ],
+  "selection": {
+    "tests": [
+      "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+      "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs"
+    ],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-initialize.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-record.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-empty-recovery.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-activation-crash.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-coordinator-recovery.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-plan.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialization-crash.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-initialize.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-kernel-operation.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-catalog.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-migration-input.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-operation-recovery.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+        "signal": "import-transitive",
+        "reason": "test transitively imports changed path"
+      },
+      {
+        "changedPath": "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-writer-release.test.mjs",
+        "signal": "import-direct",
+        "reason": "test statically imports changed path"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "test": "scripts/tests/integration/meta/test-tree-layout.test.mjs",
+        "signal": "manifest",
+        "reason": "current test tree authority change"
+      },
+      {
+        "changedPath": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "test": "scripts/tests/integration/task-tracker/lib/runtime-empty-initialize.test.mjs",
+        "signal": "changed-test",
+        "reason": "changed or newly discovered test"
+      }
+    ],
+    "escalated": false
+  },
+  "status": 1,
+  "signal": null,
+  "stdout": "✔ layout audit rejects a discovered test outside the canonical lane tree (2584.65425ms)\n✔ layout audit rejects a test placed directly in a canonical lane root (904.323541ms)\n✔ line-cap audit still examines a misplaced test discovered outside the canonical tree (366.453ms)\n✔ a hidden support-subtree test cannot evade discovery, the runner, or any audit (617.376417ms)\n✔ feature-oriented files keep semantic ownership after their lane correction (7.778416ms)\n✔ current test-tree baseline is well formed (4.398875ms)\n✔ AC3/AC4: every current baseline test remains live in its recorded lane (0.737917ms)\n✔ AC1: no *.test.mjs file remains directly in a lane root (0.333833ms)\n✔ AC2: every lane subdirectory has an explicit subsystem or integration owner (11.097708ms)\n✔ AC4: the three lanes are a disjoint partition whose union is the whole discovery set (30.999792ms)\n✔ SIGKILL after control activation at root 0 refuses partial authority and resumes exactly (8937.538292ms)\n✔ SIGKILL after control activation at root 1 refuses partial authority and resumes exactly (3657.594875ms)\n✔ a supported batch publishes a complete durable receipt and preserves synchronous return (6259.4515ms)\n✔ the complete validation set and expected-before assertion refuse before any member changes (3301.070042ms)\n✔ batch deletion refuses mandatory state/task-tracker-state.json before changing any records (1856.187958ms)\n✔ batch deletion refuses mandatory state/task-tracker-queue.json before changing any records (1488.208375ms)\n✔ batch deletion refuses mandatory fleet/task-fleet.json before changing any records (1237.228417ms)\n✔ batch deletion refuses mandatory fleet/occupancy.json before changing any records (1128.083959ms)\n✔ deletion remains journaled and completed retry cannot restore an older outcome over later writes (2284.614084ms)\n✔ unfinished batch fences even its lease holder and exact resume completes the original outcome (2152.48325ms)\n✔ SIGKILL at after-batch-journal preserves read refusal and exact confirmed-death replay (2919.893542ms)\n✔ SIGKILL at after-batch-member-0 preserves read refusal and exact confirmed-death replay (3284.298209ms)\n✔ SIGKILL at after-batch-member-1 preserves read refusal and exact confirmed-death replay (4734.123709ms)\n✔ SIGKILL at after-batch-member-stage-0 preserves read refusal and exact confirmed-death replay (5562.523292ms)\n✔ SIGKILL at after-batch-journal-stage-publishing preserves read refusal and exact confirmed-death replay (8651.594125ms)\n✔ SIGKILL at after-batch-journal-stage-prepared preserves read refusal and exact confirmed-death replay (3979.99425ms)\n✔ SIGKILL at after-batch-journal-stage-complete preserves read refusal and exact confirmed-death replay (4399.439042ms)\n✔ unsupported caller identities and nonabsolute targets refuse without creating an unreadable journal (1311.7725ms)\n",
+  "stderr": "",
+  "error": "spawnSync /usr/bin/sandbox-exec ETIMEDOUT"
+}

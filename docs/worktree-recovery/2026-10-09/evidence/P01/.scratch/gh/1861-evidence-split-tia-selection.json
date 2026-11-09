@@ -1,0 +1,306 @@
+{
+  "base": "20334bf5162d8851c42df0a84ad7c4ad389f9bec",
+  "changedPaths": [
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-03.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-04.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-03.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-04.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-03.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-04.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/06-compatibility-red/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/07-compatibility-retry-red/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/09-compatibility-successor-red/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/12-null-control-red/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-02.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-03.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-04.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/14-final-cases/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/15-final-cases-observed/other-failures-01.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/01-linked-history-first.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/02-linked-status-red.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/03-admission-table.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/04-admission-table-fixed.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/05-concurrency-incomplete.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/06-genuine-host-refusal.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/07-cloud-ad03-red.json",
+    "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+    "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+    "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md"
+  ],
+  "selection": {
+    "tests": [],
+    "lanes": [],
+    "reasons": [
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-03.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/01-task2-recovery/recorded-eperm-04.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-03.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/02-linked-first/recorded-eperm-04.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-03.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/03-linked-status-first/recorded-eperm-04.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/04-bootstrap-first/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/05-bootstrap-next/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/06-compatibility-red/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/07-compatibility-retry-red/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/09-compatibility-successor-red/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/12-null-control-red/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-02.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-03.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/13-task5-first/recorded-eperm-04.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/14-final-cases/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/15-final-cases-observed/other-failures-01.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/README.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/01-linked-history-first.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/02-linked-status-red.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/03-admission-table.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/04-admission-table-fixed.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/05-concurrency-incomplete.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/06-genuine-host-refusal.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/1861-empty-runtime-evidence/supplemental/07-cloud-ad03-red.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-execution.md",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      },
+      {
+        "changedPath": "docs/reviews/1857-remaining-work/2026-10-03-1861-empty-runtime-task2-local-tia-findings.json",
+        "test": null,
+        "signal": "no-verification-impact",
+        "reason": "path has no source, test, fixture, runner, dependency, or verification impact"
+      }
+    ],
+    "escalated": false
+  }
+}

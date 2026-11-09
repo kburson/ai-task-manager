@@ -1,0 +1,148 @@
+{
+  "schema": "aitm.1861-revised-plan-analysis/v1",
+  "plan": "docs/superpowers/plans/2026-10-03-1861-empty-runtime-revised-plan.md",
+  "sha256": "dbd963181193b6f3cfbcc2b2e74873480fabfacc37eceac59347d55c894ed853",
+  "policy": {
+    "ok": true,
+    "violations": []
+  },
+  "decomposition": {
+    "status": "must-split",
+    "signals": [
+      {
+        "code": "size-xl",
+        "value": "XL",
+        "threshold": "XL",
+        "level": "review"
+      },
+      {
+        "code": "estimate-hours",
+        "value": 42.5,
+        "threshold": 24,
+        "level": "must-split"
+      },
+      {
+        "code": "task-count",
+        "value": 5,
+        "threshold": 4,
+        "level": "must-split"
+      }
+    ],
+    "taskCount": 5,
+    "verificationGroupCount": 0,
+    "taskStoryViolations": [
+      {
+        "number": 1,
+        "violations": [
+          {
+            "code": "story-intent-invalid",
+            "line": 113,
+            "message": "Story Intent fields must be single-line labeled bullets; continuation lines are not permitted"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "violations": [
+          {
+            "code": "story-intent-invalid",
+            "line": 204,
+            "message": "Story Intent fields must be single-line labeled bullets; continuation lines are not permitted"
+          }
+        ]
+      },
+      {
+        "number": 3,
+        "violations": [
+          {
+            "code": "story-intent-invalid",
+            "line": 262,
+            "message": "Story Intent fields must be single-line labeled bullets; continuation lines are not permitted"
+          }
+        ]
+      },
+      {
+        "number": 4,
+        "violations": [
+          {
+            "code": "story-intent-invalid",
+            "line": 315,
+            "message": "Story Intent fields must be single-line labeled bullets; continuation lines are not permitted"
+          }
+        ]
+      },
+      {
+        "number": 5,
+        "violations": [
+          {
+            "code": "story-intent-invalid",
+            "line": 380,
+            "message": "Story Intent fields must be single-line labeled bullets; continuation lines are not permitted"
+          }
+        ]
+      }
+    ]
+  },
+  "qualification": {
+    "root": "/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-plan-admission-e8fc61e6-df85-4fa2-92c1-49d1572a4047",
+    "hashes": {
+      "profile.sb": "fb6de33b54f278f63e5ed3cdf0cdd98b1a7438060bd0f00d9ee8727beca35345",
+      "canonical-runner.mjs": "b3a428f62dc6fb8c5b02d83afaa43de4a33eb54fa80c18e73e6bcd80ededaa1f",
+      "scripts/tests/unit/admission/isolation.test.mjs": "e13c63b9ec0907db7777a1657ac08ed2348a44f6ad84e726efc79d3a5d510790",
+      "scripts/task-tracker/test-impact-manifest.json": "6b8886403d7c168ef81047847b030ef02205f86b295fd3916b78bf0c7ac3e57c",
+      "output/canonical-qualification.json": "7908f6998be5b461f709d697ca192e78769f23887ecf9699cf8a244a9ea838e1"
+    },
+    "receipt": {
+      "kind": "harmless-isolation-qualification",
+      "sourceCandidateCoverage": false,
+      "result": {
+        "ok": true,
+        "mode": "iteration",
+        "changedPaths": [
+          "canaries/trigger.txt"
+        ],
+        "selection": {
+          "tests": [
+            "scripts/tests/unit/admission/isolation.test.mjs"
+          ],
+          "lanes": [],
+          "reasons": [
+            {
+              "changedPath": "canaries/trigger.txt",
+              "test": "scripts/tests/unit/admission/isolation.test.mjs",
+              "signal": "manifest",
+              "reason": "Harmless isolation qualification, never source candidate acceptance"
+            }
+          ],
+          "escalated": false
+        },
+        "commands": [
+          {
+            "classification": "test-affected",
+            "providerId": "node",
+            "kind": "test",
+            "command": "node",
+            "args": [
+              "--test",
+              "scripts/tests/unit/admission/isolation.test.mjs"
+            ],
+            "label": "node --test scripts/tests/unit/admission/isolation.test.mjs",
+            "allowlistSource": "core",
+            "exitCode": 0,
+            "durationMs": 174,
+            "startedAt": "2026-10-03T21:52:28.982Z",
+            "completedAt": "2026-10-03T21:52:29.157Z"
+          }
+        ],
+        "reasons": []
+      }
+    },
+    "launch": {
+      "status": 0,
+      "signal": null,
+      "stdout": "✔ sandbox bounds apply to Node, helpers, descendants and path aliases (70.077625ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 129.104333\n{\"ok\":true,\"mode\":\"iteration\",\"changedPaths\":[\"canaries/trigger.txt\"],\"selection\":{\"tests\":[\"scripts/tests/unit/admission/isolation.test.mjs\"],\"lanes\":[],\"reasons\":[{\"changedPath\":\"canaries/trigger.txt\",\"test\":\"scripts/tests/unit/admission/isolation.test.mjs\",\"signal\":\"manifest\",\"reason\":\"Harmless isolation qualification, never source candidate acceptance\"}],\"escalated\":false},\"commands\":[{\"classification\":\"test-affected\",\"providerId\":\"node\",\"kind\":\"test\",\"command\":\"node\",\"args\":[\"--test\",\"scripts/tests/unit/admission/isolation.test.mjs\"],\"label\":\"node --test scripts/tests/unit/admission/isolation.test.mjs\",\"allowlistSource\":\"core\",\"exitCode\":0,\"durationMs\":174,\"startedAt\":\"2026-10-03T21:52:28.982Z\",\"completedAt\":\"2026-10-03T21:52:29.157Z\"}],\"reasons\":[]}\n",
+      "stderr": ""
+    }
+  },
+  "estimateRefusal": "plan-estimate-authority:not-in-plan"
+}

@@ -1,0 +1,11 @@
+[
+  "scripts/task-tracker/lib/runtime-initialization-recovery.mjs",
+  "scripts/task-tracker/lib/runtime-migration-lock.mjs",
+  "scripts/task-tracker/lib/runtime-batch.mjs",
+  "scripts/tests/fixtures/runtime-empty/linked-publisher.mjs",
+  "scripts/tests/fixtures/runtime-empty/empty-publisher.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-linked-empty-crash.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-empty-crash.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-publication-validation.test.mjs",
+  "scripts/tests/integration/task-tracker/lib/runtime-batch-recovery.test.mjs"
+]

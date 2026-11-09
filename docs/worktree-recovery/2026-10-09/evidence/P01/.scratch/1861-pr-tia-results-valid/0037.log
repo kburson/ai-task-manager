@@ -1,0 +1,12 @@
+✔ exits 0 when the pattern is absent from the file (60.044583ms)
+✔ exits 1 when the pattern is present in the file (126.425083ms)
+✔ exits 1 when the target file does not exist (41.705709ms)
+✔ exits 1 when arguments are missing (75.642375ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 308.231333

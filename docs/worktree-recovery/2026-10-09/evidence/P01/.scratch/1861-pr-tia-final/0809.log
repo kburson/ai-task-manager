@@ -1,0 +1,16 @@
+✔ exact audit authorization permits close without PR verification (3.281083ms)
+✔ no-commit close fails closed for missing or malformed authorization (1.416875ms)
+✔ no-commit comment projection rejects malformed, duplicate, and conflicting authority (0.705417ms)
+✔ no-commit parser accepts GitHub update timestamps but rejects unrelated fields (0.272584ms)
+✔ no-commit close rejects wrong issue, kind, deliverable URL, or accepted SHA (0.799458ms)
+✔ code-kind issue still requires the pull-request receipt path (0.208375ms)
+✔ root epic with a pull request requires the pull-request receipt path (0.169042ms)
+✔ close input loads audit authorization even when the branch has no pull request (1.223542ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.563792

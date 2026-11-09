@@ -1,0 +1,112 @@
+✖ indirect and globally-configured attributed commits enforce ownership (20.064ms)
+✖ attributed commits fail closed when repository ownership config is unreadable (21.463916ms)
+✖ indirect tokenless chore message remains the explicit escape hatch (19.849916ms)
+✖ dynamic and nested commit messages cannot bypass attribution inspection (22.921833ms)
+✖ persistently configured commit aliases enforce ownership (21.309625ms)
+✖ the word eval outside shell-builtin command position remains harmless (23.881917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 0
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 135.033875
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:72:1
+✖ indirect and globally-configured attributed commits enforce ownership (20.064ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:73:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:100:1
+✖ attributed commits fail closed when repository ownership config is unreadable (21.463916ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:101:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:112:1
+✖ indirect tokenless chore message remains the explicit escape hatch (19.849916ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:113:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:125:1
+✖ dynamic and nested commit messages cannot bypass attribution inspection (22.921833ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:126:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:161:1
+✖ persistently configured commit aliases enforce ownership (21.309625ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:162:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:220:1
+✖ the word eval outside shell-builtin command position remains harmless (23.881917ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at makeFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:20:15)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/commit-ownership-message-sources.test.mjs:221:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }

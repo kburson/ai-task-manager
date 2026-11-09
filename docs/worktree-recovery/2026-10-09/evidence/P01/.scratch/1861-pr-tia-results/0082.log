@@ -1,0 +1,122 @@
+✔ dispatchOnEnterActions: SKIP_NETWORK short-circuits (1.20775ms)
+✔ dispatchOnEnterActions: runs onEnter actions and swallows a throwing one (1.376334ms)
+✔ dispatchOnEnterActions: outer catch absorbs an import/lookup failure (0.23225ms)
+✔ refreshKanbanStateCache: non-stage stateArg short-circuits (0.261375ms)
+✖ refreshKanbanStateCache: refreshes cache for the matching active task (28.673ms)
+✔ refreshKanbanStateCache: no session id → skip, and mismatched active → skip (22.327833ms)
+✔ refreshKanbanStateCache: catch absorbs a throwing collaborator (0.180958ms)
+✔ unparkDoneDependents: non-done move short-circuits (0.1385ms)
+✔ unparkDoneDependents: summarizes cleared + errored releases (0.198791ms)
+✔ unparkDoneDependents: enforcement catch absorbs a throw (0.271625ms)
+✖ syncTrackerState: syncs the tracker ledger for the new state (21.19225ms)
+✔ syncEventFields: SKIP_NETWORK short-circuits (0.361083ms)
+✖ syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec (21.487167ms)
+✖ syncEventFields: a throwing pexec surfaces a warning, no rethrow (19.338667ms)
+✔ endTaskTracking: non-done move short-circuits (0.286292ms)
+✖ endTaskTracking: fires the local task-tracker end on the move to done (27.575125ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 11
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.421916
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:152:1
+✖ refreshKanbanStateCache: refreshes cache for the matching active task (28.673ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   [
+  -     'sid1',
+  -     'develop'
+  -   ]
+  - ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:165:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [Array],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:286:1
+✖ syncTrackerState: syncs the tracker ledger for the new state (21.19225ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at resolveScratchRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:62:7)
+      at gitFixtureDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:106:5)
+      at buildSandboxPrototype (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:117:37)
+      at mkdtempProjectIsolated (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/scratch-dir.mjs:144:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:287:19)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:318:1
+✖ syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec (21.487167ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at syncEventFields (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/move-state/cache-unpark.mjs:152:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:320:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:333:1
+✖ syncEventFields: a throwing pexec surfaces a warning, no rethrow (19.338667ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at syncEventFields (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/move-state/cache-unpark.mjs:152:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:335:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:353:1
+✖ endTaskTracking: fires the local task-tracker end on the move to done (27.575125ms)
+  RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+      at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:189:3)
+      at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+      at endTaskTracking (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/task-tracker/lib/move-state/cache-unpark.mjs:177:20)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate/scripts/tests/integration/task-tracker/lib/coverage-cache-unpark.test.mjs:358:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'ROOT_OVERRIDE_UNSAFE'
+  }
+[move-state] #10: onEnter action "boom" failed: action failed
+[move-state] #10: onEnter dispatch failed: states module boom
+[move-state] #10: kanbanState cache refresh failed: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+[move-state] #10: kanbanState cache refresh failed: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.scratch/1861-pr-candidate
+[move-state] #10: kanbanState cache refresh failed: session lookup boom
+[unpark] #10: partial reconciliation for 12: boom
+[unpark] #10: partial reconciliation for ?: x
+[unpark] #10: enforcement failed: unpark down

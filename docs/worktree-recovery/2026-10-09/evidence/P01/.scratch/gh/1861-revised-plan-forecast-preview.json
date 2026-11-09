@@ -1,0 +1,182 @@
+{
+  "status": "read-only-preview-not-converged",
+  "rubricRecordId": "01M3ZCCKBVEY3HYS94J584FKX4",
+  "forecast": {
+    "schema": "aitm.estimation-forecast/v2",
+    "issue": 1861,
+    "lifecycleState": "plan",
+    "refine": {
+      "size": "L",
+      "humanHours": 12
+    },
+    "plan": {
+      "size": "XL",
+      "humanHours": 42.5,
+      "deltaHours": 30.5,
+      "rationale": "Detailed WBS plus unavoidable repository execution cost."
+    },
+    "ai": {
+      "p50EngagedHours": 11.5,
+      "p80EngagedHours": 12.5,
+      "stages": {
+        "plan": 0.5,
+        "develop": 9.5,
+        "test": 1,
+        "review": 0.5
+      }
+    },
+    "wbs": [
+      {
+        "id": "kernel",
+        "description": "Complete and verify original exact-byte batches, read fencing and registered recovery",
+        "humanHours": 7.5,
+        "signals": [
+          "runtime-batch",
+          "runtime-writer",
+          "runtime-storage",
+          "protected coordinator",
+          "closed record catalogs"
+        ]
+      },
+      {
+        "id": "kernel-death",
+        "description": "Prove original kernel and migration boundaries with killed publishers and resumers",
+        "humanHours": 4.5,
+        "signals": [
+          "runtime-migration-apply",
+          "runtime-initialization-recovery",
+          "physical Git roots"
+        ]
+      },
+      {
+        "id": "prerequisites",
+        "description": "Verify transferred catalogs, censuses, timing and pure validator closure",
+        "humanHours": 4.5,
+        "signals": [
+          "runtime-record-catalog",
+          "runtime-capture-catalog",
+          "runtime-migration-catalog",
+          "runtime-migration-timing",
+          "pending-ask-record",
+          "canonical timing"
+        ]
+      },
+      {
+        "id": "empty-observation",
+        "description": "Extract compatible all-root census and seal absent-authority plans",
+        "humanHours": 3.5,
+        "signals": [
+          "runtime-authority-census",
+          "runtime-empty-record",
+          "runtime-process-census",
+          "runtime-writer-census",
+          "closed record catalogs"
+        ]
+      },
+      {
+        "id": "empty-publication",
+        "description": "Publish and recover main-only empty activation through real process death",
+        "humanHours": 5,
+        "signals": [
+          "runtime-empty-initialize",
+          "runtime-empty-recovery",
+          "protected coordinator",
+          "physical Git roots"
+        ]
+      },
+      {
+        "id": "activation-linked",
+        "description": "Validate activation union, linked-v2 proofs and protected root history",
+        "humanHours": 4,
+        "signals": [
+          "runtime-activation-admission",
+          "runtime-initialize",
+          "runtime-initialization-record",
+          "activation contracts"
+        ]
+      },
+      {
+        "id": "registered-bootstrap",
+        "description": "Dispatch exact empty and linked-v2 grammar through registered physical bootstrap",
+        "humanHours": 3.5,
+        "signals": [
+          "runtime-migration-admission",
+          "migrate-runtime",
+          "command-surface",
+          "registered bootstrap"
+        ]
+      },
+      {
+        "id": "isolation",
+        "description": "Qualify and integrate enforced test-tree isolation with byte-matched executable candidate",
+        "humanHours": 3,
+        "signals": [
+          "verification-isolation",
+          "runtime-root-fixture",
+          "enforced host confinement"
+        ]
+      },
+      {
+        "id": "plan-review",
+        "description": "Reconcile whole-child requirements, revised estimate, plan review and interface handoffs",
+        "humanHours": 3,
+        "signals": [
+          "1861 revised plan",
+          "accepted parent decomposition"
+        ]
+      },
+      {
+        "id": "cloud-attribution",
+        "description": "Classify exact-head complete cloud lanes and repair attributable C1 regressions",
+        "humanHours": 3,
+        "signals": [
+          "kernel regression attribution",
+          "cloud exact-head acceptance"
+        ]
+      },
+      {
+        "id": "repository-execution",
+        "description": "Run unavoidable isolated repository verification",
+        "humanHours": 1,
+        "signals": [
+          "test:unit",
+          "test:integration",
+          "test:slow",
+          "test:lint",
+          "test:format"
+        ]
+      }
+    ],
+    "comparableIssues": [],
+    "rubric": {
+      "recordId": "01M3ZCCKBVEY3HYS94J584FKX4",
+      "version": 289,
+      "cohortSize": 50,
+      "confidence": 0.7667
+    },
+    "testPlan": {
+      "impactedLanes": [
+        "unit",
+        "integration",
+        "slow",
+        "lint",
+        "format"
+      ],
+      "isolation": "Local lint, format and canonical TIA only in byte-matched disposable real Git candidates under enforced macOS process-tree write denial; complete lanes in exact-head PR/cloud CI; no live activation",
+      "expectedMinutes": 60
+    },
+    "risks": [
+      "Main empty publication and linked-v2 change reader and recovery contracts",
+      "Strict total absence excludes inert legacy, malformed unknown records and retained test incident additions",
+      "Historical migration-v1 digests and existing batch/successor behavior must remain valid",
+      "C2 consumer fixture defects and production reconciliation remain separately owned",
+      "Develop-state revised forecast convergence has no registered general replan route; do not fabricate historical repair",
+      "Whole-child estimate and multi-group plan require governed decomposition decision before implementation"
+    ],
+    "recommendation": {
+      "action": "split",
+      "reason": "dependency breadth 9 exceeds 8"
+    },
+    "supersedesForecastRecordId": null
+  }
+}
