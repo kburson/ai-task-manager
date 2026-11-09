@@ -1,0 +1,6 @@
+npm notice run @kburson/ai-peer-review@0.3.0 npx
+npm notice run 'aitm' ac-stamp CLI Claude reviewer launch records genuine provider stream evidence before join and supports authoritative join/submission while preserving exact permissions and same-session resume.
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Blocked By (cfg.fieldBlockedBy). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+[task-tracker] ac-stamp on #106: running 1 verifier(s) for AC "CLI Claude reviewer launch records genuine provider stream evidence before join and supports authoritative join/submission while preserving exact permissions and same-session resume."…
+  ✓ node --test test/integration/manual-xpr-startup.test.mjs (exit=0)
+[task-tracker] ✓ ac-stamp on #106: run-props (key=086c4d4b) upserted onto the AC line's aitm-verified marker (sha=176e1e7).

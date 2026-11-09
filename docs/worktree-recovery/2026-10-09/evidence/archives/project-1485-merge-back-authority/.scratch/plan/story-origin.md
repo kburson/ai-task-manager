@@ -1,0 +1,4 @@
+- **kind**: code
+- **discovered-during**: #1488
+- **discovery-context**: trunk was merged into #1488's branch after review approval to pick up #1485; the pull-request head advanced off the accepted SHA, and after the merge `deliver` and `close` both refused `ambiguous-pr` with no reachable recovery
+- **scope-boundary**: delivery-authority evidence selection; independent of the #1488 bind-timer repair and of #1485's merge-back branch-authority repair

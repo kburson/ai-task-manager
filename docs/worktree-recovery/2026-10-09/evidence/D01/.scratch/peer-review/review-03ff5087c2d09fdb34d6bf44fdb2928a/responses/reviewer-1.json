@@ -1,0 +1,25 @@
+{
+  "schema": "ai-peer-review.response/v1",
+  "review_id": "review-03ff5087c2d09fdb34d6bf44fdb2928a",
+  "role": "reviewer",
+  "turn": 1,
+  "commit_mode": "normal",
+  "authority_assurance": "unavailable",
+  "artifact_path": "docs/superpowers/specs/2026-09-12-1219-tiered-test-execution-design.md",
+  "artifact_commit": "487966729b913b364bd3e87428aabee95e9c1077",
+  "artifact_blob": "046d1a17492a5d6cbba276ebeaedea08e8b60e9e",
+  "artifact_digest": "sha256:94e3c570211fe67254328b2a2dca480a272a883603186da792c7caaea076023c",
+  "agent": {
+    "host": "claude-code",
+    "provider": "anthropic",
+    "model_id": "claude-opus-5",
+    "model_display": "Claude Opus 5",
+    "session_fingerprint": "sha256:b442aba55add2575a307df23836f008c2fd2f4224f4758748bf984fd912fefe5",
+    "identity_source": "runtime"
+  },
+  "started_at": "2026-09-12T17:17:14.905Z",
+  "submitted_at": null,
+  "finding_ids": [],
+  "answered_finding_ids": [],
+  "acknowledged_supplement_ids": []
+}

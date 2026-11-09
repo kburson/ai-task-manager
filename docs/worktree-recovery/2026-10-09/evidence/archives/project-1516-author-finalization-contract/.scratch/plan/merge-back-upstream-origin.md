@@ -1,0 +1,4 @@
+- **kind**: code
+- **discovered-during**: #1609 merge-back into #1516
+- **related**: #1516, #1609
+- **depth**: one sibling defect under #1516; this repair will not spawn another defect

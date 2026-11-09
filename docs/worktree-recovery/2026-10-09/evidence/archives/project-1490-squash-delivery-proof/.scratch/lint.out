@@ -1,0 +1,14 @@
+
+> @kburson/ai-task-manager@1.0.0 lint
+> npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:test-layout && npm run lint:test-entrypoint-imports && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors
+
+
+> @kburson/ai-task-manager@1.0.0 lint:js
+> eslint .
+
+
+/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1490-squash-delivery-proof/scripts/task-tracker/verbs/close.mjs
+  1034:3  error  'decisionInput' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+

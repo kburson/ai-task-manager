@@ -1,0 +1,28 @@
+[#1562] feat(delivery): add merge-method reconciliation lane
+
+A delivery intent's merge method could only ever come from configuration
+(fullAutoMerge.mergeMethod), so a pull request merged with a different method
+stranded its issue: delivery-verification refused the mismatch, close demanded
+a receipt, and no flag reached the condition. Observed on #680, whose PR #1556
+was merged from the GitHub UI as a merge commit against a squash-only config.
+
+The verifier is deliberately unchanged. What was wrong is that only config
+could state the intent; the lane lets an operator restate it to the OBSERVED
+method, then the existing equality check verifies that restatement.
+
+The lane cannot launder a false receipt:
+
+- resolveReconciledMergeMethod accepts a declared method only when live
+  topology agrees; declaring squash for a two-parent merge still refuses
+- a no-op reconciliation matching configuration refuses
+- observeMergeMethod refuses an unattributable single-parent rewrite rather
+  than guessing squash
+- a placeholder-rejected reason is mandatory and recorded
+
+The divergence is its own append-only record rather than a field on the intent
+or receipt, whose v1 schemas are pinned behind strict exact-key validation.
+
+close's refusal now names the lane, so --force stops being the only
+discoverable escape.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

@@ -1,0 +1,1 @@
+Design a last-responsible-moment review workflow for AITM planning artifacts: session-owned brainstorming time, issue-numbered and versioned specs and plans, risk-based SAR/SPR/XPR during Refine and Plan, one epic hydration audit, and focused JIT Deep-Dive SAR. Preserve the current PR and final Review lifecycle.

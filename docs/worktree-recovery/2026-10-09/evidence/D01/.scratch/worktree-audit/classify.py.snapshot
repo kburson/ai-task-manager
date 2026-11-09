@@ -1,0 +1,66 @@
+import json,os,re,subprocess,collections,csv
+R=os.getcwd();D=R+'/.scratch/worktree-audit'
+x=json.load(open(D+'/all-locations.json'));chats=json.load(open(D+'/chats.json'));processes=json.load(open(D+'/processes.json'));fleet=json.load(open(R+'/.tmp/aitm/fleet/task-fleet.json'))
+prs={'ai-task-manager':json.load(open(D+'/prs.json')),'ai-peer-review':json.load(open(D+'/peer-prs.json'))};issues={'ai-task-manager':{i['number']:i for i in json.load(open(D+'/issues.json'))},'ai-peer-review':{i['number']:i for i in json.load(open(D+'/peer-issues.json'))}}
+def run(p,a):return subprocess.run(['git','-C',p]+a,capture_output=True,text=True)
+def ancestor(p,a,b):return run(p,['merge-base','--is-ancestor',a,b]).returncode==0
+proofMaps={}
+for repo,pp in prs.items():
+ local=[d for d in x['registered'] if d['repo']==repo and d.get('ownGit')]
+ if not local:continue
+ p=local[0]['worktree'];heads={d['HEAD'] for d in local};mapping={}
+ for z in pp:
+  if z['state']=='MERGED' and z['baseRefName']=='trunk' and z['headRefOid'] in heads:
+   rr=run(p,['rev-list',z['headRefOid']])
+   if rr.returncode==0:
+    for h in heads.intersection(rr.stdout.splitlines()):mapping[h]=z
+ proofMaps[repo]=mapping
+ print('Resolved delivery ancestry for '+repo,flush=True)
+for d in x['registered']:
+ p=d['worktree'];repo=d['repo'];branch=d.get('branch','').removeprefix('refs/heads/');head=d['HEAD'];pp=prs.get(repo,[])
+ d['chats']=[c for c in chats if c['cwd']==p];d['pids']=[c['pid'] for c in processes if c['cwd']==p or c['cwd'].startswith(p+'/')]
+ d['fleet']=[dict(issue=k,**v) for k,v in fleet.items() if v.get('worktreePath')==p] if repo=='ai-task-manager' else []
+ num=re.search(r'(?:issue-|defect-|feature-|chore-|epic/|child/|codex/)(\d+)',branch) or re.search(r'/(\d{3,4})-',p)
+ d['issue']=int(num[1]) if num else None
+ if not d['issue'] and d['fleet']:d['issue']=int(d['fleet'][-1]['issue'].lstrip('#'))
+ d['issueState']=issues.get(repo,{}).get(d['issue'],{}).get('state','unknown')
+ d['proof']='';d['proofPR']=None
+ if d.get('ownGit') and not d.get('identityError'):
+  if ancestor(p,head,d['target']):d['proof']='HEAD is an ancestor of '+d['target']
+  else:
+   exact=[z for z in pp if z['state']=='MERGED' and z['baseRefName']=='trunk' and z['headRefOid']==head]
+   if exact:d['proofPR']=exact[0]['number'];d['proof']='Exact HEAD merged to trunk in PR #'+str(exact[0]['number'])
+   else:
+    z=proofMaps.get(repo,{}).get(head)
+    if z:
+     d['proofPR']=z['number'];d['proof']='HEAD is contained in merged trunk PR #'+str(z['number'])
+  d['openPRs']=[z['number'] for z in pp if z['state']=='OPEN' and (z['headRefName']==branch and branch or z['headRefOid']==head)]
+  if d.get('status','').startswith('ERROR:'):d['category']='VERIFY';d['reason']='Git inspection failed'
+  elif d.get('status'):d['category']='PRESERVE-WIP';d['reason']='Uncommitted/untracked files'
+  elif d['pids']:d['category']='PRESERVE-LIVE';d['reason']='Live process has cwd here or in child worktree'
+  elif d['openPRs']:d['category']='PRESERVE-OPEN';d['reason']='Open PR '+str(d['openPRs'])
+  elif d['issueState']=='OPEN':d['category']='PRESERVE-OPEN';d['reason']='Issue #'+str(d['issue'])+' is open'
+  elif repo=='pws-mock-dashboard':d['category']='PRESERVE-PROJECT';d['reason']='Pinned dashboard project; remote delivery not audited'
+  elif d['proof']:
+   d['category']='CULL-CANDIDATE';d['reason']=d['proof']
+   if any(c.get('pinnedIndex') for c in d['chats']):d['reason']+='; pinned chat must be detached/archived explicitly'
+   if any(l.startswith('!! ') and not l.startswith('!! node_modules') for l in d.get('ignoredRoots',[])):d['reason']+='; archive ignored evidence before removal'
+  else:d['category']='PRESERVE-UNPROVEN';d['reason']='Clean checkout, but HEAD delivery not proven'
+ else:d['category']='STALE-REGISTRATION';d['reason']='Own .git metadata missing; do not trust parent Git status'
+# Keep current registered scratch snapshot of recently delivered branch if live parent exists
+for d in x['registered']:
+ if '/.task-test-' in d['worktree'] and d['category']=='CULL-CANDIDATE':
+  parent=next((q for q in x['registered'] if d['worktree'].startswith(q['worktree']+'/.scratch/')),None)
+  if parent and parent['category']=='PRESERVE-LIVE':d['category']='PRESERVE-LIVE';d['reason']='Sandbox belongs to live parent; wait for owner cleanup'
+# Residue: exclude shared .tmp folder from worktree residue
+x['residue']=[d for d in x['residue'] if not d['path'].endswith('/.worktrees/.tmp')]
+for d in x['residue']:
+ d['pids']=[c['pid'] for c in processes if c['cwd']==d['path'] or c['cwd'].startswith(d['path']+'/')]
+ d['category']='PRESERVE-RESIDUE' if d['sample'] or d['pids'] else 'RESIDUE-CANDIDATE'
+ d['reason']='Contains nondependency evidence; archive first' if d['sample'] else 'No Git metadata or nondependency files found; inspect node_modules separately before removal'
+# Wrapper entries must actually be empty, not merely lacking child folders
+x['emptyWrappers']=[p for p in x['emptyWrappers'] if len(os.listdir(p))==0]
+json.dump(x,open(D+'/classified.json','w'),indent=2)
+counts=collections.Counter(d['category'] for d in x['registered']);print('REGISTERED',dict(counts));print('RESIDUE',collections.Counter(d['category'] for d in x['residue']),'EMPTY WRAPPERS',len(x['emptyWrappers']))
+for d in x['registered']:
+ print(d['category'],d['worktree'],d['reason'])

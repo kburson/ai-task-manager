@@ -1,0 +1,12 @@
+- [ ] The stability of GitHub Projects single-select option ids across a label rename is determined empirically and recorded, and the compiler's matching strategy follows that finding <!-- aitm-non-demonstrable -->
+- [ ] A stage role vocabulary is defined, and every stage-literal site in `scripts/task-tracker/lib/` is classified as role, edge-scope-deletable, or false positive <!-- aitm-non-demonstrable -->
+- [ ] Core gates resolve by id and cannot be detached by configuration; a config that attempts to remove a core gate is a compile error <!-- aitm-verified vc-list="vc:3" -->
+- [ ] Guards bind to transition edges rather than to a state's exit list, and the self-scoping `ctx.toState` checks made redundant by that binding are removed <!-- aitm-verified vc-list="vc:3 vc:4" -->
+- [ ] `aitm.yml` has a documented schema and a loader that emits the current eight-stage pipeline as its default <!-- aitm-verified vc-list="vc:3" -->
+- [ ] `lifecycle-policy/states.mjs` and `states/index.mjs` are built from the loader rather than static imports, with no behavior change under the default config <!-- aitm-verified vc-list="vc:3 vc:4" -->
+- [ ] No stage-name literal remains in `scripts/task-tracker/lib/` except inside the audited compatibility allowlist <!-- aitm-verified vc-list="vc:4" -->
+- [ ] `aitm compile` reconciles declared stages against the project's Status options, creates only what is missing, records resolved ids back into `aitm.yml`, and is a verified no-op on re-run <!-- aitm-verified vc-list="vc:4" -->
+- [ ] `aitm compile` refuses a stage-set change while any issue carries stage history, and its refusal names which issues it can clear automatically and which need a disposition <!-- aitm-verified vc-list="vc:4" -->
+- [ ] First-run compile against a project with pre-existing Status options maps to them without renaming or deleting any of them <!-- aitm-verified vc-list="vc:4" -->
+- [ ] Issues that predate adoption carry an adoption marker that acts as their chain origin, and contiguity validates forward from it rather than behind it <!-- aitm-verified vc-list="vc:3 vc:4" -->
+- [ ] This repository runs on its own `aitm.yml`, and the guides describe authoring one <!-- aitm-non-demonstrable -->

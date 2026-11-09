@@ -1,0 +1,1 @@
+[task-tracker] ⛔ Refusing to close #680: close-delivery-receipt:missing. Run `/task deliver` until a verified exact-head receipt exists, then retry.

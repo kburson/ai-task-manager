@@ -1,0 +1,3 @@
+Introduce one shared, fail-closed review-authority decision for delivery. Accept either exact passed review evidence or a current, scope-matched semantic-review waiver that revalidates against the issue's GitHub-native workflow-exception record and exact accepted head. Carry the result as `passed` or `waived`; do not synthesize or check Agent Review Passed for the waived branch.
+
+Use that decision consistently in delivery preflight and deliver orchestration. Add focused tests for valid waiver acceptance and for missing, stale, malformed, revoked, wrong-issue, wrong-requirement, and wrong-head refusal, plus regression coverage proving ordinary passed review behavior is unchanged.

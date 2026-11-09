@@ -1,0 +1,4 @@
+- [ ] `npm run lint` <!-- id=1 -->
+- [ ] `npm run format:check` <!-- id=2 -->
+- [ ] `npm run test:unit` <!-- id=3 -->
+- [ ] `npm run test:integration` <!-- id=4 -->

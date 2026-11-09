@@ -1,0 +1,101 @@
+{
+  "schema": "aitm.delivery-attribution-exception-request/v1",
+  "action": "record",
+  "proposal": {
+    "exceptionId": "01M38DX9VGF2N403WWQH9TT5XR",
+    "operationId": "01M38DX9VGC7AH9FDXY6DJEYWD",
+    "repository": "kburson/ai-task-manager",
+    "issueNumber": 1558,
+    "prNumber": 1775,
+    "baseRef": "trunk",
+    "headRef": "feature/epic/1558",
+    "headSha": "ee5803e4ae031210c269cf1e655167e7bdd305ab",
+    "sourceDigest": "sha256:c0656b59f7fa0f88472f9344edfd3eb070bd8a560e53bef017d3e184cbee6fdd",
+    "mappings": [
+      {
+        "issueNumber": 1672,
+        "oid": "41a7fb7366f1368dbcfecba3559f08bdbd5392d9",
+        "messageHeadline": "docs(guidance): record #1672 story intent and execution plan"
+      },
+      {
+        "issueNumber": 1672,
+        "oid": "f3822e818c8a352d69ef9370b4539224bd49b394",
+        "messageHeadline": "docs(guidance): align #1672 intent boundary and Plan forecast"
+      },
+      {
+        "issueNumber": 1672,
+        "oid": "1c0f36d70ae3889e457492df8767cb4f2ec244bb",
+        "messageHeadline": "feat(guidance): enforce #1672 source trust and release refusal"
+      },
+      {
+        "issueNumber": 1672,
+        "oid": "b0d5af64953ec5dc13374aeb6378d401a6ec3ca2",
+        "messageHeadline": "fix(guidance): close #1672 root and release admission gaps"
+      },
+      {
+        "issueNumber": 1673,
+        "oid": "8ee98636697b7ac0cfaacbb6788ee48fd2c266cd",
+        "messageHeadline": "docs(guidance): record #1673 story intent and execution plan"
+      },
+      {
+        "issueNumber": 1673,
+        "oid": "134c3bee219e632cceb04a0e566fd7111581dce2",
+        "messageHeadline": "docs(guidance): delimit #1673 Story Intent authority"
+      },
+      {
+        "issueNumber": 1673,
+        "oid": "0c0e538a55d4ea7e0c141f1eae2df5430685b0f7",
+        "messageHeadline": "docs(guidance): align #1673 Plan with governed estimate"
+      },
+      {
+        "issueNumber": 1674,
+        "oid": "2179753397699ebe3d48266c3f7ccf4b44422c5a",
+        "messageHeadline": "docs(guidance): plan #1674 cache and certification"
+      },
+      {
+        "issueNumber": 1674,
+        "oid": "d0a365c40223a0ae2797d1fc2909507534a7752b",
+        "messageHeadline": "docs(guidance): resolve #1674 semantic plan review"
+      },
+      {
+        "issueNumber": 1677,
+        "oid": "c021183beb036a6ebdf988183de55c65004f38ec",
+        "messageHeadline": "fix: preserve nested epic decomposition plan authority"
+      },
+      {
+        "issueNumber": 1769,
+        "oid": "fd745755f3cb8b2dc9031773191beba9b34c2c45",
+        "messageHeadline": "feat: start complete guidance traffic accounting"
+      },
+      {
+        "issueNumber": 1769,
+        "oid": "2ed1cdec7c057645a36a310891f3051b34a274dc",
+        "messageHeadline": "feat: pin real tokenizer and calibrate CLI lifecycle"
+      },
+      {
+        "issueNumber": 1769,
+        "oid": "5a966eafb55b95b61984f3485c3d70a778e9a43f",
+        "messageHeadline": "chore: keep calibration CLI out of runtime package"
+      },
+      {
+        "issueNumber": 1769,
+        "oid": "0a88288d15467b6b899356101dbda3a20388c0b7",
+        "messageHeadline": "feat: report paired lifecycle context with explicit model provenance"
+      },
+      {
+        "issueNumber": 1769,
+        "oid": "8089c546df6dc3f2d84629e916889acc10d59e55",
+        "messageHeadline": "test: seal paired stream identities and heavy-case scope"
+      }
+    ],
+    "attributionTokens": [],
+    "expiresAt": "2026-09-25T00:43:58.416Z"
+  },
+  "authorizationSource": {
+    "schema": "aitm.authorization-source/v1",
+    "adapter": "codex-session/v1",
+    "sessionId": "01a0cb38-348c-7f42-b0a7-b1e2562d2b74",
+    "messageId": "msg_01a0d10d-bc3d-7be2-bd8d-2a10ecab5b9d",
+    "statementHash": "sha256:529c76d3193c99c88564e248ac146acdeb7c801765e82790e1b45a25c09f0d66"
+  }
+}

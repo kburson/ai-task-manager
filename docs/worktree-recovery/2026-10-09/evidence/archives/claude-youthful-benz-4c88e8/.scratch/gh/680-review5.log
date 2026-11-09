@@ -1,0 +1,30 @@
+Issue #680: 31 timing rows
+  Engaged            : 185 min  (active 185 + review 0)
+  Session            : 185 min
+  Review             : 0 min  (threshold 5 min)
+  Plan               : 5 min
+  Stage Time (per visit):
+    backlog#1: 1642h 32m 12s
+    refine#1: 2m 05s
+    ready-for-plan#1: 22s
+    plan#1: 4m 54s
+    develop#1: 31m 05s
+    test#1: 6m 21s
+    develop#2: 32s
+    test#2: 6m 04s
+    develop#3: 38s
+    test#3: 6m 01s
+    develop#4: 2m 29s
+    test#4: 6m 35s
+    review#1: open
+  Stage Time (totals):
+    backlog: 1642h 32m 12s
+    refine: 2m 05s
+    ready-for-plan: 22s
+    plan: 4m 54s
+    develop: 34m 44s
+    test: 25m 01s
+Fields updated on GitHub Projects board.
+✓ #680 moved to Review — all verification passed.
+Review #680: task paused for human approval.
+PROMPT_REQUIRED: review-approval #680

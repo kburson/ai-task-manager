@@ -1,0 +1,5 @@
+- **kind**: code
+- **discovered-during**: #1516 implementation
+- **related**: #1516, #1592
+- **observed-package**: `ai-peer-review@0.2.0`
+- **depth**: one child defect below #1516

@@ -1,0 +1,3 @@
+node --test scripts/tests/unit/task-tracker/lib/guidance-characterization.test.mjs
+node scripts/maintenance/measure-guidance-candidate.mjs --all --json
+node scripts/maintenance/measure-guidance-candidate.mjs --all --assert-feasible --json

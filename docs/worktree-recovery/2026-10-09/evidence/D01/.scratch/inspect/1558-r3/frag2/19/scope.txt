@@ -1,0 +1,24 @@
+**Scope/files:** Create `guidance/{positions,parse,validate,documentation,requirements,fingerprints}.mjs`, `instructions/aitm-guidance.schema.json`, a complete seed `instructions/aitm-guidance.yml`, `scripts/tests/helpers/guidance-fixtures.mjs`, and `scripts/tests/unit/task-tracker/lib/guidance-validator.test.mjs`. Modify `package.json`/`package-lock.json` to move exact `js-yaml: "5.4.2"` from `devDependencies` to `dependencies` and explicit `instructions/` allowlist.
+
+**Interfaces:** Produces `validateGuidance` and deterministic normalized entries/digests with source ranges. Completeness comes from core-required guidance IDs/bindings in `requirements.mjs`, not from the candidate catalog declaring itself complete. The seed contains every required lifecycle entry; Task 15 migrates richer human content and proves source-rule coverage.
+
+- [ ] **Step 1 — Prove the parser contract with failing fixtures.** Use `parseEvents` to inspect syntax and field ranges before `constructFromEvents`. Test nested sequences/mappings, quoted/block scalars, duplicate keys/IDs, explicit tags, anchors/aliases, and literal/quoted merge keys. Strictly reject malformed UTF-8 before parsing. Build the line index over the same normalized JavaScript string used by the parser.
+
+```js
+const source = 'human: { explanation: "😀", bad: true }\r\n';
+const diagnostic = fixture.validateUnknownField(source, 'human.bad');
+assert.equal(diagnostic.line, 1);
+assert.equal(diagnostic.column, 29); // UTF-16 units; emoji occupies two.
+assert.equal(
+  diagnostic.column,
+  fixture.validateUnknownField(source.replaceAll('\r\n', '\n'), 'human.bad').column
+);
+```
+
+The position fixture wraps this mapping in a valid entry while retaining an explicit expected full-source line/column. Also assert raw range offsets independently of decoded scalar values; accented, combining, lone-CR, and folded/escaped scalar cases must pass. Confirm the literal column in the fixture from the exact source string when implementing, rather than weakening the assertion to match parser output.
+
+- [ ] **Step 2 — Run VC11 to RED**, then record the parser selection evidence. Planning confirmed the 5.4.2 event API exports; this task must prove full syntax/range behavior with tests. If complete contract testing uncovers a blocker, stop and reopen parser selection with a failing fixture and manual plan review before Tasks 12–13; do not silently substitute a second parser. Never use plain `load()` as an alternate runtime path.
+- [ ] **Step 3 — Implement all ten validation stages.** Accumulate independent errors; dependent stages skip unusable nodes rather than invent values. Reject unknown keys and arbitrary instruction values. Validate action/guard/remediation/prohibition references against Task 1 vocabulary, typed human examples, required summary/explanation, and package-relative shipped documentation paths. Resolve explicit HTML anchors and GitHub-compatible heading slugs, including duplicate suffixes; reject traversal and escaping symlinks. Keep this resolver distinct from the curated `lint:doc-anchors` check.
+- [ ] **Step 4 — Define bounded catalog limits in the schema/library.** Proposed v1 engineering limits: 1 MiB normalized source, 512 entries, 128-character IDs, 64 instructions per entry, 64 bindings per binding list, 32 KiB human explanation, and 2 KiB diagnostic excerpts. Proposed proxy limits are 1,000 per agent block, 16,000 per human block, 17,000 per complete entry, 64,000 across agent blocks, 160,000 across human blocks, and 240,000 for the normalized complete catalog. Record the complete seed's measurements against these versioned constants with >=20% unused headroom; these catalog-storage limits do not replace §20.2 response ceilings. Prove limit+1 failures and aggregate diagnostics. Changes to these schema choices require review, not runtime catalog overrides.
+- [ ] **Step 5 — Compute the five spec fingerprints.** Canonicalize maps deterministically, preserve semantic list order, normalize raw newlines, and include the exact §10 projections. Agent digest excludes human text; human digest excludes agent text; file digest includes comments. Test comment-only/human-only/agent edits and deterministic key-order normalization.
+- [ ] **Step 6 — Run VC11 to GREEN and commit.** Validate the packaged seed and schema offline, including registry completeness and shipped documentation references. No operational entrypoint uses an incomplete seed.

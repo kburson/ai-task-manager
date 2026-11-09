@@ -1,0 +1,3 @@
+As a lifecycle maintainer,
+I want to inspect one versioned action and refusal contract,
+So that core execution, explanation, and future gate producers cannot disagree about authority.

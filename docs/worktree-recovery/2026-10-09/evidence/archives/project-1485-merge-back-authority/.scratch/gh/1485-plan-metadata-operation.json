@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Plan Metadata",
+  "expected": "\n\n- **Approach**: enrich only the merge-back production adapter with existing durable branch-authority semantics\n- **Safety**: authority resolution must complete before rebase, tests, merge, worktree removal, or branch deletion\n- **Compatibility**: canonical epic branches retain their existing fallback behavior\n- **Blocked consumer**: #1226 cannot close or unblock #1227 until this defect is delivered\n\n",
+  "replacement": "\n\n- **Governing-spec**: docs/superpowers/specs/2026-09-02-1485-merge-back-custom-epic-branch-authority-design.md\n- **Implementation-plan**: docs/superpowers/plans/2026-09-02-1485-merge-back-custom-epic-branch-authority.md\n- **Plan-commit**: acf63c162579cb8a21f72d5c1705b8bdba5c6710\n- **Approach**: enrich the merge-back graph boundary, preserve numeric graph identity, and keep custom branch authority opaque\n- **Safety**: child and immediate-epic graph resolution must complete before rebase, tests, merge, worktree removal, or branch deletion\n- **Compatibility**: canonical epic branches retain their existing fallback behavior\n- **Execution**: serial execution in the recorded #1485 worktree; no parallel agents or substitute branches\n- **Blocked consumer**: #1226 cannot close or unblock #1227 until this defect is delivered\n- **Post-delivery obligation**: recapture #1226's exact-head Unit, Integration, and Slow baseline after synchronizing the changed test blobs\n\n"
+}

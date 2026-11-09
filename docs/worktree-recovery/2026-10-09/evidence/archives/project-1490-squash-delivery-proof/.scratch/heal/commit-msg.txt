@@ -1,0 +1,30 @@
+[#1490] fix(close): repair reopened-close binding authority and prefix resume
+
+Codex items 2 and 3.
+
+Item 2 — terminal binding step. `close` refused every `conflict` from
+`inspectTerminalIssueBindingRelease`. For a recovery-backed replacement that
+refusal is unconditional: performing the corrective delivery requires rebinding
+the issue after the old close, and that rebind is exactly what makes the
+inspector report `conflict`. The saga completed seven steps and then refused its
+own eighth on the evidence of its own legitimate work. Forgiveness is narrow —
+a durable recovery-backed replacement AND this session's own post-close claim on
+the issue's recorded worktree. Ordinary closes and foreign claims are unchanged.
+
+"Recovery-backed" is proven from durable evidence (the body's active transaction
+named as a durable record's replacement), never an in-memory flag, so an
+interrupted retry reaches the same verdict.
+
+Item 3 — resume by transaction identity at any valid completed-step prefix.
+Resume was keyed on `completedSteps.length === 0`, true only at the instant the
+replacement is minted; once the saga marked one step a retry fell into the mint
+branch and treated the replacement as the completed original.
+`classifyRecoveryProgress` carried the same assumption and returned
+`stale-body`, and `validateLive` re-applied the step-zero shape after the
+`board` and `issue` steps had legitimately changed it. Partial progress was
+unresumable by construction. Validation is now prefix-aware (a predicate, not a
+bypass) and a fully-completed replacement is idempotent.
+
+Also fixes a branch-structure defect found while wiring: the authorized
+`conflict` arm was a standalone `if` and fell through to the chain's
+unknown-state refusal, discarding the authorization one branch after granting it.

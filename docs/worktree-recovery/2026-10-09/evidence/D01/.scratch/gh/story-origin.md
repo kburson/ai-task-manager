@@ -1,0 +1,4 @@
+- **kind**: code
+- **discovered-during**: design conversation, 2026-09-05
+- **discovery-context**: comparing Develop-exit vs. Test-stage-after-CI placement for an AI code-review gate; Test-stage-after-CI chosen for reuse of the existing demote/rework loop and for inline diff-anchored PR comments over an issue-comment write-up
+- **scope-boundary**: Test-stage gating and PR-comment posting only; independent of Develop-stage or Review-stage changes, and independent of building any new CI-hosted review job

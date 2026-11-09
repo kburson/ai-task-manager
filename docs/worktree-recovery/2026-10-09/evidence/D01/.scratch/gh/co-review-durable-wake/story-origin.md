@@ -1,0 +1,5 @@
+- **kind**: code
+- **discovered-during**: #1219 spec-only co-review follow-up
+- **related**: #1377, #1406, #1516
+- **sequencing**: start only after the current #1219 co-review process reaches its intended terminal checkpoint
+- **motivation**: eliminate model-visible idle polling and prevent stranded dormant reviewers while preserving durable role authority

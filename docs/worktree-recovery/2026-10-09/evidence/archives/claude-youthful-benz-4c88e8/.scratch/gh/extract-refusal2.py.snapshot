@@ -1,0 +1,33 @@
+p = 'scripts/task-tracker/verbs/close.mjs'
+s = open(p).read()
+
+# 1. Replace the inline refusal string with a call to the module-scope helper.
+start = s.index('        `[task-tracker] ⛔ Refusing to close ${closeTarget}')
+end = s.index("`.'", start) + len("`.'")
+old = s[start:end]
+assert 'reconcile it with ' in old, 'expected the committed reconciliation guidance'
+s = s[:start] + '        buildDeliveryGateRefusal(closeTarget, error.message)' + s[end:]
+
+# 2. Insert the helper at MODULE scope, before the first top-level function.
+anchor = 'function closeAuditMarker(recordId) {'
+deliver_cmd = '/task deliver'
+helper = (
+    '// #1562 - a pull request merged with a method the configuration does not\n'
+    '// declare can never satisfy `delivery-verification`, and `--force` does not\n'
+    '// reach this gate: `refuseDeliveryGate` catches the error and refuses without\n'
+    '// consulting the flag. Name the reconciliation lane in the refusal itself so\n'
+    '// it is discoverable from the message rather than only from the source.\n'
+    'export function buildDeliveryGateRefusal(closeTarget, reason) {\n'
+    '  return (\n'
+    '    `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${reason}. ` +\n'
+    "    'Run `" + deliver_cmd + "` until a verified exact-head receipt exists, then retry. ' +\n"
+    "    'If the pull request was merged with a method this project does not declare ' +\n"
+    "    '(`delivery-verification:merge-method`), reconcile it with ' +\n"
+    "    '`" + deliver_cmd + " <N> --reconcile-merge-method <merge|squash|rebase> --reason \\\"<why>\\\"`.'\n"
+    '  );\n'
+    '}\n\n'
+)
+assert anchor in s
+s = s.replace(anchor, helper + anchor, 1)
+open(p, 'w').write(s)
+print('ok')

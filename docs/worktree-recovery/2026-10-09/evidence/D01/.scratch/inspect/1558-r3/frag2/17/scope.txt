@@ -1,0 +1,3 @@
+**Scope/files and boundary:** Own baseline Task 10 production file changes and `action-close.test.mjs`; preserve existing guard-parity-review-done and close-gate-order suites. No aggregate seven-action certification or A2 completion declaration.
+
+**Handoff and verification behavior:** Covers baseline Task 10 Steps 1, 3 and the close-specific portion of Step 4. The read-only attribution seam is part of close readiness, not a fourth independently certified cross-action deliverable.

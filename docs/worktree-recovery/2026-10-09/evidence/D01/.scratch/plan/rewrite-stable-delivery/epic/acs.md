@@ -1,0 +1,7 @@
+- [ ] AC1: Content-only equivalent rewrites retain original execution records and use explicit equivalence evidence, while changed or incomplete inputs require verification. <!-- aitm-verified vc-list="vc:1" -->
+- [ ] AC2: Acceptance and delivery bind explicit candidate, requirements, PR, repository and target identities; wrong content, head races and required method-policy violations refuse. <!-- aitm-verified vc-list="vc:2" -->
+- [ ] AC3: Reopen creates a distinct cycle and every interrupted close prefix resumes with one logical effect per key, preserving historical completion. <!-- aitm-verified vc-list="vc:3" -->
+- [ ] AC4: Generation-safe cleanup preserves later or foreign claims and reports cleanup pending separately from workflow completion. <!-- aitm-verified vc-list="vc:3" -->
+- [ ] AC5: V1 remains default; explicit digest-bound enrollment preserves original records, stale plans refuse, and old/enrolled-incompatible writers cannot mutate v2 issues. <!-- aitm-verified vc-list="vc:4" -->
+- [ ] AC6: The real public command path succeeds against disposable copies of #1490/#1488/#1485 through commit, rewrite, delivery, reopen, and cold-process retry without production writes. <!-- aitm-verified vc-list="vc:5" -->
+- [ ] AC7: Rehearsal reports are retained and rejected as production evidence; manifest-bound disposal and a separate human cutover gate are demonstrated. <!-- aitm-verified vc-list="vc:5" -->

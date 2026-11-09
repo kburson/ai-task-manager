@@ -1,0 +1,12 @@
+[#1562] refactor(close): extract and pin the delivery-gate refusal message
+
+The refusal now names the merge-method reconciliation lane, so an operator who
+hits close-delivery-receipt:missing learns the route out from the message
+rather than from the source. Extracted to a module-scope buildDeliveryGateRefusal
+so a test can pin the guidance.
+
+The test also asserts the message never advertises --force: that flag does not
+reach refuseDeliveryGate, and suggesting it would send an operator down the same
+dead end that stranded #680.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

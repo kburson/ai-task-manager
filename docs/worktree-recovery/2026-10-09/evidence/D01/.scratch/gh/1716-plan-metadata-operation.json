@@ -1,0 +1,8 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Plan Metadata",
+  "expected": "\n\n",
+  "replacement": "\n\n- **Implementation-authority**: Issue Scope, Fix Direction, and governed Deep-Dive Analysis.\n- **Approval-repair-policy**: Evidence-derived Full-Auto reconstruction only after a current revoked workflow exception previously covered `approval.plan`; no human provenance and no waiver.\n- **Verification-authority**: Root Acceptance Criteria and Verification Commands on this issue.\n\n",
+  "expectedVersion": 10
+}

@@ -1,0 +1,1 @@
+Add homedir()/.codex/skills to the read-only allowed prefixes in scripts/task-tracker/bash-guard.mjs, update the refusal message and top-of-file read-scope comment, and add or adjust tests that simulate a Bash PreToolUse read of a ~/.codex/skills file. Preserve existing write-scope restrictions.

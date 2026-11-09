@@ -1,0 +1,47 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "red-topology-tests",
+      "description": "Add failing coverage for both real pull-request shapes plus rebase, ordinary merge, fast-forward, tree mismatch, reverted descendant, and incomplete inventory negatives, with mergeMethod deliberately unset so the observation short-circuit cannot mask the new path",
+      "baseHumanHours": 1.25,
+      "signals": {
+        "modules": ["delivery-verification-tests"],
+        "dependencies": ["delivery-verification", "pull-request-source-evidence"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "multi-source-squash-proof",
+      "description": "Implement the conjunctive multi-source squash predicate and wire it into the rewritten-one-parent branch beside the existing single-source proof",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["delivery-verification"],
+        "dependencies": ["red-topology-tests"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "governed-verification-and-delivery",
+      "description": "Run focused and bounded lane verification, then deliver through the governed provider flow so the delivery intent exists before the provider action",
+      "baseHumanHours": 0.75,
+      "signals": {
+        "modules": ["verify-develop", "delivery-preflight", "governed-delivery"],
+        "dependencies": ["multi-source-squash-proof", "bounded-test-lanes"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit"],
+    "isolation": "governed test sandbox",
+    "expectedMinutes": 8
+  },
+  "risks": [
+    "A new test passing through the existing mergeMethodObservation short-circuit instead of the new proof",
+    "Weakening or disturbing the existing single-source external-squash proof",
+    "Treating tree equality as sufficient when a rebase produces the same final tree",
+    "Threading async ancestry into the pure synchronous classifyMergeMethod instead of keeping the proof separate"
+  ],
+  "comparableIssueIds": [1488, 1485]
+}
