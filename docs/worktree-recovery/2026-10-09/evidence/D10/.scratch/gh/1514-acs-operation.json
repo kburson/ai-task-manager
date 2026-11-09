@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-section",
+  "heading": "## Acceptance Criteria",
+  "expected": "\n\n- [ ] _TBD — define acceptance criteria at Refine._\n\n",
+  "replacement": "\n\n- [ ] New Plan Estimation Forecast comments store each comparable issue exactly once, inside a collapsed `<details>` block containing `<ul id=\"comparableIssues\">`; the hidden record contains only the external-list descriptor rather than the comparable array.\n- [ ] The descriptor records the fixed element ID, item count, encoding version, and SHA-256 fingerprint of the canonical comparable array, while the existing whole-payload hash continues to authenticate the reconstructed logical forecast.\n- [ ] Comment readers strictly parse the external list, reconstruct the existing in-memory `comparableIssues` array before returning the record, and fail closed for missing or duplicate IDs, malformed item JSON, count drift, fingerprint drift, or semantic tampering.\n- [ ] Historical forecast comments with embedded `comparableIssues` arrays remain readable without migration or edits to closed issues.\n- [ ] Empty and large comparable sets render and round-trip deterministically, and focused tests plus the repository fast and slow lanes remain green.\n\n"
+}

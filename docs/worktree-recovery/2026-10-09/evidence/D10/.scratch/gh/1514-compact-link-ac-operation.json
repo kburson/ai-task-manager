@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- [ ] New Plan Estimation Forecast comments store each comparable issue exactly once, inside a collapsed `<details>` block containing `<ul id=\"comparableIssues\">`; the hidden record contains only the external-list descriptor rather than the comparable array. <!-- aitm-verified vc-list=\"vc:1\" -->",
+  "replacement": "- [ ] New Plan Estimation Forecast comments store each comparable issue exactly once, inside a collapsed `<details>` block containing `<ul id=\"comparableIssues\">`; each issue uses an explicit repository-correct HTML anchor labeled only `#<number>` so GitHub does not expand it to a status icon and full title; the hidden record contains only the external-list descriptor rather than the comparable array. <!-- aitm-verified vc-list=\"vc:1\" -->",
+  "expectedVersion": 19
+}

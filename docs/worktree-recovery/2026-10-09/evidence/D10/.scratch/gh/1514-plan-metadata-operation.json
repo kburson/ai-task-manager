@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **design-spec**: `docs/superpowers/specs/2026-09-04-1514-externalize-tamper-evident-forecast-comparables-design.md`",
+  "replacement": "- **design-spec**: `docs/superpowers/specs/2026-09-04-1514-externalize-tamper-evident-forecast-comparables-design.md`\n- **implementation-plan**: `docs/superpowers/plans/2026-09-04-1514-externalize-forecast-comparables.md`",
+  "expectedVersion": 20
+}
