@@ -1,0 +1,24 @@
+✖ actual complete guard evaluator cannot translate malformed authority into Explain readiness (40.442583ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 246.510958
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:101:3
+✖ actual complete guard evaluator cannot translate malformed authority into Explain readiness (40.442583ms)
+  TypeError: criteria-revision:event-envelope
+      at revisionError (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/schema.mjs:30:9)
+      at readRevisionEnvelope (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/records.mjs:266:61)
+      at file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/store.mjs:815:33
+      at Array.map (<anonymous>)
+      at get createdEvents (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/task-tracker/lib/criteria-revision/store.mjs:815:10)
+      at JSON.stringify (<anonymous>)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:127:29)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

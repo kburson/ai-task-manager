@@ -1,0 +1,35 @@
+✖ actual backlog registration preserves baseline current revision authority (35.394ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 250.048084
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:45:5
+✖ actual backlog registration preserves baseline current revision authority (35.394ms)
+  AssertionError [ERR_ASSERTION]: Read-only admission has no original writes or publication effects
+  + actual - expected
+  
+  + [
+  +   'authority-read',
+  +   'page-read',
+  +   'native-history-readback',
+  +   'native-proof-record-readback'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-proof-consumers.test.mjs:81:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'authority-read', 'page-read', 'native-history-readback', 'native-proof-record-readback' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

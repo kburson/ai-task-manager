@@ -1,0 +1,23 @@
+✔ native actor state root refuses own getters before record construction (358.78525ms)
+✔ native actor state root refuses inherited getters before record construction (305.289375ms)
+✔ native actor state root refuses nested-identity getters before record construction (318.96875ms)
+✔ native actor state root refuses nested-state getters before record construction (298.090625ms)
+✔ actual tail leaf dispatchOnEnterActions refuses public getters before selecting any callback (272.205542ms)
+✔ actual tail leaf refreshKanbanStateCache refuses public getters before selecting any callback (276.800125ms)
+✔ actual tail leaf emitFullAutoReviewAudit refuses public getters before selecting any callback (291.292208ms)
+✔ actual tail leaf unparkDoneDependents refuses public getters before selecting any callback (307.263917ms)
+✔ actual tail leaf emitOutOfBandAudit refuses public getters before selecting any callback (296.259541ms)
+✔ actual tail leaf syncTrackerState refuses public getters before selecting any callback (273.472917ms)
+✔ actual tail leaf syncEventFields refuses public getters before selecting any callback (292.309167ms)
+✔ actual tail leaf endTaskTracking refuses public getters before selecting any callback (287.096084ms)
+✔ original state recording refuses own before getters or legacy writes (304.799417ms)
+✔ original state recording refuses inherited before getters or legacy writes (312.347084ms)
+✔ original state recording refuses plain-callback before getters or legacy writes (328.750458ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4724.965292

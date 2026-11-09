@@ -1,0 +1,5 @@
+npm notice run @kburson/ai-task-manager@0.1.0 npx
+npm notice run 'prettier' --write scripts/task-tracker/lib/criteria-revision/store.mjs scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs
+scripts/task-tracker/lib/criteria-revision/store.mjs 203ms (unchanged)
+scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs 7ms (unchanged)
+scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs 3ms (unchanged)

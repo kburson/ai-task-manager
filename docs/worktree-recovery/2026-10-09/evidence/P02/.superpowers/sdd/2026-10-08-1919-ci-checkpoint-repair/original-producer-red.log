@@ -1,0 +1,95 @@
+✖ UTC phase publication and original actor arithmetic retain strict raw-zero refusal (67614.831625ms)
+ℹ TAP version 13
+# Subtest: native actor source capture binds actual counted bytes and activity to the original journal candidate
+ok 1 - native actor source capture binds actual counted bytes and activity to the original journal candidate
+  ---
+  duration_ms: 165.999833
+  type: 'test'
+  ...
+# Subtest: native actor recovery-only and compute-only results cannot invent a newly published candidate capture
+ok 2 - native actor recovery-only and compute-only results cannot invent a newly published candidate capture
+  ---
+  duration_ms: 97.154125
+  type: 'test'
+  ...
+# Subtest: native actor first-intent record exactly matches ordinary prepared journal bytes without publishing
+ok 3 - native actor first-intent record exactly matches ordinary prepared journal bytes without publishing
+  ---
+  duration_ms: 135.071208
+  type: 'test'
+  ...
+# Subtest: native stage actor intent preserves original candidate and journal bytes through canonical persistence
+ok 4 - native stage actor intent preserves original candidate and journal bytes through canonical persistence
+  ---
+  duration_ms: 146.083084
+  type: 'test'
+  ...
+# Subtest: recorded stage actor candidate validates original native arithmetic against retained local state
+ok 5 - recorded stage actor candidate validates original native arithmetic against retained local state
+  ---
+  duration_ms: 163.677084
+  type: 'test'
+  ...
+# Subtest: native phase UTC metadata reaches its original durable intent
+not ok 6 - native phase UTC metadata reaches its original durable intent
+  ---
+  duration_ms: 66610.609167
+  type: 'test'
+  location: '/Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-actor-candidate-capture.test.mjs:422:1'
+  failureType: 'testCodeFailure'
+  error: 'Command failed: /Users/kpburson/.nvm/versions/node/v26.8.1/bin/node --test /Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-stage-phase-11-prefix-after-intent-write.test.mjs'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    genericNodeError (node:internal/errors:999:15)
+    wrappedFn (node:internal/errors:544:14)
+    checkExecSyncError (node:child_process:942:11)
+    execFileSync (node:child_process:978:15)
+    TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/native-actor-candidate-capture.test.mjs:425:20)
+    Test.runInAsyncScope (node:async_hooks:226:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67563.305167
+
+
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67673.233125
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:45:1
+✖ UTC phase publication and original actor arithmetic retain strict raw-zero refusal (67614.831625ms)
+  AssertionError [ERR_ASSERTION]: Original native qualification cases must pass
+  
+  1 !== 0
+  
+      at qualify (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:34:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-ci-checkpoint-repair.test.mjs:49:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+

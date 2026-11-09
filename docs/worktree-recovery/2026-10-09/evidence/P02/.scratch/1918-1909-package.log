@@ -1,0 +1,24 @@
+✔ packed deep-import engine and both body adapters keep transaction mutation quarantined (9843.971125ms)
+✔ package-boundary: no test files are packed (8377.088583ms)
+✔ package-boundary: excluded directories do not reappear (0.342542ms)
+✔ package-boundary: ships the exact docs/introduction/ set (0.23625ms)
+✔ package-boundary: shipped README has no dead docs/introduction link (0.416834ms)
+✔ package-boundary: total entry count stays under the ceiling (0.310084ms)
+✔ package-boundary: development-only context calibration is not shipped (0.280459ms)
+✔ package-boundary: runtime entry points are still shipped (0.123292ms)
+✔ package-boundary: production parser and guidance release guard are declared (0.318208ms)
+✔ package-boundary: tag and explicit release CI retain the B2 consumer gate (0.71625ms)
+✔ scanner distinguishes explicit, HTTP, opaque, bypass, and REST paths (21.705625ms)
+✔ source-level scan matches committed expectations (848.721708ms)
+✔ multiline executable calls and shell continuations remain visible (0.211ms)
+✔ moving a source site cannot hide behind an unchanged per-file count (381.583917ms)
+✔ dynamic run wrappers remain visible as uncovered GraphQL-capable dispatches (0.187ms)
+✔ production inventory includes the dynamic issue-creation dispatch (249.4365ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10163.535708

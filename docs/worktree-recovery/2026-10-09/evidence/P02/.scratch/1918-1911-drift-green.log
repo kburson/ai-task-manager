@@ -1,0 +1,61 @@
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Rank (cfg.fieldRank). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+✔ actual start pending requires fresh authority before original session effects (399.209333ms)
+✔ actual start stale requires fresh authority before original session effects (495.711417ms)
+✔ actual start malformed requires fresh authority before original session effects (292.35725ms)
+✔ actual start unavailable requires fresh authority before original session effects (290.280208ms)
+Started #124.
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+✔ actual start baseline requires fresh authority before original session effects (456.35325ms)
+Started #124.
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+✔ actual start approved requires fresh authority before original session effects (754.160292ms)
+✔ actual targeted resume pending requires fresh authority before original session effects (392.669625ms)
+✔ actual targeted resume stale requires fresh authority before original session effects (581.859708ms)
+✔ actual targeted resume malformed requires fresh authority before original session effects (418.903958ms)
+✔ actual targeted resume unavailable requires fresh authority before original session effects (301.898709ms)
+Started #124.
+[resume] #124: re-engagement "resumed" has no open interruption and no prior start row to pair against; downgrading to start
+✔ actual targeted resume baseline requires fresh authority before original session effects (499.650375ms)
+Started #124.
+✔ actual targeted resume approved requires fresh authority before original session effects (946.527209ms)
+✔ actual remembered resume pending requires fresh authority before original session effects (441.002417ms)
+✔ actual remembered resume stale requires fresh authority before original session effects (531.920792ms)
+✔ actual remembered resume malformed requires fresh authority before original session effects (367.905792ms)
+✔ actual remembered resume unavailable requires fresh authority before original session effects (314.229375ms)
+Resumed #124.
+✔ actual remembered resume baseline requires fresh authority before original session effects (410.595917ms)
+Resumed #124.
+✔ actual remembered resume approved requires fresh authority before original session effects (717.343ms)
+✔ actual switch pending requires fresh authority before original session effects (350.423208ms)
+✔ actual switch stale requires fresh authority before original session effects (479.069709ms)
+✔ actual switch malformed requires fresh authority before original session effects (361.341167ms)
+✔ actual switch unavailable requires fresh authority before original session effects (407.728792ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+Active: #124.
+✔ actual switch baseline requires fresh authority before original session effects (1021.888791ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+Active: #124.
+✔ actual switch approved requires fresh authority before original session effects (1311.530583ms)
+✔ actual resume refuses explicit target drift during fresh admission before occupancy (296.761166ms)
+✔ actual resume refuses repository drift during fresh admission before occupancy (297.3855ms)
+✔ actual resume refuses project directory drift during fresh admission before occupancy (263.14175ms)
+✔ actual resume refuses remembered target drift during fresh admission before occupancy (276.760875ms)
+✔ actual switch refuses repository drift during fresh admission before occupancy (276.5905ms)
+✔ actual switch refuses project directory drift during fresh admission before occupancy (296.002542ms)
+✔ actual resume refuses executor drift during fresh admission (305.95775ms)
+✔ actual switch refuses executor drift during fresh admission (315.140292ms)
+✔ actual resume refuses admission backend drift (385.292333ms)
+✔ actual switch refuses admission backend drift (322.162959ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15766.180625

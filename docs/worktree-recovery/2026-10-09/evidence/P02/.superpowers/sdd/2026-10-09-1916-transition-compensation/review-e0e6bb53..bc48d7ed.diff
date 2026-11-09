@@ -1,0 +1,2841 @@
+# Review package: e0e6bb531..HEAD
+
+## Commits
+bc48d7ed [#1918] [#1916] Complete native bounded compensation custody
+c7843800 [#1918] [#1916] Report exhausted rollback writes truthfully
+
+## Files changed
+ .../2026-10-09-1916-transition-compensation.md     |  14 +-
+ .../lib/criteria-revision/source-correction.mjs    |  26 +-
+ .../lib/criteria-revision/stage-execution.mjs      | 238 ++++++++++-
+ .../task-tracker/lib/criteria-revision/store.mjs   | 450 +++++++++++++++++++++
+ .../lib/move-state/github-mutation.mjs             | 121 +++++-
+ .../lib/move-state/move-state-core.mjs             | 372 ++++++++++++++++-
+ scripts/task-tracker/lib/state-recording.mjs       | 125 ++++--
+ ...sation-audit-effect-readback-failAfter.test.mjs |   6 +
+ ...ation-audit-effect-readback-failBefore.test.mjs |   6 +
+ ...pensation-audit-effect-write-failAfter.test.mjs |   6 +
+ ...ensation-audit-effect-write-failBefore.test.mjs |   6 +
+ ...sation-audit-intent-readback-failAfter.test.mjs |   6 +
+ ...ation-audit-intent-readback-failBefore.test.mjs |   6 +
+ ...pensation-audit-intent-write-failAfter.test.mjs |   6 +
+ ...ensation-audit-intent-write-failBefore.test.mjs |   6 +
+ ...evision-compensation-audit-interrupted.test.mjs |   6 +
+ .../criteria-revision-compensation-audit.test.mjs  |   3 +
+ ...nsation-body-effect-readback-failAfter.test.mjs |   6 +
+ ...sation-body-effect-readback-failBefore.test.mjs |   6 +
+ ...mpensation-body-effect-write-failAfter.test.mjs |   6 +
+ ...pensation-body-effect-write-failBefore.test.mjs |   6 +
+ ...criteria-revision-compensation-custody.test.mjs |  61 +++
+ ...compensation-intent-readback-failAfter.test.mjs |   6 +
+ ...ompensation-intent-readback-failBefore.test.mjs |   6 +
+ ...on-compensation-intent-write-failAfter.test.mjs |   6 +
+ ...n-compensation-intent-write-failBefore.test.mjs |   6 +
+ ...eria-revision-compensation-late-config.test.mjs |   3 +
+ ...iteria-revision-compensation-late-read.test.mjs |   3 +
+ .../criteria-revision-compensation-native.test.mjs |   3 +
+ ...a-revision-compensation-return-custody.test.mjs |   3 +
+ ...teria-revision-transition-compensation.test.mjs | 138 +++++++
+ .../lib/native-stage-continuation-fixture.mjs      | 359 +++++++++++++++-
+ .../native-stage-compensation-boundary.test.mjs    | 129 ++++++
+ 33 files changed, 2090 insertions(+), 60 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/plans/2026-10-09-1916-transition-compensation.md b/docs/superpowers/plans/2026-10-09-1916-transition-compensation.md
+index 12ee04a3..d4b01832 100644
+--- a/docs/superpowers/plans/2026-10-09-1916-transition-compensation.md
++++ b/docs/superpowers/plans/2026-10-09-1916-transition-compensation.md
+@@ -83,21 +83,21 @@ return { rolledBack: recording.status === 'ok', priorState };
+ **Consumes:** actual original board return identity with exit7, three unconfirmed attempts, genuine active stage token/capability and captured priorState develop; common revision admission; current header/source/resource vector.
+ **Produces:** fixed memory-only rollback/audit effects and a closed pending compensation chronology. No public registration function may manufacture a legitimate invocation.
+ 
+ ### Durable interface
+ 
+ The existing failed stage remains fourteen original steps. An optional exact `compensation` member is admitted only for that fourteen-step journal with unconfirmed board outcome. It cannot coexist with sentinel/comment/tail steps. The closed member has:
+ 
+ - `schema:'aitm.native-compensation/v1'` and `previous` equal to the independently hashed actual board step;
+ - `intent:{priorState:'develop',stateTs}` captured from the actual original rollback derivation, with canonical timestamp and no caller-selected after bytes;
+ - `attempts` with at most two ordered original writes, each recording its exact original request, before body/version, returned/thrown facts and actual after body/version;
+-- `readback` null or exact original body CLI and independent JSON-resource response, matching the rederived rollback bytes/version;
++- `readback` null or exact original body CLI and independent JSON-resource response, matching the rollback bytes/version derived again from the original chronology;
+ - `audit` null or the exact original failure-audit request, persisted intent, actual response/readback and resource facts;
+ - `result` null or the actual closed recording result. A result is DATA, not current custody or completion authority.
+ 
+ `reconstructNativeStageCompensation({header,steps,compensation})` derives the before body, expected rollback, actual board stage/membership and full unchanged resource vector from the original chronology. It rejects unknown keys, premature/confirmed boards, arbitrary bytes, extra attempts, foreign subject, invalid timestamp, failed/partial/copied framing or incoherent readback. Store/history constructors never brand execution or intent-read membership.
+ 
+ ### Runtime interface
+ 
+ - `rollbackRecordedState` recognizes memory scope before reading ctx. A private WeakMap registers only its actual lexical invocation after `assertNativeStageCompensationContext(ctx,priorState)` validates the currently active original saga and actual exhausted board result.
+ - Core `beginNativeStageCompensation(ctx,invocation)` / `endNativeStageCompensation(ctx,invocation)` acquire/release the existing body resource lock by exact stage-token/invocation ownership, under the already held common revision frame. Checks cover original descriptors, actual executor/config/HEAD/transcript and current persisted vector before/after every await and effect.
+ - Reuse `legacyRecordingProgram`; private operation membership is born only as its actual original generator yields. Its operation DATA cannot authorize a public write. `writeIssueBodyWithRetry` accepts a private native invocation argument only after no-return custody checks before destructuring, then executes the same bounded program through fixed memory-only sinks.
+@@ -106,19 +106,29 @@ The existing failed stage remains fourteen original steps. An optional exact `co
+ - Failure audit uses the original bounded program and actual failure facts. Its wording must identify unconfirmed board/rollback status truthfully; the generic sentence claiming a committed board must not become an unsupported completion claim.
+ - The independent source fold validates compensation against the original board chronology and current body/resources. Any incomplete or completed compensation remains pending-native-stage, with nativeHistoryApproved false; it cannot admit sentinel15/comment16 or production delivery. Keep actual board stage truth even when marker was restored.
+ 
+ - [ ] Create actual original exhausted-board positive/failure/audit cases. Expected RED at missing native compensation bridge, after genuine prior steps; no manufactured header/token or setter-selected callback.
+ - [ ] Add the closed DATA branch, private runtime membership and fixed store protocol above. Keep public pre-getter quarantine for every invalid invocation.
+ - [ ] Cover both write attempts, effect-before/effect-after interruptions, write readback mismatch, audit interruption, source/resource/identity drift, copied/prototype/accessor public inputs, and a landed-first-write retry with one body/version delta. Expected: exact recoverable committed facts, zero unauthorized effects and no phantom rollback/board consistency.
+ - [ ] Run all owned native compensation and original public/recording/board cases. Expected: scoped GREEN inside unchanged budgets. Preserve unrelated whole-transition failures for their owners.
+ 
+ ## Task 3: Qualification and one fresh review
+ 
+-Run: `node --test scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs`.
++Run: `node --test --test-concurrency=1 scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs`.
+ 
+ Expected: real original exhausted-board and bounded compensation/audit, all owned current-source/public/fault controls, exact body/version/resource/readback and truthful failed result. Qualify complete originals in isolated profiles if necessary, with all cases, counts, zero skips/cancellations and unchanged limits.
+ 
+ Run: original recording/marker-retry/board-readback/atomicity profiles; `npm run lint`; `npm run format:check`; `git log --oneline -1`.
+ 
+ Expected: complete current-source ordinary regression and quality passes. Request one fresh reviewer with exact range/spec/ledger and this Review Focus. Fix Important/Critical once via meaningful RED→GREEN; record all declines/rulings/costs and deferred Minors. No re-review loop.
+ 
+ Retain source provenance and pending obligations. Required full/slow/Linux verification, normal child lifecycle, true restart/retry, facade/join and full transition completion remain due; no AC/DoD/closure is inherited from a scoped pass.
++
++## Actual interface and qualification rulings
++
++The original program counts every callback attempt, including a failure before durable intent. Keep the actual first failed callback DATA in the invocation; the retry must freshly persist and read its sealed intent before a fixed effect. Do not equate the callback count with only successfully persisted writes.
++
++Node26 Error.stack is a lazy accessor. Follow the retained original board-error rule: never read stack, and require message/name/code to be own DATA when present. Actual error identity and selected fields remain protected.
++
++Audit callback acknowledgment and persisted readback are separate facts. An interruption after verified audit readback can leave auditPosted false while the actual readback/resource survives. True acknowledgment requires verified readback; a false callback cannot erase an already committed resource.
++
++Use two semantic qualification files: original body/retry/return transport (ten cases) and audit/current input custody (twelve cases), with four isolated workers per sequential file. Each keeps600000ms and the combined verifier keeps1200s. The body group includes the genuine return getter/copy/mutation comparison; the audit group includes all eight fault points, its positive, the retained earlier single interrupted probe and two actual late getter/config cases. Original files/fixtures/assertions are preserved. The older single-file issue declaration must be reconciled through governed metadata at normal child lifecycle reconciliation; do not stamp it as all-scope evidence now.
+diff --git a/scripts/task-tracker/lib/criteria-revision/source-correction.mjs b/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
+index 177772d4..68d06958 100644
+--- a/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/source-correction.mjs
+@@ -667,56 +667,78 @@ async function replayNativeEpoch({
+           header: j.header,
+           steps: j.steps.slice(0, 12),
+         });
+         exactPrefix =
+           equal(resources, phases.afterResources) ||
+           (j.steps.at(-1).readback === null && equal(resources, phases.beforeResources));
+         if (!equal(resources, backend.snapshot.nativeStageResources))
+           revisionError('native-stage-current-resources');
+       }
+       const expectedStageObservation = structuredClone(original.observation);
+-      if (j.steps.length >= 13 && j.steps.length <= 14) {
++      if (j.steps.length >= 13 && j.steps.length <= 14 && j.compensation === undefined) {
+         const { reconstructNativeStageEntryBody } = await import('./stage-execution.mjs');
+         const entry = await reconstructNativeStageEntryBody({
+           header: j.header,
+           steps: j.steps.slice(0, 13),
+         });
+         const after = equal(observation.body, entry.afterBody);
+         if (
+           (!after &&
+             (j.steps[12].readback !== null || !equal(observation.body, entry.beforeBody))) ||
+           (j.steps.length === 13 && !equal(resources, entry.resources)) ||
+           !equal(resources, backend.snapshot.nativeStageResources)
+         )
+           revisionError('native-stage-entry-prefix');
+         if (after) expectedStageObservation.body = structuredClone(entry.afterBody);
+       }
+-      if (j.steps.length === 14) {
++      if (j.steps.length === 14 && j.compensation === undefined) {
+         const { reconstructNativeStageBoard } = await import('./stage-execution.mjs');
+         const board = await reconstructNativeStageBoard({ header: j.header, steps: j.steps });
+         const after =
+           board.afterRecognized &&
+           equal(resources, board.afterResources) &&
+           observation.stage === board.afterStage;
+         const before =
+           board.beforeRecognized &&
+           equal(resources, board.beforeResources) &&
+           observation.stage === board.beforeStage;
+         if (
+           (!after && (!before || board.confirmed)) ||
+           !equal(observation.body, board.body) ||
+           !equal(resources, backend.snapshot.nativeStageResources)
+         )
+           revisionError('native-stage-board-prefix');
+         exactPrefix = after || before;
+         if (after) expectedStageObservation.stage = board.afterStage;
+       }
++      if (j.compensation !== undefined) {
++        const { reconstructNativeStageCompensation } = await import('./stage-execution.mjs');
++        const comp = await reconstructNativeStageCompensation({
++          header: j.header,
++          steps: j.steps,
++          compensation: j.compensation,
++        });
++        const body = comp.bodyPrefixes.find((candidate) => equal(observation.body, candidate));
++        const allowedResources =
++          equal(resources, comp.beforeResources) ||
++          (j.compensation.audit !== null && equal(resources, comp.afterResources));
++        if (
++          !body ||
++          !allowedResources ||
++          observation.stage !== comp.stage ||
++          !equal(resources, backend.snapshot.nativeStageResources)
++        )
++          revisionError('native-stage-compensation-prefix');
++        exactPrefix = true;
++        expectedStageObservation.body = structuredClone(body);
++        expectedStageObservation.stage = comp.stage;
++      }
+       if (j.steps.length === 15) {
+         // The same reconstruction function validates the complete first fourteen steps
+         // before deriving this fixed sentinel delta. No current body is used
+         // as the origin of its own historical comparison.
+         const { reconstructNativeStageSentinel } = await import('./stage-execution.mjs');
+         const sentinel = await reconstructNativeStageSentinel({ header: j.header, steps: j.steps });
+         const after = equal(observation.body, sentinel.afterBody);
+         const before =
+           j.steps[14].readback === null && equal(observation.body, sentinel.beforeBody);
+         if (
+diff --git a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+index b106a4f0..b8094234 100644
+--- a/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/stage-execution.mjs
+@@ -1427,29 +1427,39 @@ function freezeStageData(value) {
+     Object.freeze(value);
+   }
+   return value;
+ }
+ 
+ // Initial fixed pending stage shape. Full origin/header authority is validated
+ // only by the independently ordered history fold, never this codec.
+ export function validateNativeStageJournal(journal) {
+   try {
+     canonicalRecordJson(journal);
+-    exactKeys(journal, ['schema', 'header', 'steps']);
++    exactKeys(journal, [
++      'schema',
++      'header',
++      'steps',
++      ...(Object.hasOwn(journal, 'compensation') ? ['compensation'] : []),
++    ]);
+     if (journal.schema !== 'aitm.native-stage/v1') throw new TypeError();
+     const { id, ...unsigned } = journal.header;
+     if (
+       id !== hashBytes(canonicalRecordJson(unsigned)) ||
+       !Array.isArray(journal.steps) ||
+       ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(journal.steps.length)
+     )
+       throw new TypeError();
++    if (Object.hasOwn(journal, 'compensation')) {
++      if (journal.steps.length !== 14 || journal.steps[13]?.outcome?.kind !== 'unconfirmed')
++        throw new TypeError();
++      validateNativeCompensationData(journal.compensation, journal.header, journal.steps);
++    }
+     const first = journal.steps[0];
+     exactKeys(first, ['ordinal', 'kind', 'previous', 'intent', 'readback']);
+     exactKeys(first.intent, ['journalBytes']);
+     const actor = journal.header.original.actor;
+     const bytes =
+       JSON.stringify(
+         deriveActorFlushJournalRecord({
+           identity: actor.identity,
+           candidate: JSON.parse(actor.candidateBytes),
+         }),
+@@ -2645,10 +2655,236 @@ export async function reconstructNativeStageTailDispatch(input) {
+   const readback = {
+     actions: [],
+     resources: predecessor.afterResources,
+     body: predecessor.body,
+     stage: predecessor.stage,
+   };
+   if (steps[16].readback !== null && !same(steps[16].readback, readback))
+     revisionError('native-stage-tail-dispatch-readback');
+   return freezeStageData({ ...readback, complete: steps[16].readback !== null });
+ }
++
++// Closed compensation DATA; neither this parser nor a copied journal grants
++// invocation, lock or intent-read membership. The ordered fold proves origin.
++function validateNativeCompensationData(value, header, steps) {
++  canonicalRecordJson(value);
++  exactKeys(value, ['schema', 'previous', 'intent', 'attempts', 'readback', 'audit', 'result']);
++  if (
++    value.schema !== 'aitm.native-compensation/v1' ||
++    steps.length !== 14 ||
++    steps[13].outcome?.kind !== 'unconfirmed' ||
++    steps[13].readback !== null ||
++    value.previous !== hashBytes(canonicalRecordJson(steps[13]))
++  )
++    revisionError('native-stage-compensation-data');
++  exactKeys(value.intent, ['priorState', 'stateTs']);
++  if (
++    value.intent.priorState !== header.intent.source ||
++    value.intent.priorState !== 'develop' ||
++    typeof value.intent.stateTs !== 'string' ||
++    !Number.isFinite(Date.parse(value.intent.stateTs)) ||
++    new Date(value.intent.stateTs).toISOString() !== value.intent.stateTs ||
++    Date.parse(value.intent.stateTs) < Date.parse(steps[12].intent.stateTs) ||
++    !Array.isArray(value.attempts) ||
++    value.attempts.length > 2
++  )
++    revisionError('native-stage-compensation-data');
++  const body = (v) => {
++    exactKeys(v, ['bytes', 'version']);
++    if (typeof v.bytes !== 'string' || v.version !== parseBodyVersion(v.bytes))
++      revisionError('native-stage-compensation-data');
++  };
++  const returned = (v) => {
++    if (v.kind === 'returned') exactKeys(v, ['kind']);
++    else {
++      exactKeys(v, ['kind', 'name', 'message', 'code']);
++      if (
++        v.kind !== 'threw' ||
++        typeof v.name !== 'string' ||
++        typeof v.message !== 'string' ||
++        !(v.code === null || typeof v.code === 'string' || Number.isSafeInteger(v.code))
++      )
++        revisionError('native-stage-compensation-data');
++    }
++  };
++  for (const [index, attempt] of value.attempts.entries()) {
++    exactKeys(attempt, ['number', 'request', 'before', 'write', 'after']);
++    if (attempt.number !== index + 1) revisionError('native-stage-compensation-data');
++    exactKeys(attempt.request, ['kind', 'input']);
++    exactKeys(attempt.request.input, ['issueNumber', 'repo', 'body']);
++    body(attempt.before);
++    if (attempt.write !== null) returned(attempt.write);
++    if (attempt.after !== null) body(attempt.after);
++    if (attempt.write === null && attempt.after !== null)
++      revisionError('native-stage-compensation-data');
++  }
++  if (value.audit !== null) {
++    exactKeys(value.audit, ['request', 'intent', 'write', 'readback']);
++    exactKeys(value.audit.request, ['kind', 'input']);
++    exactKeys(value.audit.request.input, ['issueNumber', 'repo', 'body']);
++    exactKeys(value.audit.intent, ['id', 'nodeId', 'bytes']);
++    if (value.audit.write !== null) returned(value.audit.write);
++    if (value.audit.readback !== null) exactKeys(value.audit.readback, ['resource']);
++  }
++  if (value.result !== null) {
++    const result = value.result;
++    exactKeys(
++      result,
++      result.status === 'failed'
++        ? ['status', 'attempts', 'error', 'auditPosted']
++        : ['status', 'attempts']
++    );
++    if (
++      !['ok', 'failed'].includes(result.status) ||
++      result.attempts !== value.attempts.length ||
++      result.attempts < 1 ||
++      result.attempts > 2 ||
++      (result.status === 'failed' &&
++        (typeof result.error !== 'string' || typeof result.auditPosted !== 'boolean'))
++    )
++      revisionError('native-stage-compensation-data');
++  }
++}
++
++export async function reconstructNativeStageCompensation(input) {
++  try {
++    canonicalRecordJson(input);
++    exactKeys(input, ['header', 'steps', 'compensation']);
++    const { header, steps, compensation: c } = input;
++    validateNativeStageJournal({ schema: 'aitm.native-stage/v1', header, steps, compensation: c });
++    const board = await reconstructNativeStageBoard({ header, steps });
++    if (!board.beforeRecognized && !board.afterRecognized) throw new TypeError();
++    const beforeBody = board.body;
++    const afterBytes = deriveRecordedStageBody({
++      body: beforeBody.bytes,
++      transitionId: header.intent.transitionId,
++      intent: { kind: 'rollback-state', ...c.intent },
++    });
++    const afterBody = { bytes: afterBytes, version: parseBodyVersion(afterBytes) };
++    const writeRequest = {
++      kind: 'write-body',
++      input: {
++        issueNumber: String(header.scope.issue),
++        repo: header.scope.repository,
++        body: afterBytes,
++      },
++    };
++    let current = beforeBody;
++    for (const [index, attempt] of c.attempts.entries()) {
++      if (
++        !same(attempt.request, writeRequest) ||
++        !same(attempt.before, current) ||
++        (index > 0 && c.attempts[index - 1].write?.kind !== 'threw')
++      )
++        throw new TypeError();
++      if (attempt.write === null) {
++        if (index !== c.attempts.length - 1) throw new TypeError();
++      } else {
++        if (
++          attempt.after === null ||
++          (!same(attempt.after, beforeBody) && !same(attempt.after, afterBody)) ||
++          (attempt.write.kind === 'returned' && !same(attempt.after, afterBody))
++        )
++          throw new TypeError();
++        current = attempt.after;
++      }
++    }
++    const last = c.attempts.at(-1);
++    if (c.readback !== null) {
++      const step = {
++        ordinal: 15,
++        kind: 'rollback-state',
++        previous: c.previous,
++        intent: c.intent,
++        readback: c.readback,
++      };
++      const actual = reconstructNativeStageBodyStep({
++        repository: header.scope.repository,
++        issue: header.scope.issue,
++        transitionId: header.intent.transitionId,
++        body: beforeBody.bytes,
++        ordinal: 15,
++        previous: c.previous,
++        step,
++      });
++      if (
++        actual.readbackBody !== afterBytes ||
++        !last ||
++        !c.attempts.some(
++          (attempt) =>
++            ['returned', 'threw'].includes(attempt.write?.kind) && same(attempt.after, afterBody)
++        ) ||
++        !same(current, afterBody)
++      )
++        throw new TypeError();
++    }
++    const resources = structuredClone(
++      board.afterRecognized ? board.afterResources : board.beforeResources
++    );
++    const afterResources = structuredClone(resources);
++    if (c.audit !== null) {
++      if (c.attempts.length !== 2 || last?.write?.kind !== 'threw') throw new TypeError();
++      const a = c.audit;
++      const expectedBody = [
++        '> ⚠ state-recording-failed',
++        '',
++        `Marker rollback to \`${c.intent.priorState}\` failed after 2 attempts. Board Status was not confirmed; the actual board and marker resources remain pending recovery.`,
++        '',
++        `Error: \`${last.write.message}\``,
++        '',
++        '<!-- aitm-state-recording-failed -->',
++      ].join('\n');
++      if (
++        !same(a.request, {
++          kind: 'post-comment',
++          input: {
++            issueNumber: String(header.scope.issue),
++            repo: header.scope.repository,
++            body: expectedBody,
++          },
++        })
++      )
++        throw new TypeError();
++      const next = String(Math.max(0, ...resources.comments.map((v) => Number(v.id))) + 1);
++      const nodeId = 'IC_memory_compensation_' + header.id.slice(7);
++      const comment = {
++        id: Number(next),
++        node_id: nodeId,
++        issue_url: `https://api.github.com/repos/${header.scope.repository}/issues/${header.scope.issue}`,
++        body: expectedBody,
++        user: {
++          login: header.guardCapture.lifecycleSources.remote.identity.response.stdout.trim(),
++        },
++      };
++      const intended = { id: next, nodeId, bytes: JSON.stringify(comment) };
++      if (!same(a.intent, intended)) throw new TypeError();
++      afterResources.comments.push(structuredClone(intended));
++      if (
++        a.readback !== null &&
++        (a.write?.kind !== 'returned' || !same(a.readback.resource, intended))
++      )
++        throw new TypeError();
++    }
++    if (c.result !== null) {
++      if (c.result.status === 'ok') {
++        if (c.readback === null || last?.write?.kind !== 'returned' || c.audit !== null)
++          throw new TypeError();
++      } else if (
++        c.attempts.length !== 2 ||
++        last?.write?.kind !== 'threw' ||
++        c.result.error !== last.write.message ||
++        (c.result.auditPosted && (c.audit === null || c.audit.readback === null))
++      )
++        throw new TypeError();
++    }
++    return {
++      beforeBody,
++      afterBody,
++      bodyPrefixes: last?.write === null ? [current, afterBody] : [current],
++      beforeResources: resources,
++      afterResources,
++      stage: board.afterRecognized ? board.afterStage : board.beforeStage,
++    };
++  } catch {
++    revisionError('native-stage-compensation');
++  }
++}
+diff --git a/scripts/task-tracker/lib/criteria-revision/store.mjs b/scripts/task-tracker/lib/criteria-revision/store.mjs
+index 2240f402..db80324c 100644
+--- a/scripts/task-tracker/lib/criteria-revision/store.mjs
++++ b/scripts/task-tracker/lib/criteria-revision/store.mjs
+@@ -3941,10 +3941,460 @@ export function assertMemoryNativeStageTailDispatchIntent(input) {
+     revisionError('native-stage-tail-dispatch-intent-unread');
+   retained.current();
+   timingLock(m, input);
+   if (
+     journal.steps.length !== 17 ||
+     journal.steps[16].readback !== null ||
+     !nativeTailDispatchIntentReads.has(journal.steps[16])
+   )
+     revisionError('native-stage-tail-dispatch-intent-unread');
+ }
++
++// Invocation-local custody of actual fixed compensation mutations. This is a
++// current snapshot comparison, never a cached revision admission decision.
++const nativeCompensationCurrent = new WeakMap();
++const nativeCompensationIntentReads = new WeakSet();
++function compensationInputContinuity(input) {
++  const keys = ['backend', 'capability', 'context', 'token', 'invocation'];
++  const read = () => {
++    if (!input || Object.getPrototypeOf(input) !== Object.prototype)
++      revisionError('native-stage-compensation-input');
++    const descriptors = Object.getOwnPropertyDescriptors(input);
++    if (
++      Reflect.ownKeys(descriptors).length !== keys.length ||
++      keys.some(
++        (key) =>
++          !descriptors[key] ||
++          !Object.hasOwn(descriptors[key], 'value') ||
++          !descriptors[key].enumerable
++      )
++    )
++      revisionError('native-stage-compensation-input');
++    return descriptors;
++  };
++  const original = read();
++  const context = original.context.value;
++  const contextBytes = () => {
++    try {
++      if (!context || Object.getPrototypeOf(context) !== Object.prototype) throw new TypeError();
++      return canonicalRecordJson(context);
++    } catch {
++      revisionError('native-stage-compensation-context');
++    }
++  };
++  const bytes = contextBytes();
++  return () => {
++    const actual = read();
++    if (
++      keys.some((key) =>
++        ['value', 'enumerable', 'writable', 'configurable'].some(
++          (field) => actual[key][field] !== original[key][field]
++        )
++      )
++    )
++      revisionError('native-stage-compensation-input-changed');
++    if (contextBytes() !== bytes) revisionError('native-stage-compensation-context-changed');
++  };
++}
++function compensationResourceInput(input, reason) {
++  if (!input || Object.getPrototypeOf(input) !== Object.prototype) revisionError(reason);
++  const descriptors = Object.getOwnPropertyDescriptors(input);
++  const keys = ['backend', 'token', 'invocation'];
++  if (
++    Reflect.ownKeys(descriptors).length !== keys.length ||
++    keys.some(
++      (key) =>
++        !descriptors[key] ||
++        !Object.hasOwn(descriptors[key], 'value') ||
++        !descriptors[key].enumerable
++    )
++  )
++    revisionError(reason);
++}
++export function assertMemoryNativeCompensationCurrent(input) {
++  compensationResourceInput(input, 'native-stage-compensation-current');
++  const record = nativeCompensationCurrent.get(input.invocation);
++  if (!record || record.backend !== input.backend || record.token !== input.token)
++    revisionError('native-stage-compensation-current');
++  bodyLock(memory(input.backend), input);
++  if (canonicalRecordJson(input.backend.snapshot) !== record.expected)
++    revisionError('native-stage-compensation-current-changed');
++}
++function retainCompensationCurrent(input) {
++  const record = nativeCompensationCurrent.get(input.invocation);
++  if (!record || record.backend !== input.backend || record.token !== input.token)
++    revisionError('native-stage-compensation-current');
++  record.expected = canonicalRecordJson(input.backend.snapshot);
++}
++async function compensationAuthority(input) {
++  const unchanged = compensationInputContinuity(input);
++  unchanged();
++  assertMemoryCapability(input.backend, input.capability, input.context);
++  const core = await import('../move-state/move-state-core.mjs');
++  unchanged();
++  assertMemoryCapability(input.backend, input.capability, input.context);
++  const intent = core.readNativeStageCompensationIntent(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  const m = memory(input.backend),
++    journal = m.nativeStageRecords.at(-1);
++  validateNativeOrder(m);
++  validateNativeStageJournal(journal);
++  if (canonicalRecordJson(journal.header) !== canonicalRecordJson(intent.header))
++    revisionError('native-stage-compensation-authority');
++  const current = () => {
++    unchanged();
++    assertMemoryCapability(input.backend, input.capability, input.context);
++    core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
++    assertMemoryNativeCompensationCurrent({
++      backend: input.backend,
++      token: input.token,
++      invocation: input.invocation,
++    });
++  };
++  return { m, journal, core, intent, current };
++}
++export async function acquireMemoryNativeStageCompensation(input) {
++  const unchanged = compensationInputContinuity(input);
++  unchanged();
++  assertMemoryCapability(input.backend, input.capability, input.context);
++  const core = await import('../move-state/move-state-core.mjs');
++  unchanged();
++  assertMemoryCapability(input.backend, input.capability, input.context);
++  core.readNativeStageCompensationIntent(input.token, input.backend, input.invocation);
++  const m = memory(input.backend);
++  if (m.nativeBodyResourceLock !== null || nativeCompensationCurrent.has(input.invocation))
++    revisionError('native-stage-compensation-lock');
++  m.nativeBodyResourceLock = { token: input.token, invocation: input.invocation };
++  nativeCompensationCurrent.set(input.invocation, {
++    backend: input.backend,
++    token: input.token,
++    expected: canonicalRecordJson(input.backend.snapshot),
++  });
++}
++export function releaseMemoryNativeStageCompensation(input) {
++  compensationResourceInput(input, 'native-stage-compensation-release');
++  const m = memory(input.backend),
++    record = nativeCompensationCurrent.get(input.invocation);
++  if (!record) return;
++  if (record.backend !== input.backend || record.token !== input.token)
++    revisionError('native-stage-compensation-release');
++  bodyLock(m, input);
++  m.nativeBodyResourceLock = null;
++  nativeCompensationCurrent.delete(input.invocation);
++}
++async function compensationDerived(journal, current, compensation = journal.compensation) {
++  const codec = await import('./stage-execution.mjs');
++  current();
++  const derived = await codec.reconstructNativeStageCompensation({
++    header: journal.header,
++    steps: journal.steps,
++    compensation,
++  });
++  current();
++  return derived;
++}
++function compensationIntent(journal) {
++  if (!journal.compensation || !nativeCompensationIntentReads.has(journal.compensation))
++    revisionError('native-stage-compensation-intent-unread');
++  return journal.compensation;
++}
++export async function persistMemoryNativeStageCompensation(input) {
++  const { journal, intent, current } = await compensationAuthority(input);
++  current();
++  if (!intent.compensation) revisionError('native-stage-compensation-unprepared');
++  if (!journal.compensation) {
++    await compensationDerived(journal, current, intent.compensation);
++    current();
++    operation(memory(input.backend), 'native-stage-compensation-intent-write', () => {
++      current();
++      journal.compensation = clone(intent.compensation);
++      retainCompensationCurrent(input);
++    });
++  }
++  current();
++  operation(memory(input.backend), 'native-stage-compensation-intent-readback', () => {
++    current();
++    if (
++      canonicalRecordJson(journal.compensation.intent) !==
++        canonicalRecordJson(intent.compensation.intent) ||
++      journal.compensation.previous !== intent.compensation.previous
++    )
++      revisionError('native-stage-compensation-intent-readback');
++    nativeCompensationIntentReads.add(journal.compensation);
++  });
++}
++export async function beginMemoryNativeStageCompensationAttempt(input) {
++  const { m, journal, core, current } = await compensationAuthority(input);
++  current();
++  const c = compensationIntent(journal);
++  const request = core.readNativeStageCompensationOperation(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  if (request.kind !== 'write-body' || c.result !== null || c.attempts.length >= 2)
++    revisionError('native-stage-compensation-attempt');
++  const number = core.readNativeStageCompensationAttemptNumber(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  if (number !== c.attempts.length + 1) revisionError('native-stage-compensation-attempt-order');
++  const attempt = {
++    number,
++    request,
++    before: clone(m.observation.body),
++    write: null,
++    after: null,
++  };
++  const next = clone(c);
++  next.attempts.push(attempt);
++  await compensationDerived(journal, current, next);
++  current();
++  operation(m, 'native-stage-compensation-attempt-intent-write', () => {
++    current();
++    c.attempts.push(clone(attempt));
++    retainCompensationCurrent(input);
++  });
++  operation(m, 'native-stage-compensation-attempt-intent-readback', () => {
++    current();
++    if (canonicalRecordJson(c.attempts.at(-1)) !== canonicalRecordJson(attempt))
++      revisionError('native-stage-compensation-attempt-readback');
++  });
++}
++export async function writeMemoryNativeStageCompensation(input) {
++  const { m, journal, current } = await compensationAuthority(input);
++  current();
++  const c = compensationIntent(journal),
++    attempt = c.attempts.at(-1);
++  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-write');
++  const derived = await compensationDerived(journal, current);
++  current();
++  if (canonicalRecordJson(m.observation.body) === canonicalRecordJson(derived.afterBody)) return;
++  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.beforeBody))
++    revisionError('native-stage-compensation-body');
++  operation(m, 'native-stage-compensation-body-effect-write', () => {
++    current();
++    m.observation.body = clone(derived.afterBody);
++    validateRevisionObservation(m.observation);
++    retainCompensationCurrent(input);
++  });
++}
++export async function completeMemoryNativeStageCompensation(input) {
++  const { m, journal, current } = await compensationAuthority(input);
++  current();
++  const c = compensationIntent(journal),
++    attempt = c.attempts.at(-1);
++  if (!attempt || attempt.write !== null) revisionError('native-stage-compensation-return');
++  const derived = await compensationDerived(journal, current);
++  current();
++  if (canonicalRecordJson(m.observation.body) !== canonicalRecordJson(derived.afterBody))
++    revisionError('native-stage-compensation-readback-body');
++  const { ghFetchArgs } = await import('../versioned-issue-write.mjs');
++  current();
++  const args = ghFetchArgs(journal.header.scope.repository, journal.header.scope.issue);
++  const readback = {
++    request: { file: 'gh', args },
++    response: {
++      stdout: m.observation.body.bytes + '\n',
++      stderr: '',
++      exitCode: 0,
++    },
++    resource: {
++      request: { file: 'gh', args: args.slice(0, -2) },
++      response: {
++        stdout: JSON.stringify({ body: m.observation.body.bytes }),
++        stderr: '',
++        exitCode: 0,
++      },
++    },
++  };
++  const next = clone(c);
++  Object.assign(next.attempts.at(-1), {
++    write: { kind: 'returned' },
++    after: clone(m.observation.body),
++  });
++  next.readback = readback;
++  await compensationDerived(journal, current, next);
++  current();
++  operation(m, 'native-stage-compensation-body-effect-readback', () => {
++    current();
++    Object.assign(attempt, { write: { kind: 'returned' }, after: clone(m.observation.body) });
++    c.readback = clone(readback);
++    retainCompensationCurrent(input);
++    validateNativeStageJournal(journal);
++  });
++}
++export async function recordMemoryNativeStageCompensationFailure(input) {
++  const { m, journal, core, intent, current } = await compensationAuthority(input);
++  current();
++  const c = journal.compensation;
++  if (
++    !c ||
++    canonicalRecordJson(c.intent) !== canonicalRecordJson(intent.compensation.intent) ||
++    c.previous !== intent.compensation.previous ||
++    c.result !== null
++  )
++    revisionError('native-stage-compensation-failure');
++  const number = core.readNativeStageCompensationAttemptNumber(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  const request = core.readNativeStageCompensationOperation(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  const facts = core.readNativeStageCompensationFailure(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  const next = clone(c);
++  if (next.attempts.length < number) {
++    if (number !== next.attempts.length + 1)
++      revisionError('native-stage-compensation-failure-order');
++    next.attempts.push({
++      number,
++      request,
++      before: clone(m.observation.body),
++      write: null,
++      after: null,
++    });
++  }
++  const attempt = next.attempts[number - 1];
++  if (!attempt || canonicalRecordJson(attempt.request) !== canonicalRecordJson(request))
++    revisionError('native-stage-compensation-failure-request');
++  Object.assign(attempt, { write: facts, after: clone(m.observation.body) });
++  await compensationDerived(journal, current, next);
++  current();
++  operation(m, 'native-stage-compensation-failure-intent-readback', () => {
++    current();
++    nativeCompensationIntentReads.add(c);
++  });
++  operation(m, 'native-stage-compensation-failure-write', () => {
++    current();
++    c.attempts = clone(next.attempts);
++    retainCompensationCurrent(input);
++    validateNativeStageJournal(journal);
++  });
++}
++export async function completeMemoryNativeStageCompensationResult(input) {
++  const { m, journal, core, current } = await compensationAuthority(input);
++  current();
++  const result = core.readNativeStageCompensationResult(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  const c = compensationIntent(journal),
++    next = clone(c);
++  if (c.result !== null) revisionError('native-stage-compensation-result-prefix');
++  next.result = result;
++  await compensationDerived(journal, current, next);
++  current();
++  operation(m, 'native-stage-compensation-result-write', () => {
++    current();
++    c.result = clone(result);
++    retainCompensationCurrent(input);
++  });
++  operation(m, 'native-stage-compensation-result-readback', () => {
++    current();
++    if (canonicalRecordJson(c.result) !== canonicalRecordJson(result))
++      revisionError('native-stage-compensation-result-readback');
++    validateNativeStageJournal(journal);
++  });
++}
++
++const nativeCompensationAuditReads = new WeakSet();
++export async function writeMemoryNativeStageCompensationAudit(input) {
++  const { m, journal, core, current } = await compensationAuthority(input);
++  current();
++  const c = compensationIntent(journal);
++  const request = core.readNativeStageCompensationOperation(
++    input.token,
++    input.backend,
++    input.invocation
++  );
++  if (
++    request.kind !== 'post-comment' ||
++    c.attempts.length !== 2 ||
++    c.attempts.at(-1).write?.kind !== 'threw' ||
++    c.audit !== null ||
++    c.result !== null
++  )
++    revisionError('native-stage-compensation-audit-prefix');
++  const number = String(
++    Math.max(0, ...m.nativeStageResources.comments.map((value) => Number(value.id))) + 1
++  );
++  const nodeId = 'IC_memory_compensation_' + journal.header.id.slice(7);
++  const comment = {
++    id: Number(number),
++    node_id: nodeId,
++    issue_url: `https://api.github.com/repos/${journal.header.scope.repository}/issues/${journal.header.scope.issue}`,
++    body: request.input.body,
++    user: {
++      login: journal.header.guardCapture.lifecycleSources.remote.identity.response.stdout.trim(),
++    },
++  };
++  const intent = { id: number, nodeId, bytes: JSON.stringify(comment) };
++  const audit = { request, intent, write: null, readback: null };
++  const next = clone(c);
++  next.audit = audit;
++  const derived = await compensationDerived(journal, current, next);
++  current();
++  if (canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources))
++    revisionError('native-stage-compensation-audit-before');
++  operation(m, 'native-stage-compensation-audit-intent-write', () => {
++    current();
++    c.audit = clone(audit);
++    retainCompensationCurrent(input);
++  });
++  operation(m, 'native-stage-compensation-audit-intent-readback', () => {
++    current();
++    if (canonicalRecordJson(c.audit) !== canonicalRecordJson(audit))
++      revisionError('native-stage-compensation-audit-intent-readback');
++    nativeCompensationAuditReads.add(c.audit);
++  });
++  const admitted = () => {
++    current();
++    if (
++      !nativeCompensationAuditReads.has(c.audit) ||
++      canonicalRecordJson(c.audit.intent) !== canonicalRecordJson(intent) ||
++      canonicalRecordJson(
++        core.readNativeStageCompensationOperation(input.token, input.backend, input.invocation)
++      ) !== canonicalRecordJson(request)
++    )
++      revisionError('native-stage-compensation-audit-custody');
++  };
++  operation(m, 'native-stage-compensation-audit-effect-write', () => {
++    admitted();
++    if (
++      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.beforeResources)
++    )
++      revisionError('native-stage-compensation-audit-before');
++    m.nativeStageResources.comments.push(clone(intent));
++    retainCompensationCurrent(input);
++  });
++  admitted();
++  const completed = clone(c);
++  completed.audit.write = { kind: 'returned' };
++  completed.audit.readback = { resource: clone(intent) };
++  await compensationDerived(journal, current, completed);
++  admitted();
++  operation(m, 'native-stage-compensation-audit-effect-readback', () => {
++    admitted();
++    if (
++      canonicalRecordJson(m.nativeStageResources) !== canonicalRecordJson(derived.afterResources) ||
++      canonicalRecordJson(m.nativeStageResources.comments.at(-1)) !== canonicalRecordJson(intent)
++    )
++      revisionError('native-stage-compensation-audit-readback');
++    c.audit.write = { kind: 'returned' };
++    c.audit.readback = { resource: clone(intent) };
++    retainCompensationCurrent(input);
++    validateNativeStageJournal(journal);
++  });
++}
+diff --git a/scripts/task-tracker/lib/move-state/github-mutation.mjs b/scripts/task-tracker/lib/move-state/github-mutation.mjs
+index 552745e7..27aec7b8 100644
+--- a/scripts/task-tracker/lib/move-state/github-mutation.mjs
++++ b/scripts/task-tracker/lib/move-state/github-mutation.mjs
+@@ -692,60 +692,159 @@ export async function postStampFailureAudit(input = {}) {
+ 
+ // #741 — compensating rollback of the authoritative `aitm-last-known-state`
+ // marker. `stampEntryMarkers` advances the marker to the target stage BEFORE the
+ // board Status write; when that board write fails/does-not-confirm (#711 returns
+ // a non-null exit), the marker would be left ahead of the board. This restores
+ // the marker to `priorState` (the stage the board is still confirmed at) so the
+ // failure leaves marker == board — loud (the non-zero exit is preserved by the
+ // caller) AND consistent. Idempotent: a no-op when the marker already reads
+ // `priorState`. The additive `aitm-entered-<stage>` contiguity marker is left
+ // untouched (it is not the authoritative pointer and a re-run reconciles it).
++const nativeRollbackInvocations = new WeakMap();
++const nativeRollbackInputs = new WeakMap();
++const nativeRollbackResults = new WeakMap();
++export function assertOriginalNativeCompensationInvocation(invocation, ctx) {
++  const original = nativeRollbackInvocations.get(invocation);
++  if (!original || original.ctx !== ctx) throw new TypeError('native-compensation-invocation');
++  sameOwnBoardData(ctx, original.descriptors);
++}
++export function assertOriginalNativeCompensationRecordingInput(input, invocation) {
++  const original = nativeRollbackInputs.get(input),
++    owner = nativeRollbackInvocations.get(invocation);
++  if (!original || !owner || original.invocation !== invocation)
++    throw new TypeError('native-compensation-recording-input');
++  assertOriginalNativeCompensationInvocation(invocation, owner.ctx);
++  sameOwnBoardData(input, original.descriptors);
++}
++export function assertOriginalNativeCompensationReturn(ctx, invocation, result) {
++  const original = nativeRollbackResults.get(result);
++  if (!original || original.ctx !== ctx || original.invocation !== invocation)
++    throw new TypeError('native-compensation-return');
++  assertOriginalNativeCompensationInvocation(invocation, ctx);
++  if (Object.getPrototypeOf(result) !== Object.prototype)
++    throw new TypeError('native-compensation-return');
++  sameOwnBoardData(result, original.descriptors);
++}
+ export async function rollbackRecordedState(ctx, priorState) {
+-  assertRevisionStageHostEffect();
++  if (!isMemoryStageEffectScope()) {
++    assertRevisionStageHostEffect();
++    return rollbackRecordedStateAdmitted(ctx, priorState, null);
++  }
++  const core = await import('./move-state-core.mjs');
++  core.assertNativeStageCompensationContext(ctx, priorState);
++  const invocation = Object.freeze({});
++  nativeRollbackInvocations.set(invocation, {
++    ctx,
++    core,
++    descriptors: Object.getOwnPropertyDescriptors(ctx),
++  });
++  let begun = false;
++  try {
++    await core.beginNativeStageCompensation(ctx, invocation);
++    begun = true;
++    assertOriginalNativeCompensationInvocation(invocation, ctx);
++    const result = await rollbackRecordedStateAdmitted(ctx, priorState, invocation);
++    assertOriginalNativeCompensationInvocation(invocation, ctx);
++    core.assertNativeStageCompensationReturn(ctx, invocation, result);
++    return result;
++  } finally {
++    if (begun) core.endNativeStageCompensation(ctx, invocation);
++    nativeRollbackInvocations.delete(invocation);
++  }
++}
++async function rollbackRecordedStateAdmitted(ctx, priorState, invocation) {
+   const { issueArg, cfg, gh, pexec } = ctx;
+   if (priorState == null) return { rolledBack: false, reason: 'no-prior-state' };
+   const [{ writeIssueBodyWithRetry }, { writeLastKnownState, readLastKnownState }] =
+     await Promise.all([import('../state-recording.mjs'), import('../../gh-timing-comment.mjs')]);
+-  const { stdout } = await pexec(
+-    'gh',
+-    ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
+-    { timeout: GH_API_TIMEOUT_MS }
+-  );
+-  const beforeBody = JSON.parse(stdout).body ?? '';
++  if (invocation) {
++    assertOriginalNativeCompensationInvocation(invocation, ctx);
++    nativeRollbackInvocations
++      .get(invocation)
++      .core.assertNativeStageCompensationContext(ctx, priorState);
++  }
++  const request = {
++    file: 'gh',
++    args: ['issue', 'view', issueArg, '-R', cfg.repo, '--json', 'body'],
++  };
++  const response = invocation
++    ? await nativeRollbackInvocations
++        .get(invocation)
++        .core.readNativeStageCompensationBody(ctx, invocation, request)
++    : await pexec(request.file, request.args, { timeout: GH_API_TIMEOUT_MS });
++  if (invocation) {
++    assertOriginalNativeCompensationInvocation(invocation, ctx);
++    nativeRollbackInvocations
++      .get(invocation)
++      .core.assertNativeStageCompensationBodyReturn(invocation, response);
++  }
++  const beforeBody = JSON.parse(response.stdout).body ?? '';
+   if (readLastKnownState(beforeBody).state === priorState) {
+     return { rolledBack: false, reason: 'already-consistent', priorState };
+   }
+-  const nextBody = writeLastKnownState(beforeBody, priorState);
++  let nextBody = writeLastKnownState(beforeBody, priorState);
++  if (invocation) {
++    const versions = await import('../body-version.mjs');
++    nativeRollbackInvocations
++      .get(invocation)
++      .core.assertNativeStageCompensationContext(ctx, priorState);
++    nextBody = versions.stampBodyVersion(
++      versions.stripBodyVersion(nextBody),
++      versions.parseBodyVersion(beforeBody) + 1
++    );
++  }
+   const tmp = path.join(
+     projectTmpDir(getProjectDir()),
+     `aitm-rollback-${issueArg}-${Date.now()}.md`
+   );
+-  await writeIssueBodyWithRetry({
++  const recordingInput = {
+     issueNumber: issueArg,
+     repo: cfg.repo,
+     body: nextBody,
+     bodyBefore: beforeBody,
+     target: priorState,
+     writeIssueBody: async ({ body }) => {
+       try {
+         writeFileSync(tmp, body, 'utf8');
+         await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
+       } finally {
+         try {
+           unlinkSync(tmp);
+         } catch {
+           /* best-effort */
+         }
+       }
+     },
+-  });
+-  return { rolledBack: true, priorState };
++  };
++  if (invocation)
++    nativeRollbackInputs.set(recordingInput, {
++      invocation,
++      descriptors: Object.getOwnPropertyDescriptors(recordingInput),
++    });
++  const recording = await writeIssueBodyWithRetry(recordingInput, invocation);
++  if (invocation) {
++    assertOriginalNativeCompensationInvocation(invocation, ctx);
++    nativeRollbackInvocations
++      .get(invocation)
++      .core.assertNativeStageRecordingInput(recordingInput, invocation);
++  }
++  const result =
++    recording.status === 'failed'
++      ? { rolledBack: false, priorState, reason: 'state-recording-failed', recording }
++      : { rolledBack: recording.status === 'ok', priorState };
++  if (invocation)
++    nativeRollbackResults.set(result, {
++      ctx,
++      invocation,
++      descriptors: Object.getOwnPropertyDescriptors(result),
++    });
++  return result;
+ }
+ 
+ // #741 — success-path post-condition: after the board write is confirmed at
+ // `expectedStage` (#711 read-back) and the sentinel verifies, the authoritative
+ // `aitm-last-known-state` marker MUST also read `expectedStage`. On the happy
+ // path this always holds (stampEntryMarkers set it); a mismatch means a
+ // regression re-opened the board/marker gap and is surfaced (non-zero exit),
+ // never swallowed. Returns `{ consistent, recorded, expected, exit }`.
+ export async function assertBoardMarkerConsistent(ctx, expectedStage, nativeInput) {
+   let native;
+diff --git a/scripts/task-tracker/lib/move-state/move-state-core.mjs b/scripts/task-tracker/lib/move-state/move-state-core.mjs
+index 05a6df7d..1ea36a0d 100644
+--- a/scripts/task-tracker/lib/move-state/move-state-core.mjs
++++ b/scripts/task-tracker/lib/move-state/move-state-core.mjs
+@@ -30,20 +30,23 @@ import {
+   runStatusWrite as defaultRunStatusWrite,
+   stampEntryMarkers as defaultStampEntryMarkers,
+   readNativeEntryRequest,
+   STATUS_OPTION_QUERY,
+   STATUS_MARKER_CONSISTENCY_EXIT,
+   readOriginalNativeBoardStatus,
+   assertOriginalNativeBoardInvocation,
+   assertOriginalNativeBoardRequest,
+   assertOriginalNativeBoardResult,
+   readOriginalNativeBoardFailure,
++  assertOriginalNativeCompensationInvocation,
++  assertOriginalNativeCompensationRecordingInput,
++  assertOriginalNativeCompensationReturn,
+   rollbackRecordedState as defaultRollbackRecordedState,
+   assertBoardMarkerConsistent as defaultAssertBoardMarkerConsistent,
+ } from './github-mutation.mjs';
+ import { emitPhasePairRows as defaultEmitPhasePairRows } from './audit-timing.mjs';
+ import {
+   runPostCommitTail as defaultRunPostCommitTail,
+   DEFAULT_TAIL_STEPS,
+ } from './post-commit-tail.mjs';
+ import * as nativeTailCache from './cache-unpark.mjs';
+ import * as nativeTailAudit from './audit-timing.mjs';
+@@ -981,40 +984,49 @@ function checkPreparation(record) {
+   assertNativeReturnedResultsUnchanged(record);
+   assertNativeRevisionStageScope({
+     backend: record.backend,
+     capability: record.capability,
+     repository: record.context.repository,
+     issue: record.context.issue,
+     projectDir: record.context.executor.worktree,
+   });
+   record.assertMemoryCapability(record.backend, record.capability, record.context);
+   const body = record.backend.observation.body.bytes;
++  const compensationCurrent = record.compInvocation && record.compCustodyReady;
++  if (compensationCurrent)
++    record.compStore.assertMemoryNativeCompensationCurrent({
++      backend: record.backend,
++      token: record.stageToken,
++      invocation: record.compInvocation,
++    });
+   if (
+     ![
+       record.originalBody,
+       ...(record.entryAfterBody ? [record.entryAfterBody] : []),
+       ...(record.sentinelAfterBody ? [record.sentinelAfterBody] : []),
++      ...(record.compAfterBody ? [record.compAfterBody] : []),
+     ].includes(body) ||
+-    ![
+-      record.originalSnapshot,
+-      record.firstIntentSnapshot,
+-      ...(record.actorPrefixes ?? []),
+-      ...(record.timingPrefixes ?? []),
+-      ...(record.cursorPrefixes ?? []),
+-      ...(record.checkpointPrefixes ?? []),
+-      ...(record.removalPrefixes ?? []),
+-      ...(record.entryPrefixes ?? []),
+-      ...(record.boardPrefixes ?? []),
+-      ...(record.sentinelPrefixes ?? []),
+-      ...(record.transitionCommentPrefixes ?? []),
+-      ...(record.tailPrefixes ?? []),
+-    ].includes(canonicalRecordJson(record.backend.snapshot))
++    (!compensationCurrent &&
++      ![
++        record.originalSnapshot,
++        record.firstIntentSnapshot,
++        ...(record.actorPrefixes ?? []),
++        ...(record.timingPrefixes ?? []),
++        ...(record.cursorPrefixes ?? []),
++        ...(record.checkpointPrefixes ?? []),
++        ...(record.removalPrefixes ?? []),
++        ...(record.entryPrefixes ?? []),
++        ...(record.boardPrefixes ?? []),
++        ...(record.sentinelPrefixes ?? []),
++        ...(record.transitionCommentPrefixes ?? []),
++        ...(record.tailPrefixes ?? []),
++      ].includes(canonicalRecordJson(record.backend.snapshot)))
+   )
+     throw preparationRefusal('current-authority-drift');
+   assertNativeTransitionContext(record.sagaContext, true);
+   checkOriginalFieldSources(record);
+   checkOriginalLocalSources(record);
+   if (record.outerContext) record.assertOuterContext(record.outerContext);
+ }
+ 
+ // A comparison-only reader of a live, lexical saga token. Detached DATA cannot
+ // recreate membership; no callable ports/context/capability leave this module.
+@@ -3655,20 +3667,21 @@ export async function completeNativeStageBoard(ctx, invocation, result) {
+     header: record.header,
+     steps: completed.nativeStageRecords.at(-1).steps,
+   });
+   boardRecord(invocation);
+   assertOriginalNativeBoardResult(result, ctx);
+   boardPrefixes(record, [observed, completed]);
+   await record.boardStore.completeMemoryNativeStageBoard({ ...boardAuthority(record), outcome });
+   boardRecord(invocation);
+   assertOriginalNativeBoardResult(result, ctx);
+   if (result.exit === null) record.boardResult = result;
++  else record.compBoardResult = result;
+ }
+ 
+ export function readNativeStageBoardFailure(token, backend, invocation) {
+   const record = boardRecord(invocation);
+   if (record.stageToken !== token || record.backend !== backend || !record.boardFailure)
+     throw preparationRefusal('original-board-failure');
+   return readOriginalNativeBoardFailure(
+     record.boardFailure.input,
+     invocation,
+     record.boardFailure.error
+@@ -4684,10 +4697,341 @@ async function runNativeStageTail(ctx, originalFunction) {
+     record.tailStates = states;
+     record.tailCallWindow = true;
+     return await originalFunction(ctx, DEFAULT_TAIL_STEPS, input);
+   } finally {
+     record.tailRunning = false;
+     record.tailCallWindow = false;
+     originalTailInputs.delete(input);
+     record.tailInput = null;
+   }
+ }
++
++// Compensation retains the actual failed board return and lexical recording
++// program. Public DATA can neither register an invocation nor select a sink.
++export function assertNativeStageCompensationContext(ctx, priorState) {
++  const record = nativeStagePreparation.getStore();
++  if (!record || record.sagaContext !== ctx || priorState !== 'develop')
++    throw preparationRefusal('original-compensation-context');
++  checkPreparation(record);
++  checkOriginalStageSources(record);
++  assertOriginalNativeBoardResult(record.compBoardResult, ctx);
++  const journal = record.backend.snapshot.nativeStageRecords.at(-1);
++  if (
++    record.compBoardResult.exit !== 7 ||
++    journal.steps.length !== 14 ||
++    journal.steps[13].outcome?.kind !== 'unconfirmed' ||
++    journal.steps[13].readback !== null
++  )
++    throw preparationRefusal('original-compensation-prefix');
++}
++function compensationRecord(invocation) {
++  const record = nativeStagePreparation.getStore();
++  if (!record || record.compInvocation !== invocation)
++    throw preparationRefusal('original-compensation-invocation');
++  assertOriginalNativeCompensationInvocation(invocation, record.sagaContext);
++  assertNativeStageCompensationContext(record.sagaContext, 'develop');
++  return record;
++}
++export async function beginNativeStageCompensation(ctx, invocation) {
++  const record = nativeStagePreparation.getStore();
++  assertNativeStageCompensationContext(ctx, 'develop');
++  assertOriginalNativeCompensationInvocation(invocation, ctx);
++  if (record.compInvocation || record.backend.snapshot.nativeStageRecords.at(-1).compensation)
++    throw preparationRefusal('compensation-reentrant');
++  record.compInvocation = invocation;
++  try {
++    const store = await import('../criteria-revision/store.mjs');
++    compensationRecord(invocation);
++    const codec = await import('../criteria-revision/stage-execution.mjs');
++    compensationRecord(invocation);
++    const recording = await import('../state-recording.mjs');
++    compensationRecord(invocation);
++    record.compStore = store;
++    record.compCodec = codec;
++    record.compRecordingModule = recording;
++    await store.acquireMemoryNativeStageCompensation(compensationAuthority(record));
++    record.compCustodyReady = true;
++    compensationRecord(invocation);
++  } catch (error) {
++    if (record.compStore)
++      record.compStore.releaseMemoryNativeStageCompensation({
++        backend: record.backend,
++        token: record.stageToken,
++        invocation,
++      });
++    record.compCustodyReady = false;
++    record.compInvocation = null;
++    throw error;
++  }
++}
++function compensationAuthority(record) {
++  return {
++    backend: record.backend,
++    capability: record.capability,
++    context: record.context,
++    token: record.stageToken,
++    invocation: record.compInvocation,
++  };
++}
++export function endNativeStageCompensation(ctx, invocation) {
++  const record = nativeStagePreparation.getStore();
++  if (!record || record.sagaContext !== ctx || record.compInvocation !== invocation)
++    throw preparationRefusal('original-compensation-release');
++  record.compStore.releaseMemoryNativeStageCompensation({
++    backend: record.backend,
++    token: record.stageToken,
++    invocation,
++  });
++  record.compCustodyReady = false;
++  record.compInvocation = null;
++  record.compOperation = null;
++}
++export async function readNativeStageCompensationBody(ctx, invocation, request) {
++  const record = compensationRecord(invocation);
++  if (
++    record.sagaContext !== ctx ||
++    canonicalRecordJson(request) !==
++      canonicalRecordJson({
++        file: 'gh',
++        args: [
++          'issue',
++          'view',
++          String(record.context.issue),
++          '-R',
++          record.context.repository,
++          '--json',
++          'body',
++        ],
++      })
++  )
++    throw preparationRefusal('original-compensation-read');
++  const result = { stdout: JSON.stringify({ body: record.backend.observation.body.bytes }) };
++  record.compBodyRead = { result, descriptors: Object.getOwnPropertyDescriptors(result) };
++  return result;
++}
++export function assertNativeStageRecordingInput(input, invocation) {
++  const record = compensationRecord(invocation);
++  assertOriginalNativeCompensationRecordingInput(input, invocation);
++  if (
++    input.issueNumber !== String(record.context.issue) ||
++    input.repo !== record.context.repository ||
++    input.target !== 'develop' ||
++    typeof input.body !== 'string' ||
++    typeof input.bodyBefore !== 'string'
++  )
++    throw preparationRefusal('original-compensation-recording');
++  return record;
++}
++export function readNativeStageCompensationIntent(token, backend, invocation) {
++  const record = compensationRecord(invocation);
++  if (record.stageToken !== token || record.backend !== backend)
++    throw preparationRefusal('original-compensation-token');
++  return {
++    header: structuredClone(record.header),
++    compensation: record.compTemplate ? structuredClone(record.compTemplate) : null,
++  };
++}
++export function readNativeStageCompensationOperation(token, backend, invocation) {
++  const record = compensationRecord(invocation);
++  if (record.stageToken !== token || record.backend !== backend || !record.compOperation)
++    throw preparationRefusal('original-compensation-operation');
++  record.compRecordingModule.assertOriginalNativeRecordingOperation(
++    record.compInput,
++    invocation,
++    record.compOperation
++  );
++  return structuredClone(record.compOperation);
++}
++export function readNativeStageCompensationFailure(token, backend, invocation) {
++  const record = compensationRecord(invocation);
++  if (record.stageToken !== token || record.backend !== backend || !record.compFailure)
++    throw preparationRefusal('original-compensation-failure');
++  const { error, bytes } = record.compFailure;
++  const facts = nativeCompensationError(error);
++  if (canonicalRecordJson(facts) !== bytes)
++    throw preparationRefusal('original-compensation-failure-changed');
++  return facts;
++}
++function nativeCompensationError(error) {
++  if (!error || Object.getPrototypeOf(error) !== Error.prototype)
++    throw preparationRefusal('original-compensation-error');
++  const d = Object.getOwnPropertyDescriptors(error);
++  if (
++    Reflect.ownKeys(d).some((key) => !['stack', 'message', 'name', 'code'].includes(key)) ||
++    ['message', 'name', 'code'].some((key) => d[key] && !Object.hasOwn(d[key], 'value')) ||
++    typeof d.message?.value !== 'string'
++  )
++    throw preparationRefusal('original-compensation-error');
++  const facts = {
++    kind: 'threw',
++    name: d.name?.value ?? 'Error',
++    message: d.message.value,
++    code: d.code?.value ?? null,
++  };
++  canonicalRecordJson(facts);
++  return facts;
++}
++export async function executeNativeStateRecordingOperation(input, invocation, operation) {
++  const record = assertNativeStageRecordingInput(input, invocation);
++  record.compRecordingModule.assertOriginalNativeRecordingOperation(input, invocation, operation);
++  if (record.compOperation) throw preparationRefusal('compensation-operation-reentrant');
++  record.compInput = input;
++  record.compOperation = operation;
++  try {
++    if (operation.kind === 'warn') {
++      compensationRecord(invocation);
++      process.stderr.write(operation.message + '\n');
++      return;
++    }
++    if (!record.compTemplate) {
++      const { readLastKnownState } = await import('../../gh-timing-comment.mjs');
++      assertNativeStageRecordingInput(input, invocation);
++      const journal = record.backend.snapshot.nativeStageRecords.at(-1);
++      record.compTemplate = {
++        schema: 'aitm.native-compensation/v1',
++        previous: hashNativeStep(journal.steps[13]),
++        intent: { priorState: 'develop', stateTs: readLastKnownState(input.body).ts },
++        attempts: [],
++        readback: null,
++        audit: null,
++        result: null,
++      };
++      const derived = await record.compCodec.reconstructNativeStageCompensation({
++        header: record.header,
++        steps: journal.steps,
++        compensation: record.compTemplate,
++      });
++      assertNativeStageRecordingInput(input, invocation);
++      if (derived.beforeBody.bytes !== input.bodyBefore || derived.afterBody.bytes !== input.body)
++        throw preparationRefusal('compensation-original-delta');
++      record.compAfterBody = derived.afterBody.bytes;
++    }
++    if (operation.kind === 'write-body') {
++      record.compAttemptNumber = (record.compAttemptNumber ?? 0) + 1;
++      try {
++        await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
++        assertNativeStageRecordingInput(input, invocation);
++        await record.compStore.beginMemoryNativeStageCompensationAttempt(
++          compensationAuthority(record)
++        );
++        assertNativeStageRecordingInput(input, invocation);
++        await record.compStore.writeMemoryNativeStageCompensation(compensationAuthority(record));
++        assertNativeStageRecordingInput(input, invocation);
++        await record.compStore.completeMemoryNativeStageCompensation(compensationAuthority(record));
++        assertNativeStageRecordingInput(input, invocation);
++      } catch (error) {
++        compensationRecord(invocation);
++        const facts = nativeCompensationError(error);
++        record.compFailure = { error, bytes: canonicalRecordJson(facts) };
++        try {
++          if (record.backend.snapshot.nativeStageRecords.at(-1).compensation) {
++            await record.compStore.recordMemoryNativeStageCompensationFailure(
++              compensationAuthority(record)
++            );
++            compensationRecord(invocation);
++          } else {
++            // A failed original callback before durable intent still happened.
++            // Retain its actual failure DATA only; retry must freshly persist/read
++            // the unchanged sealed intent before any fixed effect can occur.
++            const body = record.backend.observation.body;
++            record.compTemplate.attempts.push({
++              number: record.compAttemptNumber,
++              request: structuredClone(operation),
++              before: structuredClone(body),
++              write: facts,
++              after: structuredClone(body),
++            });
++          }
++        } finally {
++          record.compFailure = null;
++        }
++        throw error;
++      }
++      return;
++    }
++    await record.compStore.persistMemoryNativeStageCompensation(compensationAuthority(record));
++    assertNativeStageRecordingInput(input, invocation);
++    if (operation.kind === 'post-comment') {
++      await record.compStore.writeMemoryNativeStageCompensationAudit(compensationAuthority(record));
++      assertNativeStageRecordingInput(input, invocation);
++      return;
++    }
++    throw preparationRefusal('compensation-operation-kind');
++  } finally {
++    record.compOperation = null;
++  }
++}
++export async function completeNativeStateRecording(input, invocation, result) {
++  const record = assertNativeStageRecordingInput(input, invocation);
++  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
++  record.compRecordingResult = result;
++  await record.compStore.completeMemoryNativeStageCompensationResult(compensationAuthority(record));
++  assertNativeStageRecordingInput(input, invocation);
++  record.compRecordingModule.assertOriginalNativeRecordingResult(input, invocation, result);
++}
++export function readNativeStageCompensationResult(token, backend, invocation) {
++  const record = compensationRecord(invocation);
++  if (record.stageToken !== token || record.backend !== backend || !record.compRecordingResult)
++    throw preparationRefusal('original-compensation-result');
++  record.compRecordingModule.assertOriginalNativeRecordingResult(
++    record.compInput,
++    invocation,
++    record.compRecordingResult
++  );
++  return structuredClone(record.compRecordingResult);
++}
++export function assertNativeStageCompensationReturn(ctx, invocation, result) {
++  assertOriginalNativeCompensationReturn(ctx, invocation, result);
++  const record = compensationRecord(invocation);
++  record.compRecordingModule.assertOriginalNativeRecordingResult(
++    record.compInput,
++    invocation,
++    record.compRecordingResult
++  );
++  if (
++    record.sagaContext !== ctx ||
++    !record.compRecordingResult ||
++    result.rolledBack !== (record.compRecordingResult.status === 'ok') ||
++    result.priorState !== 'develop' ||
++    (record.compRecordingResult.status === 'failed' &&
++      result.recording !== record.compRecordingResult)
++  )
++    throw preparationRefusal('original-compensation-return');
++  record.compStore.assertMemoryNativeCompensationCurrent({
++    backend: record.backend,
++    token: record.stageToken,
++    invocation,
++  });
++}
++
++export function assertNativeStageCompensationBodyReturn(invocation, result) {
++  const record = compensationRecord(invocation),
++    original = record.compBodyRead;
++  if (!original || original.result !== result || Object.getPrototypeOf(result) !== Object.prototype)
++    throw preparationRefusal('original-compensation-body-return');
++  const descriptors = Object.getOwnPropertyDescriptors(result);
++  if (
++    Reflect.ownKeys(descriptors).length !== 1 ||
++    !Object.hasOwn(descriptors.stdout ?? {}, 'value') ||
++    ['value', 'enumerable', 'writable', 'configurable'].some(
++      (key) => descriptors.stdout[key] !== original.descriptors.stdout[key]
++    )
++  )
++    throw preparationRefusal('original-compensation-body-return');
++}
++
++export function readNativeStageCompensationAttemptNumber(token, backend, invocation) {
++  const record = compensationRecord(invocation);
++  if (
++    record.stageToken !== token ||
++    record.backend !== backend ||
++    ![1, 2].includes(record.compAttemptNumber) ||
++    record.compOperation?.kind !== 'write-body'
++  )
++    throw preparationRefusal('original-compensation-attempt');
++  record.compRecordingModule.assertOriginalNativeRecordingOperation(
++    record.compInput,
++    invocation,
++    record.compOperation
++  );
++  return record.compAttemptNumber;
++}
+diff --git a/scripts/task-tracker/lib/state-recording.mjs b/scripts/task-tracker/lib/state-recording.mjs
+index fa08134b..5bb11148 100644
+--- a/scripts/task-tracker/lib/state-recording.mjs
++++ b/scripts/task-tracker/lib/state-recording.mjs
+@@ -2,24 +2,28 @@
+ //
+ // Two paths in `promote.mjs` write the `<!-- aitm-last-known-state -->`
+ // body marker after a successful board move. When that write silently
+ // fails, the board sits at the new state but the marker still names the
+ // previous one — the next promote sees drift and fires
+ // `drift-reconcile`. This module wraps the marker-write in a retry +
+ // audit-comment so failures are observable in the issue's audit trail
+ // rather than masquerading as external mutation. Board moves cannot be
+ // rolled back, so the goal is surfacing — not preventing — the divergence.
+ 
+-import { assertRevisionStageHostEffect } from './criteria-revision/transport-quarantine.mjs';
++import {
++  assertRevisionStageHostEffect,
++  isMemoryStageEffectScope,
++} from './criteria-revision/transport-quarantine.mjs';
+ import { execFile } from 'node:child_process';
+ import { promisify } from 'node:util';
+ 
++import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+ import { mutateIssueBody } from './issue-body-mutate.mjs';
+ import { writeLastKnownState } from '../gh-timing-comment.mjs';
+ 
+ const pexec = promisify(execFile);
+ 
+ export class StateRecordingFailedError extends Error {
+   constructor({ issueNumber, target, cause }) {
+     super(
+       `state-recording-failed: issue #${issueNumber} marker write to "${target}" failed: ${cause?.message ?? cause}`
+@@ -49,21 +53,28 @@ async function defaultPostComment({ repo, issueNumber, body }) {
+ //
+ // On exhaustion: emit a stderr warning AND post a `⚠ state-recording-failed`
+ // audit comment. Never throws — the board move is already committed.
+ //
+ // Returns one of:
+ //   { status: 'ok', attempts: <n> }       — write landed
+ //   { status: 'noop' }                    — mutate returned base unchanged
+ //   { status: 'failed', attempts, error, auditPosted }
+ // One private legacy retry program. Its yields are operation DATA, not
+ // authorization or a claim that an effect occurred. Ordinary I/O stays lexical.
+-function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }) {
++function* legacyRecordingProgram({
++  issueNumber,
++  repo,
++  body,
++  bodyBefore,
++  target,
++  compensation = false,
++}) {
+   if (bodyBefore !== undefined && body === bodyBefore) {
+     return { status: 'noop' };
+   }
+   try {
+     yield { kind: 'write-body', input: { issueNumber, repo, body } };
+     return { status: 'ok', attempts: 1 };
+   } catch {
+     // first attempt failed; retry once
+   }
+   try {
+@@ -76,37 +87,69 @@ function* legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target }
+   } catch (err) {
+     yield {
+       kind: 'warn',
+       message: `[state-recording] issue #${issueNumber} marker write to "${target}" FAILED after 2 attempts: ${err.message}`,
+     };
+     let auditPosted = false;
+     try {
+       const auditBody = [
+         '> ⚠ state-recording-failed',
+         '',
+-        `Marker write to \`${target}\` failed after 2 attempts. Board state is committed; body marker may be stale until the next reconcile.`,
++        compensation
++          ? `Marker rollback to \`${target}\` failed after 2 attempts. Board Status was not confirmed; the actual board and marker resources remain pending recovery.`
++          : `Marker write to \`${target}\` failed after 2 attempts. Board state is committed; body marker may be stale until the next reconcile.`,
+         '',
+         `Error: \`${err.message}\``,
+         '',
+         '<!-- aitm-state-recording-failed -->',
+       ].join('\n');
+       yield { kind: 'post-comment', input: { issueNumber, repo, body: auditBody } };
+       auditPosted = true;
+     } catch {
+       // audit-only, not correctness-critical
+     }
+     return { status: 'failed', attempts: 2, error: err.message, auditPosted };
+   }
+ }
+ 
+-export async function writeIssueBodyWithRetry(input = {}) {
+-  assertRevisionStageHostEffect();
++const nativeRecordingFrames = new WeakMap();
++const nativeRecordingResults = new WeakMap();
++export function assertOriginalNativeRecordingOperation(input, invocation, operation) {
++  const frame = nativeRecordingFrames.get(invocation);
++  if (
++    !frame ||
++    frame.input !== input ||
++    frame.operation !== operation ||
++    canonicalRecordJson(operation) !== frame.bytes
++  )
++    throw new TypeError('native-recording-operation');
++}
++export function assertOriginalNativeRecordingResult(input, invocation, result) {
++  const original = nativeRecordingResults.get(result);
++  if (
++    !original ||
++    original.input !== input ||
++    original.invocation !== invocation ||
++    canonicalRecordJson(result) !== original.bytes
++  )
++    throw new TypeError('native-recording-result');
++}
++export async function writeIssueBodyWithRetry(input = {}, invocation = null) {
++  if (!isMemoryStageEffectScope()) {
++    assertRevisionStageHostEffect();
++    return writeIssueBodyWithRetryAdmitted(input, null, null);
++  }
++  const core = await import('./move-state/move-state-core.mjs');
++  core.assertNativeStageRecordingInput(input, invocation);
++  return writeIssueBodyWithRetryAdmitted(input, invocation, core);
++}
++async function writeIssueBodyWithRetryAdmitted(input, invocation, core) {
+   const {
+     issueNumber,
+     repo,
+     // legacy snapshot body (commit-2 callers); ignored when `mutate` is supplied
+     body,
+     // legacy noop check
+     bodyBefore,
+     target,
+     // legacy direct-write hook — preserved so unmigrated verbs/tests still work
+     writeIssueBody,
+@@ -118,47 +161,75 @@ export async function writeIssueBodyWithRetry(input = {}) {
+   } = input;
+   if (!target) throw new Error('writeIssueBodyWithRetry: target is required');
+   const post = postComment || defaultPostComment;
+ 
+   // Legacy path — kept until every verb migrates to the closure shape (commit 2
+   // of #295). When the caller supplies a pre-baked `body` + `writeIssueBody`,
+   // honor the original retry-on-throw contract verbatim. This is the same
+   // path #168 shipped and is structurally vulnerable to the snapshot-clobber
+   // race that #295 fixes — verbs that take this branch should migrate.
+   if (typeof writeIssueBody === 'function' && body !== undefined && !mutateFn) {
+-    const program = legacyRecordingProgram({ issueNumber, repo, body, bodyBefore, target });
++    const program = legacyRecordingProgram({
++      issueNumber,
++      repo,
++      body,
++      bodyBefore,
++      target,
++      compensation: invocation !== null,
++    });
+     let next = program.next();
+-    while (!next.done) {
+-      const operation = next.value;
+-      let value;
+-      try {
+-        switch (operation.kind) {
+-          case 'write-body':
+-            value = await writeIssueBody(operation.input);
+-            break;
+-          case 'warn':
+-            value = warn(operation.message);
+-            break;
+-          case 'post-comment':
+-            value = await post(operation.input);
+-            break;
+-          default:
+-            throw new TypeError('legacy-state-recording-operation');
++    try {
++      while (!next.done) {
++        const operation = next.value;
++        let value;
++        try {
++          if (invocation) {
++            nativeRecordingFrames.set(invocation, {
++              input,
++              operation,
++              bytes: canonicalRecordJson(operation),
++            });
++            value = await core.executeNativeStateRecordingOperation(input, invocation, operation);
++          } else
++            switch (operation.kind) {
++              case 'write-body':
++                value = await writeIssueBody(operation.input);
++                break;
++              case 'warn':
++                value = warn(operation.message);
++                break;
++              case 'post-comment':
++                value = await post(operation.input);
++                break;
++              default:
++                throw new TypeError('legacy-state-recording-operation');
++            }
++        } catch (error) {
++          next = program.throw(error);
++          continue;
+         }
+-      } catch (error) {
+-        next = program.throw(error);
+-        continue;
++        next = program.next(value);
++      }
++      if (invocation) {
++        nativeRecordingResults.set(next.value, {
++          input,
++          invocation,
++          bytes: canonicalRecordJson(next.value),
++        });
++        await core.completeNativeStateRecording(input, invocation, next.value);
+       }
+-      next = program.next(value);
++      return next.value;
++    } finally {
++      if (invocation) nativeRecordingFrames.delete(invocation);
+     }
+-    return next.value;
+   }
++  if (invocation) throw new TypeError('native-recording-legacy-route');
+ 
+   const mutate = mutateFn || ((base) => writeLastKnownState(base, target));
+   // NOTE: post-#295 the prior `noop` short-circuit (caller passing
+   // `body === bodyBefore`) is gone. If the mutate closure is identity on the
+   // fresh remote base, versionedWriteBody still pushes a version-bumped body
+   // and returns `ok`. Callers that need a no-op fast-path should pre-check
+   // before invoking this helper.
+   //
+   // #295 — verbs inject either `deps.mutateIssueBody` (whole-function override
+   // — the test seam most verbs use) or `deps.fetchBody`+`deps.pushBody` (the
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..97d8b126
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'audit-effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..148ab715
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'audit-effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..a5d17442
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'audit-effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..ef348762
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-effect-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'audit-effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..4df9de7b
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'audit-intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..4ae35b71
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'audit-intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..baf6cd96
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'audit-intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..e75cc04d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-intent-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'audit-intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs
+new file mode 100644
+index 00000000..a5d17442
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit-interrupted.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'audit-effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs
+new file mode 100644
+index 00000000..2519eb99
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-audit.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-audit', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..f5d73ef6
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'body-effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..f9e27041
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'body-effect-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..bc1a9518
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'body-effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..6c216cac
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-body-effect-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'body-effect-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs
+new file mode 100644
+index 00000000..d2c01618
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-custody.test.mjs
+@@ -0,0 +1,61 @@
++// @story #1916
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  budget,
++  discoverOriginalCases,
++  qualifyOriginalCases,
++  qualify,
++} from '../../../helpers/criteria-revision-transition-profiles.mjs';
++const related = discoverOriginalCases().filter(({ mode }) => mode.startsWith('compensation'));
++const custody = related.filter(
++  ({ mode }) => !['compensation', 'compensation-return-custody'].includes(mode)
++);
++test('all audit and late-source cases are classified independently', (t) => {
++  assert.equal(custody.length, 12);
++  const audit = custody.filter(({ mode }) => mode === 'compensation-audit');
++  assert.equal(audit.filter(({ fault }) => fault === null).length, 1);
++  const redundant = audit.filter(
++    ({ filename }) => filename === 'criteria-revision-compensation-audit-interrupted.test.mjs'
++  );
++  assert.equal(redundant.length, 1);
++  assert.deepEqual(redundant[0].fault, { when: 'failAfter', suffix: 'audit-effect-write' });
++  assert.deepEqual(
++    audit
++      .filter((value) => value.fault && !redundant.includes(value))
++      .map(({ fault }) => `${fault.when}:${fault.suffix}`)
++      .sort(),
++    ['failBefore', 'failAfter']
++      .flatMap((when) =>
++        [
++          'audit-intent-write',
++          'audit-intent-readback',
++          'audit-effect-write',
++          'audit-effect-readback',
++        ].map((suffix) => `${when}:${suffix}`)
++      )
++      .sort()
++  );
++  assert.deepEqual(
++    custody
++      .filter(({ mode }) => mode !== 'compensation-audit')
++      .map(({ mode }) => mode)
++      .sort(),
++    ['compensation-late-config', 'compensation-late-read']
++  );
++  t.diagnostic(JSON.stringify(custody));
++});
++test('complete actual public compensation boundary profile', { timeout: budget }, (t) =>
++  qualify(
++    [
++      'scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs',
++    ],
++    21,
++    t
++  )
++);
++test(
++  'actual original audit and late custody cases preserve verified committed facts',
++  { timeout: budget, concurrency: true },
++  (t) => qualifyOriginalCases(custody, t)
++);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failAfter.test.mjs
+new file mode 100644
+index 00000000..e8cef29e
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failBefore.test.mjs
+new file mode 100644
+index 00000000..6dee3417
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-readback-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'intent-readback',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failAfter.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failAfter.test.mjs
+new file mode 100644
+index 00000000..f488b04f
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failAfter.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failAfter',
++  suffix: 'intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs
+new file mode 100644
+index 00000000..c82e8f05
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-intent-write-failBefore.test.mjs
+@@ -0,0 +1,6 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url, {
++  when: 'failBefore',
++  suffix: 'intent-write',
++});
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-config.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-config.test.mjs
+new file mode 100644
+index 00000000..ff2b1a1f
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-config.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-late-config', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-read.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-read.test.mjs
+new file mode 100644
+index 00000000..f5e8a2e2
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-late-read.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-late-read', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-native.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-native.test.mjs
+new file mode 100644
+index 00000000..3292fad0
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-native.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-return-custody.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-return-custody.test.mjs
+new file mode 100644
+index 00000000..1001096d
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-compensation-return-custody.test.mjs
+@@ -0,0 +1,3 @@
++// @story #1916
++import { registerNativeStageCase } from './native-stage-continuation-fixture.mjs';
++registerNativeStageCase('compensation-return-custody', import.meta.url);
+diff --git a/scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs b/scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs
+new file mode 100644
+index 00000000..970ca0a7
+--- /dev/null
++++ b/scripts/tests/integration/task-tracker/lib/criteria-revision-transition-compensation.test.mjs
+@@ -0,0 +1,138 @@
++// @story #1916
++// Actual public rollback and original bounded recording/audit behavior.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import path from 'node:path';
++import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
++import { rollbackRecordedState } from '../../../../task-tracker/lib/move-state/github-mutation.mjs';
++import { readLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
++import {
++  budget,
++  qualify,
++  discoverOriginalCases,
++  qualifyOriginalCases,
++} from '../../../helpers/criteria-revision-transition-profiles.mjs';
++
++for (const auditSucceeded of [true, false]) {
++  test(`exhausted actual rollback reports failure when audit ${auditSucceeded ? 'succeeds' : 'fails'}`, async () => {
++    const directory = mkdtempProjectIsolated('aitm-1916-compensation-');
++    const capture = path.join(directory, 'audit.json');
++    const fakeGh = path.join(directory, 'gh');
++    fs.writeFileSync(
++      fakeGh,
++      `#!${process.execPath}\n` +
++        `const fs=require('node:fs');\n` +
++        `const args=process.argv.slice(2);\n` +
++        `if(args[0]!=='issue'||args[1]!=='comment'||args[2]!=='1916')process.exit(91);\n` +
++        `fs.writeFileSync(process.env.TASK_COMP_AUDIT_CAPTURE,JSON.stringify(args));\n` +
++        `process.exit(process.env.TASK_COMP_AUDIT_FAIL==='1'?7:0);\n`,
++      { mode: 0o755 }
++    );
++    const prior = {
++      PATH: process.env.PATH,
++      TASK_COMP_AUDIT_CAPTURE: process.env.TASK_COMP_AUDIT_CAPTURE,
++      TASK_COMP_AUDIT_FAIL: process.env.TASK_COMP_AUDIT_FAIL,
++    };
++    process.env.PATH = directory + path.delimiter + prior.PATH;
++    process.env.TASK_COMP_AUDIT_CAPTURE = capture;
++    process.env.TASK_COMP_AUDIT_FAIL = auditSucceeded ? '0' : '1';
++    const originalBody =
++      '<!-- aitm-last-known-state state="test" ts="2026-10-06T10:00:00.010Z" -->\n## Scope\nKeep this text.\n\n<!-- aitm-body-version version="5" -->\n';
++    let editAttempts = 0;
++    const ctx = {
++      issueArg: '1916',
++      cfg: { repo: 'o/r' },
++      pexec: async (file, args) => {
++        assert.equal(file, 'gh');
++        assert.deepEqual(args, ['issue', 'view', '1916', '-R', 'o/r', '--json', 'body']);
++        return { stdout: JSON.stringify({ body: originalBody }) };
++      },
++      gh: async (args) => {
++        editAttempts++;
++        assert.deepEqual(args.slice(0, 6), ['issue', 'edit', '1916', '-R', 'o/r', '--body-file']);
++        const bytes = fs.readFileSync(args[6], 'utf8');
++        assert.equal(readLastKnownState(bytes).state, 'develop');
++        assert.ok(bytes.includes('Keep this text.'));
++        throw new Error(`original rollback write failed ${editAttempts}`);
++      },
++    };
++    try {
++      const result = await rollbackRecordedState(ctx, 'develop');
++      assert.equal(editAttempts, 2, 'the actual original bounded program ran both attempts');
++      const audit = JSON.parse(fs.readFileSync(capture, 'utf8'));
++      assert.deepEqual(audit.slice(0, 6), ['issue', 'comment', '1916', '-R', 'o/r', '--body']);
++      assert.match(audit[6], /aitm-state-recording-failed/);
++      assert.match(audit[6], /original rollback write failed 2/);
++      assert.equal(result.rolledBack, false);
++      assert.equal(result.reason, 'state-recording-failed');
++      assert.equal(result.priorState, 'develop');
++      assert.deepEqual(result.recording, {
++        status: 'failed',
++        attempts: 2,
++        error: 'original rollback write failed 2',
++        auditPosted: auditSucceeded,
++      });
++    } finally {
++      for (const [key, value] of Object.entries(prior)) {
++        if (value === undefined) delete process.env[key];
++        else process.env[key] = value;
++      }
++      fs.rmSync(directory, { recursive: true, force: true });
++    }
++  });
++}
++
++test(
++  'complete original recording retry, board readback and marker atomicity profiles',
++  { timeout: budget },
++  (t) =>
++    qualify(
++      [
++        'scripts/tests/unit/task-tracker/lib/coverage-state-recording.test.mjs',
++        'scripts/tests/unit/task-tracker/lib/marker-write-retry.test.mjs',
++        'scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs',
++        'scripts/tests/unit/task-tracker/lib/move-state/move-state-board-marker-atomicity.test.mjs',
++      ],
++      31,
++      t
++    )
++);
++
++const related = discoverOriginalCases().filter(({ mode }) => mode.startsWith('compensation'));
++const transport = related.filter(({ mode }) =>
++  ['compensation', 'compensation-return-custody'].includes(mode)
++);
++test('independent compensation descriptors retain positive and all eight intent/body fault points', (t) => {
++  assert.equal(related.length, 22);
++  assert.equal(transport.length, 10);
++  assert.equal(transport.filter(({ mode }) => mode === 'compensation-return-custody').length, 1);
++  const faults = transport.filter(({ fault }) => fault !== null);
++  assert.deepEqual(
++    faults.map(({ fault }) => `${fault.when}:${fault.suffix}`).sort(),
++    ['failBefore', 'failAfter']
++      .flatMap((when) =>
++        ['intent-write', 'intent-readback', 'body-effect-write', 'body-effect-readback'].map(
++          (suffix) => `${when}:${suffix}`
++        )
++      )
++      .sort()
++  );
++  assert.equal(related.filter(({ mode }) => mode === 'compensation-audit').length, 10);
++  assert.deepEqual(
++    related
++      .filter(
++        ({ mode }) =>
++          !['compensation', 'compensation-return-custody', 'compensation-audit'].includes(mode)
++      )
++      .map(({ mode }) => mode)
++      .sort(),
++    ['compensation-late-config', 'compensation-late-read']
++  );
++  t.diagnostic(JSON.stringify(transport));
++});
++test(
++  'actual original exhausted board and complete bounded compensation fault matrix',
++  { timeout: budget, concurrency: true },
++  (t) => qualifyOriginalCases(transport, t)
++);
+diff --git a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+index ea1ef14d..c46ebcf8 100644
+--- a/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
++++ b/scripts/tests/integration/task-tracker/lib/native-stage-continuation-fixture.mjs
+@@ -35,20 +35,27 @@ import {
+   test,
+   updateMarker,
+   verbAcStamp,
+   verbEnsureChecked,
+   withRevisionConsumer,
+   writeFileSync,
+ } from './native-continuation-fixtures.mjs';
+ 
+ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+   const faultMode = mode;
++  const compensationMode = [
++    'compensation',
++    'compensation-audit',
++    'compensation-late-read',
++    'compensation-late-config',
++    'compensation-return-custody',
++  ].includes(mode);
+   const transitionCustody = {
+     'transition-create-response': ['create', 'response'],
+     'transition-read-response': ['read', 'response'],
+     'transition-create-parsed': ['create', 'parsed'],
+     'transition-read-parsed': ['read', 'parsed'],
+     'transition-request-accessor': ['create', 'request'],
+     'transition-current-config': ['create', 'configuration'],
+   }[mode];
+   const transitionMode =
+     transitionCustody ||
+@@ -95,22 +102,23 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+     'status-source-values',
+     'status-source-unused',
+     'status-source-exhausted',
+     'status-source-prefix',
+     'status-source-late-config',
+     'status-source-late-vector',
+     'status-source-custody-input',
+     'status-source-custody-output',
+     'status-source-custody-error',
+   ];
+-  const expectStage =
+-    entryResultCustody || consistencyCustody || transitionMode
++  const expectStage = compensationMode
++    ? 'status-source-exhausted'
++    : entryResultCustody || consistencyCustody || transitionMode
+       ? 'entry-body'
+       : sentinelLate
+         ? 'entry-body'
+         : [
+               'board',
+               'board-prefix',
+               'board-exception',
+               'board-exception-prefix',
+               'sentinel-data',
+               'sentinel-history',
+@@ -1542,21 +1550,192 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+             },
+           }),
+           (error) => error.code === 'revision-pending'
+         );
+         assert.deepEqual(calls, []);
+         assert.deepEqual(captureFiles(), files);
+         return;
+       }
+       if (statusModes.includes(expectStage) && expectStage !== 'status-source-unreleased') {
+         const files = captureFiles();
+-        const result = await moveState(ctx);
++        const originalDescriptors = Object.getOwnPropertyDescriptors;
++        let auditFaultInjected = false,
++          lateInjected = false,
++          lateGets = 0;
++        let heldCompensationInvocation = null,
++          returnProbeRan = false,
++          actualReturnProbeRan = false,
++          returnGets = 0;
++        const compensationCore = compensationMode
++          ? await import('../../../../task-tracker/lib/move-state/move-state-core.mjs')
++          : null;
++        const originalRepoDescriptor = Object.getOwnPropertyDescriptor(cfg, 'repo');
++        let lateSnapshot = null,
++          lateEffects = null;
++        if (compensationMode && mode !== 'compensation') {
++          Object.getOwnPropertyDescriptors = function (value) {
++            const descriptors = Reflect.apply(originalDescriptors, this, arguments);
++            const keys = Reflect.ownKeys(descriptors);
++            const shape = keys.every((key) => typeof key === 'string') ? keys.sort().join(',') : '';
++            const authorityShape = shape === 'backend,capability,context,invocation,token';
++            const candidate =
++              (mode === 'compensation-audit' && authorityShape) ||
++              (mode === 'compensation-late-read' && shape === 'stdout') ||
++              (mode === 'compensation-late-config' && value === ctx) ||
++              (mode === 'compensation-return-custody' &&
++                (authorityShape || value === ctx || shape === 'priorState,rolledBack'));
++            if (!candidate) return descriptors;
++            const stack = new Error().stack;
++            if (
++              mode === 'compensation-return-custody' &&
++              stack.includes('at compensationInputContinuity') &&
++              Reflect.ownKeys(descriptors).sort().join(',') ===
++                'backend,capability,context,invocation,token'
++            )
++              heldCompensationInvocation = descriptors.invocation.value;
++            if (
++              mode === 'compensation-return-custody' &&
++              !returnProbeRan &&
++              heldCompensationInvocation &&
++              value === ctx &&
++              stack.includes('at assertOriginalNativeCompensationInvocation') &&
++              f.backend.snapshot.nativeStageRecords[0].compensation?.result
++            ) {
++              returnProbeRan = true;
++              const effects = f.backend.effects,
++                snapshot = f.backend.snapshot;
++              const result = { priorState: 'develop' };
++              Object.defineProperty(result, 'rolledBack', {
++                enumerable: true,
++                get() {
++                  returnGets++;
++                  throw new Error('forged return getter must not run');
++                },
++              });
++              let caught;
++              try {
++                compensationCore.assertNativeStageCompensationReturn(
++                  ctx,
++                  heldCompensationInvocation,
++                  result
++                );
++              } catch (error) {
++                caught = error;
++              }
++              assert.equal(returnGets, 0, 'public return comparison refuses before getter');
++              assert.ok(caught instanceof TypeError);
++              for (const copy of [
++                { rolledBack: true, priorState: 'develop' },
++                Object.assign(Object.create(null), { rolledBack: true, priorState: 'develop' }),
++                Object.create({ rolledBack: true, priorState: 'develop' }),
++              ])
++                assert.throws(
++                  () =>
++                    compensationCore.assertNativeStageCompensationReturn(
++                      ctx,
++                      heldCompensationInvocation,
++                      copy
++                    ),
++                  TypeError
++                );
++              assert.deepEqual(f.backend.effects, effects);
++              assert.deepEqual(f.backend.snapshot, snapshot);
++            }
++            if (
++              mode === 'compensation-return-custody' &&
++              !actualReturnProbeRan &&
++              stack.includes('at assertOriginalNativeCompensationReturn') &&
++              Reflect.ownKeys(descriptors).sort().join(',') === 'priorState,rolledBack'
++            ) {
++              actualReturnProbeRan = true;
++              const effects = f.backend.effects,
++                snapshot = f.backend.snapshot;
++              const compare = () =>
++                compensationCore.assertNativeStageCompensationReturn(
++                  ctx,
++                  heldCompensationInvocation,
++                  value
++                );
++              // Actual birth identity alone cannot admit a changed return.
++              Object.defineProperty(value, 'rolledBack', {
++                configurable: true,
++                enumerable: true,
++                get() {
++                  returnGets++;
++                  throw new Error('mutated original return getter must not run');
++                },
++              });
++              assert.throws(compare, TypeError);
++              assert.equal(returnGets, 0);
++              Object.defineProperty(value, 'rolledBack', descriptors.rolledBack);
++              Object.setPrototypeOf(value, null);
++              assert.throws(compare, TypeError);
++              Object.setPrototypeOf(value, Object.prototype);
++              value.extra = true;
++              assert.throws(compare, TypeError);
++              delete value.extra;
++              assert.equal(compare(), undefined, 'unchanged actual return remains admitted');
++              assert.deepEqual(f.backend.effects, effects);
++              assert.deepEqual(f.backend.snapshot, snapshot);
++            }
++            const lateRead =
++              mode === 'compensation-late-read' &&
++              stack.includes('at Module.readNativeStageCompensationBody') &&
++              Reflect.ownKeys(descriptors).join(',') === 'stdout';
++            const lateConfig =
++              mode === 'compensation-late-config' &&
++              value === ctx &&
++              stack.includes('at assertOriginalNativeCompensationInvocation');
++            if (!lateInjected && (lateRead || lateConfig)) {
++              lateInjected = true;
++              queueMicrotask(() => {
++                Object.defineProperty(lateRead ? value : cfg, lateRead ? 'stdout' : 'repo', {
++                  enumerable: true,
++                  configurable: true,
++                  get() {
++                    lateGets++;
++                    throw new Error('late compensation getter must not run');
++                  },
++                });
++                lateSnapshot = f.backend.snapshot;
++                lateEffects = f.backend.effects;
++              });
++            }
++            if (
++              mode === 'compensation-audit' &&
++              stack.includes('at compensationInputContinuity') &&
++              stack.includes('at Module.writeMemoryNativeStageCompensation (')
++            )
++              f.backend.failBefore = 'native-stage-compensation-body-effect-write';
++            if (
++              mode === 'compensation-audit' &&
++              fault &&
++              !auditFaultInjected &&
++              stack.includes('at Module.writeMemoryNativeStageCompensationAudit')
++            ) {
++              auditFaultInjected = true;
++              f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
++            }
++            return descriptors;
++          };
++        }
++        if (compensationMode && mode !== 'compensation-audit' && fault) {
++          f.backend[fault.when] = 'native-stage-compensation-' + fault.suffix;
++        }
++        let result;
++        try {
++          result = await moveState(ctx);
++        } finally {
++          Object.getOwnPropertyDescriptors = originalDescriptors;
++          if (mode === 'compensation-late-config')
++            Object.defineProperty(cfg, 'repo', originalRepoDescriptor);
++        }
+         t.diagnostic(
+           JSON.stringify({
+             result,
+             operations: f.backend.effects,
+             records: f.backend.snapshot.nativeStageRecords?.length ?? 0,
+           })
+         );
+         const journal = f.backend.snapshot.nativeStageRecords?.[0];
+         assert.equal(
+           journal?.steps.length ?? 0,
+@@ -1619,20 +1798,194 @@ export function registerNativeStageCase(mode, entrypoint, fault = null) {
+         assert.deepEqual(item, expectedItem);
+         assert.equal(
+           f.backend.effects.filter((value) => value === 'native-stage-board-effect-write').length,
+           expectedCount
+         );
+         assert.equal(
+           f.backend.effects.filter((value) => value === 'native-stage-board-source-readback')
+             .length,
+           expectedCount
+         );
++        if (compensationMode) {
++          if (mode.startsWith('compensation-late-')) {
++            assert.equal(lateInjected, true, 'actual late boundary selected');
++            assert.equal(lateGets, 0, 'late getter never executes');
++            assert.equal(result.exit, 7);
++            assert.equal(result.rolledBack, false);
++            assert.deepEqual(f.backend.snapshot, lateSnapshot);
++            assert.deepEqual(f.backend.effects, lateEffects);
++            assert.equal(journal.compensation, undefined, 'no intent/effect after late refusal');
++            return;
++          }
++          assert.equal(result.exit, 7, 'original unconfirmed board exit remains loud');
++          assert.equal(
++            result.rolledBack,
++            mode !== 'compensation-audit',
++            'actual original compensation outcome'
++          );
++          const { readLastKnownState } =
++            await import('../../../../task-tracker/gh-timing-comment.mjs');
++          const { parseBodyVersion } =
++            await import('../../../../task-tracker/lib/body-version.mjs');
++          assert.equal(
++            readLastKnownState(f.backend.observation.body.bytes).state,
++            mode === 'compensation-audit' ? 'test' : 'develop'
++          );
++          assert.equal(
++            parseBodyVersion(f.backend.observation.body.bytes),
++            parseBodyVersion(journal.header.original.observation.body.bytes) +
++              (mode === 'compensation-audit' ? 1 : 2),
++            'one entry delta and one rollback delta, not duplicate retry effects'
++          );
++          assert.equal(journal.compensation.schema, 'aitm.native-compensation/v1');
++          if (mode === 'compensation-return-custody') {
++            assert.equal(returnProbeRan, true);
++            assert.equal(actualReturnProbeRan, true);
++          }
++          if (mode === 'compensation-audit') {
++            const compensationCodec =
++              await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
++            const boardPrefix = await compensationCodec.reconstructNativeStageBoard({
++              header: journal.header,
++              steps: journal.steps,
++            });
++            assert.equal(journal.compensation.attempts.length, 2);
++            assert.ok(journal.compensation.attempts.every((value) => value.write.kind === 'threw'));
++            assert.equal(journal.compensation.readback, null);
++            assert.equal(journal.compensation.result.status, 'failed');
++            assert.equal(journal.compensation.result.auditPosted, !fault);
++            const auditOperations = [
++              'audit-intent-write',
++              'audit-intent-readback',
++              'audit-effect-write',
++              'audit-effect-readback',
++            ];
++            const end = fault
++              ? auditOperations.indexOf(fault.suffix) + (fault.when === 'failAfter' ? 1 : 0)
++              : 4;
++            assert.ok(end >= 0, 'owned audit fault classified');
++            assert.equal(journal.compensation.audit !== null, end > 0);
++            if (end > 0) assert.equal(journal.compensation.audit.readback !== null, end === 4);
++            assert.deepEqual(
++              f.backend.effects.filter((op) => op.startsWith('native-stage-compensation-audit-')),
++              auditOperations.slice(0, end).map((suffix) => 'native-stage-compensation-' + suffix)
++            );
++            assert.equal(
++              f.backend.snapshot.nativeStageResources.comments.length,
++              boardPrefix.afterResources.comments.length + (end >= 3 ? 1 : 0)
++            );
++            if (fault) assert.equal(auditFaultInjected, true);
++          } else {
++            assert.ok(journal.compensation.readback, 'actual original rollback readback');
++            assert.deepEqual(journal.compensation.result, {
++              status: 'ok',
++              attempts: fault ? 2 : 1,
++            });
++            assert.equal(
++              f.backend.effects.filter((op) => op === 'native-stage-compensation-body-effect-write')
++                .length,
++              1,
++              'landed first write is freshly read, never duplicated'
++            );
++          }
++          const compensationCodec =
++            await import('../../../../task-tracker/lib/criteria-revision/stage-execution.mjs');
++          const beforeDataChecks = f.backend.snapshot;
++          for (const [label, change] of [
++            [
++              'foreign predecessor',
++              (value) => {
++                value.compensation.previous = 'sha256:' + '0'.repeat(64);
++              },
++            ],
++            [
++              'retired target',
++              (value) => {
++                value.compensation.intent.priorState = 'done';
++              },
++            ],
++            [
++              'invalid clock',
++              (value) => {
++                value.compensation.intent.stateTs = 'bad';
++              },
++            ],
++            [
++              'extra admission',
++              (value) => {
++                value.compensation.ready = true;
++              },
++            ],
++            [
++              'third callback',
++              (value) => {
++                value.compensation.attempts.push({
++                  ...structuredClone(value.compensation.attempts[0]),
++                  number: 3,
++                });
++              },
++            ],
++            [
++              'foreign subject',
++              (value) => {
++                value.compensation.attempts[0].request.input.issueNumber = '125';
++              },
++            ],
++            [
++              'substituted bytes',
++              (value) => {
++                value.compensation.attempts[0].request.input.body = 'forged';
++              },
++            ],
++            [
++              'false success',
++              (value) => {
++                value.compensation.result = { status: 'ok', attempts: 0 };
++              },
++            ],
++          ]) {
++            const input = structuredClone({
++              header: journal.header,
++              steps: journal.steps,
++              compensation: journal.compensation,
++            });
++            change(input);
++            await assert.rejects(
++              compensationCodec.reconstructNativeStageCompensation(input),
++              /criteria-revision:native-stage-compensation/,
++              label + ' DATA only'
++            );
++            assert.deepEqual(f.backend.snapshot, beforeDataChecks, label + ' no execution');
++          }
++          if (journal.compensation.readback) {
++            const input = structuredClone({
++              header: journal.header,
++              steps: journal.steps,
++              compensation: journal.compensation,
++            });
++            input.compensation.readback.response.stderr = 'partial';
++            await assert.rejects(
++              compensationCodec.reconstructNativeStageCompensation(input),
++              /criteria-revision:native-stage-compensation/
++            );
++            assert.deepEqual(f.backend.snapshot, beforeDataChecks);
++          }
++          const restarted = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
++          const observed = await observeRevision({ context: f.context, deps: restarted });
++          assert.equal(observed.status, 'pending-native-stage');
++          assert.equal(
++            observed.nativeHistoryApproved,
++            false,
++            'body compensation cannot authorize full transition completion'
++          );
++          return;
++        }
+         const recovered = createRevisionMemory(JSON.parse(JSON.stringify(f.backend.snapshot)));
+         assert.equal(
+           (await observeRevision({ context: f.context, deps: recovered })).status,
+           'pending-native-stage'
+         );
+         const calls = [];
+         await assert.rejects(
+           mutateIssueBody({
+             issueNumber: f.context.issue,
+             repo: f.context.repository,
+diff --git a/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs
+new file mode 100644
+index 00000000..94edeb6f
+--- /dev/null
++++ b/scripts/tests/unit/task-tracker/lib/criteria-revision/native-stage-compensation-boundary.test.mjs
+@@ -0,0 +1,129 @@
++// @story #1916
++// Unowned compensation inputs cannot select callbacks, getters or resources.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as store from '../../../../../task-tracker/lib/criteria-revision/store.mjs';
++import * as core from '../../../../../task-tracker/lib/move-state/move-state-core.mjs';
++import { rollbackRecordedState } from '../../../../../task-tracker/lib/move-state/github-mutation.mjs';
++import { writeIssueBodyWithRetry } from '../../../../../task-tracker/lib/state-recording.mjs';
++import { withMemoryStageEffectQuarantine } from '../../../../../task-tracker/lib/criteria-revision/transport-quarantine.mjs';
++
++const roots = [
++  store.acquireMemoryNativeStageCompensation,
++  store.persistMemoryNativeStageCompensation,
++  store.beginMemoryNativeStageCompensationAttempt,
++  store.writeMemoryNativeStageCompensation,
++  store.completeMemoryNativeStageCompensation,
++  store.recordMemoryNativeStageCompensationFailure,
++  store.writeMemoryNativeStageCompensationAudit,
++  store.completeMemoryNativeStageCompensationResult,
++];
++const input = () => ({
++  backend: {},
++  capability: {},
++  context: {
++    repository: 'example/criteria',
++    issue: 124,
++    executor: { provider: 'claude', sessionId: 'fixture-compensation', worktree: process.cwd() },
++  },
++  token: {},
++  invocation: {},
++});
++for (const root of roots) {
++  test(`${root.name} refuses all authority getters and non-data shapes`, async () => {
++    let gets = 0;
++    for (const key of Object.keys(input())) {
++      const value = input();
++      Object.defineProperty(value, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw new Error('unowned getter');
++        },
++      });
++      await assert.rejects(root(value), /criteria-revision:native-stage-compensation-input/);
++    }
++    for (const shape of ['inherited', 'hidden', 'symbol', 'extra', 'missing']) {
++      const value = input();
++      if (shape === 'inherited') Object.setPrototypeOf(value, { granted: true });
++      if (shape === 'hidden') Object.defineProperty(value, 'token', { enumerable: false });
++      if (shape === 'symbol') value[Symbol('token')] = {};
++      if (shape === 'extra') value.afterBody = 'forged';
++      if (shape === 'missing') delete value.invocation;
++      await assert.rejects(root(value), /criteria-revision:native-stage-compensation-input/);
++    }
++    assert.equal(gets, 0);
++  });
++  test(`${root.name} validates nested context before capability lookup`, async () => {
++    let gets = 0;
++    const value = input();
++    Object.defineProperty(value.context.executor, 'sessionId', {
++      enumerable: true,
++      get() {
++        gets++;
++        throw new Error('nested getter');
++      },
++    });
++    await assert.rejects(root(value), /criteria-revision:native-stage-compensation-context/);
++    assert.equal(gets, 0);
++  });
++}
++for (const [name, invoke] of [
++  ['rollback', (value) => rollbackRecordedState(value, 'develop')],
++  ['recording', (value) => writeIssueBodyWithRetry(value)],
++  ['core comparison', (value) => core.assertNativeStageCompensationContext(value, 'develop')],
++]) {
++  test(`unowned ${name} refuses before original context or callback access`, async () => {
++    let gets = 0;
++    const value = {};
++    for (const key of ['issueArg', 'cfg', 'pexec', 'target', 'writeIssueBody', 'body'])
++      Object.defineProperty(value, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw new Error('public getter');
++        },
++      });
++    await assert.rejects(
++      withMemoryStageEffectQuarantine(async () => invoke(value)),
++      (error) =>
++        error.code === 'revision-authority-unavailable' &&
++        error.preparationReason ===
++          (name === 'recording'
++            ? 'original-compensation-invocation'
++            : 'original-compensation-context')
++    );
++    assert.equal(gets, 0);
++  });
++}
++
++for (const root of [
++  store.assertMemoryNativeCompensationCurrent,
++  store.releaseMemoryNativeStageCompensation,
++]) {
++  test(`${root.name} rejects resource authority getters before lookup or release`, () => {
++    let gets = 0;
++    const original = () => ({ backend: {}, token: {}, invocation: {} });
++    for (const key of Object.keys(original())) {
++      const value = original();
++      Object.defineProperty(value, key, {
++        enumerable: true,
++        get() {
++          gets++;
++          throw new Error('unowned resource authority getter');
++        },
++      });
++      assert.throws(() => root(value));
++    }
++    assert.equal(gets, 0, 'no caller code executed during comparison or release');
++    for (const shape of ['inherited', 'hidden', 'symbol', 'extra', 'missing']) {
++      const value = original();
++      if (shape === 'inherited') Object.setPrototypeOf(value, { granted: true });
++      if (shape === 'hidden') Object.defineProperty(value, 'token', { enumerable: false });
++      if (shape === 'symbol') value[Symbol('token')] = {};
++      if (shape === 'extra') value.afterBody = 'forged';
++      if (shape === 'missing') delete value.invocation;
++      assert.throws(() => root(value));
++    }
++  });
++}

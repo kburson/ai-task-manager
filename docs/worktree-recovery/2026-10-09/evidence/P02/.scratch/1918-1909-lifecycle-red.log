@@ -1,0 +1,142 @@
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+✔ independent initializeIssueDirectory pending refuses before original callback or transport selection (110.018417ms)
+✔ independent initializeIssueDirectory stale refuses before original callback or transport selection (241.872625ms)
+✔ independent initializeIssueDirectory malformed refuses before original callback or transport selection (16.942209ms)
+✔ independent initializeIssueDirectory unavailable refuses before original callback or transport selection (18.974708ms)
+✔ independent initializeIssueDirectory baseline retains its complete original algorithm (19.624834ms)
+✔ independent initializeIssueDirectory approved retains its complete original algorithm (351.824917ms)
+✔ independent repairIssueDirectory pending refuses before original callback or transport selection (71.887167ms)
+✔ independent repairIssueDirectory stale refuses before original callback or transport selection (219.547083ms)
+✔ independent repairIssueDirectory malformed refuses before original callback or transport selection (17.955375ms)
+✔ independent repairIssueDirectory unavailable refuses before original callback or transport selection (21.823875ms)
+✔ independent repairIssueDirectory baseline retains its complete original algorithm (20.518792ms)
+✔ independent repairIssueDirectory approved retains its complete original algorithm (418.14975ms)
+✔ independent createIssueComment pending refuses before original callback or transport selection (71.319125ms)
+✔ independent createIssueComment stale refuses before original callback or transport selection (213.889791ms)
+✔ independent createIssueComment malformed refuses before original callback or transport selection (15.954375ms)
+✔ independent createIssueComment unavailable refuses before original callback or transport selection (15.919333ms)
+✔ independent createIssueComment baseline retains its complete original algorithm (16.188208ms)
+✔ independent createIssueComment approved retains its complete original algorithm (327.64025ms)
+✔ independent updateIssueComment pending refuses before original callback or transport selection (73.359125ms)
+✔ independent updateIssueComment stale refuses before original callback or transport selection (217.101333ms)
+✔ independent updateIssueComment malformed refuses before original callback or transport selection (16.764125ms)
+✔ independent updateIssueComment unavailable refuses before original callback or transport selection (15.71125ms)
+✔ independent updateIssueComment baseline retains its complete original algorithm (15.694666ms)
+✔ independent updateIssueComment approved retains its complete original algorithm (321.96375ms)
+✔ durable projection repair pending retains custody and rereads revision admission (88.4245ms)
+✔ durable projection repair stale retains custody and rereads revision admission (222.985417ms)
+✔ durable projection repair malformed retains custody and rereads revision admission (28.449125ms)
+✔ durable projection repair unavailable retains custody and rereads revision admission (27.393125ms)
+✔ durable projection repair baseline retains custody and rereads revision admission (30.141709ms)
+✔ durable projection repair approved retains custody and rereads revision admission (336.075334ms)
+✖ independent lifecycle append pending cannot reuse historical custody as current readiness (65.120459ms)
+✖ independent lifecycle append stale cannot reuse historical custody as current readiness (148.982084ms)
+✖ independent lifecycle append malformed cannot reuse historical custody as current readiness (29.822667ms)
+✖ independent lifecycle append unavailable cannot reuse historical custody as current readiness (29.717166ms)
+✔ independent lifecycle append baseline cannot reuse historical custody as current readiness (31.651916ms)
+✔ independent lifecycle append approved cannot reuse historical custody as current readiness (258.372875ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 32
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4350.623333
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append pending cannot reuse historical custody as current readiness (65.120459ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append stale cannot reuse historical custody as current readiness (148.982084ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append malformed cannot reuse historical custody as current readiness (29.822667ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:334:3
+✖ independent lifecycle append unavailable cannot reuse historical custody as current readiness (29.717166ms)
+  AssertionError [ERR_ASSERTION]: No original replay/capsule callback before fresh admission
+  + actual - expected
+  
+  + [
+  +   'capsule-list'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-writer-admission.test.mjs:358:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capsule-list' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

@@ -1,0 +1,69 @@
+[task-tracker] WARN: configuration is missing 1 known project field id(s): Rank (cfg.fieldRank). Some board mirrors will be skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist them.
+Started #124.
+✖ actual resume refuses executor drift during fresh admission (531.234208ms)
+[switch] #124: kanbanState seed failed (SeederGraphQLError): SeederGraphQLError: failed to fetch body for #124 after one retry: gh exited 1: stub-gh: refused gh api graphql --input -
+
+  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live 124
+Active: #124.
+✖ actual switch refuses executor drift during fresh admission (931.191333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1656.872875
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:240:3
+✖ actual resume refuses executor drift during fresh admission (531.234208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'seed',
+  +   'timing',
+  +   'reconcile'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:251:14)
+      at runNextTicks (node:internal/process/task_queues:65:5)
+      at process.processImmediate (node:internal/timers:541:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'seed', 'timing', 'reconcile' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:240:3
+✖ actual switch refuses executor drift during fresh admission (931.191333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'occupancy',
+  +   'queue',
+  +   'timing',
+  +   'reconcile'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/97f0/ai-task-manager/scripts/tests/integration/task-tracker/lib/criteria-revision-session-admission.test.mjs:251:14)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'occupancy', 'queue', 'timing', 'reconcile' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
