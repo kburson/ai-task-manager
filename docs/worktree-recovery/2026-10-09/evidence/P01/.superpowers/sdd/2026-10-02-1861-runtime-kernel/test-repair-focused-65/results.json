@@ -1,0 +1,8 @@
+[
+  {
+    "file": "scripts/tests/slow/task-tracker/lib/dirty-workspace-gate.test.mjs",
+    "status": 0,
+    "durationMs": 10836,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-65/0000.log"
+  }
+]

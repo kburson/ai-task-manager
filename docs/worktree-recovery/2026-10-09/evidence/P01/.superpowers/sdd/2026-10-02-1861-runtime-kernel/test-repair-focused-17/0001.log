@@ -1,0 +1,21 @@
+✔ durable state and session records resolve to their physical owner (5.550208ms)
+✔ nested worktree selects the rightmost durable owner rather than its enclosing root (3.795833ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .ai-task-manager/task-tracker-state.json (2.528792ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/worktrees/agent-abc/.ai-task-manager/task-tracker-state.json (2.394625ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/worktrees/agent-abc/.claude/task-tracker-state.json (2.652583ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/worktrees/agent-abc/.ai-task-manager/sessions/sid-xyz/active-task.json (1.953292ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .tmp/aitm/state/task-tracker-state.json (1.734125ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/worktrees/agent-abc/.tmp/aitm/state/task-tracker-state.json (1.965209ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .tmp/aitm/sessions/sid-xyz/active-task.json (2.239708ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .ai-task-manager/repo/.tmp/aitm/state/task-tracker-state.json (2.4145ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/task-tracker-state.json (1.7075ms)
+✔ legacy or arbitrary state path cannot grant owner authority: .claude/repo/.ai-task-manager/task-tracker-state.json (2.0475ms)
+✔ legacy or arbitrary state path cannot grant owner authority: random/path/state.json (1.771375ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.403292

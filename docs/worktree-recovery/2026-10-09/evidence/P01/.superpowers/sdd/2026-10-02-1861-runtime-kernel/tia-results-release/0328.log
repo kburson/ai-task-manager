@@ -1,0 +1,11 @@
+✔ DoD template seeds the two-lane tests command (1.139375ms)
+✔ VC back-fill default seeds both lanes, not test:all (0.088833ms)
+✔ heal-functional-dod rebuilds the tests line to the two-lane form (0.998917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.634583

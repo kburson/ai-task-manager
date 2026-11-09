@@ -1,0 +1,46 @@
+fleet-registry-concurrent.test.mjs: control proved race exists — 1/8 survived without lock
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  Comparison {
++   code: 'RUNTIME_LOCK_RECOVERY_REQUIRED'
+-   code: 'LOCK_RECOVERY_REQUIRED'
+  }
+
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:94:10 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: RuntimeRootError: Legacy record lock requires explicit recovery; age is not authority
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:160:11)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at assert.throws.code (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:96:7)
+      at getActual (node:assert:580:5)
+      at strict.throws (node:assert:728:24)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:94:10 {
+    code: 'RUNTIME_LOCK_RECOVERY_REQUIRED'
+  },
+  expected: { code: 'LOCK_RECOVERY_REQUIRED' },
+  operator: 'throws',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
+✖ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs (18202.146167ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18209.982458
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs:1:1
+✖ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs (18202.146167ms)
+  'test failed'

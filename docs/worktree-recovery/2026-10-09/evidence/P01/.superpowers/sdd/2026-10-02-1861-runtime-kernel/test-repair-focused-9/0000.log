@@ -1,0 +1,12 @@
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD
+approve.test.mjs: all passed
+✔ scripts/tests/integration/task-tracker/verbs/approve-full-auto-unified.test.mjs (11030.466375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11037.428

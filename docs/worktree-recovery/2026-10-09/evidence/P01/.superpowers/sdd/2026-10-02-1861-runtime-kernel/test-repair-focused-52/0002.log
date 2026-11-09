@@ -1,0 +1,11 @@
+proof-gate real-write passed: stamped AC ticked and persisted via write path
+proof-gate-reconciliation.test.mjs: all passed
+✔ scripts/tests/slow/task-tracker/lib/proof-gate-reconciliation.test.mjs (8088.15175ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8094.690417

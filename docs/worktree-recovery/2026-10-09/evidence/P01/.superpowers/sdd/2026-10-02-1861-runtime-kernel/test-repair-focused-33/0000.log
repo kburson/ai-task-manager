@@ -1,0 +1,10 @@
+session-state.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/session-state.test.mjs (2015.955208ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2026.907625

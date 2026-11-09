@@ -1,0 +1,12 @@
+Cancelled discovery bucket. No timing rows recorded.
+No active discovery bucket to cancel.
+discover-cancel.test.mjs: all passed
+✔ scripts/tests/unit/task-tracker/lib/discover-cancel.test.mjs (606.936291ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 615.035834

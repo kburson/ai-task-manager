@@ -1,0 +1,121 @@
+✔ Edit src/foo.ts in develop → pass (1070.647917ms)
+✔ Edit docs/notes.md in plan without current-session binding → allow (784.349708ms)
+✔ Edit docs/notes.md in refine without an exact binding → allow (798.974666ms)
+✔ Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass (1421.1505ms)
+✔ Bash npm test in test → pass (1216.119541ms)
+✔ Bash READ command (cat README.md) in done → pass (1076.095542ms)
+✔ Write .scratch/gh/foo.txt in develop → pass (scratch carve-out) (908.140542ms)
+✔ Write .scratch/plan/draft.md in refine → pass (scratch carve-out) (1134.997542ms)
+✔ Write absolute .scratch/ path → pass (scratch carve-out) (732.453208ms)
+✔ Write .tmp/aitm runtime path in refine → pass (782.467583ms)
+✔ Edit src/foo.ts in refine → block; suggests develop (964.045959ms)
+✔ Edit src/foo.ts in test → block; suggests develop (941.035333ms)
+✔ Bash heredoc to src/ in refine → block (959.473958ms)
+✔ Bash npm run build in refine → block (1172.135792ms)
+✔ Bash git commit in refine → block (COMMIT_CODE) (1045.925458ms)
+✔ Edit src/foo.ts with active issue but no state field → block; suggest reconcile (947.356208ms)
+✖ Edit src/foo.ts with no state file at all → block (no-active-task) (1936.8895ms)
+✔ Edit docs/notes.md with active issue but no state → allow (1364.189167ms)
+✖ Read with no active task is universally allowed; no state file → pass (906.483291ms)
+✔ malformed stdin JSON → pass (don't deadlock) (789.319666ms)
+✔ unknown tool_name → pass-through (1073.193791ms)
+✔ Edit with missing file_path → pass (avoid false-positive) (955.841ms)
+✔ Edit with absolute path inside project root → normalized + blocked in refine (1184.765791ms)
+✔ session kanbanState cache supplies state when global state field is absent (2079.521708ms)
+✔ session kanbanState overrides legacy global state when both present (1585.497542ms)
+✔ session cache for a different issue is ignored (2142.740541ms)
+✔ session cache with invalid kanbanState is ignored; falls back (1483.982459ms)
+✔ most-recently-modified session cache wins when multiple match (2238.317875ms)
+✔ invalid state value in state file with active issue → block; suggest reconcile (1203.855333ms)
+✔ linked backlog document commit uses payload worktree and exact owner (18272.914292ms)
+✔ linked refine document commit uses payload worktree and exact owner (17280.602167ms)
+✔ linked ready-for-plan document commit uses payload worktree and exact owner (17410.568208ms)
+✔ linked plan document commit uses payload worktree and exact owner (18912.441167ms)
+✖ native hook session selects its own state instead of an environment session (2331.46925ms)
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (2109.838ms)
+✔ Bash scope guard does not execute quoted cat payload examples as issue commands (1268.403084ms)
+✔ Plan runner does not bypass exact document binding (1558.777ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 33
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114228.589
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:348:1
+✖ Edit src/foo.ts with no state file at all → block (no-active-task) (1936.8895ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /no active task/i. Input:
+  
+  '[task-tracker] Runtime authority unavailable (RUNTIME_STATE_CORRUPT): Missing or corrupt runtime record: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/aitm-activity-guard-x3fsvX/.ai-task-manager/runtime/store/state/task-tracker-state.json; inspect registered migrate-runtime status.'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:357:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '[task-tracker] Runtime authority unavailable (RUNTIME_STATE_CORRUPT): Missing or corrupt runtime record: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/aitm-activity-guard-x3fsvX/.ai-task-manager/runtime/store/state/task-tracker-state.json; inspect registered migrate-runtime status.',
+    expected: /no active task/i,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:377:1
+✖ Read with no active task is universally allowed; no state file → pass (906.483291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      0,
+  +   '{"decision":"block","reason":"[task-tracker] Runtime authority unavailable (RUNTIME_STATE_CORRUPT): Missing or corrupt runtime record: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/aitm-activity-guard-4eHvvX/.ai-task-manager/runtime/store/state/task-tracker-state.json; inspect registered migrate-runtime status."}'
+  -   ''
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:385:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 0, '{"decision":"block","reason":"[task-tracker] Runtime authority unavailable (RUNTIME_STATE_CORRUPT): Missing or corrupt runtime record: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.ai-task-manager/runtime/test-fixtures/aitm-activity-guard-4eHvvX/.ai-task-manager/runtime/store/state/task-tracker-state.json; inspect registered migrate-runtime status."}' ],
+    expected: [ 0, '' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:792:1
+✖ native hook session selects its own state instead of an environment session (2331.46925ms)
+  Error [RuntimeRootError]: Refusing malformed, unknown or incorrectly scoped runtime publication
+      at validateRuntimeJsonPublication (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:123:11)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:134:22
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:667:12)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:45
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:147:12
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:604:32)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:131:10) {
+    code: 'RUNTIME_STATE_CORRUPT'
+  }
+
+test at scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:812:1
+✖ scratch shell allowance validates physical targets and preserves early code restrictions (2109.838ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'block'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs:825:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'block',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

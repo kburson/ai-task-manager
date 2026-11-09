@@ -1,0 +1,45 @@
+✔ classifies writes and verification across compound command segments (1.284209ms)
+✔ wrapped nested commits require the bound worktree (0.246166ms)
+✔ allows navigation and read-only inspection classifications (0.358583ms)
+✔ confirmed mismatch refuses with complete corrective diagnostics (0.438791ms)
+✔ absence, matching worktree, and explicit override pass unchanged (0.477917ms)
+✖ real PreToolUse hook refuses a guarded command from a foreign worktree (408.317459ms)
+✔ existing gh-edit evaluator outcomes are unchanged (1.288625ms)
+✖ hook process in main checkout honors linked payload directory and recorded branch (361.456791ms)
+✔ aliases and literal nested shells remain guarded worktree mutations (0.242042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 7
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 858.995791
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:167:1
+✖ real PreToolUse hook refuses a guarded command from a foreign worktree (408.317459ms)
+  Error [RuntimeRootError]: Fresh inventory differs from approved plan
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:35:9)
+      at applyRuntimeMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:215:5)
+      at async activateRuntimeRootFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/runtime-root-fixture.mjs:54:3)
+      at async makeRepo (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:54:3)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:168:27)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_MIGRATION_PLAN_CHANGED'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:218:1
+✖ hook process in main checkout honors linked payload directory and recorded branch (361.456791ms)
+  Error [RuntimeRootError]: Fresh inventory differs from approved plan
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:35:9)
+      at applyRuntimeMigration (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-apply.mjs:215:5)
+      at async activateRuntimeRootFixture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/runtime-root-fixture.mjs:54:3)
+      at async makeRepo (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:54:3)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/bash-guard-worktree-binding.test.mjs:219:27)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_MIGRATION_PLAN_CHANGED'
+  }

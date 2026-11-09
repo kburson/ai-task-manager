@@ -1,0 +1,46 @@
+✔ Edit src/foo.ts in develop → pass (1021.177959ms)
+✔ Edit docs/notes.md in plan without current-session binding → allow (763.7745ms)
+✔ Edit docs/notes.md in refine without an exact binding → allow (776.557042ms)
+✔ Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass (996.2165ms)
+✔ Bash npm test in test → pass (1151.82425ms)
+✔ Bash READ command (cat README.md) in done → pass (1160.222375ms)
+✔ Write .scratch/gh/foo.txt in develop → pass (scratch carve-out) (763.246042ms)
+✔ Write .scratch/plan/draft.md in refine → pass (scratch carve-out) (740.719667ms)
+✔ Write absolute .scratch/ path → pass (scratch carve-out) (874.4385ms)
+✔ Write .tmp/aitm runtime path in refine → pass (842.753ms)
+✔ Edit src/foo.ts in refine → block; suggests develop (1095.4265ms)
+✔ Edit src/foo.ts in test → block; suggests develop (1031.477ms)
+✔ Bash heredoc to src/ in refine → block (1063.295417ms)
+✔ Bash npm run build in refine → block (1489.584916ms)
+✔ Bash git commit in refine → block (COMMIT_CODE) (1141.909875ms)
+✔ Edit src/foo.ts with active issue but no state field → block; suggest reconcile (1118.572584ms)
+✔ Edit src/foo.ts with an empty admitted ledger → block (no-active-task) (936.7565ms)
+✔ Edit docs/notes.md with active issue but no state → allow (897.92525ms)
+✔ Read with no active task and an empty admitted ledger → pass (964.347708ms)
+✔ malformed stdin JSON → pass (don't deadlock) (832.21925ms)
+✔ unknown tool_name → pass-through (1125.256958ms)
+✔ Edit with missing file_path → pass (avoid false-positive) (977.85875ms)
+✔ Edit with absolute path inside project root → normalized + blocked in refine (1011.011875ms)
+✔ session kanbanState cache supplies state when global state field is absent (1458.630583ms)
+✔ session kanbanState overrides legacy global state when both present (1593.659667ms)
+✔ session cache for a different issue is ignored (1595.275792ms)
+✔ session cache with invalid kanbanState is ignored; falls back (1490.278083ms)
+✔ most-recently-modified session cache wins when multiple match (2027.503458ms)
+✔ invalid state value in state file with active issue → block; suggest reconcile (1042.879375ms)
+✔ linked backlog document commit uses payload worktree and exact owner (21171.038334ms)
+✔ linked refine document commit uses payload worktree and exact owner (18900.805375ms)
+✔ linked ready-for-plan document commit uses payload worktree and exact owner (18637.686167ms)
+✔ linked plan document commit uses payload worktree and exact owner (18092.20825ms)
+✔ native hook session selects its own state instead of an environment session (3481.494792ms)
+✔ scratch shell allowance validates physical targets and preserves early code restrictions (2230.41025ms)
+✔ Bash scope guard does not execute quoted cat payload examples as issue commands (2682.185625ms)
+✔ Plan runner does not bypass exact document binding (2404.392167ms)
+✔ missing required runtime state refuses even a read hook without pretending to be unbound (924.089333ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120655.14975

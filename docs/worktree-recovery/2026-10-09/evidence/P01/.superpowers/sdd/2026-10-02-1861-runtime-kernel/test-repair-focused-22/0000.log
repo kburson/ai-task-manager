@@ -1,0 +1,71 @@
+dod-stamp-state-gate.test.mjs: defined
+[task-tracker] dod-stamp tests: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] dod-stamp tests on #778: running 1 verifier(s)…
+[task-tracker] ac-stamp: restricted verifier command(s) [npm run test:all] require the issue to be in `test` (current: `develop`). Run `/task promote` to reach `test`, where a sandboxed suite run is the sanctioned path.
+[task-tracker] ac-stamp on #780: running 1 verifier(s) for AC "full suite must pass"…
+[task-tracker] dod-stamp tests on #781: reusing Test receipt 01KYZ7Q780JJ132TXHQ81C1JDY; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #781: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests on #783: reusing Test receipt 01KYZ7Q780C0YBKTARVZJ3TQ4M; standard commands were not rerun.
+[task-tracker] ✓ dod-stamp tests on #783: run-props upserted onto the dod:functional:tests line's aitm-verified marker (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] ac-stamp on #784: reusing Test receipt 01KYZ7Q780YF4P5PSH42Y2PQWK; standard commands were not rerun.
+[task-tracker] ✓ ac-stamp on #784: evidence stamped from Test receipt (sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa).
+[task-tracker] dod-stamp tests: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run lint] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] ac-stamp: verifier command(s) [npm run test:all] cannot run in `review`. Demote and run `/task test` to produce a valid exact-SHA Test receipt, then retry.
+[task-tracker] dod-stamp tests: live issue state could not be resolved; verifier execution is refused.
+[task-tracker] ac-stamp: live issue state could not be resolved; verifier execution is refused.
+✔ dod-stamp tests: refuses in develop, verifier never runs (192.182375ms)
+✖ dod-stamp tests: proceeds normally once in test state (224.818333ms)
+✔ ac-stamp: refuses a restricted verifier command in develop, verifier never runs (131.642292ms)
+✖ ac-stamp: proceeds normally once in test state (208.335084ms)
+✔ dod-stamp tests: Review + valid receipt reuses and does not spawn npm (157.382833ms)
+✔ dod-stamp tests: Review + stale receipt refuses and does not spawn npm (224.757708ms)
+✔ dod-stamp tests: Test + valid receipt reuses and does not spawn npm (130.93375ms)
+✔ ac-stamp: Review + valid receipt reuses Test provenance and does not spawn npm (150.901708ms)
+✔ Review + uncovered lint refuses on both stamp surfaces without spawning npm (266.31175ms)
+✔ Review + issue-mismatched receipt refuses on both stamp surfaces (274.030125ms)
+✔ unavailable live state refuses on both stamp surfaces (246.15425ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 9
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2367.569084
+
+✖ failing tests:
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ dod-stamp tests: proceeds normally once in test state (224.818333ms)
+  Error [RuntimeRootError]: Refusing malformed, unknown or incorrectly scoped runtime publication
+      at validateRuntimeJsonPublication (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:123:11)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:134:22
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:667:12)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:45
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:147:12
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:604:32)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:131:10) {
+    code: 'RUNTIME_STATE_CORRUPT'
+  }
+
+test at scripts/tests/helpers/unit-runtime-root.mjs:65:10
+✖ ac-stamp: proceeds normally once in test state (208.335084ms)
+  Error [RuntimeRootError]: Refusing malformed, unknown or incorrectly scoped runtime publication
+      at validateRuntimeJsonPublication (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:123:11)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:134:22
+      at withRuntimeStoreLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:667:12)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:45
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:147:12
+      at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:66:14)
+      at withRuntimeWriterLeaseSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-migration-lock.mjs:604:32)
+      at withRuntimeWriteSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:145:10)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:167:10)
+      at writeRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:131:10) {
+    code: 'RUNTIME_STATE_CORRUPT'
+  }

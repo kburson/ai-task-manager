@@ -1,0 +1,85 @@
+✔ static files round separately while aggregate traffic rounds exactly once (3.117625ms)
+✔ candidate workflow retains every lane and required query boundary without executing refusals (6.753333ms)
+✔ paired artifacts reconcile exact identities, context categories, sensitivity and cardinality (9.463291ms)
+✔ artifact validation rejects incomplete, shortened, relabeled or latency-guessed evidence (44.447333ms)
+✔ committed candidate transcripts and reports exactly match historical regeneration (46.439417ms)
+✔ archived recertification binds every obligation and its recorded public CLI lifecycle (1.110083ms)
+✖ recertification refuses a relabeled or altered lifecycle capture (13749.858584ms)
+✔ current release gate refuses budget relaxation (0.565584ms)
+✔ retained obligation coverage binds each reviewed sentence to its required file (13.897ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13952.559166
+
+✖ failing tests:
+
+test at scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs:410:1
+✖ recertification refuses a relabeled or altered lifecycle capture (13749.858584ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /capture-replay/. Input:
+  
+  'Error: capture:lifecycle-deliver:exit\n' +
+    'aitm: action capture unavailable; continuing without capture: Partial runtime loss requires registered recovery\n' +
+    'file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32\n' +
+    '  throw new RuntimeRootError(code, message);\n' +
+    '        ^\n' +
+    '\n' +
+    'RuntimeRootError: Partial runtime loss requires registered recovery\n' +
+    '    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)\n' +
+    '    at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)\n' +
+    '    at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)\n' +
+    '    at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)\n' +
+    '    at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/state.mjs:192:18)\n' +
+    '    at evaluateExplanation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/explain.mjs:254:19)\n' +
+    '    at evaluate (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs:458:34)\n' +
+    '    at runExplain (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/explain.mjs:143:27)\n' +
+    '    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs:457:17 {\n' +
+    "  code: 'RUNTIME_CONTROL_INVALID'\n" +
+    '}\n' +
+    '\n' +
+    'Node.js v26.8.1\n'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs:452:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: capture:lifecycle-deliver:exit
+    aitm: action capture unavailable; continuing without capture: Partial runtime loss requires registered recovery
+    file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32
+      throw new RuntimeRootError(code, message);
+            ^
+    
+    RuntimeRootError: Partial runtime loss requires registered recovery
+        at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+        at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+        at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:75:3)
+        at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:80:3)
+        at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/state.mjs:192:18)
+        at evaluateExplanation (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/explain.mjs:254:19)
+        at evaluate (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs:458:34)
+        at runExplain (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/verbs/explain.mjs:143:27)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/task-tracker.mjs:457:17 {
+      code: 'RUNTIME_CONTROL_INVALID'
+    }
+    
+    Node.js v26.8.1
+    
+        at run (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/capture-guidance-lifecycle.mjs:522:38)
+        at query (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/capture-guidance-lifecycle.mjs:563:7)
+        at captureGuidanceLifecycle (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/capture-guidance-lifecycle.mjs:666:5)
+        at verifyCaptureReplay (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/measure-guidance-candidate.mjs:578:18)
+        at validateRecheckCapture (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/measure-guidance-candidate.mjs:656:18)
+        at buildCurrentRecertificationDecision (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/maintenance/measure-guidance-candidate.mjs:671:27)
+        at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs:453:11
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/unit/task-tracker/lib/guidance-candidate-measurement.test.mjs:452:10),
+    expected: /capture-replay/,
+    operator: 'throws',
+    diff: 'simple'
+  }

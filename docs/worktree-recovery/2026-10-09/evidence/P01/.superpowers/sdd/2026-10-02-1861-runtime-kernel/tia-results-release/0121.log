@@ -1,0 +1,15 @@
+✔ a live same-host holder aged past the OLD 30s TTL is NOT reclaimed (21.415417ms)
+✔ a dead legacy holder is preserved for explicit observed recovery (78.310792ms)
+✔ PID reuse does not grant implicit reclamation authority (18.577333ms)
+✔ cross-host legacy ownership is preserved regardless of age (38.319208ms)
+✔ matching dead legacy ownership still requires explicit recovery (60.283ms)
+✔ isProcessAlive: true for self, false for a reaped child (38.945125ms)
+✔ the raised TTL backstop sits well above the legacy 30s threshold (0.130666ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 261.803667

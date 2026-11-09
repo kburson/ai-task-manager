@@ -1,0 +1,35 @@
+✖ packed delivery exception runtime and guide support installed CLI help (7221.326292ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7225.225917
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs:31:1
+✖ packed delivery exception runtime and guide support installed CLI help (7221.326292ms)
+  AssertionError [ERR_ASSERTION]: npm install --offline --ignore-scripts --no-audit --no-fund /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/test/delivery-exception-pack-73fAyV/kburson-ai-task-manager-0.1.0.tgz failed (1):
+  npm error code ENOTCACHED
+  npm error request to https://registry.npmjs.org/espree failed: cache mode is 'only-if-cached' but no cached response is available.
+  npm error A complete log of this run can be found in: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/.scratch/npm-cache/_logs/2026-10-03T02_29_05_250Z-debug-0.log
+  
+  
+  1 !== 0
+  
+      at run (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs:23:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/package-delivery-attribution-exception-smoke.test.mjs:58:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

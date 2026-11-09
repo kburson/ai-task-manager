@@ -1,0 +1,262 @@
+✔ rebind remains a cursor trigger, not a session action (1.066458ms)
+✔ read-only bind reports skipped required authority as indeterminate (1.935666ms)
+✔ the execution TT_SKIP_NETWORK setting skips required explanation reads (1.298ms)
+✔ disabled assignee match remains ready only with complete matching board and marker (0.745125ms)
+✔ disabled assignee match does not conceal a missing board read (0.484917ms)
+✔ a body without a last-known-state marker is indeterminate (0.553125ms)
+✔ a board and body-marker disagreement blocks bind readiness (0.436625ms)
+✔ a mismatched worktree blocks bind readiness (0.74575ms)
+✔ an unreadable worktree match is indeterminate, not ready (0.618208ms)
+✔ a conflicting occupancy blocks bind before any claim (0.536334ms)
+✔ an implicit resume cannot target a different active issue (0.642459ms)
+✔ no-argument resume is not ready without a paused session (0.43275ms)
+✔ no-argument resume is ready for its paused last issue (0.351833ms)
+✔ migration freeze blocks a complete session decision without a side effect (0.400959ms)
+✔ enabled ownership check blocks a foreign owner (0.484542ms)
+✔ enabled ownership check blocks multiple owners and treats unknown identity as indeterminate (0.716333ms)
+✔ a conflicting local configuration observation cannot yield a ready decision (0.333708ms)
+✔ missing repository configuration is indeterminate even with a complete board fixture (0.309ms)
+✔ observed state drift and migration freeze agree with the execution preflight (2.742292ms)
+✔ production session reads and execution refresh the same changed board authority (42.491ms)
+✔ cold numeric bind, switch, and explicit resume select the same fresh target (121.140083ms)
+✔ foreign ownership blocks both production explanation and execution preflight (45.783958ms)
+✖ another issue occupying the target worktree blocks readiness and the real claim (130.334125ms)
+✔ a body changing between scope selection and observation is indeterminate (34.597917ms)
+✔ a readable stub body without scope sections is an issue-body authority failure (37.075167ms)
+✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (128.186542ms)
+✖ early promotion readiness retains an unmapped complete-guard refusal (115.480125ms)
+✖ typed plan approval remediation survives complete guard projection (133.548666ms)
+✔ unknown and conflicting early state authority never yields a target grant (0.97525ms)
+✖ early promotion readiness follows all four canonical forward edges (118.605791ms)
+✔ a migration freeze discovered after explanation blocks early promotion readiness (0.724875ms)
+✔ terminal Done has no executable early promotion target (0.116416ms)
+✔ later promotion delegate stays pending with a valid navigation blocker (0.145708ms)
+✔ skipped remote authority cannot yield ready early promotion (0.140917ms)
+✔ TT_SKIP_NETWORK also skips early promotion authority without a caller flag (0.130125ms)
+✖ read-only dependency readiness does not reconcile disposition (109.759ms)
+✖ a ready early explanation is not a grant after dependency readiness changes (186.965625ms)
+✔ a migration freeze activated before locked execution refuses without reading or moving (0.755125ms)
+✔ early readiness shares execution session policy and story-intent resolver (0.677792ms)
+✔ a real plan-approval guard refuses the same missing marker in explanation and execution (3.591333ms)
+✔ complete production early registry retains field, parent, dependency, contiguity, and plan refusals (2581.655042ms)
+✔ production evaluator routes a complete bind collector and finishes one v2 attempt (2.253459ms)
+✖ production evaluator routes complete early promotion without an effect (109.792292ms)
+✔ production evaluator routes explicit resume through complete session authority (1.029333ms)
+✔ v2 navigation rejects rebind and unresolved state while keeping Done terminal (6.674084ms)
+✔ terminal Done refuses an effect, stale authority, and rebind without a false grant (1.531375ms)
+✖ a ready v2 explanation never authorizes stale promotion execution (137.856417ms)
+✖ v2 early promotion preserves typed plan-approval remediation and human request (107.747625ms)
+✖ matching recorded and live state selects one canonical early edge (115.17725ms)
+✔ missing effect ledger does not erase unknown navigation authority (1.383208ms)
+✔ session navigation refuses a stale proposed state despite internally matching board and marker (0.887542ms)
+✔ network-skipped early promotion emits valid v2 uncertainty without remote reads (0.383375ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 41
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4542.689917
+
+✖ failing tests:
+
+test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:693:1
+✖ another issue occupying the target worktree blocks readiness and the real claim (130.334125ms)
+  Error [RuntimeRootError]: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at withRuntimeRecordLockSync (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:107:17)
+      at withLock (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/fleet-registry.mjs:8:10)
+      at claimOccupancy (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/occupancy.mjs:66:10)
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:697:5)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12) {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+
+test at scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:804:1
+✖ real injected resume execution refreshes freeze and preserves its exit 14 refusal (128.186542ms)
+  AssertionError [ERR_ASSERTION]: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:30
+    if (index < 0) throw new RuntimeRootError('RUNTIME_OVERRIDE_UNSAFE', 'Runtime writes require the exact durable store owner');
+                         ^
+  
+  RuntimeRootError: Runtime writes require the exact durable store owner
+      at runtimeWriterRootsForPath (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:30:24)
+      at loadState (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/state.mjs:191:17)
+      at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-session-executor-fixture.mjs:24:16 {
+    code: 'RUNTIME_OVERRIDE_UNSAFE'
+  }
+  
+  Node.js v26.8.1
+  
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/integration/task-tracker/lib/action-session-promote.test.mjs:813:14)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:12:3
+✖ early promotion readiness retains an unmapped complete-guard refusal (115.480125ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-early-promote-cases.mjs:38:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:76:3
+✖ typed plan approval remediation survives complete guard projection (133.548666ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-early-promote-cases.mjs:93:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:173:3
+✖ early promotion readiness follows all four canonical forward edges (118.605791ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-early-promote-cases.mjs:201:22)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:338:3
+✖ read-only dependency readiness does not reconcile disposition (109.759ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-early-promote-cases.mjs:359:20)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/helpers/action-early-promote-cases.mjs:389:3
+✖ a ready early explanation is not a grant after dependency readiness changes (186.965625ms)
+  Error [RuntimeRootError]: Partial runtime loss requires registered recovery
+      at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+      at assertRuntimeReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-storage.mjs:322:7)
+      at assertRecordReadable (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:43:3)
+      at readRuntimeJsonRecord (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/runtime-writer.mjs:48:3)
+      at loadSession (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/session-store.mjs:57:29)
+      at collectEarlyPromoteReadiness (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/task-tracker/lib/action-decision/promote.mjs:213:41)
+      at async TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-early-promote-cases.mjs:428:25)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'RUNTIME_CONTROL_INVALID'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:71:3
+✖ production evaluator routes complete early promotion without an effect (109.792292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-navigation-cases.mjs:104:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:266:3
+✖ a ready v2 explanation never authorizes stale promotion execution (137.856417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-navigation-cases.mjs:306:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:328:3
+✖ v2 early promotion preserves typed plan-approval remediation and human request (107.747625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'blocked'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-navigation-cases.mjs:375:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'blocked',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/helpers/action-navigation-cases.mjs:386:3
+✖ matching recorded and live state selects one canonical early edge (115.17725ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'indeterminate'
+  - 'ready'
+  
+      at TestContext.<anonymous> (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-verification-1790994175375223000/scripts/tests/helpers/action-navigation-cases.mjs:423:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'indeterminate',
+    expected: 'ready',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

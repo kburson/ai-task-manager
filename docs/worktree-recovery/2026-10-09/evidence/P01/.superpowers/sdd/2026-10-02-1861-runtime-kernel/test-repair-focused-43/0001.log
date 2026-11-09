@@ -1,0 +1,12 @@
+test 1: guard ON + foreign assignee → exit 10 OK
+test 2: guard OFF → bypass OK
+assignee-guard.integration.test.mjs: ok
+✔ scripts/tests/integration/task-tracker/lib/assignee-guard.integration.test.mjs (5767.086833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5772.249083

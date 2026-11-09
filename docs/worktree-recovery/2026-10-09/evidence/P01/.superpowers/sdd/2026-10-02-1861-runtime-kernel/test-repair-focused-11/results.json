@@ -1,0 +1,32 @@
+[
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/actor-state-isolation.test.mjs",
+    "status": 0,
+    "durationMs": 3075,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-11/0000.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/assignment-lock.test.mjs",
+    "status": 1,
+    "durationMs": 326,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-11/0001.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/bind-context.test.mjs",
+    "status": 0,
+    "durationMs": 237,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-11/0002.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/auto-mode.test.mjs",
+    "status": 0,
+    "durationMs": 322,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-11/0003.log"
+  },
+  {
+    "file": "scripts/tests/unit/task-tracker/lib/agent-review/approve-agent-review-complete.test.mjs",
+    "status": 0,
+    "durationMs": 1387,
+    "output": ".superpowers/sdd/2026-10-02-1861-runtime-kernel/test-repair-focused-11/0004.log"
+  }
+]
