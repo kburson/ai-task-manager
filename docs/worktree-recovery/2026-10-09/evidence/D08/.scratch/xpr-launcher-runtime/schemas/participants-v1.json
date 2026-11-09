@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-peer-review.participants/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "review_id", "author", "reviewer"],
+  "properties": {
+    "schema": { "const": "ai-peer-review.participants/v1" },
+    "review_id": { "type": ["string", "null"] },
+    "author": { "type": ["object", "null"] },
+    "reviewer": { "type": ["object", "null"] }
+  }
+}

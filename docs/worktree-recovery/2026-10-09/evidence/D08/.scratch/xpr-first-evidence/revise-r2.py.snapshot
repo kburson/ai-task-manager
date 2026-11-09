@@ -1,0 +1,53 @@
+from pathlib import Path
+p=Path('docs/superpowers/specs/2026-09-20-aitm-mcp-adapter-architecture-design.md');s=p.read_text()
+def r(a,b):
+ global s
+ assert a in s,a
+ s=s.replace(a,b,1)
+r('''exception actions. The seven typed tools are convenience projections, not the
+complete portable vocabulary. Phase 1 maps every existing CLI verb to a canonical''','''exception actions. This route is exclusive: an action with a dedicated typed
+tool is rejected by `aitm_invoke_action`, even if the host disables or withholds
+permission for that typed tool. The registry assigns each externally callable
+core action exactly one MCP invocation route, which discovery reports. The seven
+typed tools are dedicated projections of selected canonical actions; the generic
+route serves the remaining portable vocabulary. Phase 1 maps every existing CLI verb to a canonical''')
+r('''Invoke every externally callable portable action through CLI and MCP, including
+both generic and typed routes where present, and assert identical domain
+requests, authority effects, receipts, errors, and next-action recommendations.
+Test extension routes against the same policy contract, and verify every route
+rejects `orchestrator-only` actions.''','''Invoke every externally callable portable action through CLI and its single
+registry-assigned MCP route, and assert identical domain requests, authority
+effects, receipts, errors, and next-action recommendations. For actions with a
+dedicated typed tool, also prove that `aitm_invoke_action` rejects their IDs,
+including when the host withholds that typed tool. Test extension routes against
+the same policy contract, and verify every route rejects `orchestrator-only`
+actions.''')
+r('adapters that fail their declared-port conformance suite; and','adapters that fail their declared-port conformance suite;')
+r('''receipt, recovery finds the unmatched request. The adapter observes using its declared evidence class and appends one of:''','''receipt, recovery finds the unmatched request. The adapter observes using its
+declared evidence class and appends one of:''')
+r('''5. Every action, extension, error, and unavailable capability is discoverable
+   with purpose, preconditions, effects, retry, recovery, and help references.''','''5. Every action, extension, error, and unavailable capability is discoverable
+   with purpose, preconditions, effects, retry, recovery, and help references.
+   Discovery uses bounded summaries, 50-action / 32-KiB pages, and
+   query/fingerprint-bound cursors; full descriptions are fetched on demand.''')
+r('''10. Interrupted mutations are observed and reconciled before retry.''','''10. Interrupted mutations are observed and reconciled before retry using their
+    declared observability class. State satisfaction without causal proof is
+    recorded with unknown attribution and cannot satisfy actor-sensitive gates.''')
+r('''    actual guarded or strict assurance level.''','''    actual guarded or strict assurance level. Strict requires the named sandbox,
+    isolated executor, egress mechanism, and current boundary attestation.''')
+r('''14. Each delivery phase has its own bounded specification, plan, tests, and
+    approval before implementation.''','''14. Each delivery phase has its own bounded specification, plan, tests, and
+    approval before implementation.
+15. Scoped coordinators, epoch-fenced grants, and fail-closed conflicts are
+    retained. Non-CAS adapters require one serialized executor per coordinator
+    grant and proven quiescence or enforceable fencing for handoff.
+16. Every portable action has one registry-assigned MCP invocation route with CLI
+    parity; generic invocation rejects actions assigned a dedicated typed tool.''')
+r('''- External authorities do not provide uniform transactions, retention, or
+  conditional updates.''','''- External authorities do not provide uniform transactions, retention, or
+  conditional updates.
+- Non-CAS authorities require one serialized executor per coordinator grant;
+  linked worktrees and fleet sessions submit to it. Without enforceable fencing,
+  handoff requires maintainer-confirmed quiescence and automatic failover is
+  unavailable, adding coordination latency and operator responsibility.''')
+p.write_text(s)

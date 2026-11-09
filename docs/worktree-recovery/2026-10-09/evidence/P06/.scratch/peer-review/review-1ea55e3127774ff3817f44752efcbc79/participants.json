@@ -1,0 +1,24 @@
+{
+  "author": {
+    "host": "codex",
+    "identity_source": "runtime",
+    "joined_at": "2026-09-20T20:27:05.408Z",
+    "model_display": "GPT-6 Astra",
+    "model_id": "gpt-6-astra",
+    "provider": "openai",
+    "role": "author",
+    "session_fingerprint": "sha256:43cb4fd5092989dd837ce1e68485335a8fe08ae750ec96419a461e45e172381b"
+  },
+  "review_id": "review-1ea55e3127774ff3817f44752efcbc79",
+  "reviewer": {
+    "host": "codex",
+    "identity_source": "runtime",
+    "joined_at": "2026-09-20T20:28:22.128Z",
+    "model_display": "GPT-5.6 Sol",
+    "model_id": "gpt-5.6-sol",
+    "provider": "openai",
+    "role": "reviewer",
+    "session_fingerprint": "sha256:63dde00893c2bcc6a55bed7f6d9424a621a97ecca480a80bedd6a9bdaed7b826"
+  },
+  "schema": "ai-peer-review.participants/v1"
+}

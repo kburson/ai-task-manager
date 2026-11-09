@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-peer-review.grant-challenge/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "challenge_id",
+    "review_id",
+    "intervention_id",
+    "protocol_revision",
+    "action",
+    "parameters_digest",
+    "nonce",
+    "expires_at"
+  ],
+  "properties": {
+    "schema": { "const": "ai-peer-review.grant-challenge/v1" },
+    "challenge_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "review_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "intervention_id": {
+      "anyOf": [{ "type": "null" }, { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }]
+    },
+    "protocol_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "action": {
+      "enum": [
+        "pin-verifier",
+        "continue",
+        "supplement",
+        "accept-over-objections",
+        "replace-participant"
+      ]
+    },
+    "parameters_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "expires_at": { "type": "string", "format": "date-time" }
+  }
+}

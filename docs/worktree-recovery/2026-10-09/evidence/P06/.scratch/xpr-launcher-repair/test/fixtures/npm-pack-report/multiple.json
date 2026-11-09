@@ -1,0 +1,12 @@
+[
+  {
+    "name": "ai-peer-review",
+    "filename": "ai-peer-review-0.2.2.tgz",
+    "files": [{ "path": "package.json" }]
+  },
+  {
+    "name": "other-package",
+    "filename": "other-package-1.0.0.tgz",
+    "files": [{ "path": "package.json" }]
+  }
+]

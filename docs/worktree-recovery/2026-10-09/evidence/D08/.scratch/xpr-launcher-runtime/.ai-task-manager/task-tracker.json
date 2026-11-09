@@ -1,0 +1,59 @@
+{
+  "preferences": {
+    "noPushToOrigin": false,
+    "mainThreadOnly": false,
+    "driveSubIssuesToReview": true,
+    "pauseTimerOnBlockingQuestion": true,
+    "noConfirmAfterDeepDive": true,
+    "askGatesBeforeParallel": true,
+    "gateAssigneeMatch": true,
+    "formatting": {
+      "noEmojis": true,
+      "currencyInBackticks": true
+    },
+    "scratchDir": "./.scratch/"
+  },
+  "trunkRef": "origin/trunk",
+  "fullAutoMerge": {
+    "mechanism": "provider-action",
+    "mergeMethod": "squash"
+  },
+  "kanbanOptionReadyForPlan": "7974dcb1",
+  "repo": "kburson/ai-peer-review",
+  "projectId": "PVT_kwHOABCEY84Bi8GF",
+  "kanbanFieldId": "PVTSSF_lAHOABCEY84Bi8GFzhhyUEo",
+  "kanbanOptionBacklog": "f75ad846",
+  "kanbanOptionRefine": "61e4505c",
+  "kanbanOptionPlan": "e503d6e4",
+  "kanbanOptionDevelop": "47fc9ee4",
+  "kanbanOptionTest": "df73e18b",
+  "kanbanOptionReview": "e1736886",
+  "kanbanOptionDone": "98236657",
+  "priorityFieldId": "PVTSSF_lAHOABCEY84Bi8GFzhhyUQg",
+  "priorityOptionP0": "79628723",
+  "priorityOptionP1": "0a877460",
+  "priorityOptionP2": "da944a9c",
+  "priorityOptionP3": "",
+  "sizeFieldId": "PVTSSF_lAHOABCEY84Bi8GFzhhyUQk",
+  "fieldEstimate": "PVTF_lAHOABCEY84Bi8GFzhhyUQo",
+  "fieldEngagedTime": "PVTF_lAHOABCEY84Bi8GFzhiJSCI",
+  "fieldSessionTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDE",
+  "fieldRank": "PVTF_lAHOABCEY84Bi8GFzhiJSEI",
+  "rankFieldId": "PVTF_lAHOABCEY84Bi8GFzhiJSEI",
+  "fieldStartTime": "PVTF_lAHOABCEY84Bi8GFzhiJSUY",
+  "fieldDisposition": "PVTSSF_lAHOABCEY84Bi8GFzhiJSCE",
+  "fieldReviewTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDI",
+  "fieldPlanTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDM",
+  "fieldIds": {
+    "priority": "PVTSSF_lAHOABCEY84Bi8GFzhhyUQg",
+    "size": "PVTSSF_lAHOABCEY84Bi8GFzhhyUQk",
+    "disposition": "PVTSSF_lAHOABCEY84Bi8GFzhiJSCE",
+    "estimate": "PVTF_lAHOABCEY84Bi8GFzhhyUQo",
+    "engagedTime": "PVTF_lAHOABCEY84Bi8GFzhiJSCI",
+    "sessionTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDE",
+    "reviewTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDI",
+    "planTime": "PVTF_lAHOABCEY84Bi8GFzhiJSDM",
+    "rank": "PVTF_lAHOABCEY84Bi8GFzhiJSEI",
+    "startTime": "PVTF_lAHOABCEY84Bi8GFzhiJSUY"
+  }
+}
