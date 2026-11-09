@@ -1,0 +1,7 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "- **Reviewed-spec comparison plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md @ `fe796e88654929496bb3265365a8d6a3fe132e5e` (manual plan review round 1)",
+  "replacement": "- **Reviewed-spec comparison plan:** docs/superpowers/plans/2026-09-22-1755-delivery-attribution-exception-reviewed-spec.md @ `ff1f41585178d6f26ea3e4ed910d408d6001b2ba` (manual plan review round 2; reviewer acceptance pending)",
+  "expectedVersion": 24
+}

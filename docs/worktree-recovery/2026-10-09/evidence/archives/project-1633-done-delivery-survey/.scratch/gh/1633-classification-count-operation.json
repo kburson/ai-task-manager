@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "The five allowed outcomes are:",
+  "replacement": "The six allowed outcomes are:"
+}

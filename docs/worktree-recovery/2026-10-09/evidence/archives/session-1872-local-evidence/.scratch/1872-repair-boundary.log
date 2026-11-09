@@ -1,0 +1,42 @@
+✔ poolConcurrency reserves one core and never drops below 1 (0.748917ms)
+✔ subprocessPoolConcurrency is capped at two and floored at one (0.157375ms)
+✔ slowPoolConcurrency is independently capped at two and floored at one (0.121916ms)
+✔ runPool honors the reduced subprocess cap and preserves input order (28.500083ms)
+✔ runPool keeps at most `concurrency` invocations in flight (67.788083ms)
+✔ runPool returns results in input order despite reversed completion (50.020416ms)
+✔ runPool handles an empty entry list (0.206958ms)
+✔ runPool caps concurrency at the entry count for tiny lists (12.744167ms)
+✔ runPool brackets every concurrent side effect (leak guard remains sound) (25.043667ms)
+✔ spawnTestChild shapes a clean exit like spawnSync (108.461416ms)
+✔ spawnTestChild reports a non-zero exit code (50.504916ms)
+✔ spawnTestChild timeout kills the child and surfaces ETIMEDOUT (176.58275ms)
+✔ spawnTestChild enforces maxBuffer and surfaces ENOBUFS (63.634292ms)
+✔ spawnTestChild propagates the caller-owned env policy to the child (50.352583ms)
+✔ spawnTestChild resolves (never rejects) on a spawn failure (0.567708ms)
+✔ test children own their root overrides while native identity and ordinary environment survive (87.782584ms)
+✔ real linked worktrees resolve the same physical parent lock, including a symlink alias (352.667417ms)
+✔ competing native processes serialize and re-read revocation at the winning boundary (446.516833ms)
+✔ bounded contention never evicts live or unknown ownership and nested context cannot be forged (670.185334ms)
+✔ public Plan-to-Develop admission waits for a linked-worktree revoker and revalidates before effects (667.402125ms)
+✔ partial comment publication refuses admission and same-record resume completes exactly one comment (11.598125ms)
+✔ body succeeds but read-back fails; retry repairs the same pointer without posting again (3.59425ms)
+✔ unknown comment write stays indeterminate under its original operation ID and never posts twice (1.424958ms)
+✔ graph drift, source refusal, record tamper and mismatched operation identity refuse repair (3.322958ms)
+✔ newer revocation and expiry cannot be repaired as partial publication (2.9065ms)
+✔ a registered exact generation refresh requires positive discharge, preserves source scope and remains resumable (3.822791ms)
+✔ generation refresh cannot extend authorization expiry or reserve a publication (1.130959ms)
+✔ fresh observation after comment write prevents publishing a graph that changed in flight (0.680292ms)
+✔ strict policy at another rank requires authentic matching pointers for all adopted waves (1.473042ms)
+✔ a prepared proposal cannot be recorded by a replacement parent identity (0.454333ms)
+✔ duplicate and fenced orchestration examples cannot supply publication authority (0.2935ms)
+✔ scoped revocation can be completed after graph or worker drift without reviving the grant (2.789083ms)
+✔ new graph adoption requires fresh authorization and replaces stale body scope through the registered action (1.916166ms)
+✔ parent generation drift after comment publication refuses pointer adoption (0.424917ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2283.32175

@@ -1,0 +1,620 @@
+
+> @kburson/ai-task-manager@0.1.0 test:slow
+> node scripts/run-tests.mjs --lane slow --shard 1/3
+
+▶ lane=slow (19 files)
+
+▶ scripts/tests/slow/task-tracker/core/fleet-registry-concurrent.test.mjs ... ok (4.9s)
+▶ scripts/tests/slow/task-tracker/core/verify-develop.test.mjs ... ok (836ms)
+▶ scripts/tests/slow/task-tracker/lib/activity-guard.test.mjs ... ok (16.5s)
+▶ scripts/tests/slow/task-tracker/lib/aitm-dispatcher.test.mjs ... ok (7.8s)
+▶ scripts/tests/slow/task-tracker/lib/cli.test.mjs ... ok (14.0s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-close-gates.test.mjs ... ok (1.5s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-hook-handler.test.mjs ... ok (6.6s)
+▶ scripts/tests/slow/task-tracker/lib/coverage-orchestrator-lock.test.mjs ... ok (613ms)
+▶ scripts/tests/slow/task-tracker/lib/create-issue.test.mjs ... ok (2.7s)
+▶ scripts/tests/slow/task-tracker/lib/draft-branch.test.mjs ... ok (334ms)
+▶ scripts/tests/slow/task-tracker/lib/epic-children-review-lifecycle.test.mjs ... ok (255ms)
+▶ scripts/tests/slow/task-tracker/lib/epic-tree.test.mjs ... ok (796ms)
+▶ scripts/tests/slow/task-tracker/lib/gate-message-attribution.test.mjs ... ok (214ms)
+▶ scripts/tests/slow/task-tracker/lib/issue-authoring.test.mjs ... ok (2.6s)
+▶ scripts/tests/slow/task-tracker/lib/move-state/board-field-readback.test.mjs ... ok (2.9s)
+▶ scripts/tests/slow/task-tracker/lib/review-approval-prompt.test.mjs ... ok (33.3s)
+▶ scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ... FAIL (exit 1)
+▶ scripts/tests/slow/task-tracker/verbs/recovery-path-independence.test.mjs ... ok (363ms)
+▶ scripts/tests/slow/task-tracker/workflow-exception-lifecycle.test.mjs ... ok (104ms)
+
+1 of 19 test file(s) failed:
+
+── scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs ──
+coverage-close.test.mjs: defined
+✖ no active task (32.150581ms)
+✖ discover bucket → discarded (29.046337ms)
+✖ target adopted into empty state → Closed (27.936151ms)
+✖ convergence close-issue: board Done + issue OPEN → gh close (30.513551ms)
+✖ convergence close-issue: outcome failure leaves the issue OPEN and active (27.811452ms)
+✖ convergence close-issue: disposition failure leaves issue OPEN and active (27.706625ms)
+✖ convergence close-issue: gh close fails → exit 1 (27.62193ms)
+✖ convergence noop + boardDrift: issue CLOSED, board behind → converge (31.021774ms)
+✖ convergence noop + boardDrift: move fails + board not Done → exit 1 (28.016698ms)
+✖ convergence noop, no drift: issue CLOSED + board Done → already closed (29.912544ms)
+✖ happy tail: approval marker present → emitted, Closed (27.892845ms)
+✖ happy tail: Full-Auto default records review approval without a prior marker (27.496966ms)
+✖ happy-tail candidate refuses close when terminal timing is only queued (27.276173ms)
+✖ final move non-benign failure + board not Done → exit 1 (27.667542ms)
+✖ offline final move cannot verify board Done → refuses non-benign failure (27.138855ms)
+✖ dirty + CI headless, no --answer → exit 5 (37.397395ms)
+✖ dirty + --answer cancel → left in Review (36.782725ms)
+✖ dirty + --answer yes → refuse, exit 6 (37.898007ms)
+✖ dirty + invalid --answer → exit 1 (36.407565ms)
+✖ dirty + interactive (no CI, no answer) → PROMPT_REQUIRED (36.216248ms)
+✖ dirty + --answer no → audit row, continues to Closed (37.441926ms)
+✖ gate-eval failure, no --force → fail-closed exit 3 (26.768507ms)
+✖ --force: gate-eval throw swallowed → cascade + close pipeline → Closed (27.83142ms)
+✖ cascade: disposition failure leaves child and parent OPEN and active (26.96976ms)
+✖ cascade: outcome failure leaves child in Review and parent OPEN and active (27.406249ms)
+✖ cascade: queued terminal timing leaves child in Review and retains evidence for retry (26.790315ms)
+✖ cascade: each child outcome uses its own resolved worktree (27.654856ms)
+✖ assertFieldsPersisted: aitm-fields marker missing → throws (26.990049ms)
+✖ assertFieldsPersisted: engagedTime null → throws (27.315472ms)
+✖ assertFieldsPersisted: body re-read fails → throws (27.397853ms)
+✔ tickLifecycleOnClose: ticks story-closed + timing-flushed via mutate (1.008793ms)
+✔ tickLifecycleOnClose: mutate throws → best-effort swallow (1502.876667ms)
+✖ nested fixture state never reads or clears its isolated parent session (43.859345ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 2
+ℹ fail 31
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2452.83048
+
+✖ failing tests:
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:216:1
+✖ no active task (32.150581ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /no active task/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:218:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /no active task/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:220:1
+✖ discover bucket → discarded (29.046337ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Discarded discovery bucket/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:222:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Discarded discovery bucket/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:224:1
+✖ target adopted into empty state → Closed (27.936151ms)
+  AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Invalid timing actor identity or marker
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:229:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+      at invalid (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStateRecord (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:94:14)
+      at saveState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/state.mjs:292:23)
+      at run (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:160:5)
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:225:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [TypeError],
+    expected: null,
+    operator: 'ifError',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:234:1
+✖ convergence close-issue: board Done + issue OPEN → gh close (30.513551ms)
+  AssertionError [ERR_ASSERTION]: ifError got unwanted exception: Invalid timing actor identity or marker
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:258:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+      at invalid (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStateRecord (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:94:14)
+      at saveState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/state.mjs:292:23)
+      at run (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:160:5)
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:236:19)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [TypeError],
+    expected: null,
+    operator: 'ifError',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:269:1
+✖ convergence close-issue: outcome failure leaves the issue OPEN and active (27.811452ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:292:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:300:1
+✖ convergence close-issue: disposition failure leaves issue OPEN and active (27.706625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:316:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:322:1
+✖ convergence close-issue: gh close fails → exit 1 (27.62193ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:332:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:336:1
+✖ convergence noop + boardDrift: issue CLOSED, board behind → converge (31.021774ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(moved)
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:346:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:349:1
+✖ convergence noop + boardDrift: move fails + board not Done → exit 1 (28.016698ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:358:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:362:1
+✖ convergence noop, no drift: issue CLOSED + board Done → already closed (29.912544ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   'outcome 5'
+  - ]
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:386:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [Array],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:391:1
+✖ happy tail: approval marker present → emitted, Closed (27.892845ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:396:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:399:1
+✖ happy tail: Full-Auto default records review approval without a prior marker (27.496966ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:407:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:410:1
+✖ happy-tail candidate refuses close when terminal timing is only queued (27.276173ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /terminal timing .* was not durably posted/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:418:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /terminal timing .* was not durably posted/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:422:1
+✖ final move non-benign failure + board not Done → exit 1 (27.667542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:430:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:434:1
+✖ offline final move cannot verify board Done → refuses non-benign failure (27.138855ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:442:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:448:1
+✖ dirty + CI headless, no --answer → exit 5 (37.397395ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 5
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:450:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 5,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:453:1
+✖ dirty + --answer cancel → left in Review (36.782725ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Cancelled close/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:455:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Cancelled close/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:457:1
+✖ dirty + --answer yes → refuse, exit 6 (37.898007ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 6
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:459:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 6,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:461:1
+✖ dirty + invalid --answer → exit 1 (36.407565ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:463:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:466:1
+✖ dirty + interactive (no CI, no answer) → PROMPT_REQUIRED (36.216248ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /PROMPT_REQUIRED: dirty-close-confirm #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:468:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /PROMPT_REQUIRED: dirty-close-confirm #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:470:1
+✖ dirty + --answer no → audit row, continues to Closed (37.441926ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:480:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:485:1
+✖ gate-eval failure, no --force → fail-closed exit 3 (26.768507ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 3
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:496:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:499:1
+✖ --force: gate-eval throw swallowed → cascade + close pipeline → Closed (27.83142ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:538:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:567:1
+✖ cascade: disposition failure leaves child and parent OPEN and active (26.96976ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:592:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:600:1
+✖ cascade: outcome failure leaves child in Review and parent OPEN and active (27.406249ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:636:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:646:1
+✖ cascade: queued terminal timing leaves child in Review and retains evidence for retry (26.790315ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:685:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:695:1
+✖ cascade: each child outcome uses its own resolved worktree (27.654856ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Closed #5/. Input:
+  
+  ''
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:742:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Closed #5/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:751:1
+✖ assertFieldsPersisted: aitm-fields marker missing → throws (26.990049ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /marker missing/. Input:
+  
+  'Invalid timing actor identity or marker'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:754:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Invalid timing actor identity or marker',
+    expected: /marker missing/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:756:1
+✖ assertFieldsPersisted: engagedTime null → throws (27.315472ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /engagedTime is still null/. Input:
+  
+  'Invalid timing actor identity or marker'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:761:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Invalid timing actor identity or marker',
+    expected: /engagedTime is still null/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:763:1
+✖ assertFieldsPersisted: body re-read fails → throws (27.397853ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /could not re-read body/. Input:
+  
+  'Invalid timing actor identity or marker'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:766:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Invalid timing actor identity or marker',
+    expected: /could not re-read body/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:805:1
+✖ nested fixture state never reads or clears its isolated parent session (43.859345ms)
+  TypeError: Invalid timing actor identity or marker
+      at invalid (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:8:17)
+      at timingActorKey (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/timing-actor.mjs:22:5)
+      at actorTimingStatePath (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:34:15)
+      at readActorTimingState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/lib/actor-timing-state.mjs:80:16)
+      at loadState (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/task-tracker/state.mjs:256:21)
+      at TestContext.<anonymous> (file:///home/runner/work/ai-task-manager/ai-task-manager/scripts/tests/slow/task-tracker/verbs/coverage-close.test.mjs:837:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19) {
+    code: 'TIMING_ACTOR_INVALID'
+  }
+
+⚠ lifecycle-tick best-effort failed: boom
+

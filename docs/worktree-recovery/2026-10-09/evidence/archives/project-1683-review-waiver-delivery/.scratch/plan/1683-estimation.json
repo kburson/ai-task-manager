@@ -1,0 +1,35 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "review-authority",
+      "description": "Define typed passed and waived review authority with exact-head validation",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["delivery-authority", "workflow-policy", "terminal-review"],
+        "dependencies": ["workflow-exception-records", "timing-events"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "delivery-wiring",
+      "description": "Wire live waiver revalidation through pull-request and no-commit delivery",
+      "baseHumanHours": 1,
+      "signals": {
+        "modules": ["delivery-preflight", "deliver-verb"],
+        "dependencies": ["typed-review-authority", "github-comment-store"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "repository-owned exact-SHA test sandbox",
+    "expectedMinutes": 20
+  },
+  "risks": [
+    "Legacy delivery has ordinary, merged, historical, reconstruction, and no-commit branches",
+    "Stale Review-time waiver evidence must not survive revocation or scope drift"
+  ],
+  "comparableIssueIds": [1629]
+}

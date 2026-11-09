@@ -1,0 +1,6 @@
+{
+  "schema": "aitm.issue-body-operation/v1",
+  "kind": "replace-exact",
+  "expected": "The governing design specification will be indexed in Plan Metadata after this issue receives its number.",
+  "replacement": "The governing design specification is linked in Plan Metadata."
+}

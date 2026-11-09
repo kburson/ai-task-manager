@@ -1,0 +1,1955 @@
+# Review package: 8fed51cf10230fd6ed6709cabbb27c80a69b9d14..HEAD
+
+## Commits
+a18a2d3c [#1574] Enforce manual review before historical reconstruction
+afaccfdd [#1574] Resume historical reconstruction from persisted records
+7d7e3180 [#1574] Reconstruct missing historical delivery intent
+29dbd601 [#1574] Clarify external recovery verifier contract
+146845bd [#1574] Validate historical intent reconstruction authority
+1d04b8af [#1574] Record retroactive intent reconstruction
+4f89bf9f [#1574] docs: define historical intent reconstruction
+
+## Files changed
+ ...74-historical-delivery-intent-reconstruction.md | 247 ++++++++++++++++
+ ...orical-delivery-intent-reconstruction-design.md | 142 +++++++++
+ .../lib/delivery-method-reconciliation.mjs         | 114 ++++++--
+ scripts/task-tracker/lib/delivery-preflight.mjs    |  67 +++++
+ scripts/task-tracker/lib/delivery-verification.mjs |   6 +-
+ scripts/task-tracker/verbs/deliver.mjs             | 256 ++++++++++++----
+ .../core/full-auto-close-doctrine.test.mjs         | 130 +++++++++
+ .../lib/delivery-method-reconciliation.test.mjs    |  79 +++++
+ .../lib/delivery-verification-attribution.test.mjs |  51 ++++
+ .../tests/unit/task-tracker/verbs/deliver.test.mjs | 322 +++++++++++++++++++++
+ 10 files changed, 1344 insertions(+), 70 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/plans/2026-09-10-1574-historical-delivery-intent-reconstruction.md b/docs/superpowers/plans/2026-09-10-1574-historical-delivery-intent-reconstruction.md
+new file mode 100644
+index 00000000..58a0566f
+--- /dev/null
++++ b/docs/superpowers/plans/2026-09-10-1574-historical-delivery-intent-reconstruction.md
+@@ -0,0 +1,247 @@
++# Historical Delivery Intent Reconstruction Implementation Plan
++
++> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
++
++**Goal:** Let an explicitly requested advanced-head recovery reconstruct a missing external delivery intent exclusively from verified pull-request and Git evidence.
++
++**Architecture:** Preserve the existing historical-intent validator and delivery verifier. Add an intent-free historical reconstruction preflight, version the reconciliation evidence to mark retroactive origin, and route only the explicit no-intent/advanced-head case through proof-before-write verification.
++
++**Tech Stack:** Node.js 22+ ESM, `node:test`, GitHub CLI provider observations, Git object inspection, AITM canonical issue records.
++
++## Global Constraints
++
++- `delivery-verification.mjs` merge-method equality remains unchanged.
++- The operator declaration is checked against observation and is never evidence.
++- Existing `aitm.delivery-method-reconciliation/v1` records retain their exact schema and rendering.
++- No issue comment is written until merged status, accepted-head identity, topology, and trunk reachability all pass.
++- The lane requires both `--reconcile-merge-method` and a substantive `--reason`.
++- #1573 help registration and unrelated refactors remain out of scope.
++
++---
++
++### Task 1: Version Retroactive Reconciliation Evidence
++
++**Files:**
++
++- Modify: `scripts/task-tracker/lib/delivery-method-reconciliation.mjs`
++- Modify: `scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs`
++
++**Interfaces:**
++
++- Consumes: the current v1 record builder and validator.
++- Produces: exact v2 records with `intentOrigin: 'retroactively-reconstructed'` while retaining exact v1 behavior.
++
++- [ ] **Step 1: Write failing v2 record tests**
++
++Add tests that call `buildMethodReconciliation` with
++`intentOrigin: 'retroactively-reconstructed'` and expect schema
++`aitm.delivery-method-reconciliation/v2`, the exact additional key, frozen
++output, tamper refusal, and visible retroactive wording. Retain an assertion
++that the existing input still produces the exact v1 keys.
++
++- [ ] **Step 2: Run the focused test and verify RED**
++
++Run:
++
++```bash
++node --test scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs
++```
++
++Expected: the new v2 assertions fail because the builder currently ignores the
++origin input and always emits v1.
++
++- [ ] **Step 3: Implement exact v1/v2 validation and rendering**
++
++Add a v2 schema constant and key list. Select v2 only for the exact retroactive
++origin value; validate each schema against its own exact key set. Render v2 with
++the explicit no-delivery-time-intent explanation. Keep v1 output byte-compatible.
++
++- [ ] **Step 4: Run the focused test and verify GREEN**
++
++Run the same command and require zero failures.
++
++- [ ] **Step 5: Commit the slice**
++
++```bash
++git add scripts/task-tracker/lib/delivery-method-reconciliation.mjs \
++  scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs
++git commit -m "[#1574] Record retroactive intent reconstruction"
++```
++
++### Task 2: Add the Intent-Free Historical Reconstruction Preflight
++
++**Files:**
++
++- Modify: `scripts/task-tracker/lib/delivery-preflight.mjs`
++- Modify: `scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs`
++
++**Interfaces:**
++
++- Consumes: existing delivery-authority, merged-PR, accepted-head, configuration,
++  attribution, and dirty-path validators.
++- Produces: `validateHistoricalReconstructionPreflight(input)` returning
++  `{ issue, pr, expectedHeadSha, acceptedSha, observedLocalHeadSha,
++headRelation, mergeMethod, commitText }` as a deeply frozen projection.
++
++- [ ] **Step 1: Write failing reconstruction-preflight tests**
++
++Add a success case with an advanced head, merged pull request, exact Test/Review
++SHA, no intent field, and full-auto approval. Add table cases for current head,
++unmerged PR, evidence mismatch, dirty paths, wrong root lineage, and invalid
++configuration.
++
++- [ ] **Step 2: Run the focused test and verify RED**
++
++Run:
++
++```bash
++node --test scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
++```
++
++Expected: import or function-not-defined failure for the new public preflight.
++
++- [ ] **Step 3: Implement the narrow preflight**
++
++Reuse private validators in `delivery-preflight.mjs`. Give reconstruction its
++own exact input-key list and do not change
++`validateHistoricalRecoveryPreflight`. Require `headRelation === 'advanced'`, a
++merged matching PR, exact accepted Test/Review/head evidence, no dirty overlap,
++valid provider-action configuration, and derived attribution.
++
++- [ ] **Step 4: Run the focused test and verify GREEN**
++
++Run the same command and require zero failures.
++
++- [ ] **Step 5: Commit the slice**
++
++```bash
++git add scripts/task-tracker/lib/delivery-preflight.mjs \
++  scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
++git commit -m "[#1574] Validate historical intent reconstruction authority"
++```
++
++### Task 3: Route Explicit Advanced-Head Reconstruction Through Verification
++
++**Files:**
++
++- Modify: `scripts/task-tracker/verbs/deliver.mjs`
++- Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
++- Modify: `scripts/task-tracker/lib/delivery-verification.mjs`
++- Modify: `scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs`
++- Verify unchanged: `scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation-regression.test.mjs`
++
++**Interfaces:**
++
++- Consumes: `validateHistoricalReconstructionPreflight`,
++  `observeMergeMethod`, `resolveReconciledMergeMethod`, v2
++  `buildMethodReconciliation`, `verifyExternalDeliveredPullRequest`, and the
++  established intent/receipt append-readback helpers. The external verifier's
++  existing internal recovery mode reaches its authority-SHA assertion without
++  adding a public input key or weakening merge-method equality.
++- Produces: `{ status: 'delivered', mode: 'historical-reconstruction',
++recovery: true }` plus v2 reconciliation, external intent, and verified
++  receipt records.
++
++- [ ] **Step 1: Write the failing #680-shaped deliver test**
++
++Extend the deliver harness with an advanced local head, merged PR at the older
++accepted SHA, no comments, unambiguous two-parent merge topology, and successful
++trunk ancestry. Assert the existing no-flag call still refuses
++`historical-intent`; then assert an explicit reconciliation returns a delivered
++receipt and writes reconciliation, intent, and receipt in that order.
++
++- [ ] **Step 2: Run the focused test and verify RED**
++
++Run:
++
++```bash
++node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
++```
++
++Expected: the explicit advanced-head case still refuses
++`delivery-preflight:historical-intent`. Add a focused verifier test proving the
++truthful advanced local HEAD currently refuses
++`delivery-verification:authority-sha-mismatch`.
++
++- [ ] **Step 3: Implement proof-before-write routing**
++
++In the advanced-head branch, keep the existing historical recovery call when a
++live intent exists. With no intent, require `reconcile`, run the new preflight,
++observe and resolve method topology, build the v2 record and prospective
++external intent, and call the external verifier in its existing internal
++recovery mode. Carry that internal mode into the authority-SHA assertion so the
++truthful advanced local HEAD is accepted while the exact public input schema and
++merge-method equality remain unchanged. Only after verification returns should
++the code append the reconciliation comment, append/read back the intent, and
++finalize the receipt with the precomputed verification.
++
++- [ ] **Step 4: Add and run negative zero-write cases**
++
++Cover unmerged PR, unreachable merge commit, unattributable topology, declared
++method mismatch, and missing flag. Each case must assert zero new comments.
++
++Run:
++
++```bash
++node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs \
++  scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation-regression.test.mjs
++```
++
++Expected: all pass and the unchanged equality regression remains green.
++
++- [ ] **Step 5: Run iteration verification and commit**
++
++```bash
++node scripts/task-tracker/verify-develop.mjs --mode iteration
++git diff --check
++git add scripts/task-tracker/verbs/deliver.mjs \
++  scripts/tests/unit/task-tracker/verbs/deliver.test.mjs \
++  scripts/task-tracker/lib/delivery-verification.mjs \
++  scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
++git commit -m "[#1574] Reconstruct missing historical delivery intent"
++```
++
++### Task 4: Governed Verification and Lifecycle Completion
++
++**Files:**
++
++- Verify: all issue-owned files and issue #1574 evidence.
++
++**Interfaces:**
++
++- Consumes: the three committed TDD slices.
++- Produces: exact-SHA test, review, delivery, and close evidence; then a live
++  #680 recovery attempt after #1574 reaches Done.
++
++- [ ] **Step 1: Run formatting and lint gates**
++
++```bash
++npm run lint
++npm run format:check
++```
++
++- [ ] **Step 2: Run unit, integration, fast, and slow suites**
++
++```bash
++npm run test:unit
++npm run test:integration
++npm test
++npm run test:slow
++```
++
++- [ ] **Step 3: Run exact-SHA finalization**
++
++```bash
++node scripts/task-tracker/verify-develop.mjs --mode final --issue 1574
++```
++
++- [ ] **Step 4: Stamp each verification criterion and functional DoD item**
++
++Use the sanctioned `npx aitm ac-stamp`, `npx aitm test`, and
++`npx aitm dod-stamp` commands; do not hand-edit evidence markers.
++
++- [ ] **Step 5: Run independent review, deliver, and close**
++
++Run the repository's Full-Auto review and provider-action delivery workflow,
++verify the exact pushed SHA and hosted CI, then close only from a clean worktree
++with a verified delivery receipt.
+diff --git a/docs/superpowers/specs/2026-09-10-1574-historical-delivery-intent-reconstruction-design.md b/docs/superpowers/specs/2026-09-10-1574-historical-delivery-intent-reconstruction-design.md
+new file mode 100644
+index 00000000..7f924f24
+--- /dev/null
++++ b/docs/superpowers/specs/2026-09-10-1574-historical-delivery-intent-reconstruction-design.md
+@@ -0,0 +1,142 @@
++# Historical Delivery Intent Reconstruction Design
++
++## Problem
++
++Issue #1562 added an explicit merge-method reconciliation lane for a merged pull
++request whose observed topology differs from configured delivery policy. That
++lane is reachable only while the local checkout still equals the accepted
++review SHA. A pull request merged before #1562 cannot use that code at its
++accepted SHA; advancing to current code changes delivery authority to the
++historical path, which requires an intent that the original failed delivery
++never wrote.
++
++The result is a closed loop for genuinely delivered issues such as #680. The
++fix must recover authority from durable provider and Git observations without
++turning an operator's claim into evidence.
++
++## Decision
++
++Add one explicit historical reconstruction path beside, not inside, the
++ordinary historical-intent validator.
++
++The path is eligible only when all of the following are true:
++
++- the accepted delivery authority reports an advanced local head;
++- no live delivery intent exists;
++- the operator supplied the existing `--reconcile-merge-method` flag and a
++  substantive `--reason`;
++- exactly one matching pull request is merged against the configured trunk;
++- its recorded head equals the exact Test and accepted Review SHA;
++- its merge topology unambiguously proves the declared merge method;
++- its merge commit is reachable from the freshly fetched resolved trunk ref;
++- the issue, owner, timer, review authorization, root lineage, attribution, and
++  dirty-path checks pass.
++
++Every value used to build the reconstructed intent comes from the pull-request
++record, current configuration, accepted lifecycle evidence, or inspected Git
++objects. The declared method is checked against observation and is not used as
++proof. The operator supplies no intent, SHA, pull-request identity, branch,
++base, or evidence method.
++
++## Components
++
++### Historical reconstruction preflight
++
++`delivery-preflight.mjs` gains
++`validateHistoricalReconstructionPreflight(input)`. Its exact input shape is
++the existing historical input without `intent`. It reuses the same private
++issue/binding, lineage, pull-request, accepted-head, dirty-path, configuration,
++and attribution validators. It requires `headRelation === 'advanced'` and a
++merged pull request, then returns a frozen preflight projection containing the
++accepted SHA, observed local head, resolved configured method, and derived
++commit text.
++
++`validateHistoricalRecoveryPreflight` remains unchanged and continues to
++require a prior non-external intent.
++
++### Reconciliation evidence versioning
++
++Existing `aitm.delivery-method-reconciliation/v1` bytes remain valid and keep
++their exact key set. A reconstruction uses
++`aitm.delivery-method-reconciliation/v2`, whose exact key set adds:
++
++```text
++intentOrigin: retroactively-reconstructed
++```
++
++The v2 visible record states that no delivery-time intent existed and that the
++external intent was reconstructed from provider and Git evidence. Validation
++accepts exact v1 or exact v2 records only; it rejects missing, extra, or
++cross-version fields.
++
++### Deliver routing
++
++For an advanced local head:
++
++1. If a live non-external intent exists, run the existing historical recovery
++   path unchanged.
++2. If no intent exists and reconciliation was not explicitly requested, retain
++   the existing `delivery-preflight:historical-intent` refusal.
++3. If no intent exists and reconciliation was explicitly requested, run the
++   new reconstruction preflight and observe the merge topology.
++4. Resolve the declared method against observed and configured methods.
++5. Build the v2 reconciliation record and a prospective external intent.
++6. Run the external delivery verifier in its existing recovery mode before any
++   comment write. Its internal recovery flag is carried into the authority-SHA
++   check so the truthful advanced local HEAD is accepted; the exact public input
++   schema, trunk-reachability proof, topology inspection, and merge-method
++   equality remain unchanged.
++7. Append the reconciliation record, append/read back the external intent, and
++   append/read back the receipt.
++
++The receipt remains `aitm.delivery-receipt/v1`. The intent remains
++`aitm.delivery-intent/v1` with provider `external`; the v2 reconciliation record
++is what distinguishes its retroactive origin.
++
++## Failure and Recovery Semantics
++
++All failed proof paths mutate nothing. An unmerged pull request, stale accepted
++SHA, wrong branch/base, dirty overlap, disabled provider-action configuration,
++unattributable topology, declaration mismatch, no-op method, unreachable merge
++commit, missing reason, or absent explicit flag refuses before any new issue
++comment.
++
++Comment creation retains the existing exact read-back checks for intent and
++receipt records. A retry after an ambiguous write reconciles from provider
++state using the established delivery-record projection. The reconstruction
++record is written only after the complete read-only verifier succeeds.
++
++## Testing
++
++Focused tests cover:
++
++- exact v1 compatibility and exact v2 origin validation;
++- v2 visible wording and tamper/extra-key refusal;
++- advanced-head/no-intent reconstruction preflight success;
++- preflight refusal for current head, unmerged PR, mismatched evidence SHA,
++  dirty overlap, wrong lineage, and invalid configuration;
++- end-to-end reproduction of the current `historical-intent` refusal;
++- explicit reconciliation producing a reconstructed intent and receipt;
++- zero writes when the flag is absent, the reason is invalid, topology is
++  unattributable or mismatched, or the merge is unreachable from trunk;
++- focused RED/GREEN proof that external recovery accepts an advanced observed
++  local HEAD without adding `recovery` to the exact public input schema;
++- unchanged success for ordinary historical recovery with a prior intent;
++- unchanged merge-method equality regression coverage in
++  `delivery-verification.mjs`.
++
++The governed issue commands run lint, format, unit, integration, fast, and slow
++suites before review and delivery. After the fix is on trunk, #680 is the live
++provider/Git proof target.
++
++## Scope Boundaries
++
++This change does not weaken `delivery-verification.mjs` merge-method equality,
++add a generic close bypass, accept an operator-supplied intent or SHA, rewrite
++historical records, or implement #1573's help-text work. The only verifier
++change carries its already-selected internal external-recovery mode into the
++authority-SHA check; it does not expand the public input schema.
++
++## Dependency Map
++
++Depends on #1562. Blocks #680. The operator has sequenced #1531 after #680.
+diff --git a/scripts/task-tracker/lib/delivery-method-reconciliation.mjs b/scripts/task-tracker/lib/delivery-method-reconciliation.mjs
+index d9e4e0ae..29e255f8 100644
+--- a/scripts/task-tracker/lib/delivery-method-reconciliation.mjs
++++ b/scripts/task-tracker/lib/delivery-method-reconciliation.mjs
+@@ -23,20 +23,21 @@
+ //     records WHY the divergence was accepted.
+ //
+ // The divergence is its own append-only record rather than a field on the intent
+ // or receipt: `delivery-records.mjs` pins `aitm.delivery-intent/v1` and
+ // `aitm.delivery-receipt/v1` behind strict exact-key validation, so adding a
+ // field there would mean a v2 schema plus migration across every parser and
+ // consumer. `delivery-incident-records.mjs` is the precedent for projecting
+ // several record types side by side.
+ 
+ export const METHOD_RECONCILIATION_SCHEMA = 'aitm.delivery-method-reconciliation/v1';
++export const METHOD_RECONCILIATION_V2_SCHEMA = 'aitm.delivery-method-reconciliation/v2';
+ 
+ const MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
+ const SHA_RE = /^[0-9a-f]{40}$/;
+ const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+ const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+ const PLACEHOLDER_RE = /^(?:tbd|todo|placeholder|n\/a|none|\.\.\.)$/i;
+ const MIN_REASON_LENGTH = 8;
+ 
+ export const METHOD_RECONCILIATION_KEYS = Object.freeze([
+   'acceptedSha',
+@@ -46,20 +47,27 @@ export const METHOD_RECONCILIATION_KEYS = Object.freeze([
+   'issueNumber',
+   'mergeCommitSha',
+   'observedMergeMethod',
+   'operator',
+   'prNumber',
+   'reason',
+   'repository',
+   'schema',
+ ]);
+ 
++export const METHOD_RECONCILIATION_V2_KEYS = Object.freeze([
++  ...METHOD_RECONCILIATION_KEYS,
++  'intentOrigin',
++]);
++
++const RETROACTIVE_INTENT_ORIGIN = 'retroactively-reconstructed';
++
+ function fail(category) {
+   throw new TypeError(`delivery-method-reconciliation:${category}`);
+ }
+ 
+ function requireMergeMethod(value, category) {
+   if (typeof value !== 'string' || !MERGE_METHODS.has(value)) fail(category);
+   return value;
+ }
+ 
+ function requireSha(value, category) {
+@@ -91,53 +99,71 @@ export function buildMethodReconciliation({
+   issueNumber,
+   repository,
+   prNumber,
+   acceptedSha,
+   mergeCommitSha,
+   configuredMergeMethod,
+   observedMergeMethod,
+   reason,
+   operator,
+   clientCreatedAt,
++  intentOrigin,
+ } = {}) {
+   if (typeof repository !== 'string' || !REPOSITORY_RE.test(repository)) fail('repository');
+   if (typeof clientCreatedAt !== 'string' || !ISO_RE.test(clientCreatedAt)) {
+     fail('client-created-at');
+   }
+   const configured = requireMergeMethod(configuredMergeMethod, 'configured-merge-method');
+   const observed = requireMergeMethod(observedMergeMethod, 'observed-merge-method');
++  const retroactivelyReconstructed = intentOrigin === RETROACTIVE_INTENT_ORIGIN;
++  if (intentOrigin !== undefined && !retroactivelyReconstructed) fail('intent-origin');
+ 
+   return Object.freeze({
+-    schema: METHOD_RECONCILIATION_SCHEMA,
++    schema: retroactivelyReconstructed
++      ? METHOD_RECONCILIATION_V2_SCHEMA
++      : METHOD_RECONCILIATION_SCHEMA,
++    ...(retroactivelyReconstructed ? { intentOrigin: RETROACTIVE_INTENT_ORIGIN } : {}),
+     issueNumber: requirePositiveInteger(issueNumber, 'issue-number'),
+     repository,
+     prNumber: requirePositiveInteger(prNumber, 'pr-number'),
+     acceptedSha: requireSha(acceptedSha, 'accepted-sha'),
+     mergeCommitSha: requireSha(mergeCommitSha, 'merge-commit-sha'),
+     configuredMergeMethod: configured,
+     observedMergeMethod: observed,
+     divergent: configured !== observed,
+     reason: requireReason(reason),
+     operator: requireOperator(operator),
+     clientCreatedAt,
+   });
+ }
+ 
+ // Re-validate a parsed record. `divergent` is cross-checked against the two
+ // method fields, so a record edited after the fact fails rather than passing on
+ // its own say-so.
+ export function validateMethodReconciliation(record) {
+   if (record === null || typeof record !== 'object' || Array.isArray(record)) fail('record');
+   const keys = Object.keys(record).sort();
+-  const expected = [...METHOD_RECONCILIATION_KEYS].sort();
++  let expected;
++  if (record.schema === METHOD_RECONCILIATION_SCHEMA) {
++    expected = [...METHOD_RECONCILIATION_KEYS].sort();
++  } else if (record.schema === METHOD_RECONCILIATION_V2_SCHEMA) {
++    expected = [...METHOD_RECONCILIATION_V2_KEYS].sort();
++  } else {
++    fail('schema');
++  }
+   if (keys.length !== expected.length || keys.some((key, i) => key !== expected[i])) fail('keys');
+-  if (record.schema !== METHOD_RECONCILIATION_SCHEMA) fail('schema');
++  if (
++    record.schema === METHOD_RECONCILIATION_V2_SCHEMA &&
++    record.intentOrigin !== RETROACTIVE_INTENT_ORIGIN
++  ) {
++    fail('intent-origin');
++  }
+ 
+   const configured = requireMergeMethod(record.configuredMergeMethod, 'configured-merge-method');
+   const observed = requireMergeMethod(record.observedMergeMethod, 'observed-merge-method');
+   requireSha(record.acceptedSha, 'accepted-sha');
+   requireSha(record.mergeCommitSha, 'merge-commit-sha');
+   requirePositiveInteger(record.issueNumber, 'issue-number');
+   requirePositiveInteger(record.prNumber, 'pr-number');
+   requireReason(record.reason);
+   requireOperator(record.operator);
+   if (typeof record.divergent !== 'boolean' || record.divergent !== (configured !== observed)) {
+@@ -158,37 +184,89 @@ export function resolveReconciledMergeMethod({ declared, observed, configured }
+   const observedMethod = requireMergeMethod(observed, 'observed-merge-method');
+   if (declaredMethod !== observedMethod) fail('declared-not-observed');
+   if (declaredMethod === configuredMethod) fail('not-divergent');
+   return declaredMethod;
+ }
+ 
+ export const METHOD_RECONCILIATION_MARKER = 'aitm-delivery-method-reconciliation';
+ 
+ const MAX_RECORD_JSON_BYTES = 256 * 1024;
+ 
++export function parseMethodReconciliationComment(comment) {
++  const body = comment?.body;
++  if (typeof body !== 'string') fail('comment-body');
++  const markers = [...body.matchAll(/<!--\s*aitm-delivery-method-reconciliation\b/g)];
++  if (markers.length === 0) return null;
++  if (markers.length !== 1 || markers[0].index !== 0) fail('malformed-marker');
++  const match = body.match(/^<!-- aitm-delivery-method-reconciliation ([^\r\n]+) -->/);
++  if (match === null) fail('malformed-marker');
++  if (Buffer.byteLength(match[1], 'utf8') > MAX_RECORD_JSON_BYTES) fail('record-too-large');
++  let record;
++  try {
++    record = JSON.parse(match[1]);
++  } catch {
++    fail('malformed-marker');
++  }
++  validateMethodReconciliation(record);
++  // The builder also validates repository/timestamp fields and normalizes text.
++  // Exact canonical bytes reject duplicate keys and noncanonical payloads.
++  const validated = buildMethodReconciliation(record);
++  const timestamp = Date.parse(validated.clientCreatedAt);
++  if (
++    !Number.isFinite(timestamp) ||
++    new Date(timestamp).toISOString() !== validated.clientCreatedAt
++  ) {
++    fail('client-created-at');
++  }
++  if (JSON.stringify(validated, Object.keys(validated).sort()) !== match[1]) {
++    fail('noncanonical-record');
++  }
++  return validated;
++}
++
+ // Rendered as a hidden canonical record plus visible prose, matching the
+ // intent/receipt comment shape in `delivery-records.mjs`. The visible half
+ // matters: a reader scanning the issue should see the divergence and its reason
+ // without decoding the marker.
+ export function renderMethodReconciliationComment(record) {
+   validateMethodReconciliation(record);
+   const json = JSON.stringify(record, Object.keys(record).sort());
+   if (Buffer.byteLength(json, 'utf8') > MAX_RECORD_JSON_BYTES) {
+     throw new TypeError('delivery-method-reconciliation:record-too-large');
+   }
+-  const visible = [
+-    '### Merge-method reconciliation',
+-    '',
+-    `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
+-    `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
+-    'restated to the observed method so the receipt describes what actually happened.',
+-    '',
+-    `**Reason given:** ${record.reason}`,
+-    '',
+-    `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
+-    `· **Reconciled by:** @${record.operator}`,
+-    '',
+-    'The verifier was not relaxed: the declared method was checked against the merge topology',
+-    'before this record was written, and a declaration contradicting observation is refused.',
+-  ].join('\n');
++  const visible =
++    record.schema === METHOD_RECONCILIATION_V2_SCHEMA
++      ? [
++          '### Merge-method reconciliation',
++          '',
++          'No delivery-time intent existed. The external delivery intent was',
++          'reconstructed from provider and Git evidence after the merge was verified.',
++          '',
++          `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
++          `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
++          'restated to the observed method so the receipt describes what actually happened.',
++          '',
++          `**Reason given:** ${record.reason}`,
++          '',
++          `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
++          `· **Reconciled by:** @${record.operator}`,
++          '',
++          'The verifier was not relaxed: the declared method was checked against the merge topology',
++          'before this record was written, and a declaration contradicting observation is refused.',
++        ].join('\n')
++      : [
++          '### Merge-method reconciliation',
++          '',
++          `PR #${record.prNumber} was merged as \`${record.observedMergeMethod}\`, while this project's`,
++          `delivery configuration declares \`${record.configuredMergeMethod}\`. The delivery intent is`,
++          'restated to the observed method so the receipt describes what actually happened.',
++          '',
++          `**Reason given:** ${record.reason}`,
++          '',
++          `**Merge commit:** \`${record.mergeCommitSha}\` · **Accepted head:** \`${record.acceptedSha}\``,
++          `· **Reconciled by:** @${record.operator}`,
++          '',
++          'The verifier was not relaxed: the declared method was checked against the merge topology',
++          'before this record was written, and a declaration contradicting observation is refused.',
++        ].join('\n');
+   return `<!-- ${METHOD_RECONCILIATION_MARKER} ${json} -->\n${visible}`;
+ }
+diff --git a/scripts/task-tracker/lib/delivery-preflight.mjs b/scripts/task-tracker/lib/delivery-preflight.mjs
+index 81b9a673..bb78b218 100644
+--- a/scripts/task-tracker/lib/delivery-preflight.mjs
++++ b/scripts/task-tracker/lib/delivery-preflight.mjs
+@@ -9,20 +9,21 @@ const INPUT_KEYS = [
+   'commitSubjects',
+   'config',
+   'dirtyPaths',
+   'issue',
+   'lineage',
+   'localHeadSha',
+   'pullRequests',
+   'testReceiptSha',
+ ];
+ const HISTORICAL_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks').concat('intent');
++const HISTORICAL_RECONSTRUCTION_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== 'checks');
+ const SHA_RE = /^[0-9a-f]{40}$/;
+ const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+ const MERGE_METHODS = ['merge', 'squash', 'rebase'];
+ 
+ export class DeliveryPreflightError extends TypeError {
+   constructor(category, cause) {
+     super(`delivery-preflight:${category}`, cause === undefined ? undefined : { cause });
+     this.name = 'DeliveryPreflightError';
+     this.category = category;
+   }
+@@ -319,10 +320,76 @@ export function validateHistoricalRecoveryPreflight(input = {}) {
+ 
+   return deepFreeze({
+     issue: { ...input.issue, assignees: [...input.issue.assignees] },
+     pr: { ...pr },
+     acceptedSha: authority.acceptedSha,
+     observedLocalHeadSha: authority.observedLocalHeadSha,
+     headRelation: authority.headRelation,
+     intent: { ...intent },
+   });
+ }
++
++export function validateHistoricalReconstructionPreflight(input = {}) {
++  if (!hasExactKeys(input, HISTORICAL_RECONSTRUCTION_INPUT_KEYS)) fail('input');
++  validateIssueAndBinding(input.issue, input.binding, input.config);
++  const baseRef = trunkBaseRef(input.config);
++  validateLineage(input.lineage, baseRef);
++
++  let authority;
++  try {
++    authority = resolveAcceptedDeliveryAuthority({
++      issueNumber: input.issue.number,
++      branch: input.binding.branch,
++      localHeadSha: input.localHeadSha,
++      testReceiptSha: input.testReceiptSha,
++      reviewReceiptSha: input.acceptedReviewSha,
++      agentReviewPassed: input.issue.agentReviewPassed,
++      pullRequests: input.pullRequests,
++    });
++  } catch (error) {
++    if (!(error instanceof DeliveryAuthorityError)) throw error;
++    const category =
++      error.category === 'ambiguous-pr'
++        ? 'pull-request-count'
++        : error.category === 'branch-mismatch'
++          ? 'pull-request-head'
++          : error.category === 'accepted-evidence'
++            ? 'head-mismatch'
++            : 'input';
++    fail(category, error);
++  }
++  if (authority.headRelation !== 'advanced') fail('head-relation');
++  const pr = validatePullRequest(authority.pullRequest, input.binding, baseRef, { merged: true });
++  if (
++    !isSha(input.testReceiptSha) ||
++    !isSha(input.acceptedReviewSha) ||
++    new Set([authority.acceptedSha, pr.headRefOid, input.testReceiptSha, input.acceptedReviewSha])
++      .size !== 1
++  ) {
++    fail('head-mismatch');
++  }
++  if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
++  const resolved = validateConfiguration(input.config);
++
++  let commitText;
++  try {
++    commitText = buildDeliveryCommitText({
++      issueNumber: input.issue.number,
++      prNumber: pr.number,
++      expectedHeadSha: authority.acceptedSha,
++      commitSubjects: input.commitSubjects,
++    });
++  } catch (error) {
++    fail('attribution', error);
++  }
++
++  return deepFreeze({
++    issue: { ...input.issue, assignees: [...input.issue.assignees] },
++    pr: { ...pr },
++    expectedHeadSha: authority.acceptedSha,
++    acceptedSha: authority.acceptedSha,
++    observedLocalHeadSha: authority.observedLocalHeadSha,
++    headRelation: authority.headRelation,
++    mergeMethod: resolved.mergeMethod,
++    commitText,
++  });
++}
+diff --git a/scripts/task-tracker/lib/delivery-verification.mjs b/scripts/task-tracker/lib/delivery-verification.mjs
+index 0c7f8803..a12f7beb 100644
+--- a/scripts/task-tracker/lib/delivery-verification.mjs
++++ b/scripts/task-tracker/lib/delivery-verification.mjs
+@@ -103,36 +103,36 @@ function isCanonicalInstant(value) {
+ function mergeCommitSha(pullRequest) {
+   if (typeof pullRequest?.mergeCommitSha === 'string') return pullRequest.mergeCommitSha;
+   if (typeof pullRequest?.mergeCommit?.oid === 'string') return pullRequest.mergeCommit.oid;
+   return null;
+ }
+ 
+ function sha256(value) {
+   return createHash('sha256').update(value).digest('hex');
+ }
+ 
+-function assertAuthorityShas(input, intent) {
++function assertAuthorityShas(input, intent, recovery) {
+   const authorities = [
+     input.pullRequest?.headRefOid,
+     intent?.expectedHeadSha,
+     input.acceptedSha,
+     input.testReceiptSha,
+     input.acceptedReviewSha,
+   ];
+   if (authorities.some((sha) => typeof sha !== 'string' || !SHA_RE.test(sha))) {
+     throw verificationError('authority-sha');
+   }
+   if (new Set(authorities).size !== 1) throw verificationError('authority-sha-mismatch');
+   if (typeof input.localHeadSha !== 'string' || !SHA_RE.test(input.localHeadSha)) {
+     throw verificationError('authority-sha');
+   }
+-  if (input.localHeadSha !== input.acceptedSha && input.recovery !== true) {
++  if (input.localHeadSha !== input.acceptedSha && recovery !== true) {
+     throw verificationError('authority-sha-mismatch');
+   }
+ }
+ 
+ function assertMergedPullRequest(pullRequest, intent) {
+   if (!isPlainObject(pullRequest) || !isPlainObject(intent)) {
+     throw verificationError('input');
+   }
+   const merged =
+     pullRequest.merged === true || String(pullRequest.state || '').toUpperCase() === 'MERGED';
+@@ -425,21 +425,21 @@ function assertVerificationFunctions(input) {
+     typeof input.fetchOriginTrunk !== 'function' ||
+     typeof input.isAncestor !== 'function' ||
+     typeof input.inspectMergeCommit !== 'function' ||
+     typeof input.attributingCommits !== 'function'
+   ) {
+     throw verificationError('input');
+   }
+ }
+ 
+ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
+-  assertAuthorityShas(input, intent);
++  assertAuthorityShas(input, intent, recovery);
+   const { pullRequest } = input;
+   const merged = assertMergedPullRequest(pullRequest, intent);
+   if (intent.provider !== 'external') {
+     if (!isCanonicalInstant(input.intentCreatedAt)) throw verificationError('intent-created-at');
+     if (Date.parse(merged.mergedAt) < Date.parse(input.intentCreatedAt)) {
+       throw verificationError('merge-before-intent');
+     }
+   }
+ 
+   try {
+diff --git a/scripts/task-tracker/verbs/deliver.mjs b/scripts/task-tracker/verbs/deliver.mjs
+index 941c97cf..28c4e096 100644
+--- a/scripts/task-tracker/verbs/deliver.mjs
++++ b/scripts/task-tracker/verbs/deliver.mjs
+@@ -32,20 +32,21 @@ import {
+   buildDeliveryIntent,
+   buildDeliveryReceipt,
+   parseDeliveryComment,
+   parseDeliveryCommentForPullRequest,
+   projectDeliveryRecords,
+   renderDeliveryIntentComment,
+   renderDeliveryReceiptComment,
+ } from '../lib/delivery-records.mjs';
+ import {
+   validateDeliveryPreflight,
++  validateHistoricalReconstructionPreflight,
+   validateHistoricalRecoveryPreflight,
+   validateMergedDeliveryPreflight,
+ } from '../lib/delivery-preflight.mjs';
+ import {
+   DeliveryAuthorityError,
+   resolveAcceptedDeliveryAuthority,
+ } from '../lib/delivery-authority.mjs';
+ import {
+   buildProviderAction,
+   serializeProviderActionRequired,
+@@ -60,20 +61,22 @@ import { isNoCommitKind, parseDeliverablePosted, parseIssueKind } from '../lib/i
+ import {
+   buildNoCommitDeliveryRecord,
+   parseNoCommitDeliveryComment,
+   projectNoCommitDeliveryRecords,
+   renderNoCommitDeliveryComment,
+   sameNoCommitDeliveryAuthority,
+ } from '../lib/no-commit-delivery-record.mjs';
+ import { selectEvidenceProtocol } from '../lib/evidence-v2/protocol.mjs';
+ import {
+   buildMethodReconciliation,
++  METHOD_RECONCILIATION_V2_SCHEMA,
++  parseMethodReconciliationComment,
+   renderMethodReconciliationComment,
+   resolveReconciledMergeMethod,
+ } from '../lib/delivery-method-reconciliation.mjs';
+ 
+ const pexec = promisify(execFile);
+ const SHA_RE = /^[0-9a-f]{40}$/;
+ const MAX_PULL_REQUEST_SOURCE_COMMITS = 10_000;
+ const AUTHORIZED_INTENT_KEYS = Object.freeze([
+   'attributionTokens',
+   'baseRef',
+@@ -287,20 +290,42 @@ export function parsedDeliveryRecords(comments, context) {
+     .map((comment) => parseDeliveryCommentForPullRequest(comment, context))
+     .filter((record) => record !== null);
+ }
+ 
+ function authorizedIntentBytes(intent) {
+   return canonicalRecordJson(
+     Object.fromEntries(AUTHORIZED_INTENT_KEYS.map((key) => [key, intent[key]]))
+   );
+ }
+ 
++function matchingReconstruction(comments, expected) {
++  const records = comments
++    .map(parseMethodReconciliationComment)
++    .filter((record) => record?.schema === METHOD_RECONCILIATION_V2_SCHEMA);
++  if (records.length === 0) return null;
++  const keys = [
++    'issueNumber',
++    'repository',
++    'prNumber',
++    'acceptedSha',
++    'mergeCommitSha',
++    'configuredMergeMethod',
++    'observedMergeMethod',
++    'reason',
++    'intentOrigin',
++  ];
++  if (records.length !== 1 || keys.some((key) => records[0][key] !== expected[key])) {
++    throw deliverError('historical-reconstruction-provenance');
++  }
++  return records[0];
++}
++
+ function buildIntentFromPreflight({
+   preflight,
+   cfg,
+   intentId,
+   supersedesIntentId,
+   provider,
+   sessionId,
+   clientCreatedAt,
+   commitTitle = preflight.commitText.commitTitle,
+   commitMessage = preflight.commitText.commitMessage,
+@@ -494,20 +519,52 @@ async function verifyAndFinalize({
+     branchDisposition: verification.branchDisposition,
+   };
+ }
+ 
+ function requiredDependency(deps, name) {
+   const dependency = deps?.[name];
+   if (typeof dependency !== 'function') throw deliverError(`missing-dependency:${name}`);
+   return dependency;
+ }
+ 
++async function checkManualCodeReview({ deps, cfg, prNumber, expectedHeadSha, merged }) {
++  const enabled = await (deps.resolvePullRequestReviewGate ?? (async () => false))();
++  if (enabled !== true) return { status: 'authorized' };
++  const reviewerLogin = await requiredDependency(
++    deps,
++    'resolveManualCodeReviewer'
++  )({
++    configuredReviewer: cfg.manualCodeReviewer,
++  });
++  const reviewEvidence = await requiredDependency(
++    deps,
++    'fetchManualCodeReviewEvidence'
++  )({
++    repository: cfg.repo,
++    prNumber,
++    expectedHeadSha,
++  });
++  const decision = evaluateManualCodeReview({
++    gateEnabled: true,
++    expectedHeadSha,
++    reviewerLogin,
++    pullRequest: reviewEvidence,
++  });
++  if (decision.status === 'refused') {
++    throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
++  }
++  if (merged && decision.status !== 'authorized') {
++    throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
++  }
++  return decision;
++}
++
+ async function deliverNoCommit({ deps, issue, issueNumber, cfg }) {
+   const deliverable = parseDeliverablePosted(issue.body);
+   if (!deliverable) throw new TypeError('delivery-preflight:no-commit-deliverable');
+   if (String(issue.projectState || '').toLowerCase() !== 'review') {
+     throw new TypeError('delivery-preflight:issue-state');
+   }
+   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
+   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
+   const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
+   const resolveAgentReviewPassed =
+@@ -770,20 +827,144 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
+     lineage,
+     pullRequests,
+     localHeadSha,
+     testReceiptSha,
+     acceptedReviewSha,
+     dirtyPaths,
+     config: deliveryConfig,
+     commitSubjects,
+   };
+   if (authority.headRelation === 'advanced') {
++    if (reconcile !== null && (live === null || live.record.provider === 'external')) {
++      const historical = validateHistoricalReconstructionPreflight(preflightInput);
++      await checkManualCodeReview({
++        deps,
++        cfg,
++        prNumber: historical.pr.number,
++        expectedHeadSha: authority.acceptedSha,
++        merged: true,
++      });
++      const mergeCommitSha =
++        typeof historical.pr.mergeCommitSha === 'string'
++          ? historical.pr.mergeCommitSha
++          : historical.pr.mergeCommit?.oid;
++      const observed = await observeMergeMethod({
++        mergeCommitSha,
++        expectedHeadSha: historical.expectedHeadSha,
++        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
++      });
++      const mergeMethod = resolveReconciledMergeMethod({
++        declared: reconcile.declaredMergeMethod,
++        observed,
++        configured: historical.mergeMethod,
++      });
++      const reconstruction = buildMethodReconciliation({
++        issueNumber,
++        repository: cfg.repo,
++        prNumber: historical.pr.number,
++        acceptedSha: historical.acceptedSha,
++        mergeCommitSha,
++        configuredMergeMethod: historical.mergeMethod,
++        observedMergeMethod: mergeMethod,
++        reason: reconcile.reason,
++        operator: reconcile.operator,
++        clientCreatedAt: normalizeGitHubInstant(historical.pr.mergedAt),
++        intentOrigin: 'retroactively-reconstructed',
++      });
++      const priorReconstruction = matchingReconstruction(initial.comments, reconstruction);
++      if (live !== null) {
++        if (priorReconstruction === null)
++          throw deliverError('historical-reconstruction-provenance');
++        const expected = buildIntentFromPreflight({
++          preflight: { ...historical, mergeMethod },
++          cfg,
++          intentId: live.record.intentId,
++          supersedesIntentId: null,
++          provider: 'external',
++          sessionId: live.record.sessionId,
++          clientCreatedAt: live.record.clientCreatedAt,
++          commitTitle: live.record.commitTitle,
++          commitMessage: live.record.commitMessage,
++        });
++        if (canonicalRecordJson(expected) !== canonicalRecordJson(live.record)) {
++          throw deliverError('intent-divergence');
++        }
++        return verifyAndFinalize({
++          deps,
++          issueNumber,
++          repository: cfg.repo,
++          context,
++          liveIntent: live,
++          matchingReceipt: initial.projection.matchingReceipt,
++          pullRequest: historical.pr,
++          recovery: true,
++          mode: 'historical-reconstruction',
++          acceptedSha: historical.acceptedSha,
++          localHeadSha: historical.observedLocalHeadSha,
++          testReceiptSha,
++          acceptedReviewSha,
++        });
++      }
++      const verified = await verifyExternalDeliveredPullRequest({
++        intentInput: buildExternalIntentInput({
++          preflight: historical,
++          cfg,
++          intentId: createIntentId(),
++          sessionId: sessionId(),
++          clientCreatedAt: historical.pr.mergedAt,
++          mergeMethodOverride: mergeMethod,
++        }),
++        pullRequest: historical.pr,
++        acceptedSha: historical.acceptedSha,
++        localHeadSha: historical.observedLocalHeadSha,
++        testReceiptSha,
++        acceptedReviewSha,
++        fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
++        isAncestor: requiredDependency(deps, 'isAncestor'),
++        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
++        attributingCommits: requiredDependency(deps, 'attributingCommits'),
++      });
++      // #1574 — establish provider/Git proof before the first ledger write.
++      if (priorReconstruction === null) {
++        await requiredDependency(
++          deps,
++          'createIssueComment'
++        )({
++          issueNumber,
++          repository: cfg.repo,
++          body: renderMethodReconciliationComment(reconstruction),
++        });
++      }
++      const liveIntent = await appendIntent({
++        deps,
++        issueNumber,
++        repository: cfg.repo,
++        context,
++        intent: verified.intent,
++      });
++      return verifyAndFinalize({
++        deps,
++        issueNumber,
++        repository: cfg.repo,
++        context,
++        liveIntent,
++        matchingReceipt: null,
++        pullRequest: historical.pr,
++        recovery: true,
++        mode: 'historical-reconstruction',
++        acceptedSha: historical.acceptedSha,
++        localHeadSha: historical.observedLocalHeadSha,
++        testReceiptSha,
++        acceptedReviewSha,
++        verified,
++      });
++    }
+     const historical = validateHistoricalRecoveryPreflight({
+       ...preflightInput,
+       intent: live?.record ?? null,
+     });
+     return verifyAndFinalize({
+       deps,
+       issueNumber,
+       repository: cfg.repo,
+       context,
+       liveIntent: live,
+@@ -799,72 +980,49 @@ export async function runDeliver({ issueNumber, cfg, state, reconcile = null, de
+   }
+ 
+   const checks = await fetchRequiredChecks({
+     repository: cfg.repo,
+     prNumber: selectedPullRequest.number,
+     expectedHeadSha: authority.acceptedSha,
+   });
+   const preflight = mergedPullRequest
+     ? validateMergedDeliveryPreflight({ ...preflightInput, checks })
+     : validateDeliveryPreflight({ ...preflightInput, checks });
+-  const manualCodeReviewEnabled = await (
+-    deps.resolvePullRequestReviewGate ?? (async () => false)
+-  )();
+-  if (manualCodeReviewEnabled === true) {
+-    const reviewerLogin = await requiredDependency(
+-      deps,
+-      'resolveManualCodeReviewer'
+-    )({
+-      configuredReviewer: cfg.manualCodeReviewer,
+-    });
+-    const reviewEvidence = await requiredDependency(
+-      deps,
+-      'fetchManualCodeReviewEvidence'
+-    )({
+-      repository: cfg.repo,
+-      prNumber: selectedPullRequest.number,
+-      expectedHeadSha: authority.acceptedSha,
+-    });
+-    const decision = evaluateManualCodeReview({
+-      gateEnabled: true,
+-      expectedHeadSha: authority.acceptedSha,
+-      reviewerLogin,
+-      pullRequest: reviewEvidence,
+-    });
+-    if (decision.status === 'refused') {
+-      throw new TypeError(`delivery-preflight:manual-code-review-${decision.reason}`);
+-    }
+-    if (decision.status !== 'authorized') {
+-      if (mergedPullRequest) {
+-        throw new TypeError('delivery-preflight:manual-code-review-approval-missing');
+-      }
+-      let reviewRequested = false;
+-      if (decision.status === 'request-review') {
+-        await requiredDependency(
+-          deps,
+-          'requestPullRequestReview'
+-        )({
+-          repository: cfg.repo,
+-          prNumber: selectedPullRequest.number,
+-          reviewerLogin,
+-        });
+-        reviewRequested = true;
+-      }
+-      return {
+-        status: 'manual-review-required',
+-        reason: decision.reason,
++  const decision = await checkManualCodeReview({
++    deps,
++    cfg,
++    prNumber: selectedPullRequest.number,
++    expectedHeadSha: authority.acceptedSha,
++    merged: mergedPullRequest,
++  });
++  if (decision.status !== 'authorized') {
++    const reviewerLogin = decision.reviewerLogin;
++    let reviewRequested = false;
++    if (decision.status === 'request-review') {
++      await requiredDependency(
++        deps,
++        'requestPullRequestReview'
++      )({
++        repository: cfg.repo,
+         prNumber: selectedPullRequest.number,
+         reviewerLogin,
+-        expectedHeadSha: authority.acceptedSha,
+-        reviewRequested,
+-      };
++      });
++      reviewRequested = true;
+     }
++    return {
++      status: 'manual-review-required',
++      reason: decision.reason,
++      prNumber: selectedPullRequest.number,
++      reviewerLogin,
++      expectedHeadSha: authority.acceptedSha,
++      reviewRequested,
++    };
+   }
+   if (mergedPullRequest) {
+     let liveIntent = live;
+     let recovery = liveIntent?.record.provider === 'external';
+     if (liveIntent !== null) {
+       const expected = buildIntentFromPreflight({
+         preflight,
+         cfg,
+         intentId: liveIntent.record.intentId,
+         supersedesIntentId: liveIntent.record.supersedesIntentId,
+diff --git a/scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs b/scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
+index c46f46bf..6e0015dc 100644
+--- a/scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
++++ b/scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
+@@ -4,20 +4,21 @@ import { test } from 'node:test';
+ import '../../../fixtures/offline-gh-auto.mjs';
+ 
+ import {
+   resolveReviewAuthorization,
+   resolveGate,
+ } from '../../../../task-tracker/lib/gate-resolve.mjs';
+ import { applyChoice } from '../../../../task-tracker/lib/session-store.mjs';
+ import {
+   validateDeliveryPreflight,
+   validateHistoricalRecoveryPreflight,
++  validateHistoricalReconstructionPreflight,
+ } from '../../../../task-tracker/lib/delivery-preflight.mjs';
+ import { buildDeliveryCommitText } from '../../../../task-tracker/lib/delivery-attribution.mjs';
+ import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
+ 
+ const HEAD = 'a'.repeat(40);
+ const OTHER_HEAD = 'b'.repeat(40);
+ 
+ function evidence(accepted = true, approvedSha = HEAD) {
+   return { accepted, approvedSha };
+ }
+@@ -161,20 +162,149 @@ test('standing Full-Auto authorizes immutable A while a reused branch is observe
+       mergeMethod: 'squash',
+       attributionTokens: commitText.attributionTokens,
+       commitTitle: commitText.commitTitle,
+       commitMessage: commitText.commitMessage,
+     },
+   });
+   assert.equal(result.acceptedSha, HEAD);
+   assert.equal(result.observedLocalHeadSha, OTHER_HEAD);
+ });
+ 
++function historicalReconstructionPreflight() {
++  return {
++    issue: {
++      number: 939,
++      state: 'OPEN',
++      projectState: 'Review',
++      assignees: ['kpburson'],
++      agentReviewPassed: true,
++      approvalEvidence: 'full-auto',
++      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
++    },
++    binding: {
++      issueNumber: 939,
++      timerState: 'running',
++      branch: 'codex/reused-branch',
++    },
++    lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
++    pullRequests: [
++      {
++        number: 1400,
++        state: 'MERGED',
++        merged: true,
++        mergedAt: '2026-08-28T00:01:00.000Z',
++        isDraft: false,
++        baseRefName: 'trunk',
++        headRefName: 'codex/reused-branch',
++        headRefOid: HEAD,
++        mergeCommit: { oid: 'c'.repeat(40) },
++        mergeCommitSha: 'c'.repeat(40),
++        mergeMethod: 'squash',
++        headRefDeleted: false,
++      },
++    ],
++    localHeadSha: OTHER_HEAD,
++    testReceiptSha: HEAD,
++    acceptedReviewSha: HEAD,
++    dirtyPaths: [],
++    config: {
++      repo: 'kburson/ai-task-manager',
++      assignee: 'kpburson',
++      trunkRef: 'origin/trunk',
++      fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
++      repositoryMergeMethods: ['squash'],
++    },
++    commitSubjects: ['[#939] integrated immutable A'],
++  };
++}
++
++test('reconstructs intent authority only from an advanced merged historical delivery', () => {
++  const result = validateHistoricalReconstructionPreflight(historicalReconstructionPreflight());
++
++  assert.deepEqual(result, {
++    issue: {
++      number: 939,
++      state: 'OPEN',
++      projectState: 'Review',
++      assignees: ['kpburson'],
++      agentReviewPassed: true,
++      approvalEvidence: 'full-auto',
++      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
++    },
++    pr: {
++      number: 1400,
++      state: 'MERGED',
++      merged: true,
++      mergedAt: '2026-08-28T00:01:00.000Z',
++      isDraft: false,
++      baseRefName: 'trunk',
++      headRefName: 'codex/reused-branch',
++      headRefOid: HEAD,
++      mergeCommit: { oid: 'c'.repeat(40) },
++      mergeCommitSha: 'c'.repeat(40),
++      mergeMethod: 'squash',
++      headRefDeleted: false,
++    },
++    expectedHeadSha: HEAD,
++    acceptedSha: HEAD,
++    observedLocalHeadSha: OTHER_HEAD,
++    headRelation: 'advanced',
++    mergeMethod: 'squash',
++    commitText: buildDeliveryCommitText({
++      issueNumber: 939,
++      prNumber: 1400,
++      expectedHeadSha: HEAD,
++      commitSubjects: ['[#939] integrated immutable A'],
++    }),
++  });
++  assert.equal(Object.isFrozen(result), true);
++  assert.equal(Object.isFrozen(result.issue), true);
++  assert.equal(Object.isFrozen(result.pr), true);
++  assert.equal(Object.isFrozen(result.commitText), true);
++});
++
++test('historical reconstruction rejects an extra intent property at its exact-key boundary', () => {
++  assert.throws(
++    () =>
++      validateHistoricalReconstructionPreflight({
++        ...historicalReconstructionPreflight(),
++        intent: null,
++      }),
++    /delivery-preflight:input/
++  );
++});
++
++test('historical reconstruction refuses authority that is not an advanced, clean merged delivery', () => {
++  const cases = [
++    ['head-relation', (value) => (value.localHeadSha = HEAD)],
++    [
++      'pull-request-not-merged',
++      (value) => {
++        value.pullRequests[0].state = 'OPEN';
++        value.pullRequests[0].merged = false;
++      },
++    ],
++    ['head-mismatch', (value) => (value.testReceiptSha = OTHER_HEAD)],
++    ['dirty-overlap', (value) => value.dirtyPaths.push('tracked.mjs')],
++    ['child-lineage', (value) => (value.lineage.parentIssueNumber = 938)],
++    ['configuration', (value) => (value.config.fullAutoMerge.mechanism = 'unknown')],
++  ];
++  for (const [category, mutate] of cases) {
++    const value = historicalReconstructionPreflight();
++    mutate(value);
++    assert.throws(
++      () => validateHistoricalReconstructionPreflight(value),
++      new RegExp(`delivery-preflight:${category}`)
++    );
++  }
++});
++
+ function preflight() {
+   return {
+     issue: {
+       number: 939,
+       state: 'OPEN',
+       projectState: 'Review',
+       assignees: ['kpburson'],
+       agentReviewPassed: true,
+       approvalEvidence: null,
+       reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
+diff --git a/scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs b/scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs
+index 73303d67..733ed2e8 100644
+--- a/scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs
++++ b/scripts/tests/unit/task-tracker/lib/delivery-method-reconciliation.test.mjs
+@@ -1,54 +1,133 @@
+ // @story #1562
+ import { strict as assert } from 'node:assert';
+ import test from 'node:test';
++import * as reconciliation from '../../../../task-tracker/lib/delivery-method-reconciliation.mjs';
+ 
+ import {
+   METHOD_RECONCILIATION_SCHEMA,
+   buildMethodReconciliation,
++  renderMethodReconciliationComment,
+   resolveReconciledMergeMethod,
+   validateMethodReconciliation,
+ } from '../../../../task-tracker/lib/delivery-method-reconciliation.mjs';
+ 
+ const repository = 'kburson/ai-task-manager';
+ const issueNumber = 1562;
+ const prNumber = 1556;
+ const acceptedSha = 'a'.repeat(40);
+ const mergeCommitSha = 'b'.repeat(40);
+ 
++test('parses one exact canonical reconciliation marker and validates all record fields', () => {
++  assert.equal(typeof reconciliation.parseMethodReconciliationComment, 'function');
++  const parse = reconciliation.parseMethodReconciliationComment;
++  for (const intentOrigin of [undefined, 'retroactively-reconstructed']) {
++    const record = buildMethodReconciliation(input({ intentOrigin }));
++    const body = renderMethodReconciliationComment(record);
++    assert.deepEqual(parse({ body }), record);
++    assert.equal(Object.isFrozen(parse({ body })), true);
++    for (const malformed of [
++      `prefix ${body}`,
++      `${body}\n${body}`,
++      body.replace(' -->', ''),
++      body.replace('{', '{ '),
++      body.replace('"acceptedSha":', '"unknown":'),
++      body.replace(repository, 'invalid-repository'),
++      body.replace('2026-09-09T04:00:00.000Z', 'invalid-date'),
++      body.replace('2026-09-09T04:00:00.000Z', '2026-99-09T04:00:00.000Z'),
++    ]) {
++      assert.throws(() => parse({ body: malformed }), /delivery-method-reconciliation:/);
++    }
++  }
++  assert.equal(parse({ body: 'An ordinary issue comment.' }), null);
++});
++
+ function input(overrides = {}) {
+   return {
+     issueNumber,
+     repository,
+     prNumber,
+     acceptedSha,
+     mergeCommitSha,
+     configuredMergeMethod: 'squash',
+     observedMergeMethod: 'merge',
+     reason: 'merged from the GitHub UI with the merge-commit button',
+     operator: 'kburson',
+     clientCreatedAt: '2026-09-09T04:00:00.000Z',
+     ...overrides,
+   };
+ }
+ 
+ test('builds a reconciliation record carrying both methods and the reason', () => {
+   const record = buildMethodReconciliation(input());
+   assert.equal(record.schema, METHOD_RECONCILIATION_SCHEMA);
++  assert.deepEqual(Object.keys(record).sort(), [
++    'acceptedSha',
++    'clientCreatedAt',
++    'configuredMergeMethod',
++    'divergent',
++    'issueNumber',
++    'mergeCommitSha',
++    'observedMergeMethod',
++    'operator',
++    'prNumber',
++    'reason',
++    'repository',
++    'schema',
++  ]);
+   assert.equal(record.configuredMergeMethod, 'squash');
+   assert.equal(record.observedMergeMethod, 'merge');
+   assert.equal(record.divergent, true);
+   assert.equal(record.reason, 'merged from the GitHub UI with the merge-commit button');
+   assert.equal(record.acceptedSha, acceptedSha);
+   assert.equal(record.mergeCommitSha, mergeCommitSha);
+ });
+ 
++test('builds a frozen v2 reconstruction record with the exact retroactive origin', () => {
++  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
++  assert.equal(record.schema, 'aitm.delivery-method-reconciliation/v2');
++  assert.equal(record.intentOrigin, 'retroactively-reconstructed');
++  assert.deepEqual(Object.keys(record).sort(), [
++    'acceptedSha',
++    'clientCreatedAt',
++    'configuredMergeMethod',
++    'divergent',
++    'intentOrigin',
++    'issueNumber',
++    'mergeCommitSha',
++    'observedMergeMethod',
++    'operator',
++    'prNumber',
++    'reason',
++    'repository',
++    'schema',
++  ]);
++  assert.equal(Object.isFrozen(record), true);
++});
++
++test('validates a v2 reconstruction record and refuses a tampered origin', () => {
++  const record = buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }));
++  assert.equal(validateMethodReconciliation(record).ok, true);
++  assert.throws(
++    () => validateMethodReconciliation({ ...record, intentOrigin: 'delivery-time' }),
++    /delivery-method-reconciliation:intent-origin/
++  );
++});
++
++test('renders v2 with the no-delivery-time-intent reconstruction explanation', () => {
++  const comment = renderMethodReconciliationComment(
++    buildMethodReconciliation(input({ intentOrigin: 'retroactively-reconstructed' }))
++  );
++  assert.match(comment, /No delivery-time intent existed/);
++  assert.match(comment, /reconstructed from provider and Git evidence/);
++});
++
+ test('records are frozen so a caller cannot mutate recorded evidence', () => {
+   const record = buildMethodReconciliation(input());
+   assert.equal(Object.isFrozen(record), true);
+ });
+ 
+ test('divergent is false when the observed method equals the configured one', () => {
+   const record = buildMethodReconciliation(input({ observedMergeMethod: 'squash' }));
+   assert.equal(record.divergent, false);
+ });
+ 
+diff --git a/scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs b/scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+index f452c52e..64d73c28 100644
+--- a/scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
++++ b/scripts/tests/unit/task-tracker/lib/delivery-verification-attribution.test.mjs
+@@ -110,20 +110,71 @@ test('external recovery accepts one canonical inspected attribution line', async
+ 
+   const verified = await verifyExternalDeliveredPullRequest({
+     ...input,
+     intentInput: externalIntentInput(),
+   });
+ 
+   assert.equal(verified.intent.provider, 'external');
+   assert.equal(verified.intent.commitMessage, COMMIT_MESSAGE);
+ });
+ 
++test('external recovery verifies an advanced observed local head against accepted authority', async () => {
++  const input = liveInput();
++  delete input.intentCreatedAt;
++  delete input.recovery;
++  input.localHeadSha = 'd'.repeat(40);
++
++  const verified = await verifyExternalDeliveredPullRequest({
++    ...input,
++    intentInput: externalIntentInput(),
++  });
++
++  assert.equal(input.localHeadSha, 'd'.repeat(40));
++  assert.equal(verified.recovery, true);
++  assert.equal(verified.intent.expectedHeadSha, HEAD);
++  assert.equal(verified.receiptInput.expectedHeadSha, HEAD);
++});
++
++test('external recovery keeps its exact input schema and authority equality checks', async () => {
++  const input = liveInput();
++  delete input.intentCreatedAt;
++  delete input.recovery;
++  input.localHeadSha = 'd'.repeat(40);
++  input.intentInput = externalIntentInput();
++
++  await assert.rejects(
++    () => verifyExternalDeliveredPullRequest({ ...input, recovery: true }),
++    /delivery-verification:input-keys/
++  );
++  await assert.rejects(
++    () => verifyExternalDeliveredPullRequest({ ...input, testReceiptSha: input.localHeadSha }),
++    /delivery-verification:authority-sha-mismatch/
++  );
++  await assert.rejects(
++    () =>
++      verifyExternalDeliveredPullRequest({
++        ...input,
++        intentInput: { ...input.intentInput, mergeMethod: 'merge' },
++      }),
++    /delivery-verification:merge-method$/
++  );
++  await assert.rejects(
++    () =>
++      verifyDeliveredPullRequest({
++        ...liveInput(),
++        localHeadSha: input.localHeadSha,
++        intent: intent(),
++      }),
++    /delivery-verification:authority-sha-mismatch/
++  );
++});
++
+ test('external recovery rejects noncanonical inspected attribution lines', async () => {
+   const invalidMessages = [
+     `PR #1391\nSource: ${HEAD}`,
+     `${COMMIT_MESSAGE}\nAttribution: [#1392] [#1380] [#939]`,
+     `PR #1391\nSource: ${HEAD}\n\nAttribution: [#1392] [#939] [#1380]`,
+     `PR #1391\nSource: ${HEAD}\n\nAttribution: #1392 #1380 #939`,
+     `${COMMIT_MESSAGE} [#1400]`,
+   ];
+ 
+   for (const commitMessage of invalidMessages) {
+diff --git a/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs b/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+index 085366ab..1aa8e40e 100644
+--- a/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
++++ b/scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
+@@ -499,20 +499,342 @@ test('advanced local head refuses historical recovery without a prior intent', a
+     testReceiptSha: HEAD,
+     acceptedReviewSha: HEAD,
+   });
+ 
+   await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
+ 
+   assert.equal(harness.calls.createIssueComment, 0);
+   assert.equal(harness.data.comments.length, 0);
+ });
+ 
++function historicalReconstructionHarness(options = {}) {
++  return makeHarness({
++    prState: 'MERGED',
++    prHead: HEAD,
++    head: NEXT_HEAD,
++    testReceiptSha: HEAD,
++    acceptedReviewSha: HEAD,
++    prMergeMethod: null,
++    historyMergeMethod: 'merge',
++    ...options,
++  });
++}
++
++const historicalReconcile = {
++  declaredMergeMethod: 'merge',
++  reason: 'The historical PR was merged manually before delivery intent existed.',
++  operator: 'kburson',
++};
++
++test('advanced local head explicitly reconstructs a missing intent after proving historical delivery', async () => {
++  const harness = historicalReconstructionHarness();
++  const append = harness.deps.createIssueComment;
++  harness.deps.createIssueComment = async (input) => {
++    // Both the preliminary observation and independent verification must finish
++    // before even the reconciliation record may be posted.
++    assert.equal(harness.calls.fetchOriginTrunk, 1);
++    assert.equal(harness.calls.isAncestor, 1);
++    assert.equal(harness.calls.inspectMergeCommit, 2);
++    return append(input);
++  };
++
++  await assert.rejects(() => deliver(harness), /delivery-preflight:historical-intent/);
++  assert.equal(harness.calls.createIssueComment, 0);
++
++  const result = await deliver(harness, { reconcile: historicalReconcile });
++
++  assert.equal(result.status, 'delivered');
++  assert.equal(result.mode, 'historical-reconstruction');
++  assert.equal(result.recovery, true);
++  assert.equal(result.action, null);
++  assert.equal(result.intent.provider, 'external');
++  assert.equal(result.intent.expectedHeadSha, HEAD);
++  assert.equal(result.receipt.expectedHeadSha, HEAD);
++  assert.equal(result.receipt.mergeCommitSha, MERGE_HEAD);
++  assert.equal(result.receipt.mergeMethod, 'merge');
++  assert.equal(result.receipt.provider, 'external');
++  assert.equal(harness.data.head, NEXT_HEAD);
++  assert.equal(harness.calls.fetchRequiredChecks, 0);
++  assert.equal(harness.calls.createIssueComment, 3);
++  assert.deepEqual(
++    harness.data.comments.map(({ body }) => body.match(/^<!-- (\S+) /)[1]),
++    ['aitm-delivery-method-reconciliation', 'aitm-delivery-intent', 'aitm-delivery-receipt']
++  );
++  const reconciliation = JSON.parse(harness.data.comments[0].body.match(/^<!-- \S+ (.+) -->/)[1]);
++  assert.equal(reconciliation.schema, 'aitm.delivery-method-reconciliation/v2');
++  assert.equal(reconciliation.intentOrigin, 'retroactively-reconstructed');
++  assert.equal(reconciliation.acceptedSha, HEAD);
++  assert.equal(reconciliation.mergeCommitSha, MERGE_HEAD);
++  assert.deepEqual(harness.calls.events.slice(-4), [
++    'intent:post',
++    'comments:read',
++    'receipt:post',
++    'comments:read',
++  ]);
++});
++
++test('historical reconstruction and every retry enforce manual approval of the accepted historical SHA', async (t) => {
++  const original = historicalReconstructionHarness();
++  await deliver(original, { reconcile: historicalReconcile });
++  for (const prefixLength of [0, 1, 2, 3]) {
++    for (const [label, approvedSha] of [
++      ['missing', null],
++      ['stale local-head', NEXT_HEAD],
++      ['exact accepted-head', HEAD],
++    ]) {
++      await t.test(`${prefixLength} records: ${label} approval`, async () => {
++        const comments = original.data.comments.slice(0, prefixLength);
++        const harness = historicalReconstructionHarness({
++          comments,
++          manualCodeReview: true,
++          reviews:
++            approvedSha === null
++              ? []
++              : [
++                  {
++                    authorLogin: 'kburson',
++                    authorIsBot: false,
++                    state: 'APPROVED',
++                    commitOid: approvedSha,
++                    submittedAt: SERVER_NOW,
++                  },
++                ],
++        });
++        const observedHeads = [];
++        const fetchReview = harness.deps.fetchManualCodeReviewEvidence;
++        harness.deps.fetchManualCodeReviewEvidence = async (input) => {
++          observedHeads.push(input.expectedHeadSha);
++          assert.equal(harness.calls.createIssueComment, 0);
++          return fetchReview(input);
++        };
++        if (approvedSha === HEAD) {
++          const result = await deliver(harness, { reconcile: historicalReconcile });
++          assert.equal(result.status, prefixLength === 3 ? 'already-delivered' : 'delivered');
++          assert.equal(result.mode, 'historical-reconstruction');
++          assert.equal(harness.calls.createIssueComment, 3 - prefixLength);
++        } else {
++          await assert.rejects(
++            () => deliver(harness, { reconcile: historicalReconcile }),
++            /delivery-preflight:manual-code-review-approval-missing/
++          );
++          assert.equal(harness.calls.createIssueComment, 0);
++          assert.deepEqual(harness.data.comments, comments);
++        }
++        assert.deepEqual(observedHeads, [HEAD]);
++        assert.equal(harness.calls.requestPullRequestReview, 0);
++        assert.equal(harness.calls.fetchRequiredChecks, 0);
++      });
++    }
++  }
++});
++
++test('ordinary prior-intent historical recovery retains its existing manual-review behavior', async () => {
++  const harness = makeHarness();
++  await advancePendingDelivery(harness);
++  harness.data.manualCodeReview = true;
++  harness.deps.fetchManualCodeReviewEvidence = () => {
++    assert.fail('ordinary historical recovery must retain its existing path');
++  };
++  const result = await deliver(harness);
++  assert.equal(result.status, 'delivered');
++  assert.equal(result.mode, 'historical-recovery');
++});
++
++for (const prefixLength of [1, 2, 3]) {
++  test(`historical reconstruction retries a persisted ${prefixLength}-record prefix without duplicates`, async () => {
++    const original = historicalReconstructionHarness();
++    const delivered = await deliver(original, { reconcile: historicalReconcile });
++    const comments = original.data.comments.slice(0, prefixLength);
++    const harness = historicalReconstructionHarness({ comments });
++    harness.deps.createIntentId = () => {
++      assert.equal(prefixLength, 1, 'a persisted intent must retain its identity');
++      return INTENT_IDS[1];
++    };
++
++    const result = await deliver(harness, { reconcile: historicalReconcile });
++
++    assert.equal(result.status, prefixLength === 3 ? 'already-delivered' : 'delivered');
++    assert.equal(result.mode, 'historical-reconstruction');
++    assert.equal(result.recovery, true);
++    assert.equal(harness.calls.fetchOriginTrunk, 1);
++    assert.equal(harness.calls.isAncestor, 1);
++    assert.equal(harness.calls.createIssueComment, 3 - prefixLength);
++    assert.equal(harness.data.comments.length, 3);
++    assert.deepEqual(harness.data.comments.slice(0, prefixLength), comments);
++    if (prefixLength > 1) assert.deepEqual(result.intent, delivered.intent);
++    if (prefixLength === 3) assert.deepEqual(result.receipt, delivered.receipt);
++  });
++}
++
++test('historical reconstruction recovers a lost reconciliation POST response without duplicate records', async () => {
++  const harness = historicalReconstructionHarness({ losePostResponse: true });
++  await assert.rejects(
++    () => deliver(harness, { reconcile: historicalReconcile }),
++    /transport response lost/
++  );
++  assert.equal(harness.data.comments.length, 1);
++  const result = await deliver(harness, { reconcile: historicalReconcile });
++  assert.equal(result.status, 'delivered');
++  assert.equal(harness.calls.createIssueComment, 3);
++  assert.equal(harness.data.comments.length, 3);
++});
++
++test('historical reconstruction retries require explicit authority and fresh provider/Git proof', async (t) => {
++  const original = historicalReconstructionHarness();
++  await deliver(original, { reconcile: historicalReconcile });
++  for (const prefixLength of [1, 2, 3]) {
++    for (const [label, options, reconcile, error] of [
++      ['missing flag', {}, null, /delivery-preflight:historical-intent/],
++      [
++        'changed reason',
++        {},
++        { ...historicalReconcile, reason: 'A different reason to reconstruct.' },
++        /deliver:historical-reconstruction-provenance/,
++      ],
++      [
++        'placeholder reason',
++        {},
++        { ...historicalReconcile, reason: 'TBD' },
++        /delivery-method-reconciliation:reason/,
++      ],
++      [
++        'changed declaration',
++        {},
++        { ...historicalReconcile, declaredMergeMethod: 'squash' },
++        /delivery-method-reconciliation:declared-not-observed/,
++      ],
++      [
++        'unreachable merge',
++        { mergeReachable: false },
++        historicalReconcile,
++        /delivery-verification:trunk-reachability/,
++      ],
++      [
++        'changed topology',
++        { historyMergeMethod: 'unknown' },
++        historicalReconcile,
++        /delivery-verification:merge-method-unattributable/,
++      ],
++      [
++        'changed live bytes',
++        { historyCommitMessage: 'Changed commit bytes' },
++        historicalReconcile,
++        /delivery-verification:(?:attribution|merge-commit-bytes)/,
++      ],
++    ]) {
++      await t.test(`${prefixLength} records: ${label}`, async () => {
++        const comments = original.data.comments.slice(0, prefixLength);
++        const harness = historicalReconstructionHarness({ comments, ...options });
++        await assert.rejects(() => deliver(harness, { reconcile }), error);
++        assert.equal(harness.calls.createIssueComment, 0);
++        assert.deepEqual(harness.data.comments, comments);
++      });
++    }
++  }
++});
++
++test('historical reconstruction refuses missing, malformed, or mismatched v2 retry provenance', async (t) => {
++  const original = historicalReconstructionHarness();
++  await deliver(original, { reconcile: historicalReconcile });
++  const valid = JSON.parse(original.data.comments[0].body.match(/^<!-- \S+ (.+) -->/)[1]);
++  for (const [label, override] of [
++    ['missing', null],
++    ['malformed', 'broken JSON'],
++    ['v1 only', { schema: 'aitm.delivery-method-reconciliation/v1', intentOrigin: undefined }],
++    ['wrong origin', { intentOrigin: 'delivery-time' }],
++    ['wrong issue', { issueNumber: 940 }],
++    ['wrong repository', { repository: 'kburson/other' }],
++    ['wrong PR', { prNumber: 1401 }],
++    ['wrong accepted SHA', { acceptedSha: NEXT_HEAD }],
++    ['wrong merge SHA', { mergeCommitSha: NEXT_HEAD }],
++    ['wrong configured method', { configuredMergeMethod: 'rebase' }],
++    ['wrong observed method', { observedMergeMethod: 'rebase' }],
++    ['wrong reason', { reason: 'A different reconstruction explanation.' }],
++    ['false divergence', { divergent: false }],
++  ]) {
++    await t.test(label, async () => {
++      const comments = structuredClone(original.data.comments.slice(0, 2));
++      if (override === null) comments.shift();
++      else {
++        const record = { ...valid, ...override };
++        const json =
++          typeof override === 'string'
++            ? override
++            : JSON.stringify(record, Object.keys(record).sort());
++        comments[0].body = `<!-- aitm-delivery-method-reconciliation ${json} -->`;
++      }
++      const harness = historicalReconstructionHarness({ comments });
++      await assert.rejects(
++        () => deliver(harness, { reconcile: historicalReconcile }),
++        /(?:deliver:historical-reconstruction-provenance|delivery-method-reconciliation:)/
++      );
++      assert.equal(harness.calls.createIssueComment, 0);
++      assert.deepEqual(harness.data.comments, comments);
++    });
++  }
++});
++
++for (const [label, options, reconcile, error] of [
++  [
++    'unmerged PR',
++    { prState: 'OPEN' },
++    historicalReconcile,
++    /delivery-preflight:pull-request-not-merged/,
++  ],
++  [
++    'unreachable merge',
++    { mergeReachable: false },
++    historicalReconcile,
++    /delivery-verification:trunk-reachability/,
++  ],
++  [
++    'unattributable topology',
++    { historyMergeMethod: 'unknown' },
++    historicalReconcile,
++    /delivery-verification:merge-method-unattributable/,
++  ],
++  [
++    'declared method mismatch',
++    {},
++    { ...historicalReconcile, declaredMergeMethod: 'squash' },
++    /delivery-method-reconciliation:declared-not-observed/,
++  ],
++  ['missing flag', {}, null, /delivery-preflight:historical-intent/],
++  [
++    'failed trunk fetch',
++    { fetchFailure: true },
++    historicalReconcile,
++    /delivery-verification:fetch-origin-trunk/,
++  ],
++  [
++    'provider method mismatch',
++    { prMergeMethod: 'squash' },
++    historicalReconcile,
++    /delivery-verification:merge-method$/,
++  ],
++  [
++    'invalid attribution',
++    { historyCommitMessage: 'Missing required attribution' },
++    historicalReconcile,
++    /delivery-verification:attribution/,
++  ],
++]) {
++  test(`historical reconstruction refuses ${label} without any ledger writes`, async () => {
++    const harness = historicalReconstructionHarness(options);
++
++    await assert.rejects(() => deliver(harness, { reconcile }), error);
++
++    assert.equal(harness.calls.createIssueComment, 0);
++    assert.equal(harness.data.comments.length, 0);
++  });
++}
++
+ test('advanced local head refuses an external recovery intent', async () => {
+   const externalIntent = buildDeliveryIntent({
+     intentId: INTENT_IDS[0],
+     supersedesIntentId: null,
+     issueNumber: 939,
+     repository: 'kburson/ai-task-manager',
+     prNumber: 1400,
+     baseRef: 'trunk',
+     headRef: 'codex/939-full-auto-merge',
+     expectedHeadSha: HEAD,

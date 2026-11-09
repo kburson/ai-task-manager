@@ -1,0 +1,15 @@
+✔ checked-in release identity agrees with raw catalog and separate parser metadata (2.204667ms)
+✔ read-only CI agreement rejects catalog change rather than restamping (78.400209ms)
+✔ first operational loader consumer is refused until B2 certification exists (40.950459ms)
+✔ indirect loader import in another shipped module cannot bypass release refusal (54.200208ms)
+✔ direct cache loader import cannot bypass B2 release refusal (32.830958ms)
+✔ computed guidance import cannot evade the B2 release refusal (35.546416ms)
+✔ publication command proves B2 consumer certification on the package under test (15144.689917ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15486.933583

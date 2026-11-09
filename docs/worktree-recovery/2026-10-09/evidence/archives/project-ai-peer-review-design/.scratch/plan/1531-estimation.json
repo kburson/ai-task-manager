@@ -1,0 +1,46 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "lifecycle-orchestration",
+      "description": "Govern the eighteen-child lifecycle and dependency sequence",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["task-tracker", "github-project"],
+        "dependencies": ["child-ranks", "state-gates", "timing-ledger"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "release-evidence",
+      "description": "Validate standalone repository and two release evidence chains",
+      "baseHumanHours": 3,
+      "signals": {
+        "modules": ["release", "provenance", "github-actions"],
+        "dependencies": ["relicensing", "npm-provenance", "archive-receipts"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "epic-reconciliation",
+      "description": "Review child delivery receipts and reconcile parent acceptance",
+      "baseHumanHours": 2,
+      "signals": {
+        "modules": ["epic-reconcile", "verification"],
+        "dependencies": ["child-delivery", "exact-sha-receipts"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow", "lint", "format"],
+    "isolation": "governed child worktrees and release repositories",
+    "expectedMinutes": 120
+  },
+  "risks": [
+    "Relicensing signature or public release evidence unavailable",
+    "Cross-repository package migration occurs before verified publication",
+    "Hosted CI or archive receipts do not match the exact release commit"
+  ],
+  "comparableIssueIds": []
+}

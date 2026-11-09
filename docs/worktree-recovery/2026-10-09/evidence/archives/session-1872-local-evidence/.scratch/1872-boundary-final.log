@@ -1,0 +1,34 @@
+✔ real linked worktrees resolve the same physical parent lock, including a symlink alias (274.187792ms)
+✔ competing native processes serialize and re-read revocation at the winning boundary (406.395875ms)
+✔ bounded contention never evicts live or unknown ownership and nested context cannot be forged (543.394084ms)
+✔ public Plan-to-Develop admission waits for a linked-worktree revoker and revalidates before effects (608.507417ms)
+✔ partial comment publication refuses admission and same-record resume completes exactly one comment (8.072ms)
+✔ body succeeds but read-back fails; retry repairs the same pointer without posting again (2.0585ms)
+✔ unknown comment write stays indeterminate under its original operation ID and never posts twice (0.824875ms)
+✔ graph drift, source refusal, record tamper and mismatched operation identity refuse repair (3.561542ms)
+✔ newer revocation and expiry cannot be repaired as partial publication (3.137042ms)
+✔ a registered exact generation refresh requires positive discharge, preserves source scope and remains resumable (2.600667ms)
+✔ fresh observation after comment write prevents publishing a graph that changed in flight (0.52675ms)
+✔ strict policy at another rank requires authentic matching pointers for all adopted waves (0.788334ms)
+✔ a prepared proposal cannot be recorded by a replacement parent identity (0.213084ms)
+✔ duplicate and fenced orchestration examples cannot supply publication authority (0.279792ms)
+✔ scoped revocation can be completed after graph or worker drift without reviving the grant (2.095209ms)
+✔ new graph adoption requires fresh authorization and replaces stale body scope through the registered action (1.71775ms)
+✔ parent generation drift after comment publication refuses pointer adoption (0.371958ms)
+✔ direct human scope and historical human scope with enablement clarification are accepted (7.125042ms)
+✔ exact labeled proposal acceptance and one unambiguous recommended yes are accepted (4.479125ms)
+✔ ambiguous alternatives, agent relay and unrelated intent are refused (3.066083ms)
+✔ exact hashes, chronology, host repository linkage and bounded context are required (3.007833ms)
+✔ quoted injection and contradictory later human scope never grant authority (2.668166ms)
+✔ externally quoted permission remains untrusted when preceded by ordinary user prose (1.368833ms)
+✔ revocation requires a human revocation intent and cannot reuse enablement as revocation (2.598542ms)
+✔ re-authorization after a revocation requires a later authentic human instruction (1.524167ms)
+✔ sequential intent, unrelated yes and selecting an enable proposal cannot become revocation authority (3.858334ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1966.487416

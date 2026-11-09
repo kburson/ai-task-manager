@@ -1,0 +1,3 @@
+- **kind**: code
+- **discovered-during**: #1755
+- **source-plan-section**: ### Task 1: Canonical raw inventory and SHA-preserving classification

@@ -1,0 +1,123 @@
+{
+  "repository": "kburson/ai-task-manager",
+  "runId": 37183913274,
+  "attempt": 1,
+  "sourceHead": "35c0700c54cae9d46b4031e354553c3357ccb8ed",
+  "testedCommit": "6ca65b5522368c2b24ab373d8ff871f5bfdec05f",
+  "download": "gh run download",
+  "archiveDigestVerification": "not performed by this extraction step",
+  "files": [
+    {
+      "path": "ci-integration-1-1/exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "ci-integration-1-1/shard-plan.json",
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": "ci-integration-1-1/test-output.log",
+      "sha256": "499c765519bff0cb5cff73265999c821edc83d64420df11c73bca98c2815d62a"
+    },
+    {
+      "path": "ci-integration-1-1/test-timing.json",
+      "sha256": "57b7ef08c382b790e3b6564f03b8f692a362626dc8033a71461020723fe53314"
+    },
+    {
+      "path": "ci-integration-2-1/exit-code.txt",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "ci-integration-2-1/shard-plan.json",
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": "ci-integration-2-1/test-output.log",
+      "sha256": "285d1d8ed8c56871de4df1a8687ef21e9c277b1e3f490af56829dad18fea9c00"
+    },
+    {
+      "path": "ci-integration-2-1/test-timing.json",
+      "sha256": "a3dca4b18192281d1dacef01e5aed6cac11edd44faf7e7255a689c9b52cb5e41"
+    },
+    {
+      "path": "ci-integration-3-1/exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "ci-integration-3-1/shard-plan.json",
+      "sha256": "32c9c0b250d3ff1656787842523f8d8831f13329a3587274f56f19ffa4ce8975"
+    },
+    {
+      "path": "ci-integration-3-1/test-output.log",
+      "sha256": "64130136a273d71dfbb77499a29a699399b9332d739104b44313e7a7cbc13218"
+    },
+    {
+      "path": "ci-integration-3-1/test-timing.json",
+      "sha256": "d66e575076bbebdc615f0abeec80d112d7d1348fcdd2a182141a8f712c3b9682"
+    },
+    {
+      "path": "ci-slow-group-1-1/exit-code.txt",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "ci-slow-group-1-1/shard-plan.json",
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": "ci-slow-group-1-1/test-output.log",
+      "sha256": "5a4fb5757deb03ec71604469f3a9582c3a7861555d25ff2f862f79a4f844f0b8"
+    },
+    {
+      "path": "ci-slow-group-1-1/test-timing.json",
+      "sha256": "6a151bfa032be030a9f4cbff29018d795f6050cd51770facecb2f5fc3266273a"
+    },
+    {
+      "path": "ci-slow-group-2-1/exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "ci-slow-group-2-1/shard-plan.json",
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": "ci-slow-group-2-1/test-output.log",
+      "sha256": "3a2082f18a6b84bc7085c1b4d94b036f77498c2dfa5fe2ed60d9f316ca03429a"
+    },
+    {
+      "path": "ci-slow-group-2-1/test-timing.json",
+      "sha256": "b0af3fcd3bc17eeaae05008061fae53dac5494bd5aafa262f141b7a08c48ee9e"
+    },
+    {
+      "path": "ci-slow-group-3-1/exit-code.txt",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "ci-slow-group-3-1/shard-plan.json",
+      "sha256": "72f5f2de04577c43e9b765389c106a2427f61328e7a02cc883719ae7543c43ec"
+    },
+    {
+      "path": "ci-slow-group-3-1/test-output.log",
+      "sha256": "a131364546e494fea1014099709a377d1254026f6931d851981c3689cedf425c"
+    },
+    {
+      "path": "ci-slow-group-3-1/test-timing.json",
+      "sha256": "2f13f425da50a0f528f8030026375b8328f63677d82fe713a7d34c062f25e23f"
+    },
+    {
+      "path": "ci-unit-1-1/exit-code.txt",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "ci-unit-1-1/shard-plan.json",
+      "sha256": "2f38fc57abefed4b5b0855397a8c9fa3b3f4cf2bd89e653f3cbc04ed60fc1c8a"
+    },
+    {
+      "path": "ci-unit-1-1/test-output.log",
+      "sha256": "0aec6aa28d412c258efb67d24b16b74370bbc3b32c181ea1a30b215d7a9f4019"
+    },
+    {
+      "path": "ci-unit-1-1/test-timing.json",
+      "sha256": "656fe1cf17fad314ed023e186dcb2f6c85f5e94e9ec8515a2a7d2d46ddb8abe5"
+    }
+  ]
+}

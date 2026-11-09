@@ -1,0 +1,12 @@
+{
+  "artifact_kind": "spec",
+  "artifact_name": "2026-09-22-1755-delivery-attribution-exception-design",
+  "issue": 1755,
+  "record_id": "review-cc015b243c3fe236325ac37f5899783f",
+  "repository_root": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1755-delivery-attribution-exception",
+  "review_date": "2026-09-22",
+  "review_id": "review-cc015b243c3fe236325ac37f5899783f",
+  "review_path_template": "<kind>/<date>-<name>-<record-id>",
+  "reviews_root": "docs/peer-reviews",
+  "schema": "ai-peer-review.context/v1"
+}

@@ -1,0 +1,152 @@
+▶ guard-parity-plan-develop: registry == state-object walk
+  ✔ present stale bindings cannot be waived in either registry walk (102.094417ms)
+  ✔ Test to Develop never runs story binding gate (0.473167ms)
+  ✔ accept: solo issue with plan-approved marker passes both paths (12.818541ms)
+  ✔ refuse: missing marker — both paths refuse with plan-exit-plan-approved (2.609542ms)
+  ✔ refuse: epic with backlog child — both paths refuse with epic-children id (9.191333ms)
+  ✔ refuse: missing marker + backlog child — both refusals surface together (1.404958ms)
+  ✔ rollback: plan → refine bypasses plan-exit-develop guards (0.911875ms)
+✔ guard-parity-plan-develop: registry == state-object walk (130.782459ms)
+✔ Plan guards accept only their explicitly waived requirements (4.537334ms)
+✔ deep-dive waiver retains the independent Pickup Directive gate (0.410208ms)
+✔ Planned Estimate and forecast waivers remain independent (2.45225ms)
+✔ adaptive Plan exit refuses when ready forecast drifted after approval freeze (0.548042ms)
+✔ adaptive Plan exit refuses a ready forecast that was never frozen at approval (0.19625ms)
+✔ v1 Plan projection requires one ready forecast matching board and body authority (0.257292ms)
+✔ configured adaptive Plan refuses marker-free exit even when the legacy appendix is valid (0.111541ms)
+✔ v1 Plan projection uses production raw-comment pagination when no reader is injected (26.339167ms)
+✔ planApprovedGuard: body with marker → ok (0.352958ms)
+✔ planApprovedGuard: missing marker, toState=develop → refuse (1.371209ms)
+✔ planApprovedGuard: missing marker, toState=refine (rollback) → ok (0.513959ms)
+✔ planApprovedGuard: missing marker, toState absent → falls through (refuse) (1.912375ms)
+✔ planApprovedGuard: empty/undefined body → refuse (0.232916ms)
+✔ planApprovedGuard follows documented automatic/manual session precedence (0.125125ms)
+✔ planEpicChildrenGuard: toState=refine (rollback) → ok regardless of children (0.068ms)
+✔ planEpicChildrenGuard: missing cfg/issueNumber → fail-open (0.941875ms)
+✔ planEpicChildrenGuard: solo issue (no children) → ok (0.668084ms)
+✔ planEpicChildrenGuard: epic with all children at R4P → ok (1.329125ms)
+✔ planEpicChildrenGuard: epic with backlog child → refuse (0.5895ms)
+✔ planExitVcPresenceGuard: body with a parseable VC entry → ok (1.070833ms)
+✔ planExitVcPresenceGuard: no VC section, toState=develop → refuse (0.317792ms)
+✔ planExitVcPresenceGuard: VC heading present but no parseable entry → refuse (0.075666ms)
+✔ planExitVcPresenceGuard: unchecked entry still passes (presence, not completion) (0.112208ms)
+✔ planExitVcPresenceGuard: toState=refine (rollback) → ok regardless of body (0.05125ms)
+✔ planExitVcPresenceGuard: undefined body → fail-open (0.066792ms)
+✔ STATES.plan.exitGuards: includes plan-exit-vc-presence (0.06725ms)
+✔ runGuards(plan,develop): no VC section → surfaces plan-exit-vc-presence refusal (56.110375ms)
+✔ STATES.plan.exitGuards: includes plan-exit-plan-approved (0.075875ms)
+✔ STATES.plan.exitGuards: includes plan-exit-epic-children-r4p-or-beyond (0.04275ms)
+✔ STATES.plan.exitGuards: blockedBy runs before plan-exit guards (0.048ms)
+✔ runGuards(plan,develop): missing plan-approved marker → refusal (490.476125ms)
+✔ runGuards(plan,refine): rollback bypasses plan-exit guards (0.305375ms)
+✔ runGuards(plan,develop): marker present + solo issue → ok (3.324833ms)
+✔ planEpicDevelopChildrenGate: root epic with sole sub-epic at R4P passes (does not walk into grandchildren) (0.995083ms)
+✔ planEpicDevelopChildrenGate: sub-epic with all grandchildren at R4P passes (per-level recursion) (0.132625ms)
+✔ checkParentAdmission: grandchild target=plan passes when immediate parent (sub-epic) is at develop (2.361ms)
+✔ checkParentAdmission: grandchild refuses when immediate parent (sub-epic) is at refine, regardless of root (0.201ms)
+✔ wipAdvanceDecision: budget counts only immediate siblings under the sub-epic (0.774583ms)
+✔ wipAdvanceDecision: budget refuses when an immediate sub-epic sibling is already advancing (0.133292ms)
+✔ planRefineWipGate: grandchild promotion fetches parent via fetchParentIssue and siblings under that immediate parent (526.865625ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #100
+✔ runPromote: throws without issueNumber or cfg (4.026958ms)
+✔ runPromote: assertBound is invoked and may throw (0.756542ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #100
+✔ runPromote: refine→R4P promoted via direct move + refine-estimate hook (687.851ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1005
+✔ runPromote: consumes the final returned refinement plan without context mutation (59.637417ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1471
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1473
+[task-tracker] WARN: required project field "Start Time" (cfg.fieldStartTime) is not configured — board stamp skipped. Re-run `scripts/gh/init-project-config.sh` to discover and persist field ids.
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1472
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #101
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1011
+✔ runPromote: refine→R4P refused when refine-estimate signals missing (29.984417ms)
+✔ runPromote: refine→R4P refused when refine-exit gate returns blockers (13.607667ms)
+✔ runPromote: backlog→refine direct move (14.966084ms)
+✔ runPromote: backlog→refine stamps Start time on success (13.19625ms)
+✔ runPromote: plan→develop promoted when planned-estimate appendix present (29.587125ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #102
+✔ runPromote: plan→develop refused when refine-estimate comment missing (25.876917ms)
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1361
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #2572
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1031
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #104
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #108
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #109
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #132
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1751
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #1753
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/1872-rank-level-parallel/.scratch/test/promote-KLxERe for #134
+Usage: promote #N
+✓ #1473 promoted: backlog → refine (direct)
+✔ runPromote: develop→test delegates to /task test (48.456291ms)
+✔ runPromote: develop→test refused when CODE_COMPLETE gate blocks (30.176791ms)
+✔ runPromote: test→review delegates to /task review (26.311417ms)
+✔ runPromote: test→review refused when dod-verified marker missing (20.116209ms)
+✔ runPromote: review→done delegates to /task close (13.758584ms)
+✔ runPromote: terminal refusal on done (15.108209ms)
+✔ runPromote: drift refused when live ≠ recorded (13.31775ms)
+✔ runPromote: bootstrap when lastKnownState absent (19.677458ms)
+✔ runPromote: error when no recorded and no live state (22.2915ms)
+✔ runPromote: transition-failed when alias verb exits non-zero (34.180958ms)
+✔ runPromote: promoted-with-warning, markers already synced (noop repair) (38.810292ms)
+✔ runPromote: promoted-with-warning, stale marker → repair write fires (27.763708ms)
+✔ runPromote: delegate non-zero AND board drifted to non-target → transition-failed (31.077084ms)
+✔ runPromote: post-failure getLiveState throw is swallowed (22.978416ms)
+✔ runPromote: error when recorded state is unknown (13.486125ms)
+✔ spawnVerbTimeout: test → undefined, others → finite budget (0.286458ms)
+✔ verbPromote: no issue number → usage, exit 1 (0.434334ms)
+✔ verbPromote: promoted → stdout, no exit (15.471625ms)
+✓ #100 promoted: refine → ready-for-plan (direct)
+  ↳ posted "### 🛠 Refine estimate" comment
+
+⛔ Refusing to promote #1031 to review: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #1031` to produce sandbox evidence before promoting to Review.
+   BLOCKED: aitm-entered-backlog
+   BLOCKED: aitm-entered-refine
+   BLOCKED: aitm-entered-plan
+   BLOCKED: aitm-entered-develop
+   BLOCKED: aitm-entered-test
+
+
+⛔ Refusing to promote #1134 to develop: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path; Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+   BLOCKED: plan-exit-decomposition: must-split (size-xl, estimate-hours); no linked plan path
+   BLOCKED: Run `npx aitm split-plan <issue> --dry-run` or add a complete visible `## Decomposition Waiver` section.
+
+
+⛔ Refusing to promote #107:
+   BLOCKED: drift detected: board says "develop", task-tracker says "plan". Run `/task reconcile <accept-live|revert-to-recorded>`.
+
+
+⛔ already in done (#106); promote is forward-only.
+
+✓ #1751 promoted: develop → test (/task test)
+  ⚠ delegate /task test exited 1 — board reached target; treating as soft warning.
+  ↳ marker repaired (attempts: 1)
+promote: promote: delegate /task test exited 4; recorded state left at "develop".
+promote: promote: unknown recorded state "bogus" for #110
+promote: not bound to #9
+✔ verbPromote: refine→R4P promoted prints refine-estimate comment line (22.599709ms)
+✔ verbPromote: refused gate → exit 4 with BLOCKED lines (15.347ms)
+✔ verbPromote: decomposition refusal renders blockers and exits 4 (16.412542ms)
+✔ verbPromote: drift-refused → exit 4 (16.696875ms)
+✔ verbPromote: terminal-refused → exit 4 (16.787833ms)
+✔ verbPromote: promoted-with-warning prints soft-warning (28.562375ms)
+✔ verbPromote: transition-failed → exits with delegate code (25.090875ms)
+✔ verbPromote: error status → exit 1 (14.073375ms)
+✔ verbPromote: runPromote throw → catch → exit 1 (0.647458ms)
+✔ finalizes a completed closed child before selecting the next ranked child (242.635084ms)
+✔ leaves a dead-disposition child untouched and continues selection (186.9285ms)
+✔ an aberration recovery pauses without promoting another child (0.552375ms)
+✔ a failed convergence pauses selection and reports the child (0.1875ms)
+✔ a pending durable recovery is converged and pauses before promotion (0.207125ms)
+✔ a completed durable recovery is not pending and selection may continue (161.448417ms)
+✔ already-Done closed children and open children are not convergence candidates (139.813375ms)
+ℹ tests 91
+ℹ suites 1
+ℹ pass 91
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1939.461416

@@ -1,0 +1,42 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "scope-evaluator",
+      "description": "Canonical source inventory, mapping evaluator, and negative unit coverage",
+      "baseHumanHours": 4,
+      "signals": {
+        "modules": ["delivery-attribution", "delivery-preflight"],
+        "dependencies": ["canonical-json", "pull-request-source-commits"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "authorization-record",
+      "description": "Host-verified authorization command and immutable GitHub record lifecycle",
+      "baseHumanHours": 5,
+      "signals": {
+        "modules": ["delivery-attribution-exception", "github-records"],
+        "dependencies": ["authority-resolver", "github-comment-store"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "delivery-integration",
+      "description": "Last-second delivery revalidation, truthful intent and receipt, integration coverage and docs",
+      "baseHumanHours": 7,
+      "signals": {
+        "modules": ["deliver", "delivery-verification", "delivery-records"],
+        "dependencies": ["provider-action", "exact-head-checks", "package-content"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "governed-worktree-and-test-sandbox",
+    "expectedMinutes": 60
+  },
+  "risks": ["Source inventory changes between reads", "Authorization comment ambiguity", "Legacy delivery record compatibility"],
+  "comparableIssueIds": [1624]
+}

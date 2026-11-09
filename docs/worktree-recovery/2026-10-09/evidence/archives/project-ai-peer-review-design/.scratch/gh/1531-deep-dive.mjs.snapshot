@@ -1,0 +1,26 @@
+import { ensureDeepDive } from '../../scripts/task-tracker/lib/deep-dive.mjs';
+
+const prose = `The accepted implementation plan at \`docs/superpowers/plans/2026-09-07-ai-peer-review-extraction.md\` and ratified specification at \`docs/superpowers/specs/2026-09-07-ai-peer-review-extraction-design.md\` were reviewed in full against the live GitHub child graph. The graph contains exactly eighteen linked children, #1532 through #1549, mapping one-to-one to Tasks 1 through 18. Their finite ranks 2 through 19 preserve the plan's mandatory numeric execution order behind the parent epic at Rank 1.
+
+Files and repositories in scope are the two accepted AITM planning documents, the filtered standalone sibling repository \`ai-peer-review/**\` for Tasks 1-14 and 16-17, and the AITM package, adapter, lifecycle, and parity-test paths explicitly owned by Tasks 15 and 18. The parent epic itself owns orchestration evidence and does not directly edit source files; each child body is the bounded file authority for its task.
+
+Execution proceeds serially. First, #1532 establishes the immutable source-history boundary, contributor inventory, secret-scan evidence, and signed relicensing record. Second, #1533-#1544 build the Phase 1 package in red-green-refactor slices. Third, #1545 proves parity and packaging, obtains the explicit publication gate, creates the public \`kburson/ai-peer-review\` repository, publishes the exact \`0.1.x\` release, and verifies public evidence. Fourth, #1546 migrates AITM only through that verified package boundary. Fifth, #1547-#1548 add and publish the additive \`0.2.x\` transport layer. Sixth, #1549 upgrades AITM only after the Phase 2 release verifier passes. Finally, the parent runs epic reconciliation, the plan-format gates, the full AITM verification suite, and the epic-trail verifier before Review and Done.
+
+Test additions are owned and enumerated by the child issues. The standalone suite spans \`test/unit/**\`, \`test/integration/**\`, \`test/golden/**\`, \`test/packaging/**\`, \`test/smoke/**\`, and Phase 2 \`test/mcp/**\`. The AITM migrations add \`scripts/tests/integration/review/peer-review-package-parity.test.mjs\`, \`peer-review-migration-guard.test.mjs\`, and \`peer-review-phase2-compatibility.test.mjs\`. The parent adds no duplicate tests; it verifies the exact child commits and the root commands already declared on #1531.
+
+Primary risks are legal authority for Apache-2.0 relicensing, credential and provenance failures during npm trusted publication, public-repository or signed-tag mismatch, cross-platform CI drift, accidental retention of AITM-only paths, premature AITM migration, Phase 2 schema breakage, and unsafe Git index mutation. The plan mitigates these through a signed declaration, filtered-history and secret-scan manifests, exact release verification, author-only literal-argv Git transactions, strict phase gates, and byte/schema compatibility tests. No signature, release receipt, archive identifier, or hosted CI result will be inferred or fabricated.
+
+No additional sibling sub-issues are required: #1532-#1549 fully cover the accepted plan. Newly discovered out-of-scope work will be tracked through the sanctioned issue-creation workflow before implementation.
+
+## Dependency Map
+Depends on: none; the accepted specification, plan commits, and immutable extraction source commit are already recorded.
+Blocks: #1532-#1549, which execute serially in numeric order; #1546 additionally depends on #1545 reaching Done, and #1549 additionally depends on #1548 reaching Done.`;
+
+const result = await ensureDeepDive({
+  issueNumber: 1531,
+  repo: 'kburson/ai-task-manager',
+  prose,
+  posted: true,
+});
+
+console.log(JSON.stringify(result, null, 2));
