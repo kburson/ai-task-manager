@@ -1,0 +1,25 @@
+✔ AC1 — promote from Test delegates to the review verb, not the direct move path (17.922666ms)
+✔ AC5 — the reported route is alias:review, never direct (11.136ms)
+✔ AC3 — a delegate that never reaches Review does not fall back to a direct move (8.552417ms)
+✔ #1732 — a failed review delegate reports derived evidence already persisted (11.594292ms)
+✔ AC3 — #881 model: a gate objection after entry leaves the issue in Review (no demote, no direct move) (11.781875ms)
+✔ #1458 — Cursor enters Review before validation and leaves an objection resident there (0.521792ms)
+✔ AC3 — #710 defense: delegate exits 0 but board never reached Review (10.467625ms)
+✔ AC6 — develop still delegates to test (215.301875ms)
+✔ AC6 — review still delegates to close (when Agent Review genuinely passed) (10.107667ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 300.513958
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #820
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #821
+[task-tracker] validated projectDir override: AI_TASK_MANAGER_PROJECT_DIR=/Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/promote-820-nfdzeq for #822

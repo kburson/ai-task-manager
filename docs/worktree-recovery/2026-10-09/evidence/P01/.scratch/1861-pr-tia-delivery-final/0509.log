@@ -1,0 +1,19 @@
+✔ issue delivery authority rejects malformed and contradictory accepted-SHA claims (18.408208ms)
+✔ approved ledger resolution binds repository, convergence issue, and incident owner (0.318667ms)
+✔ phase-aware verifier is read-only and distinguishes pending from terminal outcomes (0.676042ms)
+✔ record mode validates live observation before one exact append and recovers lost response (0.710333ms)
+✔ recordable ledger requires complete carrier evidence for every Incorporated outcome (0.303666ms)
+✔ approval authenticates first and completes approval plus incident owner after interruption (1.598292ms)
+✔ approval refuses a divergent owner graph before any approval-side write (0.253625ms)
+✔ replacement approval resumes on a second invocation after owner write was interrupted (5.403667ms)
+✔ live ledger observation compares issue, board, PR, merge, evidence, approval, and trunk (3.154833ms)
+✔ terminal observation accepts the newly recovered receipt for #1389 (11.168417ms)
+✔ terminal observation accepts the newly recovered receipt for #1392 (10.851708ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 65.204

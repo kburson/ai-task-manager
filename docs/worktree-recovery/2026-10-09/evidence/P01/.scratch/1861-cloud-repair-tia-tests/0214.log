@@ -1,0 +1,12 @@
+✔ #952: pre-#864 body — sandbox never sees npm run test:all, both lanes run (84.560667ms)
+✔ #1557: Test entry repairs an unchecked provenance-only declaration before moving (58.737083ms)
+✔ #952: already-migrated body — idempotent, no extra migration write (56.032833ms)
+✔ #1597: pre-existing aggregate tombstone rewrites dangling citations (1.56875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 209.183709

@@ -1,0 +1,17 @@
+coverage-backfill-plan-metadata.test.mjs: ok
+✔ buildPlanMetadataBackfill: no section → skip (1.270458ms)
+✔ buildPlanMetadataBackfill: already-bold section → skip (0.454167ms)
+✔ buildPlanMetadataBackfill: unbold labels → healed w/ bolded body + changed list (0.567667ms)
+✔ buildPlanMetadataBackfill: default empty arg → skip (0.091166ms)
+✔ listOpenIssues: parses gh json via injected pexec (0.181209ms)
+✔ main: audit dry-run logs would-heal + skips clean issues, no writes (0.4555ms)
+✔ main: --apply writes healed issues through mutateIssueBody (0.644625ms)
+✔ main: --apply mutate throw is tallied as failed on err channel (0.274417ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.616084

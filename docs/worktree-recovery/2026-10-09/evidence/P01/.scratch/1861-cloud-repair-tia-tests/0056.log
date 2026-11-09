@@ -1,0 +1,14 @@
+✔ legacy bodies stay on their body lane while directory checks only update records (8.765208ms)
+✔ directory-backed Plan approval refuses before seal, projection, body, or audit writes (1.004625ms)
+✔ an interrupted append replays by repairing projection without a duplicate capsule (3.518125ms)
+✔ an interruption after projection replays without another capsule or projection write (1.959708ms)
+✔ a stale writer cannot overwrite a newer contract revision or epoch (0.916709ms)
+✔ Plan sealing and demotion invalidation preserve authority and reset old proof (1.839042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26.569292

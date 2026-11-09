@@ -1,0 +1,11 @@
+✔ close: interactive dirty close on review→done exits 5 and still prints PROMPT_REQUIRED (#710) (964.258833ms)
+✔ promote: exit-0 close that leaves board at review yields transition-failed, no promoted line (#710) (1.491875ms)
+✔ promote: exit-0 close that moves board to done still reports promoted (#710) (0.281625ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 968.654791

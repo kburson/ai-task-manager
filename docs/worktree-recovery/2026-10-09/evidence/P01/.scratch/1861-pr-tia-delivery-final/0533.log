@@ -1,0 +1,22 @@
+✔ discussBlockGuard: no token → ok (0.956333ms)
+✔ discussBlockGuard: spaced token does NOT trigger (0.081959ms)
+✔ discussBlockGuard: inline prose mention does NOT trigger (#479) (0.07875ms)
+✔ discussBlockGuard: bare token alone on its line → refuse with context (0.23ms)
+✔ discussBlockGuard: converged request-marker-only body → still refuse (#486) (0.306417ms)
+✔ discussBlockGuard: aitm-discussed marker → ok (#486) (0.1775ms)
+✔ discussBlockGuard: fail-open when ctx missing (0.088625ms)
+✔ discussBlockGuard: fail-open when body absent (0.065625ms)
+✔ discussBlockGuard: markDiscussed resolves it → ok (0.089ms)
+✔ GUARD_ID is stable (0.08925ms)
+✔ runGuards backlog→refine refuses on bare token (0.503333ms)
+✔ runGuards backlog→refine passes on an inline-only mention (#479) (0.102834ms)
+✔ runGuards backlog→refine refuses on a converged request marker (#486) (0.129833ms)
+✔ runGuards backlog→refine passes once token is stripped (0.219375ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.184375

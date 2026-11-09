@@ -1,0 +1,13 @@
+✔ ordinary policy reproduces all five Plan blockers while an explicit exception resumes in Plan and reaches Done truthfully (5.091083ms)
+✔ retained test, dependency, binding, approval, provenance, CI, delivery, and protection evidence still blocks Done (2.065375ms)
+✔ expired, revoked, wrong repository, wrong issue, stale scope, ambiguous, and unsupported records fail closed (2.805458ms)
+✔ record retries are idempotent and an explicit series reports partial results per issue (3.613792ms)
+✔ mid-flight activation or revocation is observed at the managed-provider boundary and Full-Auto cannot override denial (0.929625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.525958

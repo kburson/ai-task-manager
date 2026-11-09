@@ -1,0 +1,18 @@
+✔ buildPassedMessage: develop→test promotion success message names "Test", not "Review" (0.89675ms)
+✔ buildReverifiedMessage #444: in-place re-verify banner is loud and does not claim a move (0.131917ms)
+✔ verbTest #1218: invalid provider refuses before sandbox setup or state movement (97.542125ms)
+✔ parseVerificationCommands: extracts VC checkboxes only, in order (0.549416ms)
+✔ verbTest #1412: crash recovery runs before the current sandbox is created (85.409292ms)
+✔ verbTest: green path stamps marker, posts success comment, moves develop→test, logs time (60.072208ms)
+✔ verbTest #937: red source result enters Test then explicitly demotes without a DoD marker (55.281458ms)
+✔ verbTest: worktree cleanup runs even when sandbox exec throws (47.165208ms)
+✔ verbTest #937: sandbox-setup crash stays in Test and posts test-aborted audit (43.691666ms)
+✔ verbTest #937: sandbox-exec crash stays in Test without demotion (56.490917ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 458.676958

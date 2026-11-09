@@ -1,0 +1,12 @@
+✔ a selected list of isolated action queries is not a lifecycle transcript (0.679583ms)
+✔ the corrected public CLI capture has one contiguous authority history (14325.955166ms)
+✔ required query and external boundaries cannot disappear from the total (1.698167ms)
+✔ the committed corrected artifact is bound to its runner and preserves the historical capture (33.473083ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14365.793792

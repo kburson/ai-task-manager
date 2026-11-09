@@ -1,0 +1,15 @@
+✔ one plan observes each physical root independently of file count and rechecks its final census (60.993917ms)
+✔ supported legacy roots have an explicit byte-preserving route and duplicates refuse (190.052166ms)
+✔ empty legacy lock directories remain active-source blockers, never invisible empty inventory (157.979625ms)
+✔ capture catalog accepts actual producer records and validates each stored payload (824.743875ms)
+✔ default migration catalog validates supported state and actor formats without caller-supplied classification (112.697917ms)
+✔ migration classifiers receive exact binary capture bytes without text decoding (102.461583ms)
+✔ an artifact-contained registered root is a typed census blocker, not a thrown planner failure (185.075084ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1638.751167
