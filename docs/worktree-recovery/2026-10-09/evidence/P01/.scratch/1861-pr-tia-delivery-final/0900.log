@@ -1,0 +1,18 @@
+✔ parseArgs: positional dead + --by (1.189ms)
+✔ parseArgs: dead falls back to active bind (0.09075ms)
+✔ parseArgs: missing --by reported via byProvided (0.077042ms)
+✔ happy path: stamps marker, moves done, comments both, closes not-planned (1.0045ms)
+✔ successful supersede releases the terminal binding before reporting success (0.193292ms)
+✔ superseder-missing: refuses before any write (0.115458ms)
+✔ transition-failed: marker written, no comments/close on nonzero move exit (0.169583ms)
+✔ self-supersede throws (0.31575ms)
+✔ missing byIssue throws (0.143541ms)
+✔ missing deadIssue throws (0.124917ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17.019917

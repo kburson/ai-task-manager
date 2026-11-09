@@ -1,0 +1,14 @@
+✔ retroactive AFK repair inserts one authoritative pair and reclassifies exact seconds (11.334667ms)
+✔ an open phase can be repaired without manufacturing a completed row (0.62825ms)
+✔ an exact existing pair is idempotent and a partial pair is refused (1.265ms)
+✔ invalid, reversed, boundary-crossing, and out-of-phase intervals refuse (0.272875ms)
+✔ existing interruption overlap and rows inside the proposed bracket refuse before repair (0.392083ms)
+✔ malformed or out-of-order timing evidence refuses instead of being reordered (0.256ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.917875

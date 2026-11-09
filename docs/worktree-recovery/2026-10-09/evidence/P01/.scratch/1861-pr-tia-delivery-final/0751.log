@@ -1,0 +1,10 @@
+✔ #1110 reproduces the exact Review refusal after Test SHA drift (4.424125ms)
+✔ #1110 documents parent sync before Test and re-Test after any later HEAD move (0.59225ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.080458

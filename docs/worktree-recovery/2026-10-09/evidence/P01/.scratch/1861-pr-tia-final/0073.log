@@ -1,0 +1,17 @@
+✔ classifies writes and verification across compound command segments (1.416709ms)
+✔ wrapped nested commits require the bound worktree (0.232084ms)
+✔ allows navigation and read-only inspection classifications (0.45725ms)
+✔ confirmed mismatch refuses with complete corrective diagnostics (0.427916ms)
+✔ absence, matching worktree, and explicit override pass unchanged (0.497666ms)
+✔ real PreToolUse hook refuses a guarded command from a foreign worktree (369.823792ms)
+✔ existing gh-edit evaluator outcomes are unchanged (1.276625ms)
+✔ hook process in main checkout honors linked payload directory and recorded branch (255.155292ms)
+✔ aliases and literal nested shells remain guarded worktree mutations (0.227583ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 632.379125

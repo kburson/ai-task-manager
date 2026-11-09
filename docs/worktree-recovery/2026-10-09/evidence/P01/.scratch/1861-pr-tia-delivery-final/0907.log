@@ -1,0 +1,16 @@
+✔ unassign removes the local singleton only before Develop and preserves Status (8.012958ms)
+✔ unassign refuses Develop Test and Review without mutating ownership or Status (0.195291ms)
+✔ unassign refuses foreign multiple and absent ownership without mutation (0.211583ms)
+✔ unassign treats a thrown removal with empty read-back as ambiguous, not success (0.23675ms)
+✔ unassign fails closed when Status changes around the ownership mutation (0.133625ms)
+✔ unassign never mutates when the durable audit reservation fails (0.305125ms)
+✔ unassign retries a pending completion audit without repeating ownership mutation (1.311583ms)
+✔ unassign repairs only the newest unmatched transaction id (0.319959ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 83.2155

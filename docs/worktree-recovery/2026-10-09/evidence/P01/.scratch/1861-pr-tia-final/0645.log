@@ -1,0 +1,13 @@
+✔ buildCloseGatesDeps: move to done, linked worktree → resolveTrunkRef yields origin/trunk (1.216208ms)
+✔ buildCloseGatesDeps: move to done, main worktree → resolveTrunkRef yields local trunk (0.261959ms)
+✔ buildCloseGatesDeps: linked worktree, explicit cfg.trunkRef still wins (0.100791ms)
+✔ buildCloseGatesDeps: move that is not → done → no override (undefined) (0.075125ms)
+✔ buildCloseGatesDeps: pexec failure (not a git repo) → treated as main worktree, does not throw (0.122709ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26.662625

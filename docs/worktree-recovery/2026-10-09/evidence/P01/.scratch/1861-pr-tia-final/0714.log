@@ -1,0 +1,19 @@
+✔ the conformance registry covers every installed resident action (0.769833ms)
+✔ develop:develop-verification verify is deterministic and read-only (1.349333ms)
+✔ develop:develop-verification run and fresh hydration converge without duplicate effects (9.060542ms)
+✔ test:test-pr-quick-ci verify is deterministic and read-only (0.19525ms)
+✔ test:test-pr-quick-ci run and fresh hydration converge without duplicate effects (2.969666ms)
+✔ review:review-agent-validation verify is deterministic and read-only (0.427167ms)
+✔ review:review-agent-validation run and fresh hydration converge without duplicate effects (2.132875ms)
+✔ fresh hydration correlates an effect committed immediately before interruption (1.610958ms)
+✔ stale Review evidence remains incomplete (0.122291ms)
+✔ event budget refusal occurs before the provider effect (0.516875ms)
+✔ stale spill preflight refuses before creating a protected comment (0.158542ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26.341791

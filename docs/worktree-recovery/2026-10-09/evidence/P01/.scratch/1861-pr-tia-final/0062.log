@@ -1,0 +1,36 @@
+✔ complete shared guards skip policy transport on a ready baseline (3.705291ms)
+✔ qualifying refusal loads policy once and replaces the entire baseline result (0.500417ms)
+✔ a non-applicable exception does not erase an ordinary guard refusal (0.568292ms)
+✔ failed required policy collection is indeterminate and preserves known refusals (0.160167ms)
+✔ malformed complete guard output never passes shared execution (0.282667ms)
+✔ a completed promotion adapter without an outer effect ledger is indeterminate (15.297875ms)
+✔ a complete read-only adapter can report ready from one observed body (0.771833ms)
+✔ an adapter without an outer effect ledger cannot claim readiness (0.355875ms)
+✔ an ineligible action cannot become ready through a supplied target (0.358667ms)
+✔ lazy guard reads join the same attempt and memoize one physical read (0.577792ms)
+✔ waivable explanation observes one body and one policy transport, then replaces guards (1.051958ms)
+✔ a scope-incompatible policy waiver cannot turn a known refusal ready (0.767083ms)
+✔ failed required policy read retains the known refusal and adds an indeterminate cause (1.052167ms)
+✔ a throwing shared read-only guard is indeterminate, not a ready result (0.342167ms)
+✔ a thrown shared evaluator is a typed guard-error (0.341333ms)
+✔ a malformed adapter result is separately classified as invalid (0.291625ms)
+✔ incompatible issue body fails before any guard is evaluated (0.351291ms)
+✔ missing required body source is an authority failure, not a skipped success (0.505375ms)
+✔ known blocked refusal, warning and human request remain complete (3.310792ms)
+✔ the complete result retains normalization intent and hashes its inputs (0.597542ms)
+✔ an attempted effect stays visible outside guard conversion and forbids readiness (1.293584ms)
+✔ exact remote tip needs a complete non-shallow local graph without fetch (0.469292ms)
+✔ missing or shallow remote-tip history is attribution-unavailable (0.37025ms)
+✔ exact tip is admitted only as a pinned delivery observation (0.295541ms)
+✔ complete exact remote tip scopes the existing attribution predicate to its SHA (0.176542ms)
+✔ incomplete exact remote history never invokes attribution (0.093375ms)
+✔ configured local trunk ref retains explicit local provenance and scopes attribution (0.343834ms)
+✔ bare local trunk fallback resolves only the qualified local branch (0.114208ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 55.785542

@@ -1,0 +1,23 @@
+✔ verbTest: no-vc body returns no-vc status (does not create worktree) (82.069ms)
+✔ verbTest: detects lifecycle pretick → un-ticks, writes body, posts regression comment (#139) (74.60925ms)
+✔ verbTest: no pretick → no regression comment posted (#139) (77.231875ms)
+✔ verbTest #937: Test becomes current before sandbox proof is stamped (61.237917ms)
+✔ verbTest #406: sandbox green but moveState refuses → status move-failed, no passed banner (97.932167ms)
+✔ verbTest #444: benign test→test self-loop → status reverified (in-place re-verify) (114.716041ms)
+✔ verbTest #406: structured ok:true move → status passed (104.631208ms)
+✔ verbTest #406: legacy stub moveState returning undefined still reports passed (93.22675ms)
+✔ #1015 successful Test entry posts the New Automated Tests report (116.21275ms)
+✔ #1015 Test self-loop runs the idempotent New Automated Tests poster (71.022416ms)
+✔ #1015 New Automated Tests post failure does not reverse a successful Test entry (78.75525ms)
+✔ #1015 refused Test move does not post New Automated Tests (360.93425ms)
+✔ #1015 successful move attempts New Automated Tests before a result-comment failure (178.555916ms)
+✔ #1015 successful move attempts New Automated Tests before a timing-log failure (171.681ms)
+✔ verbTest: sandbox isolation — locally-passing env-dependent command fails in sandbox (67.634625ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1776.906459

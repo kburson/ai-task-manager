@@ -1,0 +1,16 @@
+✔ local preparation is read only and names the exact lane and scope (4.019125ms)
+✔ a generic deliver instruction cannot record the local grant (1.685583ms)
+✔ PR waiver and local-trunk proposal shapes cannot cross-authorize (0.198292ms)
+✔ exact host-verified statement records one visible typed grant with readback (11.169333ms)
+✔ local revise and revoke statements bind the same operation and prior revision (0.343334ms)
+✔ local statement source rejects assistant, stale, and unavailable host evidence (0.2865ms)
+✔ a decodable forged Test marker cannot supply local authority (0.474542ms)
+✔ a complete green Test receipt and matching accepted Review SHA can prepare authority (2.453417ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.481292

@@ -1,0 +1,16 @@
+✔ dead leaves issue and board untouched but releases confirmed-terminal bindings (1.025292ms)
+✔ finalize runs the existing housekeeping order before cleanup (0.129541ms)
+✔ noop reconciles close housekeeping without a redundant board move (0.100292ms)
+✔ finalize fails visibly and does not clean up after a board-move failure (0.122875ms)
+✔ aberration reopens, restores Review, then writes both audit trails (0.431375ms)
+✔ aberration skips a Review self-loop and reports partial failure (0.162834ms)
+✔ legacy unauthorized-close writer remains idempotent with the structured marker (0.903333ms)
+✔ unauthorized-close is an emittable audit event and a protected marker (1.599375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.129209

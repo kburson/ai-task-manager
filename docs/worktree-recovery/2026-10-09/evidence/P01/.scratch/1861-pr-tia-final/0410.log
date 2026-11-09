@@ -1,0 +1,14 @@
+✔ one actor pause cannot replace another actor start or word cursors (9.071042ms)
+✔ legacy own binding establishes its current interval without inheriting unattributed global history (2.779083ms)
+✔ invalid actor write refuses before mutating binding or prior evidence (2.765875ms)
+✔ corrupt, unsupported and mismatched actor state refuse without global fallback (2.975167ms)
+✔ a genuine new binding supersedes only its own stale paused interval (2.513333ms)
+✔ timing updates preserve genuine same-issue binding generation and original bound time (5.106875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30.080083

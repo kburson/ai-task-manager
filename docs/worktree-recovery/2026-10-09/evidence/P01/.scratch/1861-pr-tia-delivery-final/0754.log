@@ -1,0 +1,8 @@
+ok pure-helpers
+ok record-lookup-contract
+ok hit
+ok miss-on-changed-sha
+ok miss-on-dirty-tree
+ok non-eligible-command-always-runs
+ok multi-ac-single-run
+ok verifier-cache

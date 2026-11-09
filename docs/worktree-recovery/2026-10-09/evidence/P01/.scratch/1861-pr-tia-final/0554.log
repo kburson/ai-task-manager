@@ -1,0 +1,25 @@
+✔ native-blocked R4P child stays current for epic admission but waits for its predecessor (3.160875ms)
+✔ configured-project mapping ignores legacy blocker markers as dependency authority (0.40175ms)
+✔ configured-project child mapping carries current refinement and terminal evidence (0.269625ms)
+✔ configured-project mapping rejects stale refinement evidence and board-rank drift (0.28425ms)
+✔ epic admission and terminal delivery fail closed on incomplete descriptors and board drift (0.266583ms)
+✔ strict local WIP cannot be disabled by project configuration (0.781791ms)
+✔ epic Plan admission requires every executable child at R4P or later with refinement evidence (0.33475ms)
+✔ R4P state enforces epic child admission before entering Plan (0.168291ms)
+✔ next-child selection uses only dependency-ready R4P children and rank (0.160166ms)
+✔ next-child selection fails closed while any sibling is locally active (0.114167ms)
+✔ local WIP policy has no blocker exception while another child is active (0.427584ms)
+✔ epic Test admission requires Done or an accepted closed disposition (0.159375ms)
+✔ pull-next advances one dependency-ready R4P child exactly one edge and then stops (11.400084ms)
+✔ pull-next refuses to start another local child while a sibling is active (0.204291ms)
+✔ operator help, architecture, and pickup guidance describe R4P child staging (2.93075ms)
+✔ epic child enumeration exhausts every GraphQL page and refuses cursor ambiguity (0.849292ms)
+✔ configured child project membership and fields paginate exhaustively (0.260958ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26.13275

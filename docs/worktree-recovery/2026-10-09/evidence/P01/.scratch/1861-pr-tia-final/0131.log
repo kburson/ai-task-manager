@@ -1,0 +1,11 @@
+✔ documentation references resolve explicit anchors and duplicate heading slugs (100.246292ms)
+✔ documentation references reject symlinks escaping the package (21.704416ms)
+✔ fenced Markdown headings do not create documentation anchors (25.942291ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.701417

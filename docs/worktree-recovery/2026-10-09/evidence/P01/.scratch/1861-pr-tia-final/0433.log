@@ -1,0 +1,13 @@
+✔ computeBackfillHoles: zero markers + non-backlog stage reports every prior stage as a hole (1.643375ms)
+✔ computeBackfillHoles: zero markers + backlog stage reports no holes (fresh issue, preserved contract) (0.119417ms)
+✔ computeBackfillHoles: non-zero markers delegates to verifyChainIntegrity unchanged (0.942041ms)
+✔ reconcile backfill: zero markers + board state past backlog backfills every prior stage (#677) (2.119417ms)
+✔ reconcile backfill: zero markers + backlog board state reports no-holes (fresh issue, no false positive) (0.106833ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.103708

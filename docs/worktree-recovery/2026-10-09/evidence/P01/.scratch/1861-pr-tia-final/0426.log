@@ -1,0 +1,16 @@
+✔ assignmentSnapshotFromGraphql resolves the exact configured project and assignees (0.965959ms)
+✔ assignmentSnapshotFromGraphql fails closed on missing issue or configured project (0.268666ms)
+✔ assignmentSnapshotFromGraphql refuses duplicate configured-project memberships (0.092125ms)
+✔ fetchAssignmentSnapshot paginates project membership without accepting partial scans (0.276375ms)
+✔ fetchAssignmentSnapshot re-reads Status and owners atomically after pagination (0.137958ms)
+✔ fetchAssignmentSnapshot refuses pagination with a missing or repeated cursor (0.463292ms)
+✔ fetchAssignmentSnapshot refuses owner drift across project-membership pages (0.194291ms)
+✔ owner helpers are case-insensitive but reject duplicate singleton claims (0.142ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.288416

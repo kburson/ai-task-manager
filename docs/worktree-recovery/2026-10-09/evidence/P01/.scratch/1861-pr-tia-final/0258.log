@@ -1,0 +1,26 @@
+file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:60
+    throw new Error(
+          ^
+
+Error: expected exit 7, got 1
+stdout: 
+stderr: file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32
+  throw new RuntimeRootError(code, message);
+        ^
+
+RuntimeRootError: Artifact directories cannot own runtime authority: /Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/.scratch/test/tt-preflight-jJ36ZU
+    at fail (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:32:9)
+    at assertOutsideArtifacts (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:50:9)
+    at resolveRuntimeRoot (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/lib/runtime-storage.mjs:200:5)
+    at getProjectDir (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/paths.mjs:123:10)
+    at buildContext (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/runtime.mjs:314:22)
+    at file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/task-tracker/task-tracker.mjs:493:17 {
+  code: 'ROOT_OVERRIDE_UNSAFE'
+}
+
+Node.js v26.8.1
+
+    at expectExit (file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:60:11)
+    at async file:///Users/kpburson/.codex/worktrees/8dae/ai-task-manager/.ai-task-manager/runtime/test-fixtures/1861-pr-candidate/scripts/tests/slow/task-tracker/lib/verb-preflight-wiring.test.mjs:69:15
+
+Node.js v26.8.1
