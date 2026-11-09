@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "Started #1902.\n",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1902 --role orchestrator --allow-foreign-worktree\n"
+  ],
+  "pid": 27085,
+  "stdout": "Started #1902.\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' start 1902 --role orchestrator --allow-foreign-worktree\n"
+}

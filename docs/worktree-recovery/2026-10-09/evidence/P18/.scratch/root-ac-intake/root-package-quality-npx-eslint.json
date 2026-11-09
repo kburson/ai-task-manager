@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "",
+    "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'eslint' scripts/tests/unit/task-tracker/core/package-boundary.test.mjs\n"
+  ],
+  "pid": 79031,
+  "stdout": "",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'eslint' scripts/tests/unit/task-tracker/core/package-boundary.test.mjs\n"
+}

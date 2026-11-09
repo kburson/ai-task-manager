@@ -1,0 +1,14 @@
+{
+  "command": [
+    "npx",
+    "aitm",
+    "auto",
+    "both"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:47:48.107Z",
+  "end": "2026-10-06T14:47:49.306Z",
+  "exitCode": 0,
+  "stdout": "✓ auto-mode: all gates OFF (Full-Auto)\n",
+  "stderr": "npm notice run @kburson/ai-task-manager@0.1.0 npx\nnpm notice run 'aitm' auto both\n"
+}

@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "Paused #1904: +Unknown active min (wall 28), +277 words. Use \"/task resume\" to resume.\n",
+    ""
+  ],
+  "pid": 569,
+  "stdout": "Paused #1904: +Unknown active min (wall 28), +277 words. Use \"/task resume\" to resume.\n",
+  "stderr": ""
+}

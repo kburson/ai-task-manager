@@ -1,0 +1,20 @@
+{
+  "command": [
+    "gh",
+    "search",
+    "issues",
+    "Acceptance Criteria heading",
+    "--repo",
+    "kburson/ai-task-manager",
+    "--limit",
+    "30",
+    "--json",
+    "number,title,state,url"
+  ],
+  "cwd": "/Users/kpburson/projects/Vibe-Coding/ai-task-manager/.worktrees/root-ac-derivation",
+  "start": "2026-10-06T14:39:31.171Z",
+  "end": "2026-10-06T14:39:32.067Z",
+  "exitCode": 0,
+  "stdout": "[{\"number\":1897,\"state\":\"closed\",\"title\":\"🐞 [BUG] Select canonical Acceptance Criteria before embedded source headings\",\"url\":\"https://github.com/kburson/ai-task-manager/issues/1897\"},{\"number\":136,\"state\":\"closed\",\"title\":\"Develop→Test CODE_COMPLETE gate: functional-AC evidence + commits + clean tree\",\"url\":\"https://github.com/kburson/ai-task-manager/issues/136\"},{\"number\":133,\"state\":\"closed\",\"title\":\"Backlog→Refine gate: require Priority only (move refine-estimate to Refine exit)\",\"url\":\"https://github.com/kburson/ai-task-manager/issues/133\"},{\"number\":231,\"state\":\"closed\",\"title\":\"Gate holes: standard-command exemption + inert Functional DoD let items pass without executed/reported tests\",\"url\":\"https://github.com/kburson/ai-task-manager/issues/231\"}]\n",
+  "stderr": ""
+}

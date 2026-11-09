@@ -1,0 +1,12 @@
+{
+  "status": 0,
+  "signal": null,
+  "output": [
+    null,
+    "",
+    "✓ Pull request kburson/ai-task-manager#1905 is marked as \"ready for review\"\n"
+  ],
+  "pid": 38018,
+  "stdout": "",
+  "stderr": "✓ Pull request kburson/ai-task-manager#1905 is marked as \"ready for review\"\n"
+}

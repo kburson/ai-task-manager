@@ -1,0 +1,1 @@
+functional-dod-evidence.mjs and both AC body-invariant finders select the first level-one-to-four heading through a raw regular expression. Embedded source headings therefore shadow the formal root AC section; ac-evidence already gives live canonical root headings precedence.
